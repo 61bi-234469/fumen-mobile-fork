@@ -6,7 +6,13 @@ import { PageFieldOperation, Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
-import { downloadImage, generateListViewExportImage, generateTreeViewExportImage } from '../lib/thumbnail';
+import {
+    downloadBlob,
+    downloadImage,
+    generateListViewExportImage,
+    generateTreeViewExportImage,
+} from '../lib/thumbnail';
+import { generateGifBlob } from '../lib/gif_export';
 import { decode, encode } from '../lib/fumen/fumen';
 import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { localStorageWrapper } from '../memento';
@@ -223,9 +229,11 @@ export interface ListViewActions {
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
+    exportListViewAsGif: () => action;
     exportListViewAsUrl: () => action;
     exportLeftSegmentAsUrl: () => action;
     exportLeftSegmentAsImage: () => action;
+    exportLeftSegmentAsGif: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
     importPagesFromClipboard: (data: { mode: ClipboardImportMode }) => action;
     addPagesFromClipboard: (data: {
@@ -235,7 +243,7 @@ export interface ListViewActions {
     }) => action;
 }
 
-const createTimestampedImageFileName = (prefix: string): string => {
+const createTimestampedImageFileName = (prefix: string, extension: 'png' | 'gif' = 'png'): string => {
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -243,7 +251,7 @@ const createTimestampedImageFileName = (prefix: string): string => {
     const hh = String(now.getHours()).padStart(2, '0');
     const min = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
-    return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
+    return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.${extension}`;
 };
 
 export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
@@ -669,6 +677,21 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         return undefined;
     },
+    exportListViewAsGif: () => (state): NextState => {
+        const blob = generateGifBlob(
+            state.fumen.pages,
+            state.fumen.guideLineColor,
+            state.listView.trimTopBlank,
+            state.mode.gifFrameDelayMs,
+        );
+
+        if (blob) {
+            const filename = createTimestampedImageFileName('fumen_gif', 'gif');
+            downloadBlob(blob, filename);
+        }
+
+        return undefined;
+    },
     exportListViewAsUrl: () => (state): NextState => {
         (async () => {
             try {
@@ -744,6 +767,27 @@ export const listViewActions: Readonly<ListViewActions> = {
         if (dataURL) {
             const filename = createTimestampedImageFileName('fumen_list_active');
             downloadImage(dataURL, filename);
+        }
+
+        return undefined;
+    },
+    exportLeftSegmentAsGif: () => (state): NextState => {
+        const segment = extractRootToActiveSegmentPages(state);
+        if ('error' in segment) {
+            M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+            return undefined;
+        }
+
+        const blob = generateGifBlob(
+            segment.pages,
+            state.fumen.guideLineColor,
+            state.listView.trimTopBlank,
+            state.mode.gifFrameDelayMs,
+        );
+
+        if (blob) {
+            const filename = createTimestampedImageFileName('fumen_gif_active', 'gif');
+            downloadBlob(blob, filename);
         }
 
         return undefined;

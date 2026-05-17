@@ -109,6 +109,16 @@
             TooManyUnknownColors: 'Too many unknown colors in image',
         },
     },
+    GifFrameDelayMs: {
+        Title: 'GIF page interval (ms)',
+        Description: 'Delay per page in GIF export',
+    },
+    GifExport: {
+        Buttons: {
+            Gif: 'Download GIF Image',
+            GifLeftToActive: 'GIF Image (to Active Node)',
+        },
+    },
     Menu: {
         Title: 'Menu',
         Build: 'build {{version}}',

@@ -83,6 +83,10 @@ export const resources = {
             Cancel: 'キャンセル',
         },
     },
+    GifFrameDelayMs: {
+        Title: 'GIFページ送り間隔(ms)',
+        Description: 'GIF出力時の1ページあたりの表示時間',
+    },
     Clipboard: {
         Title: 'クリップボードにコピー',
         Buttons: {
@@ -103,6 +107,12 @@ export const resources = {
             InvalidSymbol: 'フィールドに不正な文字があります',
             InvalidImageRatio: '画像のアスペクト比が不正です（10列・1〜23行を想定）',
             TooManyUnknownColors: '画像に不明な色が多すぎます',
+        },
+    },
+    GifExport: {
+        Buttons: {
+            Gif: 'GIF画像のダウンロード',
+            GifLeftToActive: 'GIF画像(アクティブノードまで)',
         },
     },
     Menu: {

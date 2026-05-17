@@ -97,6 +97,7 @@ export const view: View<State, Actions> = (state, actions) => {
             editShortcuts: state.temporary.userSettings.editShortcuts,
             pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
+            gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

@@ -87,6 +87,10 @@ export const i18n = {
             DasMs: () => t('UserSettings.PieceShortcuts.DasMs'),
             DasDescription: () => t('UserSettings.PieceShortcuts.DasDescription'),
         },
+        GifFrameDelayMs: {
+            Title: () => t('GifFrameDelayMs.Title'),
+            Description: () => t('GifFrameDelayMs.Description'),
+        },
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),
@@ -169,6 +173,8 @@ export const i18n = {
             Add: () => t('ListViewImport.Buttons.Add'),
             Image: () => t('ListViewImport.Buttons.Image'),
             ImageLeftToActive: () => t('ListViewImport.Buttons.ImageLeftToActive'),
+            Gif: () => t('GifExport.Buttons.Gif'),
+            GifLeftToActive: () => t('GifExport.Buttons.GifLeftToActive'),
             Cancel: () => t('ListViewImport.Buttons.Cancel'),
         },
     },

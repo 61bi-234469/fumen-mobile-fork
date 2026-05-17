@@ -9,7 +9,7 @@ import { calculateTreeLayout, findNode, getNodeDfsNumbers } from './fumen/tree_u
 
 export const THUMBNAIL_WIDTH = 100;
 export const THUMBNAIL_HEIGHT = 230;
-const BLOCK_SIZE = THUMBNAIL_WIDTH / FieldConstants.Width;
+export const BLOCK_SIZE = THUMBNAIL_WIDTH / FieldConstants.Width;
 const MAX_THUMBNAIL_RENDER_SCALE = 2;
 
 const thumbnailCache = new WeakMap<Page[], Map<string, string>>();
@@ -303,7 +303,7 @@ export function generateListViewExportImage(
     return canvas.toDataURL('image/png');
 }
 
-function drawThumbnail(
+export function drawThumbnail(
     ctx: CanvasRenderingContext2D,
     pages: Page[],
     pageIndex: number,
@@ -404,6 +404,14 @@ function drawThumbnail(
     }
 }
 
+export function getPageCommentText(pagesObj: Pages, pageIndex: number): string {
+    const commentResult = pagesObj.getComment(pageIndex);
+    if (isTextCommentResult(commentResult)) {
+        return commentResult.text;
+    }
+    return commentResult.quiz;
+}
+
 function drawComment(
     ctx: CanvasRenderingContext2D,
     pagesObj: Pages,
@@ -426,13 +434,7 @@ function drawComment(
     ctx.fillText(`#${pageIndex + 1}`, x + 4, y + 12);
 
     // Comment text
-    const commentResult = pagesObj.getComment(pageIndex);
-    let commentText = '';
-    if ('text' in commentResult) {
-        commentText = commentResult.text;
-    } else if ('quiz' in commentResult) {
-        commentText = commentResult.quiz;
-    }
+    const commentText = getPageCommentText(pagesObj, pageIndex);
 
     if (commentText) {
         ctx.fillStyle = '#333333';
@@ -484,6 +486,17 @@ export function downloadImage(dataURL: string, filename: string): void {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.download = filename;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 // Tree view export constants
@@ -730,12 +743,7 @@ function drawTreeNode(
     // Comment text
     let commentText = '';
     try {
-        const result = pagesObj.getComment(pageIndex);
-        if (isTextCommentResult(result)) {
-            commentText = result.text;
-        } else {
-            commentText = result.quiz;
-        }
+        commentText = getPageCommentText(pagesObj, pageIndex);
     } catch {
         commentText = '';
     }

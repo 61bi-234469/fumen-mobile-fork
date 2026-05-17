@@ -36,6 +36,7 @@ import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { initShortcutHandlers } from './actions/shortcuts';
+import { normalizeGifFrameDelayMs } from './lib/gif_export';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -361,6 +362,11 @@ const loadUserSettings = () => {
 
     if (settings.pieceShortcutDasMs !== undefined) {
         main.changePieceShortcutDas({ dasMs: settings.pieceShortcutDasMs });
+        updated = true;
+    }
+
+    if (settings.gifFrameDelayMs !== undefined) {
+        main.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(settings.gifFrameDelayMs) });
         updated = true;
     }
 

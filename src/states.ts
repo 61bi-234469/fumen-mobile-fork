@@ -44,6 +44,7 @@ export const defaultPieceShortcuts: PieceShortcuts = {
 };
 
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
+export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
@@ -125,6 +126,7 @@ export interface State {
             editShortcuts: EditShortcuts;
             pieceShortcuts: PieceShortcuts;
             pieceShortcutDasMs: number;
+            gifFrameDelayMs: number;
         };
     };
     handlers: {
@@ -153,6 +155,7 @@ export interface State {
         editShortcuts: EditShortcuts;
         pieceShortcuts: PieceShortcuts;
         pieceShortcutDasMs: number;
+        gifFrameDelayMs: number;
     };
     history: {
         undoCount: number;
@@ -257,6 +260,7 @@ export const initState: Readonly<State> = {
             editShortcuts: { ...defaultEditShortcuts },
             pieceShortcuts: { ...defaultPieceShortcuts },
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+            gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         },
     },
     handlers: {
@@ -283,6 +287,7 @@ export const initState: Readonly<State> = {
         editShortcuts: { ...defaultEditShortcuts },
         pieceShortcuts: { ...defaultPieceShortcuts },
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+        gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
     },
     history: {
         undoCount: 0,

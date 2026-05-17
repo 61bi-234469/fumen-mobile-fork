@@ -12,6 +12,8 @@ interface ListViewImportModalProps {
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
         exportListViewAsImage: () => void;
         exportLeftSegmentAsImage: () => void;
+        exportListViewAsGif: () => void;
+        exportLeftSegmentAsGif: () => void;
     };
 }
 
@@ -65,6 +67,18 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ isTre
 
     const doExportLeftSegmentImage = () => {
         actions.exportLeftSegmentAsImage();
+        close();
+        destroy();
+    };
+
+    const doExportGif = () => {
+        actions.exportListViewAsGif();
+        close();
+        destroy();
+    };
+
+    const doExportLeftSegmentGif = () => {
+        actions.exportLeftSegmentAsGif();
         close();
         destroy();
     };
@@ -123,6 +137,21 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ isTre
                                style={btnStyle}
                                className="waves-effect waves-light btn red" onclick={doExportLeftSegmentImage}>
                                 {i18n.ListViewImport.Buttons.ImageLeftToActive()}
+                            </a>
+                        ) : undefined}
+
+                        <a href="#" key="btn-export-gif" datatest="btn-export-gif"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={doExportGif}>
+                            {i18n.ListViewImport.Buttons.Gif()}
+                        </a>
+
+                        {isTreeView ? (
+                            <a href="#" key="btn-export-left-segment-gif"
+                               datatest="btn-export-left-segment-gif"
+                               style={btnStyle}
+                               className="waves-effect waves-light btn red" onclick={doExportLeftSegmentGif}>
+                                {i18n.ListViewImport.Buttons.GifLeftToActive()}
                             </a>
                         ) : undefined}
                     </div>

@@ -3,6 +3,7 @@ import { NextState, sequence } from './commons';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
+import { normalizeGifFrameDelayMs } from '../lib/gif_export';
 
 export interface UserSettingsActions {
     copyUserSettingsToTemporary: () => action;
@@ -15,6 +16,7 @@ export interface UserSettingsActions {
     keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => action;
     keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
     keepPieceShortcutDas: (data: { dasMs: number }) => action;
+    keepGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
 export const userSettingsActions: Readonly<UserSettingsActions> = {
@@ -31,6 +33,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     editShortcuts: { ...state.mode.editShortcuts },
                     pieceShortcuts: { ...state.mode.pieceShortcuts },
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
+                    gifFrameDelayMs: state.mode.gifFrameDelayMs,
                 },
             },
         };
@@ -52,6 +55,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changePieceShortcutDas({
                 dasMs: state.temporary.userSettings.pieceShortcutDasMs,
+            }),
+            actions.changeGifFrameDelay({
+                delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -264,6 +270,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepGifFrameDelay: ({ delayMs }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs),
+                },
+            },
+        };
+    },
 };
 
 const saveToLocalStorage = (state: Readonly<State>): NextState => {
@@ -276,6 +297,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         editShortcuts: JSON.stringify(state.mode.editShortcuts),
         pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
         pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
+        gifFrameDelayMs: state.mode.gifFrameDelayMs,
     });
     return undefined;
 };

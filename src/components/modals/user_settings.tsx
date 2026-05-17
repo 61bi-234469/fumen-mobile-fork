@@ -18,6 +18,7 @@ interface UserSettingsModalProps {
     editShortcuts: EditShortcuts;
     pieceShortcuts: PieceShortcuts;
     pieceShortcutDasMs: number;
+    gifFrameDelayMs: number;
     actions: {
         closeUserSettingsModal: () => void;
         commitUserSettings: () => void;
@@ -30,6 +31,7 @@ interface UserSettingsModalProps {
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
+        keepGifFrameDelay: (data: { delayMs: number }) => void;
     };
 }
 
@@ -78,6 +80,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         editShortcuts,
         pieceShortcuts,
         pieceShortcutDasMs,
+        gifFrameDelayMs,
         actions,
     },
 ) => {
@@ -235,6 +238,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         }
     };
 
+    const onchangeGifFrameDelay = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value) && value >= 100 && value <= 10000) {
+            actions.keepGifFrameDelay({ delayMs: value });
+        }
+    };
+
     return (
         <div key="user-settings-modal-top">
             <div key="mdl-user-settings" datatest="mdl-user-settings"
@@ -314,6 +325,27 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         </div>
 
                         <div>
+                            <div style={style({ marginTop: px(15), marginBottom: px(15) })}>
+                                <div style={style({ fontWeight: 'bold' })}>
+                                    {i18n.UserSettings.GifFrameDelayMs.Title()}
+                                </div>
+                                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                    {i18n.UserSettings.GifFrameDelayMs.Description()}
+                                </div>
+                                <input
+                                    type="number"
+                                    value={gifFrameDelayMs}
+                                    min={100}
+                                    max={10000}
+                                    step={100}
+                                    onchange={onchangeGifFrameDelay}
+                                    style={style({
+                                        width: px(100),
+                                        textAlign: 'center',
+                                    })}
+                                />
+                            </div>
+
                             <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>
                             <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
                                 {i18n.UserSettings.PaletteShortcuts.Description()}

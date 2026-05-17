@@ -166,6 +166,7 @@ interface UserSettings {
     editShortcuts: string;  // JSON文字列で保存
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasMs: number;
+    gifFrameDelayMs: number;
 }
 
 interface ViewSettings {
@@ -226,6 +227,7 @@ export const localStorageWrapper = {
             editShortcuts: safer.string(obj.editShortcuts),
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
+            gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
         };
     },
     saveViewSettings: (data: ViewSettings) => {

@@ -6,6 +6,7 @@ import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_util
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, State } from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
+import { clearThumbnailCache } from '../lib/thumbnail';
 
 export interface ScreenActions {
     changeToReaderScreen: () => action;
@@ -84,6 +85,10 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
             animationActions.pauseAnimation(),
+            (currentState) => {
+                clearThumbnailCache(currentState.fumen.pages);
+                return undefined;
+            },
             lockListViewNav,
             () => ({
                 mode: {

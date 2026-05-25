@@ -14,6 +14,10 @@ const MAX_THUMBNAIL_RENDER_SCALE = 2;
 
 const thumbnailCache = new WeakMap<Page[], Map<string, string>>();
 
+export function clearThumbnailCache(pages: Page[]): void {
+    thumbnailCache.delete(pages);
+}
+
 const normalizeThumbnailRenderScale = (renderScale: number | undefined): number => {
     if (renderScale === undefined || !isFinite(renderScale)) {
         return 1;

@@ -1615,7 +1615,8 @@ describe('coldClearActions run isolation', () => {
         expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L });
     });
 
-    test('swapCurrentPieceWithHoldQueue spawns leftmost queue piece preserving hold when current piece is missing', () => {
+    test('swapCurrentPieceWithHoldQueue spawns leftmost queue piece preserving hold ' +
+        'when current piece is missing', () => {
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const spawnPiece = jest.fn().mockReturnValue(() => ({}));
         initColdClearActions({ setCommentText, spawnPiece } as any);

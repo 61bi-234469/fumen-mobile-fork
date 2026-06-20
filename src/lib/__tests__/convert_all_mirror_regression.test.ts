@@ -107,8 +107,8 @@ describe('convertAllToMirror regression', () => {
 
         const state = {
             fumen: {
-                currentIndex: 0,
                 pages,
+                currentIndex: 0,
             },
         } as any;
 

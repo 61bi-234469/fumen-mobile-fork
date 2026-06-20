@@ -324,7 +324,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                 label.style.color = target === 'next' ? '#2563eb' : '#374151';
             }
         }
-        const oneBagBtn = document.querySelector('[datatest="btn-cold-clear-append-one-bag"]') as HTMLButtonElement | null;
+        const oneBagBtn = document
+            .querySelector('[datatest="btn-cold-clear-append-one-bag"]') as HTMLButtonElement | null;
         if (oneBagBtn) {
             oneBagBtn.disabled = isRunning || target === 'hold';
         }

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   actions: read
@@ -21,25 +22,51 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
+      - name: Checkout main (production)
         uses: actions/checkout@v6
+        with:
+          ref: main
+          path: main-src
+
+      - name: Checkout develop (preview)
+        uses: actions/checkout@v6
+        with:
+          ref: develop
+          path: develop-src
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'yarn'
+          cache-dependency-path: |
+            main-src/yarn.lock
+            develop-src/yarn.lock
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+      - name: Build main (site root)
+        working-directory: main-src
+        run: |
+          yarn install --frozen-lockfile
+          yarn webpack-prod
 
-      - name: Build
-        run: yarn webpack-prod
+      - name: Build develop (preview)
+        working-directory: develop-src
+        run: |
+          yarn install --frozen-lockfile
+          yarn webpack-prod
+
+      - name: Assemble combined site
+        run: |
+          rm -rf site
+          mkdir -p site
+          cp -a main-src/dest/. site/
+          mkdir -p site/preview
+          cp -a develop-src/dest/. site/preview/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: ./dest
+          path: ./site
 
   deploy:
     permissions:

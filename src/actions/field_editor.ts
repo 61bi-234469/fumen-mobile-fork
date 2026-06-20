@@ -202,7 +202,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         if (state.mode.type === ModeTypes.Piece || state.mode.type === ModeTypes.DrawingTool) {
             const page = state.fumen.pages[state.fumen.currentIndex];
             if (page?.piece && isMinoPiece(page.piece.type)) {
-                const rawField = new Pages(state.fumen.pages).getField(state.fumen.currentIndex, PageFieldOperation.Command);
+                const rawField = new Pages(state.fumen.pages)
+                    .getField(state.fumen.currentIndex, PageFieldOperation.Command);
                 const rawPiece = rawField.getAtIndex(index, true);
                 if (shouldReturnCurrentPieceOnRightClick(rawPiece, page.piece, index)) {
                     return coldClearActions.returnCurrentPieceToQueue()(state);

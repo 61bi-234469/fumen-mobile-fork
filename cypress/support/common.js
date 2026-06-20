@@ -168,8 +168,38 @@ const getPieces = (piece) => {
     }
 };
 
+// In headless Electron, `document.execCommand('copy')` fails and the clipboard
+// flow raises a "Failed to copy: command error" toast (see src/components/modals/clipboard.tsx).
+// That toast lingers and can cover click targets, causing cross-spec flakes. Stub copy/cut to
+// succeed so the app takes its normal "Copied to clipboard" path. Tests that need the real failure
+// can pass `stubClipboard: false` to visit().
+export const stubClipboardCopy = (win) => {
+    const originalExecCommand = win.document.execCommand.bind(win.document);
+    win.document.execCommand = (commandId, ...args) => {
+        if (typeof commandId === 'string' && /^(copy|cut)$/i.test(commandId)) {
+            return true;
+        }
+        return originalExecCommand(commandId, ...args);
+    };
+};
+
+// The side menu and every dialog (clipboard, append, open, ...) are Materialize M.Modal instances,
+// whose open/close are anime.js-driven (default in/out 250ms each). expectFumen() opens the menu and
+// the clipboard modal on every call, so Cypress spends most of the suite waiting for those animations
+// to settle. Zeroing the shared M.Modal duration defaults makes every modal settle in a single frame,
+// which keeps Cypress's animation wait (left enabled, so clicks still land on settled elements) but
+// removes the wait time. No coverage is lost: nothing asserts on animation. Re-applied on every visit
+// because cy.reload()/fresh load reloads materialize and resets the defaults to 250ms.
+export const disableModalAnimations = (win) => {
+    const modal = win.M && win.M.Modal;
+    if (modal && modal.defaults) {
+        modal.defaults.inDuration = 0;
+        modal.defaults.outDuration = 0;
+    }
+};
+
 export const visit = (
-    { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false },
+    { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
 ) => {
     let baseUrl = 'fumen-mobile-fork/#';
 
@@ -191,6 +221,13 @@ export const visit = (
         params.mobile = 1;
     }
 
+    // Register before visiting so the stub is applied on the initial load and on any cy.reload()
+    // below (window:before:load fires for both). Scoped to the current test, so opting out is just
+    // a matter of passing stubClipboard: false.
+    if (stubClipboard) {
+        cy.on('window:before:load', stubClipboardCopy);
+    }
+
     if (params) {
         const query = Object.entries(params).map(value => value[0] + '=' + value[1]).join('&');
         cy.visit(baseUrl + '?' + query);
@@ -201,6 +238,8 @@ export const visit = (
     if (reload) {
         cy.reload();
     }
+
+    cy.window().then(disableModalAnimations);
 
     cy.wait(sleepInMill);
 };
@@ -261,7 +300,13 @@ export const nextBox = (index) => {
 
 export const expectFumen = (fumen) => {
     operations.menu.copyToClipboard();
-    cy.wait(100);
+    // The assertion below retries up to the default command timeout, so no fixed wait is needed
+    // for the copied-fumen-data attribute to settle.
     cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', fumen);
-    rightTap();
+    // No dismissing tap here: copyToClipboard() already closes the clipboard modal via
+    // btn-clipboard-cancel, so the editor is fully interactive again. A trailing rightTap()
+    // (body click at 300,300) used to land on the "L" piece button of the drawing-tool palette
+    // after the fork's UI rework, silently selecting L as mode.piece. That corrupted later
+    // operations whose default piece must stay unset (e.g. Fill row defaults to Gray, drawing-tool
+    // Flags 2), producing deterministic fumen/color mismatches. See docs/e2e-ci-failure-investigation.md.
 };

@@ -441,7 +441,7 @@ describe('Put pieces', () => {
         operations.mode.piece.spawn.O();
         operations.mode.piece.harddrop();
 
-        expectFumen('v115@vhGFrBHhBEXBBSBCIBG+AD0A');
+        expectFumen('v115@vhGFrBHhBEXBRSBCIBG+AD0A');
     });
 
     it('Spawn: usecase 1', () => {

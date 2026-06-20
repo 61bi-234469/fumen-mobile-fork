@@ -309,15 +309,37 @@ export const operations = {
                 cy.get(datatest('btn-drawing-tool')).click();
             },
             nextPage: () => {
-                cy.get(datatest('btn-next-page')).click();
+                // 新UXではページ送りボタン(btn-next-page)は末尾で新規ページを作らず、
+                // ページ追加は別の「+」ボタン(btn-insert-page)に分離された。
+                // 旧来の nextPageOrNewPage と同じ「末尾なら新規ページ作成、途中なら移動」を再現する。
+                // リーダーには btn-insert-page が無いので、その場合は従来通り移動のみ。
+                cy.get('body').then(($body) => {
+                    const canInsert = $body.find('[datatest="btn-insert-page"]').length > 0;
+                    if (!canInsert) {
+                        cy.get(datatest('btn-next-page')).click();
+                        return;
+                    }
+                    cy.get(datatest('text-pages')).invoke('text').then((text) => {
+                        const [current, max] = text.split('/').map(value => parseInt(value.trim(), 10));
+                        if (current >= max) {
+                            cy.get(datatest('btn-insert-page')).click();
+                        } else {
+                            cy.get(datatest('btn-next-page')).click();
+                        }
+                    });
+                });
             },
             backPage: () => {
                 cy.get(datatest('btn-back-page')).click();
             },
             toRef: () => {
+                // 新UXでは key/ref トグルが FLAGS モードに移動した。
+                operations.mode.flags.open();
                 cy.get(datatest('btn-key-page-on')).click();
             },
             toKey: () => {
+                // 新UXでは key/ref トグルが FLAGS モードに移動した。
+                operations.mode.flags.open();
                 cy.get(datatest('btn-key-page-off')).click();
             },
             inheritComment: ({ home = true } = {}) => {
@@ -423,7 +445,8 @@ export const operations = {
         copyToClipboard: () => {
             operations.menu.open();
             cy.get(datatest('btn-copy-fumen')).click();
-            cy.wait(150);
+            // Clicking btn-raw-fumen waits for the clipboard modal to render and finish animating
+            // (Cypress actionability), so no fixed wait is needed beforehand.
             cy.get(datatest('btn-raw-fumen')).click();
             cy.wait(10);
 

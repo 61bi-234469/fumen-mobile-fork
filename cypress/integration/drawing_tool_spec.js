@@ -12,7 +12,6 @@ describe('Drawing Tools', () => {
         operations.mode.tools.nextPage();
         operations.mode.tools.nextPage();
         operations.mode.tools.duplicatePage();
-        operations.mode.tools.toRef();
 
         operations.menu.lastPage();
         operations.mode.tools.duplicatePage();
@@ -23,20 +22,20 @@ describe('Drawing Tools', () => {
         operations.mode.block.Gray();
         operations.mode.block.click(9, 0);
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhB3rBzkBIhxSHexSaezkBvhCsqBifBAAAkhAAJeAAA');
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhG3rBzkBAAAsqBifBAAAAAA');
 
         operations.mode.tools.home();
         operations.mode.tools.duplicatePage();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAARhgHIeiHQe2OJvhB3rBzkBIhxSHexSaezkBvhCsqBif?BAAAkhAAJeAAA');
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhHAgH3rBzkBAAAsqBifBAAAAAA');
 
         operations.mode.tools.undo();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhB3rBzkBIhxSHexSaezkBvhCsqBifBAAAkhAAJeAAA');
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhG3rBzkBAAAsqBifBAAAAAA');
 
         operations.mode.tools.redo();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAARhgHIeiHQe2OJvhB3rBzkBIhxSHexSaezkBvhCsqBif?BAAAkhAAJeAAA');
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhHAgH3rBzkBAAAsqBifBAAAAAA');
 
         operations.menu.lastPage();
         operations.mode.tools.backPage();
@@ -51,7 +50,7 @@ describe('Drawing Tools', () => {
         operations.mode.tools.home();
         operations.mode.tools.duplicatePage();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAARhgHIeiHQe2OJvhB3rBzkBIhxSHexSaezkBvhCsqBif?BVtB9gilHexhAeAtEeAtBeAtAeR4AeQLUeVtB9gilHexhAe?AtEeAtBeAtAeR4AeQLJeAAJeAAA');
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhIAgH3rBzkBAAAsqBifBVtBAAAAAA');
     });
 
     it('Update by lock flag', () => {

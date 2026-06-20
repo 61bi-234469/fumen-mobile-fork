@@ -14,7 +14,7 @@
         gtag('config', 'UA-93540402-5');
     </script>
 
-    
+
     <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
 
     <title>Fumen Mobile Fork</title>
@@ -53,97 +53,70 @@
 <body>
 
 <section>
-    <h4>追記(2025/12/23)</h4>
+    <h4>このアプリについて</h4>
 
     <p>
-        本WebアプリはMITライセンスに基づいて公開されているオリジナルを改変したものです。<br>
-        詳細なライセンス情報はGitHubリポジトリをご確認ください。<br>
-        なお、本Webアプリの利用は自己責任でお願いします。
-
-    </p>
-
-    <a href="https://x.com/61bi_234469">x(twitter) @61bi_234469 https://x.com/61bi_234469</a>
-    
-    <p>↓↓↓以下原文になります(オリジナル版作者への質問はお控えください)↓↓↓</p>
-
-</section>
-
-<hr>
-
-<section>
-    <h4>概要</h4>
-
-    <p>
-        <a href="http://fumen.zui.jp/">連続テト譜エディタ</a>のデータをスマートフォン上でみるために表示を再構成したページです。
+        <strong>Fumen Mobile Fork</strong> は、テト譜（テトリスのフィールドデータ）をスマートフォン上で
+        快適に閲覧・編集するためのWebアプリです。<br>
+        <a href="http://fumen.zui.jp/">連続テト譜エディタ</a> のデータをモバイル向けに表示・操作できるよう再構成した
+        <a href="https://knewjade.github.io/fumen-for-mobile/">fumen-for-mobile</a> を基に、それをさらに派生（フォーク）させたものです。<br>
+        本アプリでは、これに加えて Cold Clear（AI ソルバー）による手順の探索などの機能を追加しています。
     </p>
 </section>
 
 <hr>
 
 <section>
-    <h4>操作方法</h4>
+    <h4>派生元・クレジット</h4>
 
-    <ol>
-        <li>画面右半分をタップ →　次のページに進む</li>
-        <li>画面左半分をタップ →　前のページに戻る</li>
-        <li><i class="material-icons">play_arrow</i>をタップ → 自動再生</li>
-    </ol>
+    <p>本アプリは、以下のオープンソースプロジェクトを基に作成・拡張したものです。</p>
 
-</section>
-
-<hr>
-
-<section>
-    <h4>テト譜の開き方</h4>
-
-    <h5>UI上から直接から開く</h5>
-
-    <ol>
-        <li> 下メニューの<i class="material-icons">open_in_new</i>をタップする</li>
-
-        <li>テキストボック内に テト譜のURL or v115@から始まるデータ をペーストする</li>
-
-        <li>Openボタンをタップする</li>
-    </ol>
-
-    <h5>ブックマークレットから開く</h5>
-
-    <ol>
-        <li> 以下のいずれかのコードをコピーする (「<a href="http://fumen.zui.jp/">連続テト譜エディタ</a>」から本ツールへ移動するとき、どこのタブで開くか選んでください)
-            <ul>
-                <li style="margin: 5px;"> 同じタブで開く - ↓コードをタップすると全選択されます<br>
-                    <input onfocus="focusInput(this);" readonly="" value="javascript:(function(){var value=window.location.href;if(value.match(/harddrop.com\/fumentool/)){var iframe=document.querySelector(&#39;#main_body iframe&#39;);iframe.contentWindow.encode(1),value=iframe.contentDocument.getElementById(&#39;tx&#39;).value}else(value.match(/fumen.zui.jp\/\?v115@/)||value.match(/fumen.zui.jp\/old\/110/)||value.match(/harddrop.com\/fumen/))&amp;&amp;(encode(1),value=document.getElementById(&#39;tx&#39;).value);window.open(&#39;https://61bi-234469.github.io/fumen-mobile-fork/#?d=&#39;+value,&#39;_blank&#39;);})()" title="open in active tab">
-                </li>
-
-                <li style="margin: 5px;"> 新しいタブで開く - ↓コードをタップすると全選択されます<br>
-                    <input onfocus="focusInput(this);" readonly="" value="javascript:(function(){var value=window.location.href;if(value.match(/harddrop.com\/fumentool/)){var iframe=document.querySelector(&#39;#main_body iframe&#39;);iframe.contentWindow.encode(1),value=iframe.contentDocument.getElementById(&#39;tx&#39;).value}else(value.match(/fumen.zui.jp\/\?v115@/)||value.match(/fumen.zui.jp\/old\/110/)||value.match(/harddrop.com\/fumen/))&amp;&amp;(encode(1),value=document.getElementById(&#39;tx&#39;).value);window.location.href=&#39;https://61bi-234469.github.io/fumen-mobile-fork/#?d=&#39;+value;})()" title="open in new tab">
-                </li>
-            </ul>
+    <ul>
+        <li>
+            <strong>fumen-for-mobile</strong>（オリジナル版 / 作者: knewjade）<br>
+            テト譜のモバイル向けビューア／エディタ。本アプリのベースとなっています。<br>
+            <a href="https://github.com/knewjade/fumen-for-mobile" target="_blank">https://github.com/knewjade/fumen-for-mobile</a>
         </li>
-
-        <li>ブラウザのブックマークにコードを貼り付けて保存する（このページをお気に入りしたあと、URL部分をコードに編集するとやりやすいです）</li>
-
-        <li>開きたいフィールドデータを<a href="http://fumen.zui.jp/">連続テト譜エディタ</a>で開く</li>
-
-        <li>2. で保存したブックマークを開く (Android+Chromeの方は検索バーから開く必要があるかもしれません。ご注意ください。<a href="http://ametuku.com/archives/6858" target="_blank">参考：外部サイト/あめつくのブログ</a>)
+        <li style="margin-top: 8px;">
+            <strong>Cold Clear</strong>（作者: MinusKelvin）<br>
+            テトリスの手順を探索する AI ソルバー。WebAssembly として組み込み、AI 機能に利用しています。<br>
+            <a href="https://github.com/MinusKelvin/cold-clear" target="_blank">https://github.com/MinusKelvin/cold-clear</a>
         </li>
-    </ol>
+    </ul>
+</section>
+
+<hr>
+
+<section>
+    <h4>ライセンス情報</h4>
+
+    <p>
+        本アプリは MIT ライセンスで公開されている fumen-for-mobile を改変したものです。<br>
+        AI 機能に利用している Cold Clear は MPL-2.0 ライセンスで提供されています。
+    </p>
+
+    <ul>
+        <li>fumen-for-mobile … MIT License（Copyright (c) 2018 knewjade）</li>
+        <li>Cold Clear … Mozilla Public License 2.0 (MPL-2.0)</li>
+    </ul>
+
+    <p>
+        詳細なライセンス全文・対応ソース・改変内容については、GitHub リポジトリをご確認ください。<br>
+        <a href="https://github.com/61bi-234469/fumen-mobile-fork" target="_blank">https://github.com/61bi-234469/fumen-mobile-fork</a><br><br>
+        なお、本アプリの利用は自己責任でお願いします。
+    </p>
 
 </section>
 
 <hr>
 
 <section>
-    <h4>連絡先</h4>
+    <h4>追加機能・変更点</h4>
 
     <p>
-        疑問点や指摘がございましたら、twitter から 作者 (newjade) までご連絡ください。<br><br>
-
-        iOSでのみ動作確認をしていますが、Androidなどその他のデバイスでも動作すると思います。<br>
-        もし動作しない場合は、OSとご利用のブラウザをご連絡いただけると助かります。
+        オリジナル版（fumen-for-mobile）からの追加機能や変更点については、以下の記事に記載しています。<br>
+        <a href="https://note.com/61bi_234469/n/n51342dd6d22f" target="_blank">https://note.com/61bi_234469/n/n51342dd6d22f</a>
     </p>
-
-    <a href="https://twitter.com/1millim">twitter @1millim https://twitter.com/1millim</a>
 </section>
 
 <hr>

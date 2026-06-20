@@ -3,9 +3,7 @@ node_modules/
 dist/
 yarn-*.log
 docs/
-tetrio_das_arr_dcd_flowchart.pptx
 .tmp_compare/
-GEMINI.md
 AGENTS.md
 CLAUDE.md
 .claude/

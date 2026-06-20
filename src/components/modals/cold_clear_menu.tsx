@@ -296,13 +296,26 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         fontSize: px(12),
     });
 
-    const onChangeTopBranchCount = (event: Event) => {
+    const commitTopBranchCount = (event: Event) => {
         const target = event.target as HTMLInputElement;
         const value = Number(target.value);
-        if (Number.isNaN(value)) {
+        // The action clamps to [MIN, MAX]; only reject non-integers here.
+        if (!Number.isInteger(value)) {
             return;
         }
         actions.setColdClearTopBranchCount({ count: value });
+    };
+
+    // Reflect the typed value on every keystroke so the controlled `value`
+    // never rewinds to the old state between `.type()` and the change commit
+    // (the CI flake in cold_clear_spec.js:84). Skip transient empty input so
+    // the field can be cleared while editing; blur normalizes it via onchange.
+    const onInputTopBranchCount = (event: Event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.value === '') {
+            return;
+        }
+        commitTopBranchCount(event);
     };
 
     const applyFocusHighlight = (target: QueueFocusTarget) => {
@@ -945,7 +958,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                 max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
                                 step={1}
                                 disabled={isRunning}
-                                onchange={onChangeTopBranchCount}
+                                oninput={onInputTopBranchCount}
+                                onchange={commitTopBranchCount}
                                 style={numberInputStyle}
                             />
                         </div>

@@ -303,5 +303,10 @@ export const expectFumen = (fumen) => {
     // The assertion below retries up to the default command timeout, so no fixed wait is needed
     // for the copied-fumen-data attribute to settle.
     cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', fumen);
-    rightTap();
+    // No dismissing tap here: copyToClipboard() already closes the clipboard modal via
+    // btn-clipboard-cancel, so the editor is fully interactive again. A trailing rightTap()
+    // (body click at 300,300) used to land on the "L" piece button of the drawing-tool palette
+    // after the fork's UI rework, silently selecting L as mode.piece. That corrupted later
+    // operations whose default piece must stay unset (e.g. Fill row defaults to Gray, drawing-tool
+    // Flags 2), producing deterministic fumen/color mismatches. See docs/e2e-ci-failure-investigation.md.
 };

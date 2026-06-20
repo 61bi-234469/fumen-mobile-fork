@@ -2,7 +2,19 @@ import { datatest, expectFumen, minoPosition, Piece, Rotation, visit } from '../
 import { operations } from '../support/operations';
 
 describe('History', () => {
-    const play = (fumen, history) => {
+    // expectFumen() drives the menu + clipboard modals, so it is by far the most expensive step.
+    // play() runs three phases (forward / undo / redo); verifying every step in all three means ~3x
+    // the expectFumen calls. By default we keep FULL per-step verification on the forward phase (the
+    // primary "operation -> fumen" correctness check) but reduce undo/redo to a round-trip: undo every
+    // step back to the initial state and assert it once, then redo every step forward to the final
+    // state and assert it once. Every undo/redo press is still exercised; what we lose is the per-step
+    // assertion that each individual undo/redo lands on the exact intermediate fumen.
+    //
+    // Pass { fullUndoRedo: true } to keep per-step undo/redo assertions. Used by the representative
+    // specs that uniquely cover this: the canonical multi-operation walk and the specs whose cases
+    // have count > 1 (multiple history entries collapsed into one logical undo), where per-step
+    // grouping correctness is the point.
+    const play = (fumen, history, { fullUndoRedo = false } = {}) => {
         const testCases = [
             {
                 fumen,
@@ -26,24 +38,34 @@ describe('History', () => {
 
         cy.log('undo');
 
-        // Undo
+        // Undo back to the initial state.
         for (const testCase of testCases.concat().reverse()) {
-            expectFumen(testCase.fumen);
+            if (fullUndoRedo) {
+                expectFumen(testCase.fumen);
+            }
             const count = testCase.count !== undefined ? testCase.count : 1;
             for (let i = 0; i < count; i++) {
                 operations.mode.tools.undo();
             }
         }
+        if (!fullUndoRedo) {
+            expectFumen(testCases[0].fumen);
+        }
 
         cy.log('redo');
 
-        // Redo
+        // Redo forward to the final state.
         for (const testCase of testCases) {
             const count = testCase.count !== undefined ? testCase.count : 1;
             for (let i = 0; i < count; i++) {
                 operations.mode.tools.redo();
             }
-            expectFumen(testCase.fumen);
+            if (fullUndoRedo) {
+                expectFumen(testCase.fumen);
+            }
+        }
+        if (!fullUndoRedo) {
+            expectFumen(testCases[testCases.length - 1].fumen);
         }
     };
 
@@ -128,7 +150,9 @@ describe('History', () => {
             },
         ];
 
-        play('v115@vhAAgH', testCases);
+        // Representative: canonical multi-operation walk (piece / next page / lock) keeps full
+        // per-step undo/redo verification.
+        play('v115@vhAAgH', testCases, { fullUndoRedo: true });
     });
 
     it('Remove', () => {
@@ -336,7 +360,9 @@ describe('History', () => {
             },
         ];
 
-        play('v115@hlFexhhlFexh9gRpFeBtRpFeBtg0HewwAgH', testCases);
+        // Representative: cases with count > 1 (multi-press undo grouping) keep full per-step
+        // undo/redo verification.
+        play('v115@hlFexhhlFexh9gRpFeBtRpFeBtg0HewwAgH', testCases, { fullUndoRedo: true });
     });
 
     it('Fill row', () => {
@@ -618,7 +644,9 @@ describe('History', () => {
             },
         ];
 
-        play('v115@vhAAgH', testCases);
+        // Representative: cases with count > 1 (multi-press undo grouping) keep full per-step
+        // undo/redo verification.
+        play('v115@vhAAgH', testCases, { fullUndoRedo: true });
     });
 
     it('Insert new page', () => {

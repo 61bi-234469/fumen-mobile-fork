@@ -183,6 +183,21 @@ export const stubClipboardCopy = (win) => {
     };
 };
 
+// The side menu and every dialog (clipboard, append, open, ...) are Materialize M.Modal instances,
+// whose open/close are anime.js-driven (default in/out 250ms each). expectFumen() opens the menu and
+// the clipboard modal on every call, so Cypress spends most of the suite waiting for those animations
+// to settle. Zeroing the shared M.Modal duration defaults makes every modal settle in a single frame,
+// which keeps Cypress's animation wait (left enabled, so clicks still land on settled elements) but
+// removes the wait time. No coverage is lost: nothing asserts on animation. Re-applied on every visit
+// because cy.reload()/fresh load reloads materialize and resets the defaults to 250ms.
+export const disableModalAnimations = (win) => {
+    const modal = win.M && win.M.Modal;
+    if (modal && modal.defaults) {
+        modal.defaults.inDuration = 0;
+        modal.defaults.outDuration = 0;
+    }
+};
+
 export const visit = (
     { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
 ) => {
@@ -223,6 +238,8 @@ export const visit = (
     if (reload) {
         cy.reload();
     }
+
+    cy.window().then(disableModalAnimations);
 
     cy.wait(sleepInMill);
 };

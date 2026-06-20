@@ -168,8 +168,23 @@ const getPieces = (piece) => {
     }
 };
 
+// In headless Electron, `document.execCommand('copy')` fails and the clipboard
+// flow raises a "Failed to copy: command error" toast (see src/components/modals/clipboard.tsx).
+// That toast lingers and can cover click targets, causing cross-spec flakes. Stub copy/cut to
+// succeed so the app takes its normal "Copied to clipboard" path. Tests that need the real failure
+// can pass `stubClipboard: false` to visit().
+export const stubClipboardCopy = (win) => {
+    const originalExecCommand = win.document.execCommand.bind(win.document);
+    win.document.execCommand = (commandId, ...args) => {
+        if (typeof commandId === 'string' && /^(copy|cut)$/i.test(commandId)) {
+            return true;
+        }
+        return originalExecCommand(commandId, ...args);
+    };
+};
+
 export const visit = (
-    { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false },
+    { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
 ) => {
     let baseUrl = 'fumen-mobile-fork/#';
 
@@ -189,6 +204,13 @@ export const visit = (
 
     if (mobile) {
         params.mobile = 1;
+    }
+
+    // Register before visiting so the stub is applied on the initial load and on any cy.reload()
+    // below (window:before:load fires for both). Scoped to the current test, so opting out is just
+    // a matter of passing stubClipboard: false.
+    if (stubClipboard) {
+        cy.on('window:before:load', stubClipboardCopy);
     }
 
     if (params) {
@@ -261,7 +283,8 @@ export const nextBox = (index) => {
 
 export const expectFumen = (fumen) => {
     operations.menu.copyToClipboard();
-    cy.wait(100);
+    // The assertion below retries up to the default command timeout, so no fixed wait is needed
+    // for the copied-fumen-data attribute to settle.
     cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', fumen);
     rightTap();
 };

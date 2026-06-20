@@ -445,7 +445,8 @@ export const operations = {
         copyToClipboard: () => {
             operations.menu.open();
             cy.get(datatest('btn-copy-fumen')).click();
-            cy.wait(150);
+            // Clicking btn-raw-fumen waits for the clipboard modal to render and finish animating
+            // (Cypress actionability), so no fixed wait is needed beforehand.
             cy.get(datatest('btn-raw-fumen')).click();
             cy.wait(10);
 

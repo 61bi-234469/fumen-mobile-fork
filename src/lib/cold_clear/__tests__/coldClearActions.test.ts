@@ -48,6 +48,7 @@ jest.mock('../../../locales/keys', () => ({
             Progress: (c: number, t: number) => `${c}/${t}`,
             NoMoveFound: () => 'No move found',
             WorkerError: () => 'Worker error',
+            WorkerErrorPartialSaved: (count: number) => `Saved ${count} moves`,
             InitTimeout: () => 'Init timeout',
             PopupBlocked: () => 'Popup blocked',
             UsageHint: () => 'Usage hint',
@@ -64,6 +65,7 @@ jest.mock('../../../locales/keys', () => ({
             PlacedPieceRequired: () => 'Placed piece required',
             FloatingPieceUnsupported: () => 'Floating piece unsupported',
             CannotEvaluatePlacedSpawn: () => 'Cannot evaluate current placement',
+            PlacedSpawnRetrying: () => 'Deepening search',
             InsufficientQueueForHold: () => 'Insufficient queue for hold',
         },
     },
@@ -340,7 +342,7 @@ describe('coldClearActions run isolation', () => {
         expect(result).toBeUndefined();
     });
 
-    test('onColdClearError finishes immediately and shows error details in toast', () => {
+    test('onColdClearError saves partial results and warns the user', () => {
         const mockActions: any = {
             addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
@@ -371,11 +373,11 @@ describe('coldClearActions run isolation', () => {
         expect(wrapperCtor).toHaveBeenCalledTimes(1);
 
         coldClearActions.onColdClearError({ runId, error: 'RuntimeError: unreachable' })(runningState);
-        expect(mockActions.addColdClearBranches).not.toHaveBeenCalled();
+        expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
         expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
-        expect(mockActions.changeToTreeViewScreen).not.toHaveBeenCalled();
+        expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
-            html: 'Worker error: RuntimeError: unreachable',
+            html: 'Saved 1 moves',
         }));
     });
 

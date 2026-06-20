@@ -1,4 +1,4 @@
-import { datatest, minoPosition, Piece, rightTap, Rotation, visit } from '../support/common';
+import { datatest, minoPosition, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('Key/Ref', () => {
@@ -87,7 +87,6 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlDeR4g0RpglCeR4wwg0RpglBeBtxwzhCeBtww?JeAgH9gAPwSwhAtFeAPBeAtFeAPQaQpAtZeAgH+gRpHexhI?ehWZeAgH');
-        rightTap();
 
         // Undo
         operations.mode.tools.undo();
@@ -97,7 +96,6 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlFeg0RpglFeg0RpglFezhPeAgH9gAPwSwhAtF?eAPBeAtFeAPQaQpAtZeAgH+gRpHexhIehWZeAgH');
-        rightTap();
 
         // Undo
         operations.mode.tools.undo();
@@ -109,7 +107,6 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlFeg0RpglFeg0RpglFezhPeAgH9gAPwSwhAtF?eAPBeAtFeAPQaQpAtZeAgH9ggWxSgHFegWxSgHFehWhHZeA?gH');
-        rightTap();
 
         // Redo
         operations.mode.tools.redo();
@@ -121,7 +118,6 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlFeg0RpglFeg0RpglFezhPeAgH9gAPwSwhAtF?eAPBeAtFeAPQaQpAtZeAgH+gRpHexhIehWZeAgH');
-        rightTap();
 
         // Redo
         operations.mode.tools.redo();
@@ -131,7 +127,6 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlDeR4g0RpglCeR4wwg0RpglBeBtxwzhCeBtww?JeAgH9gAPwSwhAtFeAPBeAtFeAPQaQpAtZeAgH+gRpHexhI?ehWZeAgH');
-        rightTap();
 
         // 次ページ
         operations.mode.tools.nextPage();
@@ -148,6 +143,5 @@ describe('Key/Ref', () => {
         // データを確認
         operations.menu.copyToClipboard();
         cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', 'v115@9gh0hlDeR4g0RpglCeR4wwg0RpglBeBtxwzhCeBtww?JeAgH9gAPwSwhAtFeAPBeAtFeAPQaQpAtZeAgH+gRpAewhF?exhAewhGehWwhIewhOeAgHvhAAgH');
-        rightTap();
     });
 });

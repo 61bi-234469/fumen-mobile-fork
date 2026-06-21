@@ -13,6 +13,7 @@ import { ClipboardModal } from './components/modals/clipboard';
 import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewMenuModal } from './components/modals/list_view_menu';
+import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
@@ -109,6 +110,10 @@ export const view: View<State, Actions> = (state, actions) => {
             exportScope: state.listView.exportScope,
             gifFrameDelayMs: state.mode.gifFrameDelayMs,
             shortenUrls: state.listView.shortenUrls,
+        }) : undefined as any,
+
+        state.modal.treeDisableConfirm ? TreeDisableConfirmModal({
+            actions,
         }) : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({

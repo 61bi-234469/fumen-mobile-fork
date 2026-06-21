@@ -113,6 +113,7 @@ export interface State {
         userSettings: boolean;
         listViewReplace: boolean;
         listViewMenu: boolean;
+        treeDisableConfirm: boolean;
         coldClearMenu: boolean;
     };
     temporary: {
@@ -248,6 +249,7 @@ export const initState: Readonly<State> = {
         userSettings: false,
         listViewReplace: false,
         listViewMenu: false,
+        treeDisableConfirm: false,
         coldClearMenu: false,
     },
     temporary: {
@@ -332,6 +334,7 @@ export const resources = {
         userSettings: undefined as any,
         listViewReplace: undefined as any,
         listViewMenu: undefined as any,
+        treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
     },
     konva: createKonvaObjects(),

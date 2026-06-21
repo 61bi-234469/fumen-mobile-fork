@@ -770,7 +770,9 @@ export const view: View<State, Actions> = (state, actions) => {
                 convertAllToMirror: () => actions.convertAllToMirror(),
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
                 openListViewMenuModal: () => actions.openListViewMenuModal(),
-                toggleTreeMode: () => actions.toggleTreeMode(),
+                toggleTreeMode: () => state.tree.enabled
+                    ? actions.openTreeDisableConfirmModal()
+                    : actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
             },
             height: TOOLS_HEIGHT,
@@ -949,6 +951,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     containerWidth: state.display.width,
                     containerHeight: gridContainerHeight,
                     scale: state.listView.scale,
+                    sortable: !state.tree.enabled,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({

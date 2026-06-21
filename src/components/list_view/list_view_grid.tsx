@@ -14,6 +14,7 @@ interface Props {
     containerHeight: number;
     scale: number;
     trimTopBlank: boolean;
+    sortable: boolean;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -38,6 +39,7 @@ export const ListViewGrid: Component<Props> = ({
     containerHeight,
     scale,
     trimTopBlank,
+    sortable,
     actions,
 }) => {
     const baseItemSize = Math.max(
@@ -108,15 +110,16 @@ export const ListViewGrid: Component<Props> = ({
             && draggingIndex !== null;
 
         return ListViewItem({
+            sortable,
             actions,
             itemSize,
             thumbnailSrc,
             showLeftIndicator,
             showRightIndicator,
+            pageIndex: index,
             comment: commentText,
             isCommentChanged: commentChanged,
             isDragging: draggingIndex === index,
-            pageIndex: index,
         });
     });
 

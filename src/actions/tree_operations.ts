@@ -650,6 +650,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     rootId: tree.rootId,
                     activeNodeId: currentNode?.id ?? null,
                 },
+                listView: {
+                    ...state.listView,
+                    dragState: {
+                        draggingIndex: null,
+                        dropTargetIndex: null,
+                    },
+                },
             };
         }
 

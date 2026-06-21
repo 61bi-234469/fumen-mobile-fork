@@ -150,6 +150,12 @@ export const i18n = {
     TreeView: {
         MoveWithChildren: () => t('TreeView.MoveWithChildren'),
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
+        DisableConfirm: {
+            Title: () => t('TreeView.DisableConfirm.Title'),
+            Message: () => t('TreeView.DisableConfirm.Message'),
+            Cancel: () => t('TreeView.DisableConfirm.Cancel'),
+            Confirm: () => t('TreeView.DisableConfirm.Confirm'),
+        },
     },
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),

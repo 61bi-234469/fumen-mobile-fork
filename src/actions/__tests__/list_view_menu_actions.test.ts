@@ -132,6 +132,16 @@ describe('setExportScope', () => {
     });
 });
 
+describe('reorderPage', () => {
+    test('does not reorder pages while tree mode is enabled', () => {
+        const state = createState({ treeEnabled: true });
+        const next = listViewActions.reorderPage({ fromIndex: 0, toSlotIndex: 2 })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.listView.dragState).toEqual({ draggingIndex: null, dropTargetIndex: null });
+    });
+});
+
 describe('setListViewShortenUrls', () => {
     test('updates the saved short URL setting', () => {
         const state = createState({ shortenUrls: false });

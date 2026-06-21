@@ -33,6 +33,7 @@ interface Props {
     isDragging: boolean;
     showLeftIndicator: boolean;
     showRightIndicator: boolean;
+    sortable: boolean;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -53,6 +54,7 @@ export const ListViewItem: Component<Props> = ({
     isDragging,
     showLeftIndicator,
     showRightIndicator,
+    sortable,
     actions,
 }) => {
     const containerStyle = style({
@@ -64,7 +66,7 @@ export const ListViewItem: Component<Props> = ({
         border: '2px solid transparent',
         borderRadius: '4px',
         backgroundColor: 'transparent',
-        cursor: 'grab',
+        cursor: sortable ? 'grab' : 'default',
         transition: 'opacity 0.2s',
         position: 'relative',
         display: 'flex',
@@ -125,13 +127,14 @@ export const ListViewItem: Component<Props> = ({
             justifyContent: 'flex-end',
             flexGrow: 1,
             userSelect: 'none',
-            cursor: 'grab',
+            cursor: sortable ? 'grab' : 'default',
         }),
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
     };
 
     const handleTouchStart = (e: TouchEvent) => {
+        if (!sortable) return;
         if (e.touches.length !== 1) return;
 
         const touch = e.touches[0];
@@ -147,6 +150,7 @@ export const ListViewItem: Component<Props> = ({
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+        if (!sortable) return;
         if (e.touches.length !== 1) return;
 
         const touch = e.touches[0];
@@ -164,6 +168,7 @@ export const ListViewItem: Component<Props> = ({
     };
 
     const handleTouchEnd = () => {
+        if (!sortable) return;
         clearTouchTimer();
         if (touchDragState.isDragging) {
             touchDragState.isDragging = false;
@@ -175,8 +180,9 @@ export const ListViewItem: Component<Props> = ({
             key={`list-view-item-${pageIndex}`}
             datatest={`list-view-item-${pageIndex}`}
             style={containerStyle}
-            draggable={true}
+            draggable={sortable}
             ondragstart={(e: DragEvent) => {
+                if (!sortable) return;
                 if (e.dataTransfer) {
                     e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/plain', String(pageIndex));
@@ -184,6 +190,7 @@ export const ListViewItem: Component<Props> = ({
                 actions.onDragStart(pageIndex);
             }}
             ondragover={(e: DragEvent) => {
+                if (!sortable) return;
                 e.preventDefault();
                 if (e.dataTransfer) {
                     e.dataTransfer.dropEffect = 'move';
@@ -191,13 +198,16 @@ export const ListViewItem: Component<Props> = ({
                 actions.onDragOver(pageIndex, e);
             }}
             ondragleave={() => {
+                if (!sortable) return;
                 actions.onDragLeave();
             }}
             ondrop={(e: DragEvent) => {
+                if (!sortable) return;
                 e.preventDefault();
                 actions.onDrop();
             }}
             ondragend={() => {
+                if (!sortable) return;
                 actions.onDragEnd();
             }}
             oncontextmenu={(e: Event) => {

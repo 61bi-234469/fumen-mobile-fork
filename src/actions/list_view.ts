@@ -588,6 +588,18 @@ export const listViewActions: Readonly<ListViewActions> = {
         };
     },
     reorderPage: ({ fromIndex, toSlotIndex }) => (state): NextState => {
+        if (state.tree.enabled) {
+            return {
+                listView: {
+                    ...state.listView,
+                    dragState: {
+                        draggingIndex: null,
+                        dropTargetIndex: null,
+                    },
+                },
+            };
+        }
+
         // Calculate actual target index from slot
         // Slot N means "insert at position N after removal"
         // If fromIndex < toSlotIndex, after removal the slot index shifts by -1

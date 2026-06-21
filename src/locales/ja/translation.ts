@@ -126,6 +126,12 @@ export const resources = {
     TreeView: {
         MoveWithChildren: 'Move with children',
         GrayAfterLineClear: 'Gray out cleared lines',
+        DisableConfirm: {
+            Title: 'ツリーモードを無効にしますか？',
+            Message: 'ツリー構造が削除されます。保存または共有後は元に戻せません。',
+            Cancel: 'キャンセル',
+            Confirm: '無効にする',
+        },
     },
     ListView: {
         TrimTopBlank: 'Trim top blank',

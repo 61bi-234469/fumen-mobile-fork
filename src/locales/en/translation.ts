@@ -151,6 +151,12 @@
     TreeView: {
         MoveWithChildren: 'Move with children',
         GrayAfterLineClear: 'Gray out cleared lines',
+        DisableConfirm: {
+            Title: 'Disable Tree mode?',
+            Message: 'The tree structure will be deleted. This cannot be undone after saving or sharing.',
+            Cancel: 'Cancel',
+            Confirm: 'Disable',
+        },
     },
     ListView: {
         TrimTopBlank: 'Trim top blank',

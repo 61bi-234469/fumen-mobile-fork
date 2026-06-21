@@ -370,7 +370,13 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
         onclick(event);
         event.stopPropagation();
         event.preventDefault();
-    } : undefined}>
+    } : undefined} style={style({
+        minWidth: px(60),
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        flexShrink: 0,
+    })}>
         <div key={`${key}-icon`} datatest={datatest}
              className={`z-depth-1 ${enable ? ' ' : 'disabled'}`}
              style={style({
@@ -391,7 +397,12 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
         </div>
 
         <div key={`${key}-text`}
-             style={style({ textAlign: 'center', fontSize: px(textSize), color: enable ? '#333' : '#bdbdbd' })}>
+             style={style({
+                 textAlign: 'center',
+                 fontSize: px(textSize),
+                 color: enable ? '#333' : '#bdbdbd',
+                 whiteSpace: 'nowrap',
+             })}>
             {showName}
         </div>
     </a>;

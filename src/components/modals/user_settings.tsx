@@ -332,18 +332,21 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
                                     {i18n.UserSettings.GifFrameDelayMs.Description()}
                                 </div>
-                                <input
-                                    type="number"
-                                    value={gifFrameDelayMs}
-                                    min={100}
-                                    max={10000}
-                                    step={100}
-                                    onchange={onchangeGifFrameDelay}
-                                    style={style({
-                                        width: px(100),
-                                        textAlign: 'center',
-                                    })}
-                                />
+                                <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                    <input
+                                        type="number"
+                                        value={gifFrameDelayMs}
+                                        min={100}
+                                        max={10000}
+                                        step={100}
+                                        onchange={onchangeGifFrameDelay}
+                                        style={style({
+                                            width: px(100),
+                                            textAlign: 'center',
+                                        })}
+                                    />
+                                    <span>ms</span>
+                                </div>
                             </div>
 
                             <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>

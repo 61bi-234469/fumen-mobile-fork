@@ -232,9 +232,12 @@ export interface ListViewActions {
     exportListViewAsGif: () => action;
     exportListViewAsUrl: () => action;
     exportLeftSegmentAsUrl: () => action;
+    copyListViewUrlToClipboard: () => action;
     exportLeftSegmentAsImage: () => action;
     exportLeftSegmentAsGif: () => action;
     setExportScope: (data: { scope: 'all' | 'left' }) => action;
+    openListViewInFumenZui: () => action;
+    openListViewInFumenForMobile: () => action;
     openListViewInExternalSite: () => action;
     copyLeftSegmentToClipboard: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
@@ -255,6 +258,25 @@ const createTimestampedImageFileName = (prefix: string, extension: 'png' | 'gif'
     const min = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
     return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.${extension}`;
+};
+
+const copyTextToClipboard = (text: string): boolean => {
+    const element = document.createElement('pre');
+    element.style.position = 'fixed';
+    element.style.left = '-100%';
+    element.textContent = text;
+    document.body.appendChild(element);
+
+    try {
+        const selection = document.getSelection();
+        if (!selection) {
+            return false;
+        }
+        selection.selectAllChildren(element);
+        return document.execCommand('copy');
+    } finally {
+        document.body.removeChild(element);
+    }
 };
 
 export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
@@ -754,6 +776,53 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         return undefined;
     },
+    copyListViewUrlToClipboard: () => (state): NextState => {
+        (async () => {
+            try {
+                const params = new URLSearchParams();
+                if (state.tree.enabled && state.listView.exportScope === 'left') {
+                    const segment = extractRootToActiveSegmentPages(state);
+                    if ('error' in segment) {
+                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+                        return;
+                    }
+
+                    const encoded = await encode(segment.pages);
+                    params.set('d', `v115@${encoded}`);
+                    params.set('screen', 'list');
+                    params.set('tree', '0');
+                } else {
+                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                    const tree = hasTreeData
+                        ? {
+                            nodes: state.tree.nodes,
+                            rootId: state.tree.rootId,
+                            version: 1 as const,
+                        }
+                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
+                    const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                    const encoded = await encode(pagesToEncode);
+                    params.set('d', `v115@${encoded}`);
+                    params.set('screen', 'list');
+                    params.set('tree', state.tree.enabled ? '1' : '0');
+                    params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
+                }
+
+                const base = `${window.location.origin}${window.location.pathname}`;
+                const url = `${base}#?${params.toString()}`;
+                if (copyTextToClipboard(url)) {
+                    M.toast({ html: 'Copied share URL', classes: 'top-toast', displayLength: 1000 });
+                } else {
+                    M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
+                }
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to copy URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
     exportLeftSegmentAsImage: () => (state): NextState => {
         const segment = extractRootToActiveSegmentPages(state);
         if ('error' in segment) {
@@ -802,6 +871,72 @@ export const listViewActions: Readonly<ListViewActions> = {
                 exportScope: scope,
             },
         };
+    },
+    openListViewInFumenZui: () => (state): NextState => {
+        (async () => {
+            try {
+                let pagesToEncode: Page[];
+                if (state.tree.enabled && state.listView.exportScope === 'left') {
+                    const segment = extractRootToActiveSegmentPages(state);
+                    if ('error' in segment) {
+                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+                        return;
+                    }
+                    pagesToEncode = segment.pages;
+                } else {
+                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                    const tree = hasTreeData
+                        ? {
+                            nodes: state.tree.nodes,
+                            rootId: state.tree.rootId,
+                            version: 1 as const,
+                        }
+                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
+                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                }
+
+                const encoded = await encode(pagesToEncode);
+                window.open(`https://fumen.zui.jp/?v115@${encoded}`, '_blank');
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    openListViewInFumenForMobile: () => (state): NextState => {
+        (async () => {
+            try {
+                let pagesToEncode: Page[];
+                if (state.tree.enabled && state.listView.exportScope === 'left') {
+                    const segment = extractRootToActiveSegmentPages(state);
+                    if ('error' in segment) {
+                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+                        return;
+                    }
+                    pagesToEncode = segment.pages;
+                } else {
+                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                    const tree = hasTreeData
+                        ? {
+                            nodes: state.tree.nodes,
+                            rootId: state.tree.rootId,
+                            version: 1 as const,
+                        }
+                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
+                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                }
+
+                const encoded = await encode(pagesToEncode);
+                window.open(`https://knewjade.github.io/fumen-for-mobile/#?d=v115@${encoded}`, '_blank');
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
     },
     openListViewInExternalSite: () => (state): NextState => {
         (async () => {

@@ -84,7 +84,7 @@ export const resources = {
         },
     },
     GifFrameDelayMs: {
-        Title: 'GIFページ送り間隔(ms)',
+        Title: 'GIFページ送り間隔',
         Description: 'GIF出力時の1ページあたりの表示時間',
     },
     Clipboard: {
@@ -117,7 +117,7 @@ export const resources = {
     },
     Menu: {
         Buttons: {
-            ImportExport: '入出力',
+            ImportExport: 'Import/Export',
         },
         Messages: {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
@@ -131,28 +131,33 @@ export const resources = {
         TrimTopBlank: 'Trim top blank',
     },
     ListViewMenu: {
-        Title: '入出力',
+        Title: 'Import/Export',
         Sections: {
             Read: '取り込み',
             Image: '画像を保存',
-            Export: '共有（Fumen / URL）',
+            Export: '共有（FUMEN / URL）',
             External: '外部サイトで開く',
+            Settings: '設定',
         },
         Scope: {
             Label: '出力範囲',
-            All: 'すべて',
-            LeftToActive: 'ここまで（アクティブノード）',
+            Description: '画像・共有・外部サイトに適用されます',
+            All: 'すべてのページ',
+            LeftToActive: '選択中のページまで',
         },
         Buttons: {
-            Insert: 'INSERT',
+            Insert: 'クリップボードから挿入',
             InsertHint: 'Fumenを追加',
-            Import: 'IMPORT',
+            Import: 'クリップボードから読み込む',
             ImportHint: '現在のFumenを置き換え',
             Png: 'PNG',
             Gif: 'GIF',
-            Fumen: 'Fumenをコピー',
+            Fumen: 'FUMENをコピー',
             Url: '共有URLを開く',
-            ExternalSite: 'fumen.zui.jp（LIST）で開く',
+            UrlCopy: '共有URLをコピー',
+            FumenZui: '連続テト譜エディタで開く',
+            FumenForMobile: 'Fumen for mobileで開く',
+            ExternalSite: '連続テト譜エディタ(LIST)で開く',
             Cancel: 'キャンセル',
         },
     },

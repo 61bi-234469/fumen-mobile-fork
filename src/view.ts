@@ -107,6 +107,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             treeEnabled: state.tree.enabled,
             exportScope: state.listView.exportScope,
+            gifFrameDelayMs: state.mode.gifFrameDelayMs,
         }) : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({

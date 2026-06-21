@@ -148,6 +148,51 @@ describe('openListViewInExternalSite', () => {
     });
 });
 
+describe('openListViewInFumenZui', () => {
+    test('opens fumen.zui.jp with a v115 payload', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: false, exportScope: 'all' });
+
+        listViewActions.openListViewInFumenZui()(state);
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledWith('https://fumen.zui.jp/?v115@ENC', '_blank');
+        openSpy.mockRestore();
+    });
+});
+
+describe('openListViewInFumenForMobile', () => {
+    test('opens Fumen for mobile with a v115 payload', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: false, exportScope: 'all' });
+
+        listViewActions.openListViewInFumenForMobile()(state);
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledWith(
+            'https://knewjade.github.io/fumen-for-mobile/#?d=v115@ENC',
+            '_blank',
+        );
+        openSpy.mockRestore();
+    });
+});
+
+describe('copyListViewUrlToClipboard', () => {
+    test('copies the shared URL for the current export scope', async () => {
+        const selectAllChildren = jest.fn();
+        const selectionSpy = jest.spyOn(document, 'getSelection').mockReturnValue({ selectAllChildren } as any);
+        document.execCommand = jest.fn(() => true);
+        const state = createState({ treeEnabled: false, exportScope: 'all' });
+
+        listViewActions.copyListViewUrlToClipboard()(state);
+        await flushPromises();
+
+        expect(document.execCommand).toHaveBeenCalledWith('copy');
+        expect(selectAllChildren.mock.calls[0][0].textContent).toContain('d=v115%40ENC');
+        selectionSpy.mockRestore();
+    });
+});
+
 describe('copyLeftSegmentToClipboard', () => {
     test('copies the active-node segment as v115@ without tree embedding', async () => {
         document.execCommand = jest.fn(() => true);

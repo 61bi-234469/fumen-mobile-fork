@@ -225,6 +225,7 @@ export interface ListViewActions {
     setListViewDragState: (data: { draggingIndex: number | null; dropTargetIndex: number | null }) => action;
     setListViewScale: (data: { scale: number }) => action;
     setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
+    setListViewShortenUrls: (data: { enabled: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
@@ -277,6 +278,16 @@ const copyTextToClipboard = (text: string): boolean => {
     } finally {
         document.body.removeChild(element);
     }
+};
+
+const openGeneratedUrl = (url: string, shortenUrls: boolean): void => {
+    if (shortenUrls) {
+        const params = new URLSearchParams();
+        params.set('url', url);
+        window.open(`https://tinyurl.com/create.php?${params.toString()}`, '_blank');
+        return;
+    }
+    window.open(url, '_blank');
 };
 
 export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
@@ -559,6 +570,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         localStorageWrapper.saveViewSettings({
             trimTopBlank: enabled,
+            shortenUrls: state.listView.shortenUrls,
             buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
             grayAfterLineClear: state.tree.grayAfterLineClear,
             coldClearTopBranchCount: state.coldClear.topBranchCount,
@@ -739,7 +751,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
-                window.open(url, '_blank');
+                openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
@@ -767,7 +779,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
-                window.open(url, '_blank');
+                openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
@@ -810,7 +822,9 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
-                if (copyTextToClipboard(url)) {
+                if (state.listView.shortenUrls) {
+                    openGeneratedUrl(url, true);
+                } else if (copyTextToClipboard(url)) {
                     M.toast({ html: 'Copied share URL', classes: 'top-toast', displayLength: 1000 });
                 } else {
                     M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
@@ -872,6 +886,30 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
+    setListViewShortenUrls: ({ enabled }) => (state): NextState => {
+        if (state.listView.shortenUrls === enabled) {
+            return undefined;
+        }
+
+        localStorageWrapper.saveViewSettings({
+            trimTopBlank: state.listView.trimTopBlank,
+            shortenUrls: enabled,
+            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            grayAfterLineClear: state.tree.grayAfterLineClear,
+            coldClearTopBranchCount: state.coldClear.topBranchCount,
+            coldClearHoldAllowed: state.coldClear.holdAllowed,
+            coldClearSpeculate: state.coldClear.speculate,
+            coldClearNextLimit: state.coldClear.nextLimit,
+            coldClearWeightsPreset: state.coldClear.weightsPreset,
+            coldClearThinkMs: state.coldClear.thinkMs,
+        });
+        return {
+            listView: {
+                ...state.listView,
+                shortenUrls: enabled,
+            },
+        };
+    },
     openListViewInFumenZui: () => (state): NextState => {
         (async () => {
             try {
@@ -896,7 +934,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 }
 
                 const encoded = await encode(pagesToEncode);
-                window.open(`https://fumen.zui.jp/?v115@${encoded}`, '_blank');
+                openGeneratedUrl(`https://fumen.zui.jp/?v115@${encoded}`, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
@@ -929,7 +967,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                 }
 
                 const encoded = await encode(pagesToEncode);
-                window.open(`https://knewjade.github.io/fumen-for-mobile/#?d=v115@${encoded}`, '_blank');
+                openGeneratedUrl(
+                    `https://knewjade.github.io/fumen-for-mobile/#?d=v115@${encoded}`,
+                    state.listView.shortenUrls,
+                );
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
@@ -963,7 +1004,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const encoded = await encode(pagesToEncode);
                 const url = `https://fumen.zui.jp/?D115@${encoded}`;
-                window.open(url, '_blank');
+                openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });

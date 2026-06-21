@@ -145,6 +145,10 @@ export const resources = {
             All: 'すべてのページ',
             LeftToActive: '選択中のページまで',
         },
+        ShortUrl: {
+            Title: '短縮URL',
+            Description: 'TinyURLによる短縮を有効にする',
+        },
         Buttons: {
             Insert: 'クリップボードから挿入',
             InsertHint: 'Fumenを追加',

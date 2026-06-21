@@ -374,6 +374,9 @@ const loadUserSettings = () => {
     if (viewSettings.trimTopBlank !== undefined) {
         main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });
     }
+    if (viewSettings.shortenUrls !== undefined) {
+        main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
+    }
     if (viewSettings.coldClearTopBranchCount !== undefined) {
         main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });
     }

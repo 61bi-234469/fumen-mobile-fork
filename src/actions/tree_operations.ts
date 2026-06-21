@@ -1362,6 +1362,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         if (data.buttonDropMovesSubtree !== undefined || data.grayAfterLineClear !== undefined) {
             localStorageWrapper.saveViewSettings({
                 trimTopBlank: state.listView.trimTopBlank,
+                shortenUrls: state.listView.shortenUrls,
                 buttonDropMovesSubtree: nextTree.tree.buttonDropMovesSubtree,
                 grayAfterLineClear: nextTree.tree.grayAfterLineClear,
                 coldClearTopBranchCount: state.coldClear.topBranchCount,

@@ -118,5 +118,7 @@ describe('Unified import/export menu', () => {
         });
         cy.get(datatest('btn-copy-url')).should('have.class', 'btn');
         cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
+        cy.contains('短縮URL').should('be.visible');
+        cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
     });
 });

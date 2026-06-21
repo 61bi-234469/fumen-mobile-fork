@@ -170,6 +170,10 @@
             All: 'All pages',
             LeftToActive: 'Up to selected page',
         },
+        ShortUrl: {
+            Title: 'Short URL',
+            Description: 'Enable TinyURL shortening',
+        },
         Buttons: {
             Insert: 'Insert from clipboard',
             InsertHint: 'Add fumen',

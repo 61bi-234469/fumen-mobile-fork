@@ -10,6 +10,7 @@ interface ListViewMenuModalProps {
     treeEnabled: boolean;
     exportScope: 'all' | 'left';
     gifFrameDelayMs: number;
+    shortenUrls: boolean;
     actions: {
         closeListViewMenuModal: () => void;
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
@@ -23,6 +24,7 @@ interface ListViewMenuModalProps {
         exportLeftSegmentAsUrl: () => void;
         copyListViewUrlToClipboard: () => void;
         setExportScope: (data: { scope: 'all' | 'left' }) => void;
+        setListViewShortenUrls: (data: { enabled: boolean }) => void;
         changeGifFrameDelay: (data: { delayMs: number }) => void;
         openListViewInFumenZui: () => void;
         openListViewInFumenForMobile: () => void;
@@ -31,7 +33,7 @@ interface ListViewMenuModalProps {
 }
 
 export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
-    { treeEnabled, exportScope, gifFrameDelayMs, actions },
+    { treeEnabled, exportScope, gifFrameDelayMs, shortenUrls, actions },
 ) => {
     const close = () => {
         const modal = resources.modals.listViewMenu;
@@ -170,6 +172,11 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         if (!isNaN(value) && value >= 100 && value <= 10000) {
             actions.changeGifFrameDelay({ delayMs: value });
         }
+    };
+
+    const onchangeShortenUrls = (event: Event) => {
+        const target = event.target as HTMLInputElement;
+        actions.setListViewShortenUrls({ enabled: target.checked });
     };
 
     return (
@@ -329,6 +336,15 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                        style={style({ width: px(100), textAlign: 'center' })}/>
                                 <span>ms</span>
                             </div>
+                        </div>
+
+                        <div key="shorten-urls" style={settingStyle}>
+                            <div style={settingNameStyle}>{i18n.ListViewMenu.ShortUrl.Title()}</div>
+                            <label>
+                                <input key="switch-shorten-urls" datatest="switch-shorten-urls" type="checkbox"
+                                       checked={shortenUrls} onchange={onchangeShortenUrls}/>
+                                <span>{i18n.ListViewMenu.ShortUrl.Description()}</span>
+                            </label>
                         </div>
                     </div>
                 </div>

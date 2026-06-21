@@ -167,6 +167,7 @@ export interface State {
         };
         scale: number;
         trimTopBlank: boolean;
+        shortenUrls: boolean;
         exportScope: 'all' | 'left';
     };
     tree: TreeState;
@@ -299,6 +300,7 @@ export const initState: Readonly<State> = {
         },
         scale: 1.0,
         trimTopBlank: false,
+        shortenUrls: false,
         exportScope: 'all',
     },
     tree: initialTreeState,

@@ -169,6 +169,10 @@ export const i18n = {
             All: () => t('ListViewMenu.Scope.All'),
             LeftToActive: () => t('ListViewMenu.Scope.LeftToActive'),
         },
+        ShortUrl: {
+            Title: () => t('ListViewMenu.ShortUrl.Title'),
+            Description: () => t('ListViewMenu.ShortUrl.Description'),
+        },
         Buttons: {
             Insert: () => t('ListViewMenu.Buttons.Insert'),
             InsertHint: () => t('ListViewMenu.Buttons.InsertHint'),

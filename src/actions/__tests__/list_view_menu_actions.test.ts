@@ -11,7 +11,9 @@ jest.mock('../../actions', () => ({
 }));
 
 jest.mock('../../memento', () => ({
-    localStorageWrapper: {},
+    localStorageWrapper: {
+        saveViewSettings: jest.fn(),
+    },
 }));
 
 jest.mock('../../states', () => ({
@@ -100,11 +102,20 @@ const createState = (overrides: any = {}) => ({
     listView: {
         exportScope: overrides.exportScope || 'all',
         trimTopBlank: false,
+        shortenUrls: overrides.shortenUrls ?? false,
         scale: 1.0,
         dragState: { draggingIndex: null, dropTargetIndex: null },
     },
     tree: treeState(overrides.treeEnabled ?? false),
     mode: { gifFrameDelayMs: 100 },
+    coldClear: {
+        topBranchCount: 3,
+        holdAllowed: true,
+        speculate: false,
+        nextLimit: null,
+        weightsPreset: 0,
+        thinkMs: 0,
+    },
 }) as any;
 
 beforeEach(() => {
@@ -118,6 +129,15 @@ describe('setExportScope', () => {
         const state = createState({ exportScope: 'all' });
         const next = listViewActions.setExportScope({ scope: 'left' })(state) as any;
         expect(next.listView.exportScope).toBe('left');
+    });
+});
+
+describe('setListViewShortenUrls', () => {
+    test('updates the saved short URL setting', () => {
+        const state = createState({ shortenUrls: false });
+        const next = listViewActions.setListViewShortenUrls({ enabled: true })(state) as any;
+
+        expect(next.listView.shortenUrls).toBe(true);
     });
 });
 
@@ -144,6 +164,20 @@ describe('openListViewInExternalSite', () => {
         expect(encodeMock).toHaveBeenCalledTimes(1);
         expect(encodeMock.mock.calls[0][0]).toHaveLength(2);
         expect(openSpy).toHaveBeenCalledWith('https://fumen.zui.jp/?D115@ENC', '_blank');
+        openSpy.mockRestore();
+    });
+
+    test('opens TinyURL creation when short URLs are enabled', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: false, shortenUrls: true });
+
+        listViewActions.openListViewInExternalSite()(state);
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledWith(
+            'https://tinyurl.com/create.php?url=https%3A%2F%2Ffumen.zui.jp%2F%3FD115%40ENC',
+            '_blank',
+        );
         openSpy.mockRestore();
     });
 });

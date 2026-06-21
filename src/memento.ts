@@ -171,6 +171,7 @@ interface UserSettings {
 
 interface ViewSettings {
     trimTopBlank: boolean;
+    shortenUrls: boolean;
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
     coldClearTopBranchCount: number;
@@ -248,6 +249,7 @@ export const localStorageWrapper = {
 
         return {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
+            shortenUrls: safer.boolean(obj.shortenUrls),
             buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),

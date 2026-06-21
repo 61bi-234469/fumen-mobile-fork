@@ -99,7 +99,7 @@ export const ListViewTools: Component<Props> = (
 
                 <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(1) })}>
                     <ToolButton
-                        iconName="compare_arrows"
+                        iconName="flip"
                         datatest="btn-all-mirror"
                         width={40}
                         height={height - 10}

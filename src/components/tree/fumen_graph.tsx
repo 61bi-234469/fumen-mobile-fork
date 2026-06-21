@@ -237,6 +237,7 @@ const renderNode = (
     return (
         <g
             key={`node-${node.id}`}
+            datatest={`tree-node-${node.id}`}
             transform={`translate(${pos.x}, ${pos.y})`}
             style={nodeStyle}
             onclick={() => actions.onNodeClick(node.id)}

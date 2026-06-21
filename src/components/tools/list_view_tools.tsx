@@ -1,14 +1,12 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { ToolButton } from './tool_button';
-import { ToolText } from './tool_text';
 import { ColorPalette } from '../../lib/colors';
 import { TreeViewToggle } from '../tree/tree_view_toggle';
 import { TreeViewMode } from '../../lib/fumen/tree_types';
 
 interface Props {
     height: number;
-    maxPage: number;
     palette: ColorPalette;
     treeEnabled: boolean;
     treeViewMode: TreeViewMode;
@@ -27,7 +25,7 @@ interface Props {
 
 export const ListViewTools: Component<Props> = (
     {
-        height, maxPage, palette, treeEnabled, treeViewMode,
+        height, palette, treeEnabled, treeViewMode,
         listShortcutLabel, treeShortcutLabel, homeShortcutLabel, actions,
     },
 ) => {
@@ -74,16 +72,6 @@ export const ListViewTools: Component<Props> = (
                     }}
                 />
 
-                <ToolText
-                    datatest="text-page-count"
-                    height={height - 10}
-                    minWidth={60}
-                    fontSize={14}
-                    marginRight={1}
-                >
-                    {`${maxPage} pages`}
-                </ToolText>
-
                 {/* Tree mode controls */}
                 <TreeViewToggle
                     treeEnabled={treeEnabled}
@@ -101,7 +89,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="flip"
                         datatest="btn-all-mirror"
-                        width={40}
+                        width={34}
                         height={height - 10}
                         key="btn-all-mirror"
                         fontSize={24}
@@ -114,7 +102,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="find_replace"
                         datatest="btn-replace"
-                        width={40}
+                        width={34}
                         height={height - 10}
                         key="btn-replace"
                         fontSize={24}
@@ -127,7 +115,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="import_export"
                         datatest="btn-list-view-menu"
-                        width={40}
+                        width={34}
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}

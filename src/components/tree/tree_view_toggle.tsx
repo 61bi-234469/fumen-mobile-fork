@@ -1,5 +1,14 @@
 /**
  * TreeViewToggle component - Toggle tree mode and view type (List/Tree)
+ *
+ * Two-tier control kept intentionally:
+ *   - An always-visible tree ON/OFF switch so the presence of a tree structure
+ *     is readable at a glance (and a tree-off list is never confused with a
+ *     tree-on list).
+ *   - A List/Graph segmented control that appears only while tree mode is on.
+ *
+ * Laid out as a single "tree mode" group that lights up (blue) when enabled, and
+ * sized to fit small screens (iPhone SE / 320px) without overflowing the toolbar.
  */
 
 import { Component, px, style } from '../../lib/types';
@@ -26,6 +35,17 @@ interface Props {
 // Main Component
 // ============================================================================
 
+// The toolbar cascades a tall line-height onto .material-icons, so every icon
+// here needs an explicit box or the glyph height balloons / gets clipped.
+const iconBox = (size: number, box: number) => style({
+    display: 'block',
+    width: px(box),
+    height: px(box),
+    fontSize: px(size),
+    lineHeight: px(box),
+    textAlign: 'center',
+});
+
 export const TreeViewToggle: Component<Props> = ({
     treeEnabled,
     currentViewMode,
@@ -38,95 +58,106 @@ export const TreeViewToggle: Component<Props> = ({
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: '4px',
         height: px(height),
         padding: '0 2px',
     });
 
-    const toggleContainerStyle = style({
+    // Single "tree mode" group: muted when off, lit (blue panel) when on so the
+    // presence of a tree structure is obvious at a glance.
+    const groupStyle = style({
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0px',
-        height: px(height),
+        gap: px(5),
+        height: px(Math.min(height, 34)),
+        padding: '0 6px',
+        borderRadius: '17px',
+        backgroundColor: treeEnabled ? '#283593' : 'rgba(255,255,255,0.12)',
+        transition: 'background-color 0.2s',
     });
 
-    const labelStyle = style({
-        fontSize: '11px',
-        lineHeight: '11px',
-        color: '#fff',
-        whiteSpace: 'nowrap',
+    const treeIconStyle = style({
+        ...iconBox(16, 18),
+        color: treeEnabled ? '#fff' : '#cfd8dc',
+        cursor: 'pointer',
+        flex: 'none',
     });
 
-    // Switch toggle styles
+    // Switch toggle styles (intentionally compact; the wide segment is the
+    // primary mis-tap-resistant target).
     const switchStyle = style({
         position: 'relative',
-        width: '36px',
-        height: '20px',
-        backgroundColor: treeEnabled ? '#4CAF50' : '#ccc',
-        borderRadius: '10px',
+        width: '24px',
+        height: '14px',
+        backgroundColor: treeEnabled ? '#2196F3' : '#9e9e9e',
+        borderRadius: '7px',
         cursor: 'pointer',
         transition: 'background-color 0.3s',
+        flex: 'none',
     });
 
     const switchKnobStyle = style({
         position: 'absolute',
         top: '2px',
-        left: treeEnabled ? '18px' : '2px',
-        width: '16px',
-        height: '16px',
+        left: treeEnabled ? '12px' : '2px',
+        width: '10px',
+        height: '10px',
         backgroundColor: '#fff',
         borderRadius: '50%',
         transition: 'left 0.3s',
         boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
     });
 
-    const buttonBaseStyle = {
-        padding: '4px 8px',
-        fontSize: '10px',
+    // Icon-only segmented control (List / Graph)
+    const segmentStyle = style({
+        display: 'flex',
+        flexDirection: 'row',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: '6px',
+        padding: '2px',
+        gap: '2px',
+    });
+
+    const segmentButtonStyle = (isActive: boolean) => style({
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '34px',
+        height: '24px',
         border: 'none',
-        borderRadius: '3px',
+        borderRadius: '4px',
+        padding: 0,
         cursor: 'pointer',
-        transition: 'all 0.2s',
         outline: 'none',
-        position: 'relative' as const,
-    };
-
-    const activeButtonStyle = style({
-        ...buttonBaseStyle,
-        backgroundColor: '#2196F3',
+        backgroundColor: isActive ? '#2196F3' : 'transparent',
         color: '#fff',
+        transition: 'background-color 0.2s',
     });
 
-    const inactiveButtonStyle = style({
-        ...buttonBaseStyle,
-        backgroundColor: '#e0e0e0',
-        color: '#666',
-    });
-
-    const shortcutLabelStyle = (isActive: boolean) => style({
+    // White hint with a soft shadow stays legible over both the blue selected
+    // button and the dark indigo group.
+    const shortcutLabelStyle = style({
         position: 'absolute',
-        right: px(2),
-        bottom: px(0),
+        right: px(1),
+        bottom: px(-1),
         fontSize: px(8),
         lineHeight: '1',
-        color: isActive ? '#fff' : '#666',
+        fontWeight: 500,
+        color: '#fff',
+        textShadow: '0 0 2px rgba(0,0,0,0.45)',
         pointerEvents: 'none',
-    });
-
-    const disabledButtonStyle = style({
-        ...buttonBaseStyle,
-        backgroundColor: '#f0f0f0',
-        color: '#bbb',
-        cursor: 'not-allowed',
     });
 
     return (
         <div key="tree-view-toggle" style={containerStyle}>
-            {/* Tree mode toggle switch */}
-            <div style={toggleContainerStyle}>
-                <span style={labelStyle}>tree:</span>
+            <div style={groupStyle}>
+                {/* Tree mode toggle (icon + switch, both toggle tree mode) */}
+                <i
+                    className="material-icons"
+                    style={treeIconStyle}
+                    onclick={() => actions.onTreeToggle()}
+                >account_tree</i>
                 <div
                     key="tree-switch"
                     style={switchStyle}
@@ -135,39 +166,39 @@ export const TreeViewToggle: Component<Props> = ({
                 >
                     <div style={switchKnobStyle} />
                 </div>
-            </div>
 
-            {/* View mode buttons (only shown when tree is enabled) */}
-            {treeEnabled && (
-                <div style={style({ display: 'flex', gap: '1px' })}>
-                    <button
-                        key="btn-list-view"
-                        style={currentViewMode === TreeViewMode.List ? activeButtonStyle : inactiveButtonStyle}
-                        onclick={() => actions.onViewModeChange(TreeViewMode.List)}
-                        title="Show pages in list view"
-                    >
-                        List
-                        {listShortcutLabel && (
-                            <span style={shortcutLabelStyle(currentViewMode === TreeViewMode.List)}>
-                                {listShortcutLabel}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        key="btn-tree-view"
-                        style={currentViewMode === TreeViewMode.Tree ? activeButtonStyle : inactiveButtonStyle}
-                        onclick={() => actions.onViewModeChange(TreeViewMode.Tree)}
-                        title="Show pages in tree graph view"
-                    >
-                        Graph
-                        {treeShortcutLabel && (
-                            <span style={shortcutLabelStyle(currentViewMode === TreeViewMode.Tree)}>
-                                {treeShortcutLabel}
-                            </span>
-                        )}
-                    </button>
-                </div>
-            )}
+                {/* View mode buttons (only shown when tree is enabled) */}
+                {treeEnabled && (
+                    <div style={segmentStyle}>
+                        <button
+                            key="btn-list-view"
+                            style={segmentButtonStyle(currentViewMode === TreeViewMode.List)}
+                            onclick={() => actions.onViewModeChange(TreeViewMode.List)}
+                            title="Show pages in list view"
+                        >
+                            <i className="material-icons" style={iconBox(20, 22)}>view_list</i>
+                            {listShortcutLabel && (
+                                <span style={shortcutLabelStyle}>
+                                    {listShortcutLabel}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            key="btn-tree-view"
+                            style={segmentButtonStyle(currentViewMode === TreeViewMode.Tree)}
+                            onclick={() => actions.onViewModeChange(TreeViewMode.Tree)}
+                            title="Show pages in tree graph view"
+                        >
+                            <i className="material-icons" style={iconBox(20, 22)}>device_hub</i>
+                            {treeShortcutLabel && (
+                                <span style={shortcutLabelStyle}>
+                                    {treeShortcutLabel}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -112,8 +112,7 @@ export interface State {
         clipboard: boolean;
         userSettings: boolean;
         listViewReplace: boolean;
-        listViewImport: boolean;
-        listViewExport: boolean;
+        listViewMenu: boolean;
         coldClearMenu: boolean;
     };
     temporary: {
@@ -168,6 +167,8 @@ export interface State {
         };
         scale: number;
         trimTopBlank: boolean;
+        shortenUrls: boolean;
+        exportScope: 'all' | 'left';
     };
     tree: TreeState;
     coldClear: {
@@ -246,8 +247,7 @@ export const initState: Readonly<State> = {
         clipboard: false,
         userSettings: false,
         listViewReplace: false,
-        listViewImport: false,
-        listViewExport: false,
+        listViewMenu: false,
         coldClearMenu: false,
     },
     temporary: {
@@ -300,6 +300,8 @@ export const initState: Readonly<State> = {
         },
         scale: 1.0,
         trimTopBlank: false,
+        shortenUrls: false,
+        exportScope: 'all',
     },
     tree: initialTreeState,
     coldClear: {
@@ -329,8 +331,7 @@ export const resources = {
         clipboard: undefined as any,
         userSettings: undefined as any,
         listViewReplace: undefined as any,
-        listViewImport: undefined as any,
-        listViewExport: undefined as any,
+        listViewMenu: undefined as any,
         coldClearMenu: undefined as any,
     },
     konva: createKonvaObjects(),

@@ -12,11 +12,10 @@ import { AppendFumenModal } from './components/modals/append';
 import { ClipboardModal } from './components/modals/clipboard';
 import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
-import { ListViewImportModal } from './components/modals/list_view_import';
-import { ListViewExportModal } from './components/modals/list_view_export';
+import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
-import { SerializedTree, TreeViewMode } from './lib/fumen/tree_types';
+import { SerializedTree } from './lib/fumen/tree_types';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
@@ -104,14 +103,12 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
         }) : undefined as any,
 
-        state.modal.listViewImport ? ListViewImportModal({
+        state.modal.listViewMenu ? ListViewMenuModal({
             actions,
-            isTreeView: state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree,
-        }) : undefined as any,
-
-        state.modal.listViewExport ? ListViewExportModal({
-            actions,
-            isTreeView: state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree,
+            treeEnabled: state.tree.enabled,
+            exportScope: state.listView.exportScope,
+            gifFrameDelayMs: state.mode.gifFrameDelayMs,
+            shortenUrls: state.listView.shortenUrls,
         }) : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({

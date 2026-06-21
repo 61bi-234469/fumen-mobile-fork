@@ -9,8 +9,7 @@ export interface ModalActions {
     openClipboardModal: () => action;
     openUserSettingsModal: () => action;
     openListViewReplaceModal: () => action;
-    openListViewImportModal: () => action;
-    openListViewExportModal: () => action;
+    openListViewMenuModal: () => action;
     openColdClearMenuModal: () => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
@@ -18,8 +17,7 @@ export interface ModalActions {
     closeClipboardModal: () => action;
     closeUserSettingsModal: () => action;
     closeListViewReplaceModal: () => action;
-    closeListViewImportModal: () => action;
-    closeListViewExportModal: () => action;
+    closeListViewMenuModal: () => action;
     closeColdClearMenuModal: () => action;
     closeAllModals: () => action;
 }
@@ -131,19 +129,11 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    openListViewImportModal: () => (state): NextState => {
+    openListViewMenuModal: () => (state): NextState => {
         return {
             modal: {
                 ...state.modal,
-                listViewImport: true,
-            },
-        };
-    },
-    openListViewExportModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewExport: true,
+                listViewMenu: true,
             },
         };
     },
@@ -155,19 +145,11 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    closeListViewImportModal: () => (state): NextState => {
+    closeListViewMenuModal: () => (state): NextState => {
         return {
             modal: {
                 ...state.modal,
-                listViewImport: false,
-            },
-        };
-    },
-    closeListViewExportModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewExport: false,
+                listViewMenu: false,
             },
         };
     },
@@ -191,8 +173,7 @@ export const modalActions: Readonly<ModalActions> = {
                 clipboard: false,
                 userSettings: false,
                 listViewReplace: false,
-                listViewImport: false,
-                listViewExport: false,
+                listViewMenu: false,
                 coldClearMenu: state.coldClear.isRunning ? true : false,
             },
         };

@@ -19,8 +19,7 @@ interface Props {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
         openListViewReplaceModal: () => void;
-        openListViewImportModal: () => void;
-        openListViewExportModal: () => void;
+        openListViewMenuModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
     };
@@ -126,29 +125,16 @@ export const ListViewTools: Component<Props> = (
                     />
 
                     <ToolButton
-                        iconName="archive"
-                        datatest="btn-import"
+                        iconName="import_export"
+                        datatest="btn-list-view-menu"
                         width={40}
                         height={height - 10}
-                        key="btn-import"
-                        fontSize={24}
-                        colors={palette}
-                        actions={{
-                            onclick: () => actions.openListViewImportModal(),
-                        }}
-                    />
-
-                    <ToolButton
-                        iconName="unarchive"
-                        datatest="btn-export-image"
-                        width={40}
-                        height={height - 10}
-                        key="btn-export-image"
+                        key="btn-list-view-menu"
                         fontSize={24}
                         marginRight={3}
                         colors={palette}
                         actions={{
-                            onclick: () => actions.openListViewExportModal(),
+                            onclick: () => actions.openListViewMenuModal(),
                         }}
                     />
                 </div>

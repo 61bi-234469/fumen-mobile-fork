@@ -84,7 +84,7 @@ export const resources = {
         },
     },
     GifFrameDelayMs: {
-        Title: 'GIFページ送り間隔(ms)',
+        Title: 'GIFページ送り間隔',
         Description: 'GIF出力時の1ページあたりの表示時間',
     },
     Clipboard: {
@@ -117,7 +117,7 @@ export const resources = {
     },
     Menu: {
         Buttons: {
-            ExternalSite: 'Export List',
+            ImportExport: 'Import/Export',
         },
         Messages: {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
@@ -130,25 +130,38 @@ export const resources = {
     ListView: {
         TrimTopBlank: 'Trim top blank',
     },
-    ListViewExport: {
-        Title: 'エクスポート',
-        Description: '出力方法を選択',
-        Buttons: {
-            Fumen: 'Fumenをコピー',
-            Url: '共有URLを開く',
-            UrlLeftToActive: '共有URL(アクティブノードまで)',
-            Image: 'PNG画像をダウンロード',
-            Cancel: 'キャンセル',
+    ListViewMenu: {
+        Title: 'Import/Export',
+        Sections: {
+            Read: '取り込み',
+            Image: '画像を保存',
+            Export: '共有（FUMEN / URL）',
+            External: '外部サイトで開く',
+            Settings: '設定',
         },
-    },
-    ListViewImport: {
-        Title: '読み込み・PNG出力',
-        Description: 'IMPORT：現在の譜面を置き換え\nINSERT：独立したツリーとして追加\nPNG：画像として保存',
+        Scope: {
+            Label: '出力範囲',
+            Description: '画像・共有・外部サイトに適用されます',
+            All: 'すべてのページ',
+            LeftToActive: '選択中のページまで',
+        },
+        ShortUrl: {
+            Title: '短縮URL',
+            Description: 'TinyURLによる短縮を有効にする',
+        },
         Buttons: {
-            Import: 'IMPORT',
-            Add: 'INSERT',
-            Image: 'PNG画像をダウンロード',
-            ImageLeftToActive: 'PNG画像(アクティブノードまで)',
+            Insert: 'クリップボードから挿入',
+            InsertHint: 'Fumenを追加',
+            Import: 'クリップボードから読み込む',
+            ImportHint: '現在のFumenを置き換え',
+            Png: 'PNG',
+            Gif: 'GIF',
+            Fumen: 'FUMENをコピー',
+            Url: '共有URLを開く',
+            UrlCopy: '共有URLをコピー',
+            FumenZui: '連続テト譜エディタで開く',
+            FumenForMobile: 'Fumen for mobileで開く',
+            ExternalSite: '連続テト譜エディタ(LIST)で開く',
             Cancel: 'キャンセル',
         },
     },

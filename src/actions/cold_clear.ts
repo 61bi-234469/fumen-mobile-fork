@@ -217,6 +217,7 @@ const saveColdClearViewSettings = (
 
     localStorageWrapper.saveViewSettings({
         trimTopBlank: state.listView?.trimTopBlank ?? false,
+        shortenUrls: state.listView?.shortenUrls ?? false,
         buttonDropMovesSubtree: state.tree?.buttonDropMovesSubtree ?? false,
         grayAfterLineClear: state.tree?.grayAfterLineClear ?? false,
         coldClearTopBranchCount: overrides?.topBranchCount ?? state.coldClear.topBranchCount,

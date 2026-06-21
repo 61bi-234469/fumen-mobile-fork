@@ -110,7 +110,7 @@
         },
     },
     GifFrameDelayMs: {
-        Title: 'GIF page interval (ms)',
+        Title: 'GIF page interval',
         Description: 'Delay per page in GIF export',
     },
     GifExport: {
@@ -142,7 +142,7 @@
             GhostOff: 'GhostOff',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',
-            ExternalSite: 'Export List',
+            ImportExport: 'Import/Export',
         },
         Messages: {
             NoAvailableCommentButton: 'Available only when writable mode',
@@ -155,25 +155,38 @@
     ListView: {
         TrimTopBlank: 'Trim top blank',
     },
-    ListViewExport: {
-        Title: 'Export',
-        Description: 'Select an export option',
-        Buttons: {
-            Fumen: 'Copy Fumen to Clipboard',
-            Url: 'Open Share URL',
-            UrlLeftToActive: 'Share URL (to Active Node)',
-            Image: 'Download PNG Image',
-            Cancel: 'Cancel',
+    ListViewMenu: {
+        Title: 'Import/Export',
+        Sections: {
+            Read: 'Import',
+            Image: 'Save image',
+            Export: 'Share (FUMEN / URL)',
+            External: 'Open in external site',
+            Settings: 'Settings',
         },
-    },
-    ListViewImport: {
-        Title: 'Import / PNG Export',
-        Description: 'IMPORT: Replace current pages\nINSERT: Add as an independent tree\nPNG: Download as image',
+        Scope: {
+            Label: 'Scope',
+            Description: 'Applies to images, sharing, and external sites.',
+            All: 'All pages',
+            LeftToActive: 'Up to selected page',
+        },
+        ShortUrl: {
+            Title: 'Short URL',
+            Description: 'Enable TinyURL shortening',
+        },
         Buttons: {
-            Import: 'IMPORT',
-            Add: 'INSERT',
-            Image: 'Download PNG Image',
-            ImageLeftToActive: 'Share PNG (to Active Node)',
+            Insert: 'Insert from clipboard',
+            InsertHint: 'Add fumen',
+            Import: 'Load from clipboard',
+            ImportHint: 'Replace current fumen',
+            Png: 'PNG',
+            Gif: 'GIF',
+            Fumen: 'Copy FUMEN',
+            Url: 'Open Share URL',
+            UrlCopy: 'Copy share URL',
+            FumenZui: 'Open in Fumen Editor',
+            FumenForMobile: 'Open in Fumen for mobile',
+            ExternalSite: 'Open in Fumen Editor (LIST)',
             Cancel: 'Cancel',
         },
     },

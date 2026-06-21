@@ -38,7 +38,7 @@ interface MenuProps {
         reopenCurrentPage: () => void;
         openFumenModal: () => void;
         openUserSettingsModal: () => void;
-        openInExternalSite: () => void;
+        openListViewMenuModal: () => void;
     };
 }
 
@@ -129,13 +129,14 @@ export const MenuModal: Component<MenuProps> = (
                             {i18n.Menu.Buttons.Clipboard()}
                         </SettingButton>
 
-                        <SettingButton key="btn-external-site" datatest="btn-external-site" href="#"
-                                       icons={[{ name: 'launch', size: 30 }]}
+                        <SettingButton key="btn-list-menu" datatest="btn-list-menu" href="#"
+                                       icons={[{ name: 'import_export', size: 30 }]}
                                        onclick={() => {
-                                           actions.openInExternalSite();
+                                           actions.removeUnsettledItems();
+                                           actions.openListViewMenuModal();
                                            actions.closeMenuModal();
                                        }}>
-                            {i18n.Menu.Buttons.ExternalSite()}
+                            {i18n.Menu.Buttons.ImportExport()}
                         </SettingButton>
 
                         <SettingButton key="btn-new-fumen" datatest="btn-new-fumen" href="#"
@@ -369,7 +370,13 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
         onclick(event);
         event.stopPropagation();
         event.preventDefault();
-    } : undefined}>
+    } : undefined} style={style({
+        minWidth: px(60),
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        flexShrink: 0,
+    })}>
         <div key={`${key}-icon`} datatest={datatest}
              className={`z-depth-1 ${enable ? ' ' : 'disabled'}`}
              style={style({
@@ -390,7 +397,12 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
         </div>
 
         <div key={`${key}-text`}
-             style={style({ textAlign: 'center', fontSize: px(textSize), color: enable ? '#333' : '#bdbdbd' })}>
+             style={style({
+                 textAlign: 'center',
+                 fontSize: px(textSize),
+                 color: enable ? '#333' : '#bdbdbd',
+                 whiteSpace: 'nowrap',
+             })}>
             {showName}
         </div>
     </a>;

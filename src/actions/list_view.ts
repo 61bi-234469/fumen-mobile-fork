@@ -234,6 +234,9 @@ export interface ListViewActions {
     exportLeftSegmentAsUrl: () => action;
     exportLeftSegmentAsImage: () => action;
     exportLeftSegmentAsGif: () => action;
+    setExportScope: (data: { scope: 'all' | 'left' }) => action;
+    openListViewInExternalSite: () => action;
+    copyLeftSegmentToClipboard: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
     importPagesFromClipboard: (data: { mode: ClipboardImportMode }) => action;
     addPagesFromClipboard: (data: {
@@ -792,6 +795,87 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         return undefined;
     },
+    setExportScope: ({ scope }) => (state): NextState => {
+        return {
+            listView: {
+                ...state.listView,
+                exportScope: scope,
+            },
+        };
+    },
+    openListViewInExternalSite: () => (state): NextState => {
+        (async () => {
+            try {
+                let pagesToEncode: Page[];
+                if (state.tree.enabled && state.listView.exportScope === 'left') {
+                    const segment = extractRootToActiveSegmentPages(state);
+                    if ('error' in segment) {
+                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+                        return;
+                    }
+                    pagesToEncode = segment.pages;
+                } else {
+                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                    const tree = hasTreeData
+                        ? {
+                            nodes: state.tree.nodes,
+                            rootId: state.tree.rootId,
+                            version: 1 as const,
+                        }
+                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
+                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                }
+
+                const encoded = await encode(pagesToEncode);
+                const url = `https://fumen.zui.jp/?D115@${encoded}`;
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    copyLeftSegmentToClipboard: () => (state): NextState => {
+        const segment = extractRootToActiveSegmentPages(state);
+        if ('error' in segment) {
+            M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+            return undefined;
+        }
+
+        // 独立したページ列のため tree 埋め込みは行わない
+        (async () => {
+            try {
+                const encoded = await encode(segment.pages);
+                const url = `v115@${encoded}`;
+
+                const element = document.createElement('pre');
+                element.style.position = 'fixed';
+                element.style.left = '-100%';
+                element.textContent = url;
+                document.body.appendChild(element);
+
+                const selection = document.getSelection();
+                if (selection) {
+                    selection.selectAllChildren(element);
+                    const success = document.execCommand('copy');
+                    if (success) {
+                        const msg = `Copied ${segment.pages.length} pages`;
+                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    } else {
+                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
+                    }
+                }
+
+                document.body.removeChild(element);
+            } catch (error) {
+                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
     replaceAllComments: ({ searchText, replaceText }) => (state): NextState => {
         if (!searchText) {
             return undefined;
@@ -959,7 +1043,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         // Close the modal
         return sequence(state, [
-            actions.closeListViewImportModal(),
+            actions.closeListViewMenuModal(),
         ]);
     },
 };

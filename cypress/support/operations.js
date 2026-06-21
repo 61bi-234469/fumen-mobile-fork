@@ -442,6 +442,10 @@ export const operations = {
             operations.menu.open();
             cy.get(datatest('btn-append-fumen')).click();
         },
+        importExport: () => {
+            operations.menu.open();
+            cy.get(datatest('btn-list-menu')).click();
+        },
         copyToClipboard: () => {
             operations.menu.open();
             cy.get(datatest('btn-copy-fumen')).click();

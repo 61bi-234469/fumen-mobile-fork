@@ -142,7 +142,7 @@
             GhostOff: 'GhostOff',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',
-            ExternalSite: 'Export List',
+            ImportExport: 'Import / Export',
         },
         Messages: {
             NoAvailableCommentButton: 'Available only when writable mode',
@@ -155,25 +155,29 @@
     ListView: {
         TrimTopBlank: 'Trim top blank',
     },
-    ListViewExport: {
-        Title: 'Export',
-        Description: 'Select an export option',
-        Buttons: {
-            Fumen: 'Copy Fumen to Clipboard',
-            Url: 'Open Share URL',
-            UrlLeftToActive: 'Share URL (to Active Node)',
-            Image: 'Download PNG Image',
-            Cancel: 'Cancel',
+    ListViewMenu: {
+        Title: 'Import / Export',
+        Sections: {
+            Read: 'Import',
+            Image: 'Save image',
+            Export: 'Share (Fumen / URL)',
+            External: 'Open in external site',
         },
-    },
-    ListViewImport: {
-        Title: 'Import / PNG Export',
-        Description: 'IMPORT: Replace current pages\nINSERT: Add as an independent tree\nPNG: Download as image',
+        Scope: {
+            Label: 'Scope',
+            All: 'All pages',
+            LeftToActive: 'Up to active',
+        },
         Buttons: {
+            Insert: 'INSERT',
+            InsertHint: 'Add fumen',
             Import: 'IMPORT',
-            Add: 'INSERT',
-            Image: 'Download PNG Image',
-            ImageLeftToActive: 'Share PNG (to Active Node)',
+            ImportHint: 'Replace current fumen',
+            Png: 'PNG',
+            Gif: 'GIF',
+            Fumen: 'Copy Fumen',
+            Url: 'Open Share URL',
+            ExternalSite: 'Open in fumen.zui.jp (LIST)',
             Cancel: 'Cancel',
         },
     },

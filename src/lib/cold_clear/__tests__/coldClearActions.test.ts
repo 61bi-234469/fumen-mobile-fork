@@ -138,8 +138,7 @@ function makeColdClearState(overrides: {
             clipboard: false,
             userSettings: false,
             listViewReplace: false,
-            listViewImport: false,
-            listViewExport: false,
+            listViewMenu: false,
             coldClearMenu: true,
         },
         tree: {

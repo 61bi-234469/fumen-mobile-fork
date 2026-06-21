@@ -73,13 +73,8 @@ describe('URL behavior', () => {
         });
 
         closeModalAndAssertUrlStable({
-            open: () => cy.get(datatest('btn-import')).click(),
-            modalDatatest: 'mdl-list-view-import',
-        });
-
-        closeModalAndAssertUrlStable({
-            open: () => cy.get(datatest('btn-export-image')).click(),
-            modalDatatest: 'mdl-list-view-export',
+            open: () => cy.get(datatest('btn-list-view-menu')).click(),
+            modalDatatest: 'mdl-list-view-menu',
         });
     });
 
@@ -112,9 +107,10 @@ describe('URL behavior', () => {
         cy.get('[title="Show pages in tree graph view"]').click();
         cy.wait(300);
 
-        cy.get(datatest('btn-export-image')).click();
-        cy.get(datatest('mdl-list-view-export')).should('be.visible');
-        cy.get(datatest('btn-export-left-segment')).click();
+        cy.get(datatest('btn-list-view-menu')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('btn-scope-left')).click();
+        cy.get(datatest('btn-export-url')).click();
 
         cy.get('@windowOpen').should('have.been.called');
         cy.get('@windowOpen').then((windowOpen) => {

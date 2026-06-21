@@ -117,7 +117,7 @@ export const resources = {
     },
     Menu: {
         Buttons: {
-            ExternalSite: 'Export List',
+            ImportExport: '入出力',
         },
         Messages: {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
@@ -130,25 +130,29 @@ export const resources = {
     ListView: {
         TrimTopBlank: 'Trim top blank',
     },
-    ListViewExport: {
-        Title: 'エクスポート',
-        Description: '出力方法を選択',
+    ListViewMenu: {
+        Title: '入出力',
+        Sections: {
+            Read: '取り込み',
+            Image: '画像を保存',
+            Export: '共有（Fumen / URL）',
+            External: '外部サイトで開く',
+        },
+        Scope: {
+            Label: '出力範囲',
+            All: 'すべて',
+            LeftToActive: 'ここまで（アクティブノード）',
+        },
         Buttons: {
+            Insert: 'INSERT',
+            InsertHint: 'Fumenを追加',
+            Import: 'IMPORT',
+            ImportHint: '現在のFumenを置き換え',
+            Png: 'PNG',
+            Gif: 'GIF',
             Fumen: 'Fumenをコピー',
             Url: '共有URLを開く',
-            UrlLeftToActive: '共有URL(アクティブノードまで)',
-            Image: 'PNG画像をダウンロード',
-            Cancel: 'キャンセル',
-        },
-    },
-    ListViewImport: {
-        Title: '読み込み・PNG出力',
-        Description: 'IMPORT：現在の譜面を置き換え\nINSERT：独立したツリーとして追加\nPNG：画像として保存',
-        Buttons: {
-            Import: 'IMPORT',
-            Add: 'INSERT',
-            Image: 'PNG画像をダウンロード',
-            ImageLeftToActive: 'PNG画像(アクティブノードまで)',
+            ExternalSite: 'fumen.zui.jp（LIST）で開く',
             Cancel: 'キャンセル',
         },
     },

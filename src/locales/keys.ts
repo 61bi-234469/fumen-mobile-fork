@@ -141,7 +141,7 @@ export const i18n = {
             GhostOff: () => t('Menu.Buttons.GhostOff'),
             UserSettings: () => t('Menu.Buttons.UserSettings'),
             SavePlayfieldToImage: () => t('Menu.Buttons.SavePlayfieldToImage'),
-            ExternalSite: () => t('Menu.Buttons.ExternalSite'),
+            ImportExport: () => t('Menu.Buttons.ImportExport'),
         },
         Messages: {
             NoAvailableCommentButton: () => t('Menu.Messages.NoAvailableCommentButton'),
@@ -154,28 +154,30 @@ export const i18n = {
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
     },
-    ListViewExport: {
-        Title: () => t('ListViewExport.Title'),
-        Description: () => t('ListViewExport.Description'),
-        Buttons: {
-            Fumen: () => t('ListViewExport.Buttons.Fumen'),
-            Url: () => t('ListViewExport.Buttons.Url'),
-            UrlLeftToActive: () => t('ListViewExport.Buttons.UrlLeftToActive'),
-            Image: () => t('ListViewExport.Buttons.Image'),
-            Cancel: () => t('ListViewExport.Buttons.Cancel'),
+    ListViewMenu: {
+        Title: () => t('ListViewMenu.Title'),
+        Sections: {
+            Read: () => t('ListViewMenu.Sections.Read'),
+            Image: () => t('ListViewMenu.Sections.Image'),
+            Export: () => t('ListViewMenu.Sections.Export'),
+            External: () => t('ListViewMenu.Sections.External'),
         },
-    },
-    ListViewImport: {
-        Title: () => t('ListViewImport.Title'),
-        Description: () => t('ListViewImport.Description'),
+        Scope: {
+            Label: () => t('ListViewMenu.Scope.Label'),
+            All: () => t('ListViewMenu.Scope.All'),
+            LeftToActive: () => t('ListViewMenu.Scope.LeftToActive'),
+        },
         Buttons: {
-            Import: () => t('ListViewImport.Buttons.Import'),
-            Add: () => t('ListViewImport.Buttons.Add'),
-            Image: () => t('ListViewImport.Buttons.Image'),
-            ImageLeftToActive: () => t('ListViewImport.Buttons.ImageLeftToActive'),
-            Gif: () => t('GifExport.Buttons.Gif'),
-            GifLeftToActive: () => t('GifExport.Buttons.GifLeftToActive'),
-            Cancel: () => t('ListViewImport.Buttons.Cancel'),
+            Insert: () => t('ListViewMenu.Buttons.Insert'),
+            InsertHint: () => t('ListViewMenu.Buttons.InsertHint'),
+            Import: () => t('ListViewMenu.Buttons.Import'),
+            ImportHint: () => t('ListViewMenu.Buttons.ImportHint'),
+            Png: () => t('ListViewMenu.Buttons.Png'),
+            Gif: () => t('ListViewMenu.Buttons.Gif'),
+            Fumen: () => t('ListViewMenu.Buttons.Fumen'),
+            Url: () => t('ListViewMenu.Buttons.Url'),
+            ExternalSite: () => t('ListViewMenu.Buttons.ExternalSite'),
+            Cancel: () => t('ListViewMenu.Buttons.Cancel'),
         },
     },
     Navigator: {

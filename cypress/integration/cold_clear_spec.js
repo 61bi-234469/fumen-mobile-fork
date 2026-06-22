@@ -19,9 +19,9 @@ describe('Cold Clear menu', () => {
         visit({ mode: 'edit', lng: 'en' });
         ensureTreeGraphView();
 
-        cy.get(datatest('text-page-count')).should('contain', '1 pages');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 1);
         cy.get(datatest('btn-tree-root-add-ghost')).should('be.visible').click();
-        cy.get(datatest('text-page-count')).should('contain', '2 pages');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
         cy.get(datatest('btn-tree-ai-menu')).should('be.visible');
     });
 

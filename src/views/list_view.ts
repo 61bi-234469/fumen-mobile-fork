@@ -776,7 +776,6 @@ export const view: View<State, Actions> = (state, actions) => {
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
             },
             height: TOOLS_HEIGHT,
-            maxPage: state.fumen.maxPage,
         }),
 
         div({

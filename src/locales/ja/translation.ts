@@ -128,7 +128,7 @@ export const resources = {
         GrayAfterLineClear: 'Gray out cleared lines',
         DisableConfirm: {
             Title: 'ツリーモードを無効にしますか？',
-            Message: 'ツリー構造が削除されます。保存または共有後は元に戻せません。',
+            Message: 'ツリー構造が削除されます。',
             Cancel: 'キャンセル',
             Confirm: '無効にする',
         },

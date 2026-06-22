@@ -89,7 +89,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="flip"
                         datatest="btn-all-mirror"
-                        width={34}
+                        width={36}
                         height={height - 10}
                         key="btn-all-mirror"
                         fontSize={24}
@@ -102,7 +102,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="find_replace"
                         datatest="btn-replace"
-                        width={34}
+                        width={36}
                         height={height - 10}
                         key="btn-replace"
                         fontSize={24}
@@ -115,7 +115,7 @@ export const ListViewTools: Component<Props> = (
                     <ToolButton
                         iconName="import_export"
                         datatest="btn-list-view-menu"
-                        width={34}
+                        width={36}
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}

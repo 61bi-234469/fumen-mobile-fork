@@ -77,7 +77,7 @@ export const TreeViewToggle: Component<Props> = ({
     });
 
     const treeIconStyle = style({
-        ...iconBox(16, 18),
+        ...iconBox(18, 22),
         color: treeEnabled ? '#fff' : '#cfd8dc',
         cursor: 'pointer',
         flex: 'none',
@@ -87,10 +87,10 @@ export const TreeViewToggle: Component<Props> = ({
     // primary mis-tap-resistant target).
     const switchStyle = style({
         position: 'relative',
-        width: '24px',
-        height: '14px',
+        width: '28px',
+        height: '16px',
         backgroundColor: treeEnabled ? '#2196F3' : '#9e9e9e',
-        borderRadius: '7px',
+        borderRadius: '8px',
         cursor: 'pointer',
         transition: 'background-color 0.3s',
         flex: 'none',
@@ -99,9 +99,9 @@ export const TreeViewToggle: Component<Props> = ({
     const switchKnobStyle = style({
         position: 'absolute',
         top: '2px',
-        left: treeEnabled ? '12px' : '2px',
-        width: '10px',
-        height: '10px',
+        left: treeEnabled ? '14px' : '2px',
+        width: '12px',
+        height: '12px',
         backgroundColor: '#fff',
         borderRadius: '50%',
         transition: 'left 0.3s',
@@ -123,7 +123,7 @@ export const TreeViewToggle: Component<Props> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '34px',
+        width: '36px',
         height: '24px',
         border: 'none',
         borderRadius: '4px',

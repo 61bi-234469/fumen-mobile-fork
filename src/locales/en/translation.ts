@@ -151,6 +151,9 @@
     TreeView: {
         MoveWithChildren: 'Move with children',
         GrayAfterLineClear: 'Gray out cleared lines',
+        ZoomIn: 'Zoom in',
+        ZoomOut: 'Zoom out',
+        ZoomReset: 'Reset zoom',
         DisableConfirm: {
             Title: 'Disable Tree mode?',
             Message: 'The tree structure will be deleted. This cannot be undone after saving or sharing.',

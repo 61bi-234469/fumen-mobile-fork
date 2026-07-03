@@ -675,11 +675,12 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeTogglePillStyle = style({
         display: 'flex',
         alignItems: 'center',
-        gap: px(8),
-        padding: '6px 10px',
-        borderRadius: '16px',
+        justifyContent: 'space-between',
+        gap: px(10),
+        padding: '8px 12px',
+        borderRadius: '20px',
         backgroundColor: '#fff',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
         opacity: bottomControlOpacity,
     });
 
@@ -697,38 +698,111 @@ export const view: View<State, Actions> = (state, actions) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
         opacity: bottomControlOpacity,
         zIndex: 100,
     });
 
     const treeButtonToggleLabelStyle = style({
-        fontSize: px(10),
-        color: '#555',
+        fontSize: px(11),
+        fontWeight: 500,
+        color: '#475569',
         whiteSpace: 'nowrap',
     });
 
     const treeButtonToggleSwitchStyle = (isOn: boolean) => style({
         position: 'relative',
-        width: '34px',
-        height: '18px',
-        backgroundColor: isOn ? '#4CAF50' : '#ccc',
-        borderRadius: '9px',
+        width: '36px',
+        height: '20px',
+        backgroundColor: isOn ? '#2563EB' : '#CBD5E1',
+        borderRadius: '10px',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
+        flex: 'none',
     });
 
     const treeButtonToggleKnobStyle = (isOn: boolean) => style({
         position: 'absolute',
         top: '2px',
         left: isOn ? '18px' : '2px',
-        width: '14px',
-        height: '14px',
+        width: '16px',
+        height: '16px',
         backgroundColor: '#fff',
         borderRadius: '50%',
         transition: 'left 0.2s',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.3)',
     });
+
+    const zoomIconButtonStyle = style({
+        width: px(32),
+        height: px(32),
+        border: 'none',
+        borderRadius: '50%',
+        backgroundColor: 'transparent',
+        color: '#475569',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+    });
+
+    const zoomResetButtonStyle = style({
+        minWidth: px(44),
+        height: px(32),
+        border: 'none',
+        borderRadius: '16px',
+        backgroundColor: 'transparent',
+        color: '#475569',
+        fontSize: px(12),
+        fontWeight: 600,
+        cursor: 'pointer',
+        padding: '0 4px',
+    });
+
+    const renderTreeZoomControls = () => div({
+        key: 'tree-zoom-controls',
+        style: style({
+            position: 'fixed',
+            bottom: px(cornerOffset + 50 + 10),
+            left: px(cornerOffset),
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: '2px 4px',
+            borderRadius: '20px',
+            backgroundColor: '#fff',
+            boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
+            opacity: bottomControlOpacity,
+            zIndex: 100,
+        }),
+    }, [
+        h('button', {
+            key: 'btn-tree-zoom-out',
+            datatest: 'btn-tree-zoom-out',
+            title: i18n.TreeView.ZoomOut(),
+            style: zoomIconButtonStyle,
+            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale / 1.2 }),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'remove'),
+        ]),
+        h('button', {
+            key: 'btn-tree-zoom-reset',
+            datatest: 'btn-tree-zoom-reset',
+            title: i18n.TreeView.ZoomReset(),
+            style: zoomResetButtonStyle,
+            onclick: () => actions.setTreeViewScale({ scale: 1.0 }),
+        }, `${Math.round(state.tree.scale * 100)}%`),
+        h('button', {
+            key: 'btn-tree-zoom-in',
+            datatest: 'btn-tree-zoom-in',
+            title: i18n.TreeView.ZoomIn(),
+            style: zoomIconButtonStyle,
+            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale * 1.2 }),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'add'),
+        ]),
+    ]);
 
     const renderTreeToggle = (
         key: string,
@@ -1054,7 +1128,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
                     opacity: undoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
@@ -1081,7 +1155,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
                     opacity: redoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
@@ -1094,6 +1168,9 @@ export const view: View<State, Actions> = (state, actions) => {
                 h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
             ]),
         ]),
+
+        // Zoom controls (above undo/redo, tree view only)
+        ...(isTreeView ? [renderTreeZoomControls()] : []),
 
         // List view toggles (bottom right, list view only)
         ...(!isTreeView ? [div({

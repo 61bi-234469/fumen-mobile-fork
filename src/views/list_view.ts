@@ -650,36 +650,11 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
-    const treeToggleGap = 10;
-    const treeTogglePillHeight = 44;
-    const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
     const undoRedoPillHeight = 56;
-    const treeAiButtonBottom = cornerOffset
-        + treeToggleCount * treeTogglePillHeight
-        + Math.max(0, treeToggleCount - 1) * treeToggleGap
-        + 12;
-
-    const treeToggleGroupStyle = style({
-        position: 'fixed',
-        bottom: px(cornerOffset),
-        right: px(cornerOffset),
-        display: 'flex',
-        flexDirection: 'column',
-        gap: px(treeToggleGap),
-        alignItems: 'flex-end',
-        zIndex: 100,
-    });
-
-    const treeTogglePillStyle = style({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: px(12),
-        padding: '9px 10px 9px 16px',
-        borderRadius: px(22),
-        cursor: 'pointer',
-    });
+    const settingsButtonSize = 48;
+    const settingsOpened = state.listView.settingsOpened;
+    const treeAiButtonBottom = cornerOffset + settingsButtonSize + 12;
 
     const treeAiButtonStyle = style({
         position: 'fixed',
@@ -815,15 +790,30 @@ export const view: View<State, Actions> = (state, actions) => {
         ]),
     ]);
 
-    const renderTreeToggle = (
+    const settingsRowStyle = style({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: px(16),
+        padding: '10px 16px',
+        cursor: 'pointer',
+    });
+
+    const settingsDividerStyle = style({
+        height: px(1),
+        margin: '0 12px',
+        backgroundColor: 'rgba(148,163,184,0.25)',
+        flex: 'none',
+    });
+
+    const renderSettingsRow = (
         key: string,
         label: string,
         isOn: boolean,
         onClick: () => void,
     ) => div({
         key,
-        className: 'corner-glass corner-press',
-        style: treeTogglePillStyle,
+        style: settingsRowStyle,
         onclick: onClick,
     }, [
         h('span', { style: treeButtonToggleLabelStyle }, label),
@@ -832,6 +822,54 @@ export const view: View<State, Actions> = (state, actions) => {
         }, [
             h('div', { style: treeButtonToggleKnobStyle(isOn) }),
         ]),
+    ]);
+
+    const renderSettingsPopover = () => div({
+        key: 'view-settings-popover',
+        className: 'corner-glass',
+        style: style({
+            position: 'fixed',
+            right: px(cornerOffset),
+            bottom: px(cornerOffset + settingsButtonSize + 10),
+            minWidth: px(230),
+            borderRadius: px(16),
+            padding: '6px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 120,
+        }),
+    }, isTreeView ? [
+        renderSettingsRow(
+            'settings-trim-top',
+            i18n.ListView.TrimTopBlank(),
+            trimTopBlank,
+            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+        ),
+        div({ key: 'settings-divider-1', style: settingsDividerStyle }),
+        renderSettingsRow(
+            'settings-move-children',
+            i18n.TreeView.MoveWithChildren(),
+            buttonDropMovesSubtree,
+            () => actions.setTreeState({
+                buttonDropMovesSubtree: !buttonDropMovesSubtree,
+            }),
+        ),
+        div({ key: 'settings-divider-2', style: settingsDividerStyle }),
+        renderSettingsRow(
+            'settings-gray-clear',
+            i18n.TreeView.GrayAfterLineClear(),
+            grayAfterLineClear,
+            () => actions.setTreeState({
+                grayAfterLineClear: !grayAfterLineClear,
+            }),
+        ),
+    ] : [
+        renderSettingsRow(
+            'settings-trim-top',
+            i18n.ListView.TrimTopBlank(),
+            trimTopBlank,
+            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+        ),
     ]);
 
     return div({
@@ -1161,47 +1199,49 @@ export const view: View<State, Actions> = (state, actions) => {
         // Zoom controls (above undo/redo, tree view only)
         ...(isTreeView ? [renderTreeZoomControls()] : []),
 
-        // List view toggles (bottom right, list view only)
-        ...(!isTreeView ? [div({
-            key: 'list-toggle-group',
-            style: treeToggleGroupStyle,
+        // View settings button (bottom right)
+        h('button', {
+            key: 'btn-view-settings',
+            datatest: 'btn-view-settings',
+            title: i18n.ListView.ViewSettings(),
+            className: 'corner-glass corner-press',
+            style: style({
+                position: 'fixed',
+                right: px(cornerOffset),
+                bottom: px(cornerOffset),
+                width: px(settingsButtonSize),
+                height: px(settingsButtonSize),
+                borderRadius: '50%',
+                backgroundColor: settingsOpened ? '#2563EB' : '',
+                color: settingsOpened ? '#fff' : '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                zIndex: 115,
+            }),
+            onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
         }, [
-            renderTreeToggle(
-                'list-trim-top-toggle',
-                i18n.ListView.TrimTopBlank(),
-                trimTopBlank,
-                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-            ),
-        ])] : []),
+            h('i', { className: 'material-icons', style: style({ fontSize: px(22) }) }, 'tune'),
+        ]),
 
-        // Tree toggles (bottom right, tree view only)
-        ...(isTreeView ? [div({
-            key: 'tree-toggle-group',
-            style: treeToggleGroupStyle,
-        }, [
-            renderTreeToggle(
-                'tree-trim-top-toggle',
-                i18n.ListView.TrimTopBlank(),
-                trimTopBlank,
-                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-            ),
-            renderTreeToggle(
-                'tree-button-drop-toggle',
-                i18n.TreeView.MoveWithChildren(),
-                buttonDropMovesSubtree,
-                () => actions.setTreeState({
-                    buttonDropMovesSubtree: !state.tree.buttonDropMovesSubtree,
+        // Settings popover with tap-to-close scrim
+        ...(settingsOpened ? [
+            div({
+                key: 'view-settings-scrim',
+                style: style({
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 110,
                 }),
-            ),
-            renderTreeToggle(
-                'tree-gray-after-clear-toggle',
-                i18n.TreeView.GrayAfterLineClear(),
-                grayAfterLineClear,
-                () => actions.setTreeState({
-                    grayAfterLineClear: !grayAfterLineClear,
-                }),
-            ),
-        ])] : []),
+                onclick: () => actions.setListViewSettingsOpened({ opened: false }),
+            }),
+            renderSettingsPopover(),
+        ] : []),
 
         // Add top-level page button (tree view only)
         ...(isTreeView ? [h('button', {

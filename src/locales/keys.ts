@@ -162,6 +162,7 @@ export const i18n = {
     },
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
+        ViewSettings: () => t('ListView.ViewSettings'),
     },
     ListViewMenu: {
         Title: () => t('ListViewMenu.Title'),

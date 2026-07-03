@@ -138,6 +138,7 @@ export const resources = {
     },
     ListView: {
         TrimTopBlank: 'Trim top blank',
+        ViewSettings: '表示設定',
     },
     ListViewMenu: {
         Title: 'Import/Export',

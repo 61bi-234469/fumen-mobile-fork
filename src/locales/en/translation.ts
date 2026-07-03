@@ -163,6 +163,7 @@
     },
     ListView: {
         TrimTopBlank: 'Trim top blank',
+        ViewSettings: 'View settings',
     },
     ListViewMenu: {
         Title: 'Import/Export',

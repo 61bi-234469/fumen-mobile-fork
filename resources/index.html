@@ -62,6 +62,58 @@
             right: 0;
             white-space: nowrap;
         }
+
+        /* Floating corner controls (list/tree views) */
+        .corner-glass {
+            background-color: rgba(255, 255, 255, 0.86);
+            -webkit-backdrop-filter: blur(14px) saturate(1.6);
+            backdrop-filter: blur(14px) saturate(1.6);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+
+        .corner-btn {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .corner-btn:active:not(:disabled) {
+            transform: scale(0.9);
+            background-color: rgba(203, 213, 225, 0.55);
+        }
+
+        @media (hover: hover) {
+            .corner-btn:hover:not(:disabled) {
+                background-color: rgba(226, 232, 240, 0.75);
+            }
+        }
+
+        .corner-press {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+
+        .corner-press:active {
+            transform: scale(0.97);
+        }
+
+        .corner-fab {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        .corner-fab:active {
+            transform: scale(0.92);
+        }
+
+        @media (hover: hover) {
+            .corner-fab:hover {
+                filter: brightness(1.08);
+            }
+        }
     </style>
 </head>
 <body>

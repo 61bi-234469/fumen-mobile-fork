@@ -650,16 +650,15 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
-    const treeToggleGap = 8;
-    const treeTogglePillHeight = 40;
+    const treeToggleGap = 10;
+    const treeTogglePillHeight = 44;
     const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
-    const treeRootAddButtonBottomOffset = cornerOffset - 20;
-    const bottomControlOpacity = 0.8;
-    const bottomControlDisabledOpacity = 0.45;
-    const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
+    const undoRedoPillHeight = 56;
+    const treeAiButtonBottom = cornerOffset
         + treeToggleCount * treeTogglePillHeight
-        + Math.max(0, treeToggleCount - 1) * treeToggleGap;
+        + Math.max(0, treeToggleCount - 1) * treeToggleGap
+        + 12;
 
     const treeToggleGroupStyle = style({
         position: 'fixed',
@@ -676,71 +675,73 @@ export const view: View<State, Actions> = (state, actions) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: px(10),
-        padding: '8px 12px',
-        borderRadius: '20px',
-        backgroundColor: '#fff',
-        boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
-        opacity: bottomControlOpacity,
+        gap: px(12),
+        padding: '9px 10px 9px 16px',
+        borderRadius: px(22),
+        cursor: 'pointer',
     });
 
     const treeAiButtonStyle = style({
         position: 'fixed',
-        bottom: px(treeRootAddButtonBottom),
+        bottom: px(treeAiButtonBottom),
         right: px(cornerOffset),
-        width: px(44),
-        height: px(44),
-        borderRadius: '50%',
+        width: px(48),
+        height: px(48),
+        borderRadius: px(16),
         border: 'none',
-        backgroundColor: state.coldClear.isRunning ? '#f44336' : '#1565C0',
+        background: state.coldClear.isRunning
+            ? 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)'
+            : 'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)',
         color: '#fff',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
-        opacity: bottomControlOpacity,
+        boxShadow: state.coldClear.isRunning
+            ? '0 8px 20px rgba(220,38,38,0.35), 0 2px 6px rgba(15,23,42,0.12)'
+            : '0 8px 20px rgba(59,130,246,0.35), 0 2px 6px rgba(15,23,42,0.12)',
         zIndex: 100,
     });
 
     const treeButtonToggleLabelStyle = style({
-        fontSize: px(11),
-        fontWeight: 500,
-        color: '#475569',
+        fontSize: px(12),
+        fontWeight: 600,
+        color: '#334155',
         whiteSpace: 'nowrap',
+        letterSpacing: '0.01em',
     });
 
     const treeButtonToggleSwitchStyle = (isOn: boolean) => style({
         position: 'relative',
-        width: '36px',
-        height: '20px',
+        width: px(42),
+        height: px(24),
         backgroundColor: isOn ? '#2563EB' : '#CBD5E1',
-        borderRadius: '10px',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s',
+        borderRadius: px(12),
+        transition: 'background-color 0.25s ease',
         flex: 'none',
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.12)',
     });
 
     const treeButtonToggleKnobStyle = (isOn: boolean) => style({
         position: 'absolute',
-        top: '2px',
-        left: isOn ? '18px' : '2px',
-        width: '16px',
-        height: '16px',
+        top: px(2),
+        left: isOn ? px(20) : px(2),
+        width: px(20),
+        height: px(20),
         backgroundColor: '#fff',
         borderRadius: '50%',
-        transition: 'left 0.2s',
-        boxShadow: '0 1px 3px rgba(15,23,42,0.3)',
+        transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.35)',
     });
 
-    const zoomIconButtonStyle = style({
-        width: px(32),
-        height: px(32),
+    const cornerIconButtonStyle = (enabled: boolean, size: number) => style({
+        width: px(size),
+        height: px(size),
         border: 'none',
         borderRadius: '50%',
         backgroundColor: 'transparent',
-        color: '#475569',
-        cursor: 'pointer',
+        color: enabled ? '#334155' : '#CBD5E1',
+        cursor: enabled ? 'pointer' : 'default',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -748,32 +749,39 @@ export const view: View<State, Actions> = (state, actions) => {
     });
 
     const zoomResetButtonStyle = style({
-        minWidth: px(44),
-        height: px(32),
+        minWidth: px(52),
+        height: px(36),
         border: 'none',
-        borderRadius: '16px',
+        borderRadius: px(18),
         backgroundColor: 'transparent',
-        color: '#475569',
-        fontSize: px(12),
+        color: '#334155',
+        fontSize: px(13),
         fontWeight: 600,
         cursor: 'pointer',
-        padding: '0 4px',
+        padding: '0 6px',
+        fontVariantNumeric: 'tabular-nums',
+    });
+
+    const cornerDividerStyle = style({
+        width: px(1),
+        height: px(22),
+        backgroundColor: 'rgba(148,163,184,0.4)',
+        flex: 'none',
     });
 
     const renderTreeZoomControls = () => div({
         key: 'tree-zoom-controls',
+        className: 'corner-glass',
         style: style({
             position: 'fixed',
-            bottom: px(cornerOffset + 50 + 10),
+            bottom: px(cornerOffset + undoRedoPillHeight + 10),
             left: px(cornerOffset),
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            padding: '2px 4px',
-            borderRadius: '20px',
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 12px rgba(15,23,42,0.18)',
-            opacity: bottomControlOpacity,
+            gap: px(2),
+            padding: px(4),
+            borderRadius: px(22),
             zIndex: 100,
         }),
     }, [
@@ -781,7 +789,8 @@ export const view: View<State, Actions> = (state, actions) => {
             key: 'btn-tree-zoom-out',
             datatest: 'btn-tree-zoom-out',
             title: i18n.TreeView.ZoomOut(),
-            style: zoomIconButtonStyle,
+            className: 'corner-btn',
+            style: cornerIconButtonStyle(true, 36),
             onclick: () => actions.setTreeViewScale({ scale: state.tree.scale / 1.2 }),
         }, [
             h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'remove'),
@@ -790,6 +799,7 @@ export const view: View<State, Actions> = (state, actions) => {
             key: 'btn-tree-zoom-reset',
             datatest: 'btn-tree-zoom-reset',
             title: i18n.TreeView.ZoomReset(),
+            className: 'corner-btn',
             style: zoomResetButtonStyle,
             onclick: () => actions.setTreeViewScale({ scale: 1.0 }),
         }, `${Math.round(state.tree.scale * 100)}%`),
@@ -797,7 +807,8 @@ export const view: View<State, Actions> = (state, actions) => {
             key: 'btn-tree-zoom-in',
             datatest: 'btn-tree-zoom-in',
             title: i18n.TreeView.ZoomIn(),
-            style: zoomIconButtonStyle,
+            className: 'corner-btn',
+            style: cornerIconButtonStyle(true, 36),
             onclick: () => actions.setTreeViewScale({ scale: state.tree.scale * 1.2 }),
         }, [
             h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'add'),
@@ -811,12 +822,13 @@ export const view: View<State, Actions> = (state, actions) => {
         onClick: () => void,
     ) => div({
         key,
+        className: 'corner-glass corner-press',
         style: treeTogglePillStyle,
+        onclick: onClick,
     }, [
         h('span', { style: treeButtonToggleLabelStyle }, label),
         h('div', {
             style: treeButtonToggleSwitchStyle(isOn),
-            onclick: onClick,
         }, [
             h('div', { style: treeButtonToggleKnobStyle(isOn) }),
         ]),
@@ -1100,37 +1112,27 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Undo/Redo buttons at bottom left
+        // Undo/Redo pill at bottom left
         div({
             key: 'undo-redo-buttons',
+            className: 'corner-glass',
             style: style({
                 position: 'fixed',
                 bottom: px(cornerOffset),
                 left: px(cornerOffset),
                 display: 'flex',
                 flexDirection: 'row',
-                gap: px(10),
+                alignItems: 'center',
+                gap: px(4),
+                padding: px(5),
+                borderRadius: px(28),
                 zIndex: 100,
             }),
         }, [
-            // Undo button (left arrow)
             h('button', {
                 key: 'btn-undo',
-                style: style({
-                    width: px(50),
-                    height: px(50),
-                    borderRadius: '50%',
-                    border: 'none',
-                    backgroundColor: undoEnabled ? '#1565C0' : '#9E9E9E',
-                    color: '#fff',
-                    fontSize: px(24),
-                    cursor: undoEnabled ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
-                    opacity: undoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
-                }),
+                className: 'corner-btn',
+                style: cornerIconButtonStyle(undoEnabled, 44),
                 onclick: () => {
                     if (undoEnabled) {
                         actions.undo();
@@ -1138,26 +1140,13 @@ export const view: View<State, Actions> = (state, actions) => {
                 },
                 disabled: !undoEnabled,
             }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_back'),
+                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'undo'),
             ]),
-            // Redo button (right arrow)
+            h('div', { key: 'undo-redo-divider', style: cornerDividerStyle }),
             h('button', {
                 key: 'btn-redo',
-                style: style({
-                    width: px(50),
-                    height: px(50),
-                    borderRadius: '50%',
-                    border: 'none',
-                    backgroundColor: redoEnabled ? '#1565C0' : '#9E9E9E',
-                    color: '#fff',
-                    fontSize: px(24),
-                    cursor: redoEnabled ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(15,23,42,0.25)',
-                    opacity: redoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
-                }),
+                className: 'corner-btn',
+                style: cornerIconButtonStyle(redoEnabled, 44),
                 onclick: () => {
                     if (redoEnabled) {
                         actions.redo();
@@ -1165,7 +1154,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 },
                 disabled: !redoEnabled,
             }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
+                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'redo'),
             ]),
         ]),
 
@@ -1218,6 +1207,7 @@ export const view: View<State, Actions> = (state, actions) => {
         ...(isTreeView ? [h('button', {
             key: 'tree-ai-menu',
             datatest: 'btn-tree-ai-menu',
+            className: 'corner-fab',
             style: treeAiButtonStyle,
             onclick: () => actions.openColdClearMenuModal(),
         }, [

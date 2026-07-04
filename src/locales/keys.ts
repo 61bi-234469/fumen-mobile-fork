@@ -150,6 +150,9 @@ export const i18n = {
     TreeView: {
         MoveWithChildren: () => t('TreeView.MoveWithChildren'),
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
+        ZoomIn: () => t('TreeView.ZoomIn'),
+        ZoomOut: () => t('TreeView.ZoomOut'),
+        ZoomReset: () => t('TreeView.ZoomReset'),
         DisableConfirm: {
             Title: () => t('TreeView.DisableConfirm.Title'),
             Message: () => t('TreeView.DisableConfirm.Message'),
@@ -159,6 +162,7 @@ export const i18n = {
     },
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
+        ViewSettings: () => t('ListView.ViewSettings'),
     },
     ListViewMenu: {
         Title: () => t('ListViewMenu.Title'),

@@ -225,6 +225,7 @@ export interface ListViewActions {
     setListViewDragState: (data: { draggingIndex: number | null; dropTargetIndex: number | null }) => action;
     setListViewScale: (data: { scale: number }) => action;
     setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
+    setListViewSettingsOpened: (data: { opened: boolean }) => action;
     setListViewShortenUrls: (data: { enabled: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
@@ -560,6 +561,17 @@ export const listViewActions: Readonly<ListViewActions> = {
             listView: {
                 ...state.listView,
                 scale: clampedScale,
+            },
+        };
+    },
+    setListViewSettingsOpened: ({ opened }) => (state): NextState => {
+        if (state.listView.settingsOpened === opened) {
+            return undefined;
+        }
+        return {
+            listView: {
+                ...state.listView,
+                settingsOpened: opened,
             },
         };
     },

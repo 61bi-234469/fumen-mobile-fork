@@ -170,6 +170,7 @@ export interface State {
         trimTopBlank: boolean;
         shortenUrls: boolean;
         exportScope: 'all' | 'left';
+        settingsOpened: boolean;
     };
     tree: TreeState;
     coldClear: {
@@ -304,6 +305,7 @@ export const initState: Readonly<State> = {
         trimTopBlank: false,
         shortenUrls: false,
         exportScope: 'all',
+        settingsOpened: false,
     },
     tree: initialTreeState,
     coldClear: {

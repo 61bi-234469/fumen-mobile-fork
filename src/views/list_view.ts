@@ -650,102 +650,226 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
-    const treeToggleGap = 8;
-    const treeTogglePillHeight = 40;
-    const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
-    const treeRootAddButtonBottomOffset = cornerOffset - 20;
-    const bottomControlOpacity = 0.8;
-    const bottomControlDisabledOpacity = 0.45;
-    const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
-        + treeToggleCount * treeTogglePillHeight
-        + Math.max(0, treeToggleCount - 1) * treeToggleGap;
-
-    const treeToggleGroupStyle = style({
-        position: 'fixed',
-        bottom: px(cornerOffset),
-        right: px(cornerOffset),
-        display: 'flex',
-        flexDirection: 'column',
-        gap: px(treeToggleGap),
-        alignItems: 'flex-end',
-        zIndex: 100,
-    });
-
-    const treeTogglePillStyle = style({
-        display: 'flex',
-        alignItems: 'center',
-        gap: px(8),
-        padding: '6px 10px',
-        borderRadius: '16px',
-        backgroundColor: '#fff',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        opacity: bottomControlOpacity,
-    });
+    const undoRedoPillHeight = 56;
+    const settingsButtonSize = 48;
+    const settingsOpened = state.listView.settingsOpened;
+    const treeAiButtonBottom = cornerOffset + settingsButtonSize + 12;
 
     const treeAiButtonStyle = style({
         position: 'fixed',
-        bottom: px(treeRootAddButtonBottom),
+        bottom: px(treeAiButtonBottom),
         right: px(cornerOffset),
-        width: px(44),
-        height: px(44),
-        borderRadius: '50%',
+        width: px(48),
+        height: px(48),
+        borderRadius: px(16),
         border: 'none',
-        backgroundColor: state.coldClear.isRunning ? '#f44336' : '#1565C0',
+        background: state.coldClear.isRunning
+            ? 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)'
+            : 'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)',
         color: '#fff',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        opacity: bottomControlOpacity,
+        boxShadow: state.coldClear.isRunning
+            ? '0 8px 20px rgba(220,38,38,0.35), 0 2px 6px rgba(15,23,42,0.12)'
+            : '0 8px 20px rgba(59,130,246,0.35), 0 2px 6px rgba(15,23,42,0.12)',
         zIndex: 100,
     });
 
     const treeButtonToggleLabelStyle = style({
-        fontSize: px(10),
-        color: '#555',
+        fontSize: px(12),
+        fontWeight: 600,
+        color: '#334155',
         whiteSpace: 'nowrap',
+        letterSpacing: '0.01em',
     });
 
     const treeButtonToggleSwitchStyle = (isOn: boolean) => style({
         position: 'relative',
-        width: '34px',
-        height: '18px',
-        backgroundColor: isOn ? '#4CAF50' : '#ccc',
-        borderRadius: '9px',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s',
+        width: px(42),
+        height: px(24),
+        backgroundColor: isOn ? '#2563EB' : '#CBD5E1',
+        borderRadius: px(12),
+        transition: 'background-color 0.25s ease',
+        flex: 'none',
+        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.12)',
     });
 
     const treeButtonToggleKnobStyle = (isOn: boolean) => style({
         position: 'absolute',
-        top: '2px',
-        left: isOn ? '18px' : '2px',
-        width: '14px',
-        height: '14px',
+        top: px(2),
+        left: isOn ? px(20) : px(2),
+        width: px(20),
+        height: px(20),
         backgroundColor: '#fff',
         borderRadius: '50%',
-        transition: 'left 0.2s',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+        transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.35)',
     });
 
-    const renderTreeToggle = (
+    const cornerIconButtonStyle = (enabled: boolean, size: number) => style({
+        width: px(size),
+        height: px(size),
+        border: 'none',
+        borderRadius: '50%',
+        backgroundColor: 'transparent',
+        color: enabled ? '#334155' : '#CBD5E1',
+        cursor: enabled ? 'pointer' : 'default',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+    });
+
+    const zoomResetButtonStyle = style({
+        minWidth: px(52),
+        height: px(36),
+        border: 'none',
+        borderRadius: px(18),
+        backgroundColor: 'transparent',
+        color: '#334155',
+        fontSize: px(13),
+        fontWeight: 600,
+        cursor: 'pointer',
+        padding: '0 6px',
+        fontVariantNumeric: 'tabular-nums',
+    });
+
+    const cornerDividerStyle = style({
+        width: px(1),
+        height: px(22),
+        backgroundColor: 'rgba(148,163,184,0.4)',
+        flex: 'none',
+    });
+
+    const renderTreeZoomControls = () => div({
+        key: 'tree-zoom-controls',
+        className: 'corner-glass',
+        style: style({
+            position: 'fixed',
+            bottom: px(cornerOffset + undoRedoPillHeight + 10),
+            left: px(cornerOffset),
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: px(2),
+            padding: px(4),
+            borderRadius: px(22),
+            zIndex: 100,
+        }),
+    }, [
+        h('button', {
+            key: 'btn-tree-zoom-out',
+            datatest: 'btn-tree-zoom-out',
+            title: i18n.TreeView.ZoomOut(),
+            className: 'corner-btn',
+            style: cornerIconButtonStyle(true, 36),
+            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale / 1.2 }),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'remove'),
+        ]),
+        h('button', {
+            key: 'btn-tree-zoom-reset',
+            datatest: 'btn-tree-zoom-reset',
+            title: i18n.TreeView.ZoomReset(),
+            className: 'corner-btn',
+            style: zoomResetButtonStyle,
+            onclick: () => actions.setTreeViewScale({ scale: 1.0 }),
+        }, `${Math.round(state.tree.scale * 100)}%`),
+        h('button', {
+            key: 'btn-tree-zoom-in',
+            datatest: 'btn-tree-zoom-in',
+            title: i18n.TreeView.ZoomIn(),
+            className: 'corner-btn',
+            style: cornerIconButtonStyle(true, 36),
+            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale * 1.2 }),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'add'),
+        ]),
+    ]);
+
+    const settingsRowStyle = style({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: px(16),
+        padding: '10px 16px',
+        cursor: 'pointer',
+    });
+
+    const settingsDividerStyle = style({
+        height: px(1),
+        margin: '0 12px',
+        backgroundColor: 'rgba(148,163,184,0.25)',
+        flex: 'none',
+    });
+
+    const renderSettingsRow = (
         key: string,
         label: string,
         isOn: boolean,
         onClick: () => void,
     ) => div({
         key,
-        style: treeTogglePillStyle,
+        style: settingsRowStyle,
+        onclick: onClick,
     }, [
         h('span', { style: treeButtonToggleLabelStyle }, label),
         h('div', {
             style: treeButtonToggleSwitchStyle(isOn),
-            onclick: onClick,
         }, [
             h('div', { style: treeButtonToggleKnobStyle(isOn) }),
         ]),
+    ]);
+
+    const renderSettingsPopover = () => div({
+        key: 'view-settings-popover',
+        className: 'corner-glass',
+        style: style({
+            position: 'fixed',
+            right: px(cornerOffset),
+            bottom: px(cornerOffset + settingsButtonSize + 10),
+            minWidth: px(230),
+            borderRadius: px(16),
+            padding: '6px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 120,
+        }),
+    }, isTreeView ? [
+        renderSettingsRow(
+            'settings-trim-top',
+            i18n.ListView.TrimTopBlank(),
+            trimTopBlank,
+            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+        ),
+        div({ key: 'settings-divider-1', style: settingsDividerStyle }),
+        renderSettingsRow(
+            'settings-move-children',
+            i18n.TreeView.MoveWithChildren(),
+            buttonDropMovesSubtree,
+            () => actions.setTreeState({
+                buttonDropMovesSubtree: !buttonDropMovesSubtree,
+            }),
+        ),
+        div({ key: 'settings-divider-2', style: settingsDividerStyle }),
+        renderSettingsRow(
+            'settings-gray-clear',
+            i18n.TreeView.GrayAfterLineClear(),
+            grayAfterLineClear,
+            () => actions.setTreeState({
+                grayAfterLineClear: !grayAfterLineClear,
+            }),
+        ),
+    ] : [
+        renderSettingsRow(
+            'settings-trim-top',
+            i18n.ListView.TrimTopBlank(),
+            trimTopBlank,
+            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+        ),
     ]);
 
     return div({
@@ -1026,37 +1150,27 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Undo/Redo buttons at bottom left
+        // Undo/Redo pill at bottom left
         div({
             key: 'undo-redo-buttons',
+            className: 'corner-glass',
             style: style({
                 position: 'fixed',
                 bottom: px(cornerOffset),
                 left: px(cornerOffset),
                 display: 'flex',
                 flexDirection: 'row',
-                gap: px(10),
+                alignItems: 'center',
+                gap: px(4),
+                padding: px(5),
+                borderRadius: px(28),
                 zIndex: 100,
             }),
         }, [
-            // Undo button (left arrow)
             h('button', {
                 key: 'btn-undo',
-                style: style({
-                    width: px(50),
-                    height: px(50),
-                    borderRadius: '50%',
-                    border: 'none',
-                    backgroundColor: undoEnabled ? '#1565C0' : '#9E9E9E',
-                    color: '#fff',
-                    fontSize: px(24),
-                    cursor: undoEnabled ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: undoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
-                }),
+                className: 'corner-btn',
+                style: cornerIconButtonStyle(undoEnabled, 44),
                 onclick: () => {
                     if (undoEnabled) {
                         actions.undo();
@@ -1064,26 +1178,13 @@ export const view: View<State, Actions> = (state, actions) => {
                 },
                 disabled: !undoEnabled,
             }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_back'),
+                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'undo'),
             ]),
-            // Redo button (right arrow)
+            h('div', { key: 'undo-redo-divider', style: cornerDividerStyle }),
             h('button', {
                 key: 'btn-redo',
-                style: style({
-                    width: px(50),
-                    height: px(50),
-                    borderRadius: '50%',
-                    border: 'none',
-                    backgroundColor: redoEnabled ? '#1565C0' : '#9E9E9E',
-                    color: '#fff',
-                    fontSize: px(24),
-                    cursor: redoEnabled ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: redoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
-                }),
+                className: 'corner-btn',
+                style: cornerIconButtonStyle(redoEnabled, 44),
                 onclick: () => {
                     if (redoEnabled) {
                         actions.redo();
@@ -1091,56 +1192,62 @@ export const view: View<State, Actions> = (state, actions) => {
                 },
                 disabled: !redoEnabled,
             }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
+                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'redo'),
             ]),
         ]),
 
-        // List view toggles (bottom right, list view only)
-        ...(!isTreeView ? [div({
-            key: 'list-toggle-group',
-            style: treeToggleGroupStyle,
-        }, [
-            renderTreeToggle(
-                'list-trim-top-toggle',
-                i18n.ListView.TrimTopBlank(),
-                trimTopBlank,
-                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-            ),
-        ])] : []),
+        // Zoom controls (above undo/redo, tree view only)
+        ...(isTreeView ? [renderTreeZoomControls()] : []),
 
-        // Tree toggles (bottom right, tree view only)
-        ...(isTreeView ? [div({
-            key: 'tree-toggle-group',
-            style: treeToggleGroupStyle,
+        // View settings button (bottom right)
+        h('button', {
+            key: 'btn-view-settings',
+            datatest: 'btn-view-settings',
+            title: i18n.ListView.ViewSettings(),
+            className: 'corner-glass corner-press',
+            style: style({
+                position: 'fixed',
+                right: px(cornerOffset),
+                bottom: px(cornerOffset),
+                width: px(settingsButtonSize),
+                height: px(settingsButtonSize),
+                borderRadius: '50%',
+                backgroundColor: settingsOpened ? '#2563EB' : '',
+                color: settingsOpened ? '#fff' : '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                zIndex: 115,
+            }),
+            onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
         }, [
-            renderTreeToggle(
-                'tree-trim-top-toggle',
-                i18n.ListView.TrimTopBlank(),
-                trimTopBlank,
-                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-            ),
-            renderTreeToggle(
-                'tree-button-drop-toggle',
-                i18n.TreeView.MoveWithChildren(),
-                buttonDropMovesSubtree,
-                () => actions.setTreeState({
-                    buttonDropMovesSubtree: !state.tree.buttonDropMovesSubtree,
+            h('i', { className: 'material-icons', style: style({ fontSize: px(22) }) }, 'tune'),
+        ]),
+
+        // Settings popover with tap-to-close scrim
+        ...(settingsOpened ? [
+            div({
+                key: 'view-settings-scrim',
+                style: style({
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 110,
                 }),
-            ),
-            renderTreeToggle(
-                'tree-gray-after-clear-toggle',
-                i18n.TreeView.GrayAfterLineClear(),
-                grayAfterLineClear,
-                () => actions.setTreeState({
-                    grayAfterLineClear: !grayAfterLineClear,
-                }),
-            ),
-        ])] : []),
+                onclick: () => actions.setListViewSettingsOpened({ opened: false }),
+            }),
+            renderSettingsPopover(),
+        ] : []),
 
         // Add top-level page button (tree view only)
         ...(isTreeView ? [h('button', {
             key: 'tree-ai-menu',
             datatest: 'btn-tree-ai-menu',
+            className: 'corner-fab',
             style: treeAiButtonStyle,
             onclick: () => actions.openColdClearMenuModal(),
         }, [

@@ -126,6 +126,9 @@ export const resources = {
     TreeView: {
         MoveWithChildren: 'Move with children',
         GrayAfterLineClear: 'Gray out cleared lines',
+        ZoomIn: '拡大',
+        ZoomOut: '縮小',
+        ZoomReset: 'ズームをリセット',
         DisableConfirm: {
             Title: 'ツリーモードを無効にしますか？',
             Message: 'ツリー構造が削除されます。',
@@ -135,6 +138,7 @@ export const resources = {
     },
     ListView: {
         TrimTopBlank: 'Trim top blank',
+        ViewSettings: '表示設定',
     },
     ListViewMenu: {
         Title: 'Import/Export',

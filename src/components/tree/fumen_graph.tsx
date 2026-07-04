@@ -43,6 +43,58 @@ import {
 
 // Thumbnail aspect ratio matches tetris field (10:23)
 
+// Modern design tokens for the tree view
+const TREE_COLORS = {
+    canvas: '#F1F5F9',
+    canvasDot: '#CBD5E1',
+    cardFill: '#FFFFFF',
+    cardBorder: '#E2E8F0',
+    cardActiveFill: '#EFF6FF',
+    accent: '#2563EB',
+    accentHalo: '#BFDBFE',
+    accentBadgeBg: '#DBEAFE',
+    connection: '#94A3B8',
+    textMuted: '#64748B',
+    insert: '#10B981',
+    insertHover: '#34D399',
+    branch: '#F59E0B',
+    branchHover: '#FBBF24',
+    delete: '#EF4444',
+    deleteHover: '#F87171',
+    disabled: '#94A3B8',
+    ghostFill: '#F8FAFC',
+    ghostBorder: '#94A3B8',
+    commentChangedBg: '#10B981',
+};
+
+// Crisp path-drawn icons (replace text glyphs so buttons stay sharp at any zoom)
+const iconPlus = (r: number) => (
+    <path
+        d={`M ${-r} 0 H ${r} M 0 ${-r} V ${r}`}
+        stroke="#fff"
+        stroke-width={2.4}
+        stroke-linecap="round"
+        fill="none"
+    />
+);
+
+const iconMinus = (r: number) => (
+    <path
+        d={`M ${-r} 0 H ${r}`}
+        stroke="#fff"
+        stroke-width={2.4}
+        stroke-linecap="round"
+        fill="none"
+    />
+);
+
+const iconCopy = (
+    <g fill="none" stroke="#fff" stroke-width={1.6} stroke-linejoin="round">
+        <path d="M -1.5 -5.5 H 3.5 A 1.5 1.5 0 0 1 5 -4 V 2" stroke-linecap="round" />
+        <rect x={-5} y={-3.5} width={7} height={8.5} rx={1.5} />
+    </g>
+);
+
 // ============================================================================
 // Props Interface
 // ============================================================================
@@ -123,7 +175,6 @@ const renderConnection = (
     nodeLayouts: Map<TreeNodeId, TreeNodeLayout>,
     fromId: TreeNodeId,
     toId: TreeNodeId,
-    isBranch: boolean,
     activeNodeId: TreeNodeId | null,
 ) => {
     const fromPos = getNodeLayout(nodeLayouts, fromId);
@@ -140,23 +191,22 @@ const renderConnection = (
 
     const isActive = fromId === activeNodeId || toId === activeNodeId;
 
-    // Create path
+    // Create path: straight when on the same lane, smooth cubic otherwise
     let pathD: string;
-    if (isBranch) {
-        // Branch path: curved line from parent center to child center
+    if (y1 === y2) {
+        pathD = `M ${x1} ${y1} L ${x2} ${y2}`;
+    } else {
         const midX = (x1 + x2) / 2;
         pathD = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
-    } else {
-        // INSERT route: straight line from parent center to child center
-        pathD = `M ${x1} ${y1} L ${x2} ${y2}`;
     }
 
     return (
         <path
             key={`conn-${fromId}-${toId}`}
             d={pathD}
-            stroke={isActive ? '#2196F3' : '#999'}
-            stroke-width={isActive ? 2 : 1.5}
+            stroke={isActive ? TREE_COLORS.accent : TREE_COLORS.connection}
+            stroke-width={isActive ? 2.5 : 2}
+            stroke-linecap="round"
             fill="none"
         />
     );
@@ -224,13 +274,13 @@ const renderNode = (
     };
 
     // Determine node background and stroke based on drag state
-    let fillColor = '#fff';
-    let strokeColor = '#ccc';
+    let fillColor = TREE_COLORS.cardFill;
+    let strokeColor = TREE_COLORS.cardBorder;
     let strokeWidth = 1;
 
     if (isActive) {
-        fillColor = '#E3F2FD';
-        strokeColor = '#2196F3';
+        fillColor = TREE_COLORS.cardActiveFill;
+        strokeColor = TREE_COLORS.accent;
         strokeWidth = 2;
     }
 
@@ -343,6 +393,20 @@ const renderNode = (
         >
             {/* Node content wrapper - semi-transparent when dragging */}
             <g opacity={dragOpacity}>
+            {/* Focus halo for the active node */}
+            {isActive && (
+                <rect
+                    x={-3}
+                    y={-3}
+                    width={TREE_NODE_WIDTH + 6}
+                    height={nodeHeight + 6}
+                    rx={TREE_NODE_RADIUS + 3}
+                    ry={TREE_NODE_RADIUS + 3}
+                    fill="none"
+                    stroke={TREE_COLORS.accentHalo}
+                    stroke-width={4}
+                />
+            )}
             {/* Node background */}
             <rect
                 width={TREE_NODE_WIDTH}
@@ -352,6 +416,7 @@ const renderNode = (
                 fill={fillColor}
                 stroke={strokeColor}
                 stroke-width={strokeWidth}
+                filter="url(#tree-card-shadow)"
             />
 
             {/* Thumbnail */}
@@ -365,38 +430,69 @@ const renderNode = (
                 />
             )}
 
-            {/* Page number - clickable link to jump to page */}
-            <text
-                x={TREE_NODE_WIDTH / 2}
-                y={thumbnailHeight + TREE_PAGE_NUMBER_OFFSET}
-                text-anchor="middle"
-                font-size="16"
-                font-weight="bold"
-                fill="#1976D2"
-                text-decoration="underline"
-                style={style({ cursor: 'pointer' })}
-                onclick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    actions.onNodeClick(node.id);
-                }}
-                onmousedown={(e: MouseEvent) => {
-                    e.stopPropagation();
-                }}
-                ontouchstart={(e: TouchEvent) => {
-                    e.stopPropagation();
-                }}
-            >
-                #{pageNumber}
-            </text>
+            {/* Page number - clickable pill badge to jump to page */}
+            {(() => {
+                const label = `#${pageNumber}`;
+                const pillWidth = 14 + label.length * 8;
+                const pillHeight = 17;
+                const pillCenterY = thumbnailHeight + TREE_PAGE_NUMBER_OFFSET - 5;
+                return (
+                    <g
+                        style={style({ cursor: 'pointer' })}
+                        onclick={(e: MouseEvent) => {
+                            e.stopPropagation();
+                            actions.onNodeClick(node.id);
+                        }}
+                        onmousedown={(e: MouseEvent) => {
+                            e.stopPropagation();
+                        }}
+                        ontouchstart={(e: TouchEvent) => {
+                            e.stopPropagation();
+                        }}
+                    >
+                        <rect
+                            x={TREE_NODE_WIDTH / 2 - pillWidth / 2}
+                            y={pillCenterY - pillHeight / 2}
+                            width={pillWidth}
+                            height={pillHeight}
+                            rx={pillHeight / 2}
+                            ry={pillHeight / 2}
+                            fill={isActive ? TREE_COLORS.accent : TREE_COLORS.accentBadgeBg}
+                        />
+                        <text
+                            x={TREE_NODE_WIDTH / 2}
+                            y={pillCenterY}
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            font-size="12"
+                            font-weight="bold"
+                            fill={isActive ? '#fff' : TREE_COLORS.accent}
+                        >
+                            {label}
+                        </text>
+                    </g>
+                );
+            })()}
 
-            {/* Branch indicator (shows if node has multiple children) */}
+            {/* Branch indicator with children count (shows if node has multiple children) */}
             {node.childrenIds.length > 1 && (
-                <circle
-                    cx={TREE_NODE_WIDTH - 10}
-                    cy={10}
-                    r={8}
-                    fill="#FF9800"
-                />
+                <g transform={`translate(${TREE_NODE_WIDTH - 10}, 10)`}>
+                    <circle
+                        r={9}
+                        fill={TREE_COLORS.branch}
+                        stroke="#fff"
+                        stroke-width={1.5}
+                    />
+                    <text
+                        text-anchor="middle"
+                        dominant-baseline="central"
+                        font-size="11"
+                        font-weight="bold"
+                        fill="#fff"
+                    >
+                        {node.childrenIds.length}
+                    </text>
+                </g>
             )}
 
             {/* Copy button - below the node (outside node bounds) */}
@@ -438,20 +534,13 @@ const renderNode = (
                     {/* Visible button */}
                     <circle
                         r={TREE_COPY_BUTTON_SIZE / 2}
-                        fill="#2196F3"
+                        fill={TREE_COLORS.accent}
                         stroke="#fff"
                         stroke-width={2}
+                        filter="url(#tree-button-shadow)"
                     />
-                    {/* "+" icon for copy */}
-                    <text
-                        text-anchor="middle"
-                        dominant-baseline="central"
-                        font-size="16"
-                        font-weight="bold"
-                        fill="#fff"
-                    >
-                        +
-                    </text>
+                    {/* Duplicate-page icon */}
+                    {iconCopy}
                 </g>
             )}
 
@@ -487,20 +576,13 @@ const renderNode = (
                     <circle
                         r={TREE_DELETE_BADGE_SIZE / 2}
                         fill={canDelete
-                            ? (isDeleteButtonHighlighted ? '#EF5350' : '#F44336')
-                            : '#9E9E9E'}
+                            ? (isDeleteButtonHighlighted ? TREE_COLORS.deleteHover : TREE_COLORS.delete)
+                            : TREE_COLORS.disabled}
                         stroke="#fff"
                         stroke-width={isDeleteButtonHighlighted ? 3 : 2}
+                        filter="url(#tree-button-shadow)"
                     />
-                    <text
-                        text-anchor="middle"
-                        dominant-baseline="central"
-                        font-size="16"
-                        font-weight="bold"
-                        fill="#fff"
-                    >
-                        −
-                    </text>
+                    {iconMinus(4.5)}
                 </g>
             )}
 
@@ -555,20 +637,13 @@ const renderNode = (
                         <circle
                             r={TREE_ADD_BUTTON_SIZE / 2}
                             fill={isParentOfDragSource
-                                ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
-                                : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
+                                ? (isInsertButtonHighlighted ? TREE_COLORS.deleteHover : TREE_COLORS.delete)
+                                : (isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert)}
                             stroke="#fff"
                             stroke-width={isInsertButtonHighlighted ? 3 : 2}
+                            filter="url(#tree-button-shadow)"
                         />
-                        <text
-                            text-anchor="middle"
-                            dominant-baseline="central"
-                            font-size="18"
-                            font-weight="bold"
-                            fill="#fff"
-                        >
-                            {isParentOfDragSource ? '−' : '+'}
-                        </text>
+                        {isParentOfDragSource ? iconMinus(5.5) : iconPlus(5.5)}
                     </g>
                     {/* Orange Branch button */}
                     {!hideBranchButton && (
@@ -613,19 +688,12 @@ const renderNode = (
                         />
                         <circle
                             r={TREE_ADD_BUTTON_SIZE / 2}
-                            fill={isBranchButtonHighlighted ? '#FFB74D' : '#FF9800'}
+                            fill={isBranchButtonHighlighted ? TREE_COLORS.branchHover : TREE_COLORS.branch}
                             stroke="#fff"
                             stroke-width={isBranchButtonHighlighted ? 3 : 2}
+                            filter="url(#tree-button-shadow)"
                         />
-                        <text
-                            text-anchor="middle"
-                            dominant-baseline="central"
-                            font-size="18"
-                            font-weight="bold"
-                            fill="#fff"
-                        >
-                            +
-                        </text>
+                        {iconPlus(5.5)}
                     </g>
                     )}
                 </g>
@@ -673,20 +741,13 @@ const renderNode = (
                     <circle
                         r={TREE_ADD_BUTTON_SIZE / 2}
                         fill={isParentOfDragSource
-                            ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
-                            : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
+                            ? (isInsertButtonHighlighted ? TREE_COLORS.deleteHover : TREE_COLORS.delete)
+                            : (isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert)}
                         stroke="#fff"
                         stroke-width={isInsertButtonHighlighted ? 3 : 2}
+                        filter="url(#tree-button-shadow)"
                     />
-                    <text
-                        text-anchor="middle"
-                        dominant-baseline="central"
-                        font-size="18"
-                        font-weight="bold"
-                        fill="#fff"
-                    >
-                        {isParentOfDragSource ? '−' : '+'}
-                    </text>
+                    {isParentOfDragSource ? iconMinus(5.5) : iconPlus(5.5)}
                 </g>
             ))}
             </g>
@@ -723,7 +784,7 @@ const renderDropSlot = (
                 width={DROP_SLOT_WIDTH}
                 height={height}
                 rx={DROP_SLOT_WIDTH / 2}
-                fill="#2196F3"
+                fill={TREE_COLORS.accent}
             />
         </g>
     );
@@ -754,14 +815,23 @@ export const FumenGraph: Component<Props> = ({
             width: '100%',
             height: px(containerHeight),
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#999',
+            gap: '12px',
+            color: TREE_COLORS.textMuted,
             fontSize: '14px',
+            backgroundColor: TREE_COLORS.canvas,
+        });
+
+        const emptyIconStyle = style({
+            fontSize: '40px',
+            color: TREE_COLORS.connection,
         });
 
         return (
             <div key="fumen-graph-empty" style={emptyStyle}>
+                <i className="material-icons" style={emptyIconStyle}>account_tree</i>
                 No pages to display
             </div>
         );
@@ -807,7 +877,7 @@ export const FumenGraph: Component<Props> = ({
         height: px(containerHeight),
         overflowX: 'auto',
         overflowY: 'auto',
-        backgroundColor: '#fafafa',
+        backgroundColor: TREE_COLORS.canvas,
     });
 
     const canvasStyle = style({
@@ -825,7 +895,7 @@ export const FumenGraph: Component<Props> = ({
 
     // Render connections
     const connections = layout.connections.map(conn =>
-        renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, conn.isBranch, activeNodeId),
+        renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, activeNodeId),
     );
 
     // Calculate source page index for drag operations
@@ -949,21 +1019,19 @@ export const FumenGraph: Component<Props> = ({
                 height={ghostNodeHeight}
                 rx={TREE_NODE_RADIUS}
                 ry={TREE_NODE_RADIUS}
-                fill="#F1F3F5"
-                stroke={isRootGhostHighlighted ? '#FF9800' : '#9AA1A9'}
+                fill={TREE_COLORS.ghostFill}
+                stroke={isRootGhostHighlighted ? TREE_COLORS.branch : TREE_COLORS.ghostBorder}
                 stroke-width={isRootGhostHighlighted ? 3 : 1.5}
-                stroke-dasharray="4 3"
+                stroke-dasharray="6 4"
             />
             <g transform={`translate(${ghostNodeWidth / 2}, ${ghostNodeHeight / 2})`}>
-                <text
-                    text-anchor="middle"
-                    dominant-baseline="central"
-                    font-size="20"
-                    font-weight="bold"
-                    fill="#7A838D"
-                >
-                    +
-                </text>
+                <path
+                    d="M -7 0 H 7 M 0 -7 V 7"
+                    stroke={TREE_COLORS.textMuted}
+                    stroke-width={2.4}
+                    stroke-linecap="round"
+                    fill="none"
+                />
             </g>
         </g>
     );
@@ -1005,14 +1073,15 @@ export const FumenGraph: Component<Props> = ({
             width: px(width),
             height: px(height),
             fontSize: px(fontSize),
-            border: '1px solid #ccc',
-            borderRadius: '2px',
+            border: `1px solid ${showGreenStyle ? TREE_COLORS.commentChangedBg : TREE_COLORS.cardBorder}`,
+            borderRadius: px(Math.max(3, Math.round(6 * scale))),
             padding: `${paddingY}px ${paddingX}px`,
             boxSizing: 'border-box',
             resize: 'none',
             fontFamily: 'inherit',
-            backgroundColor: showGreenStyle ? '#43a047' : '#fff',
-            color: showGreenStyle ? '#fff' : '#333',
+            backgroundColor: showGreenStyle ? TREE_COLORS.commentChangedBg : '#fff',
+            color: showGreenStyle ? '#fff' : '#334155',
+            outline: 'none',
             pointerEvents: isDragging ? 'none' : 'auto',
             zIndex: 2,
         });
@@ -1321,6 +1390,33 @@ export const FumenGraph: Component<Props> = ({
                     style={style({ display: 'block', position: 'absolute', left: '0', top: '0', zIndex: 1 })}
                     onmousemove={handleSvgMouseMove}
                 >
+                    <defs>
+                        <filter id="tree-card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow
+                                dx="0"
+                                dy="1"
+                                stdDeviation="2"
+                                flood-color="#0F172A"
+                                flood-opacity="0.14"
+                            />
+                        </filter>
+                        <filter id="tree-button-shadow" x="-60%" y="-60%" width="220%" height="220%">
+                            <feDropShadow
+                                dx="0"
+                                dy="1"
+                                stdDeviation="1"
+                                flood-color="#0F172A"
+                                flood-opacity="0.25"
+                            />
+                        </filter>
+                        <pattern id="tree-dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                            <circle cx="12" cy="12" r="1.2" fill={TREE_COLORS.canvasDot} />
+                        </pattern>
+                    </defs>
+
+                    {/* Dot-grid background */}
+                    <rect width={scaledWidth} height={scaledHeight} fill="url(#tree-dot-grid)" />
+
                     {/* Scale transform group */}
                     <g key="scale-group" transform={`scale(${scale})`}>
                         {/* Connections layer (behind nodes) */}

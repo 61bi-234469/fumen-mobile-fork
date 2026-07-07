@@ -87,4 +87,57 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
         cy.get('svg circle[fill="#EF4444"], svg circle[fill="#F87171"]').should('not.exist');
     });
+
+    it('does not leave a mobile node tap in drag state', () => {
+        cy.viewport('iphone-6');
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Show pages in tree graph view"]').click();
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        cy.window().then(async (win) => {
+            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const nodes = win.document.querySelectorAll('[datatest^="tree-node-"]');
+            const source = nodes[1];
+            const rect = source.getBoundingClientRect();
+            const point = { x: rect.left + rect.width / 2, y: rect.top + 40 };
+            const target = win.document.elementFromPoint(point.x, point.y) || source;
+
+            const fireTouch = (type, bubbles) => {
+                const touch = new win.Touch({
+                    identifier: 321,
+                    target,
+                    clientX: point.x,
+                    clientY: point.y,
+                    screenX: point.x,
+                    screenY: point.y,
+                    pageX: point.x + win.scrollX,
+                    pageY: point.y + win.scrollY,
+                    radiusX: 2,
+                    radiusY: 2,
+                    force: 1,
+                });
+                const event = new win.TouchEvent(type, {
+                    bubbles,
+                    cancelable: true,
+                    touches: type === 'touchend' ? [] : [touch],
+                    targetTouches: type === 'touchend' ? [] : [touch],
+                    changedTouches: [touch],
+                });
+                target.dispatchEvent(event);
+            };
+
+            fireTouch('touchstart', true);
+            await wait(80);
+            fireTouch('touchend', false);
+        });
+
+        cy.get('svg circle[fill="#EF4444"], svg circle[fill="#F87171"]').should('not.exist');
+    });
 });

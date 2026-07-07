@@ -123,6 +123,7 @@ interface Props {
         onCopyNode: (nodeId: TreeNodeId) => void;
         onAddRoot: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
+        onTouchDragStart?: (target: EventTarget) => void;
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
         onDragOverSlot: (slotIndex: number) => void;
@@ -387,6 +388,9 @@ const renderNode = (
                         x: e.touches[0].clientX,
                         y: e.touches[0].clientY,
                     };
+                }
+                if (actions.onTouchDragStart) {
+                    actions.onTouchDragStart(e.target as EventTarget);
                 }
                 actions.onDragStart(node.id);
             }}

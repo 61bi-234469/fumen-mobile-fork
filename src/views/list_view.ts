@@ -50,6 +50,86 @@ let treeTouchDragActive = false;
 
 // Touch start position for detecting button taps (clientX/clientY coordinates)
 let treeTouchStartPosition: { x: number; y: number } | null = null;
+let treeTouchContainerElement: HTMLElement | null = null;
+let treeTouchStartTarget: EventTarget | null = null;
+let treeTouchEndHandled = false;
+let treeTouchEndCleanup: (() => void) | null = null;
+let latestTreeTouchMoveHandler: ((e: TouchEvent) => void) | null = null;
+let latestTreeTouchEndHandler: ((e: TouchEvent) => void) | null = null;
+let latestTreeTouchCancelHandler: ((e: TouchEvent) => void) | null = null;
+
+const clearTreeTouchStartPosition = () => {
+    treeTouchStartPosition = null;
+    if (typeof window !== 'undefined') {
+        (window as any).__treeTouchStartPosition = undefined;
+    }
+};
+
+const cleanupTreeTouchEndListeners = () => {
+    if (treeTouchEndCleanup) {
+        treeTouchEndCleanup();
+        treeTouchEndCleanup = null;
+    }
+};
+
+const resetTreeTouchTracking = () => {
+    cleanupTreeTouchEndListeners();
+    treeTouchDragActive = false;
+    treeTouchStartTarget = null;
+    clearTreeTouchStartPosition();
+};
+
+const registerTreeTouchStartTarget = (target: EventTarget) => {
+    cleanupTreeTouchEndListeners();
+    treeTouchStartTarget = target;
+
+    const onTouchMove: EventListener = (event) => {
+        const e = event as TouchEvent;
+        event.stopPropagation();
+        if (latestTreeTouchMoveHandler) {
+            latestTreeTouchMoveHandler(e);
+        }
+    };
+    const onTouchEnd: EventListener = (event) => {
+        if (!treeTouchDragActive) {
+            cleanupTreeTouchEndListeners();
+            return;
+        }
+
+        const e = event as TouchEvent;
+        treeTouchEndHandled = true;
+        event.stopPropagation();
+        if (latestTreeTouchEndHandler) {
+            latestTreeTouchEndHandler(e);
+        } else {
+            resetTreeTouchTracking();
+        }
+    };
+    const onTouchCancel: EventListener = (event) => {
+        if (!treeTouchDragActive) {
+            resetTreeTouchTracking();
+            return;
+        }
+
+        const e = event as TouchEvent;
+        treeTouchEndHandled = true;
+        event.stopPropagation();
+        if (latestTreeTouchCancelHandler) {
+            latestTreeTouchCancelHandler(e);
+        } else {
+            resetTreeTouchTracking();
+        }
+    };
+
+    target.addEventListener('touchmove', onTouchMove, true);
+    target.addEventListener('touchend', onTouchEnd, true);
+    target.addEventListener('touchcancel', onTouchCancel, true);
+    treeTouchEndCleanup = () => {
+        target.removeEventListener('touchmove', onTouchMove, true);
+        target.removeEventListener('touchend', onTouchEnd, true);
+        target.removeEventListener('touchcancel', onTouchCancel, true);
+    };
+};
 
 const getDistance = (touch1: Touch, touch2: Touch): number => {
     const dx = touch1.clientX - touch2.clientX;
@@ -330,7 +410,8 @@ export const view: View<State, Actions> = (state, actions) => {
         }
 
         treeTouchDragActive = true;
-        const container = e.currentTarget as HTMLElement;
+        const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
+        treeTouchContainerElement = container;
 
         // Find the scroll container - it's the div containing the SVG with overflow:auto
         const svgElement = container.querySelector('svg') as SVGSVGElement;
@@ -571,7 +652,8 @@ export const view: View<State, Actions> = (state, actions) => {
     };
 
     const handleTreeTouchEnd = (e: TouchEvent) => {
-        const container = e.currentTarget as HTMLElement;
+        cleanupTreeTouchEndListeners();
+        const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
 
         // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
         // This is necessary because the node's ontouchstart fires before the container's
@@ -588,10 +670,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     touchStartPos.y,
                     container,
                 );
-                treeTouchStartPosition = null;
-                if (typeof window !== 'undefined') {
-                    (window as any).__treeTouchStartPosition = undefined;
-                }
+                clearTreeTouchStartPosition();
 
                 if (buttonHit) {
                     // Button was tapped - execute the action
@@ -604,6 +683,7 @@ export const view: View<State, Actions> = (state, actions) => {
                         actions.copyTreeNode({ nodeId: buttonHit.nodeId });
                     }
                     pinchState.active = false;
+                    resetTreeTouchTracking();
                     return;
                 }
             }
@@ -617,6 +697,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 actions.endTreeDrag();
             }
             pinchState.active = false;
+            resetTreeTouchTracking();
             return;
         }
 
@@ -648,7 +729,21 @@ export const view: View<State, Actions> = (state, actions) => {
             actions.endTreeDrag();
         }
         pinchState.active = false;
+        resetTreeTouchTracking();
     };
+
+    const handleTreeTouchCancel = () => {
+        cleanupTreeTouchEndListeners();
+        if (state.tree.dragState.sourceNodeId !== null) {
+            actions.endTreeDrag();
+        }
+        pinchState.active = false;
+        resetTreeTouchTracking();
+    };
+
+    latestTreeTouchMoveHandler = handleTreeTouchMove;
+    latestTreeTouchEndHandler = handleTreeTouchEnd;
+    latestTreeTouchCancelHandler = handleTreeTouchCancel;
 
     const cornerOffset = 8;
     const undoRedoPillHeight = 56;
@@ -911,6 +1006,9 @@ export const view: View<State, Actions> = (state, actions) => {
             }),
             ontouchstart: (e: TouchEvent) => {
                 if (e.touches.length === 2) {
+                    cleanupTreeTouchEndListeners();
+                    treeTouchEndHandled = false;
+                    treeTouchStartTarget = null;
                     pinchState = {
                         isTreeView,
                         active: true,
@@ -922,6 +1020,12 @@ export const view: View<State, Actions> = (state, actions) => {
                     // Reset drag active flags for new touch
                     touchDragActive = false;
                     treeTouchDragActive = false;
+                    treeTouchEndHandled = false;
+                    treeTouchContainerElement = e.currentTarget as HTMLElement;
+                    if (!treeTouchStartTarget) {
+                        treeTouchStartTarget = e.target as EventTarget;
+                        cleanupTreeTouchEndListeners();
+                    }
                     // Save touch start position for button tap detection
                     if (isTreeView) {
                         treeTouchStartPosition = {
@@ -948,11 +1052,31 @@ export const view: View<State, Actions> = (state, actions) => {
                 }
             },
             ontouchend: (e: TouchEvent) => {
+                if (treeTouchEndHandled) {
+                    treeTouchEndHandled = false;
+                    return;
+                }
                 if (isTreeView) {
                     handleTreeTouchEnd(e);
                 } else {
                     handleTouchEndForDrag();
                 }
+            },
+            ontouchcancel: () => {
+                if (treeTouchEndHandled) {
+                    treeTouchEndHandled = false;
+                    return;
+                }
+                if (isTreeView) {
+                    handleTreeTouchCancel();
+                }
+            },
+            ondestroy: () => {
+                cleanupTreeTouchEndListeners();
+                treeTouchContainerElement = null;
+                treeTouchStartTarget = null;
+                treeTouchEndHandled = false;
+                clearTreeTouchStartPosition();
             },
         }, [
             // Conditionally render FumenGraph or ListViewGrid based on tree mode
@@ -1007,6 +1131,9 @@ export const view: View<State, Actions> = (state, actions) => {
                                 pageIndex,
                                 comment,
                             });
+                        },
+                        onTouchDragStart: (target) => {
+                            registerTreeTouchStartTarget(target);
                         },
                         onDragStart: (nodeId) => {
                             actions.startTreeDrag({ sourceNodeId: nodeId });

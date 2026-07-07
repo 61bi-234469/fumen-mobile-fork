@@ -91,11 +91,6 @@ const registerTreeTouchStartTarget = (target: EventTarget) => {
         }
     };
     const onTouchEnd: EventListener = (event) => {
-        if (!treeTouchDragActive) {
-            cleanupTreeTouchEndListeners();
-            return;
-        }
-
         const e = event as TouchEvent;
         treeTouchEndHandled = true;
         event.stopPropagation();
@@ -106,11 +101,6 @@ const registerTreeTouchStartTarget = (target: EventTarget) => {
         }
     };
     const onTouchCancel: EventListener = (event) => {
-        if (!treeTouchDragActive) {
-            resetTreeTouchTracking();
-            return;
-        }
-
         const e = event as TouchEvent;
         treeTouchEndHandled = true;
         event.stopPropagation();

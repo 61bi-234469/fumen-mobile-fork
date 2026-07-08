@@ -287,28 +287,34 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
+    // Computed once per render (rather than on every touch event) and shared by the tree
+    // touch handlers below; Hyperapp re-runs view() on every state change, so this always
+    // reflects the state at render time, matching what the handlers previously recomputed.
+    const treeForView = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+    const treeViewLayout = isTreeView
+        ? calculateTreeViewLayout(treeForView, state.fumen.pages, trimTopBlank)
+        : null;
+    const toSvgPoint = (clientX: number, clientY: number, scrollContainer: HTMLElement) => {
+        const rect = scrollContainer.getBoundingClientRect();
+        return {
+            x: (clientX - rect.left + scrollContainer.scrollLeft) / state.tree.scale,
+            y: (clientY - rect.top + scrollContainer.scrollTop) / state.tree.scale,
+        };
+    };
+
     // Detect if a position is over a button (returns button info or null)
     const detectButtonAtPosition = (
         clientX: number,
         clientY: number,
         container: HTMLElement,
     ): { nodeId: string; type: 'insert' | 'branch' | 'copy' } | null => {
+        if (!treeViewLayout) return null;
         const svgElement = container.querySelector('svg') as SVGSVGElement;
         if (!svgElement) return null;
         const scrollContainer = svgElement.parentElement as HTMLElement;
         if (!scrollContainer) return null;
 
-        const scrollContainerRect = scrollContainer.getBoundingClientRect();
-        const scale = state.tree.scale;
-        const svgX = (clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
-        const svgY = (clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
-
-        const tree = {
-            nodes: state.tree.nodes,
-            rootId: state.tree.rootId,
-            version: 1 as const,
-        };
-        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
+        const { x: svgX, y: svgY } = toSvgPoint(clientX, clientY, scrollContainer);
 
         for (const node of state.tree.nodes) {
             const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
@@ -388,6 +394,8 @@ export const view: View<State, Actions> = (state, actions) => {
             }
         }
 
+        if (!treeViewLayout) return;
+
         treeTouchDragActive = true;
         const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
         treeTouchContainerElement = container;
@@ -398,22 +406,9 @@ export const view: View<State, Actions> = (state, actions) => {
         const scrollContainer = svgElement.parentElement as HTMLElement;
         if (!scrollContainer) return;
 
-        const scrollContainerRect = scrollContainer.getBoundingClientRect();
+        const { x: svgX, y: svgY } = toSvgPoint(touch.clientX, touch.clientY, scrollContainer);
 
-        // Calculate position relative to scroll container, then add scroll offset
-        // This gives us the position within the full SVG content
-        const scale = state.tree.scale;
-        const svgX = (touch.clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
-        const svgY = (touch.clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
-
-        // Build tree structure for layout calculation
-        const tree = {
-            nodes: state.tree.nodes,
-            rootId: state.tree.rootId,
-            version: 1 as const,
-        };
-
-        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
+        const tree = treeForView;
         const dragMode = state.tree.dragState.mode;
         const sourceNodeId = state.tree.dragState.sourceNodeId;
         const sourceParentId = sourceNodeId ? findNode(tree, sourceNodeId)?.parentId ?? null : null;

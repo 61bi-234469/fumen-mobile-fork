@@ -8,6 +8,7 @@ import { i18n } from '../locales/keys';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
+import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 import { canDeleteNode, canMoveNode, findNode, isVirtualNode } from '../lib/fumen/tree_utils';
@@ -45,8 +46,6 @@ let pinchState: {
 let touchDragActive = false;
 let treeTouchDragActive = false;
 
-// Touch start position for detecting button taps (clientX/clientY coordinates)
-let treeTouchStartPosition: { x: number; y: number } | null = null;
 let treeTouchContainerElement: HTMLElement | null = null;
 let treeTouchStartTarget: EventTarget | null = null;
 let treeTouchEndHandled = false;
@@ -56,10 +55,7 @@ let latestTreeTouchEndHandler: ((e: TouchEvent) => void) | null = null;
 let latestTreeTouchCancelHandler: ((e: TouchEvent) => void) | null = null;
 
 const clearTreeTouchStartPosition = () => {
-    treeTouchStartPosition = null;
-    if (typeof window !== 'undefined') {
-        (window as any).__treeTouchStartPosition = undefined;
-    }
+    setTreeTouchStartPosition(null);
 };
 
 const cleanupTreeTouchEndListeners = () => {
@@ -378,11 +374,8 @@ export const view: View<State, Actions> = (state, actions) => {
 
         const touch = e.touches[0];
 
-        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
-        const globalTouchPos = typeof window !== 'undefined'
-            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
-            : undefined;
-        const startPos = globalTouchPos ?? treeTouchStartPosition;
+        // Get touch start position (set by fumen_graph.tsx node's ontouchstart)
+        const startPos = getTreeTouchStartPosition();
 
         // Require minimum movement distance before activating drag (prevents accidental drag on button tap)
         if (!treeTouchDragActive && startPos) {
@@ -633,12 +626,9 @@ export const view: View<State, Actions> = (state, actions) => {
         cleanupTreeTouchEndListeners();
         const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
 
-        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
+        // Get touch start position (set by fumen_graph.tsx node's ontouchstart).
         // This is necessary because the node's ontouchstart fires before the container's
-        const globalTouchPos = typeof window !== 'undefined'
-            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
-            : undefined;
-        const touchStartPos = globalTouchPos ?? treeTouchStartPosition;
+        const touchStartPos = getTreeTouchStartPosition();
 
         if (!treeTouchDragActive) {
             // No drag happened - check if this was a button tap
@@ -993,7 +983,7 @@ export const view: View<State, Actions> = (state, actions) => {
                         initialDistance: getDistance(e.touches[0], e.touches[1]),
                         initialScale: isTreeView ? state.tree.scale : state.listView.scale,
                     };
-                    treeTouchStartPosition = null;
+                    setTreeTouchStartPosition(null);
                 } else if (e.touches.length === 1) {
                     // Reset drag active flags for new touch
                     touchDragActive = false;
@@ -1006,10 +996,10 @@ export const view: View<State, Actions> = (state, actions) => {
                     }
                     // Save touch start position for button tap detection
                     if (isTreeView) {
-                        treeTouchStartPosition = {
+                        setTreeTouchStartPosition({
                             x: e.touches[0].clientX,
                             y: e.touches[0].clientY,
-                        };
+                        });
                     }
                 }
             },

@@ -15,6 +15,7 @@ import {
 } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
+import { setTreeTouchStartPosition } from './tree_touch_state';
 import {
     TREE_ADD_BUTTON_SIZE,
     calculateTreeMinDepth,
@@ -258,11 +259,11 @@ const renderNode = (
         if (e.cancelable) {
             e.preventDefault();
         }
-        if (e.touches.length === 1 && typeof window !== 'undefined') {
-            (window as any).__treeTouchStartPosition = {
+        if (e.touches.length === 1) {
+            setTreeTouchStartPosition({
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
-            };
+            });
         }
     };
 
@@ -370,11 +371,11 @@ const renderNode = (
                 if (e.defaultPrevented) return;
                 e.preventDefault();
                 // Store touch position for button detection in list_view.ts
-                if (e.touches.length === 1 && typeof window !== 'undefined') {
-                    (window as any).__treeTouchStartPosition = {
+                if (e.touches.length === 1) {
+                    setTreeTouchStartPosition({
                         x: e.touches[0].clientX,
                         y: e.touches[0].clientY,
-                    };
+                    });
                 }
                 if (actions.onTouchDragStart) {
                     actions.onTouchDragStart(e.target as EventTarget);
@@ -509,11 +510,11 @@ const renderNode = (
                         if (e.cancelable) {
                             e.preventDefault();
                         }
-                        if (e.touches.length === 1 && typeof window !== 'undefined') {
-                            (window as any).__treeTouchStartPosition = {
+                        if (e.touches.length === 1) {
+                            setTreeTouchStartPosition({
                                 x: e.touches[0].clientX,
                                 y: e.touches[0].clientY,
-                            };
+                            });
                         }
                     }}
                 >

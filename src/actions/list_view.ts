@@ -11,8 +11,8 @@ import {
     downloadBlob,
     downloadImage,
     generateListViewExportImage,
-    generateTreeViewExportImage,
 } from '../lib/thumbnail';
+import { generateTreeViewExportImage } from '../lib/tree_export';
 import { generateGifBlob } from '../lib/gif_export';
 import { decode, encode } from '../lib/fumen/fumen';
 import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';

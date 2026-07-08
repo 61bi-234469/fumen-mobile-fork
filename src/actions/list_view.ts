@@ -6,6 +6,7 @@ import { PageFieldOperation, Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
+import { Field } from '../lib/fumen/field';
 import {
     downloadBlob,
     downloadImage,
@@ -26,7 +27,6 @@ import {
     getPathToNode,
     isVirtualNode,
     removeTreeFromComment,
-    updateTreePageIndices,
 } from '../lib/fumen/tree_utils';
 
 declare const M: any;
@@ -423,36 +423,6 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     return rebuildPageRefs(pages, originalFirstPageColorize, originalFirstPageSrs);
 }
 
-const buildReorderIndexMap = (pageCount: number, fromIndex: number, toIndex: number): Map<number, number> => {
-    const indexMap = new Map<number, number>();
-    if (fromIndex === toIndex) {
-        for (let i = 0; i < pageCount; i += 1) {
-            indexMap.set(i, i);
-        }
-        return indexMap;
-    }
-
-    for (let i = 0; i < pageCount; i += 1) {
-        let newIndex = i;
-        if (fromIndex < toIndex) {
-            if (i === fromIndex) {
-                newIndex = toIndex;
-            } else if (i > fromIndex && i <= toIndex) {
-                newIndex = i - 1;
-            }
-        } else if (fromIndex > toIndex) {
-            if (i === fromIndex) {
-                newIndex = toIndex;
-            } else if (i >= toIndex && i < fromIndex) {
-                newIndex = i + 1;
-            }
-        }
-        indexMap.set(i, newIndex);
-    }
-
-    return indexMap;
-};
-
 function rebuildPageRefs(
     pages: Page[],
     originalFirstPageColorize: boolean,
@@ -498,7 +468,6 @@ function rebuildPageRefs(
                     newPage.field = { obj: resolvedField };
                 } else {
                     // Fallback: create empty field if resolution fails
-                    const { Field } = require('../lib/fumen/field');
                     newPage.field = { obj: new Field({}) };
                 }
             }
@@ -627,27 +596,6 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         const newPages = reorderPagesInternal([...state.fumen.pages], fromIndex, actualTargetIndex);
 
-        const updateTree = state.tree.enabled && state.tree.rootId
-            ? (() => {
-                const currentTree = {
-                    nodes: state.tree.nodes,
-                    rootId: state.tree.rootId,
-                    version: 1 as const,
-                };
-                const indexMap = buildReorderIndexMap(state.fumen.pages.length, fromIndex, actualTargetIndex);
-                const newTree = updateTreePageIndices(currentTree, indexMap);
-                const currentNode = findNodeByPageIndex(newTree, actualTargetIndex);
-                return {
-                    tree: {
-                        ...state.tree,
-                        nodes: newTree.nodes,
-                        rootId: newTree.rootId,
-                        activeNodeId: currentNode?.id ?? state.tree.activeNodeId,
-                    },
-                };
-            })()
-            : {};
-
         const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
 
         return sequence(state, [
@@ -658,7 +606,6 @@ export const listViewActions: Readonly<ListViewActions> = {
                     pages: newPages,
                     currentIndex: actualTargetIndex,
                 },
-                ...updateTree,
                 listView: {
                     ...state.listView,
                     dragState: {

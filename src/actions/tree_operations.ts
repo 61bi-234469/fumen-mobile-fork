@@ -665,6 +665,50 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
     ]);
 };
 
+/**
+ * Shared node-removal path for the three drag-to-delete flows in executeTreeDrop:
+ * the delete badge, a single-node delete via the parent's insert button, and a
+ * subtree delete via the parent's insert button (when buttonDropMovesSubtree is on).
+ */
+const removeNodesViaDrop = (
+    state: State,
+    tree: SerializedTree,
+    sourceNodeId: TreeNodeId,
+    removeDescendants: boolean,
+): NextState => {
+    const sourceNode = findNode(tree, sourceNodeId);
+    if (!sourceNode) return treeOperationActions.endTreeDrag()(state);
+
+    const nodeIdsToRemove = removeDescendants ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
+    const removedPageIndices = collectRemovedPageIndices(tree, nodeIdsToRemove, state.fumen.pages.length);
+    if (removedPageIndices.length === 0 || removedPageIndices.length >= state.fumen.pages.length) {
+        return treeOperationActions.endTreeDrag()(state);
+    }
+
+    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+    const prunedTree = removeNode(tree, sourceNodeId, removeDescendants);
+    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+    const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
+
+    const activeNodeId = state.tree.activeNodeId;
+    const activeRemoved = activeNodeId !== null && (
+        activeNodeId === sourceNodeId
+        || (removeDescendants && isDescendant(tree, sourceNodeId, activeNodeId))
+    );
+    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+    const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
+    const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
+
+    return commitTreeOperation(state, {
+        prevSnapshot,
+        tree: shiftedTree,
+        pages: newPages,
+        currentIndex: nextActiveNode?.pageIndex ?? 0,
+        activeNodeId: nextActiveNodeId,
+        resetDragState: true,
+    });
+};
+
 // ============================================================================
 // Action Implementations
 // ============================================================================
@@ -1484,59 +1528,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             }
 
             const tree = getOrCreateTree(state);
-            const sourceNode = findNode(tree, sourceNodeId);
-            if (!sourceNode) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            const removeDescendants = moveSubtreeOnButtonDrop;
-            const nodeIdsToRemove = removeDescendants ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
-            const removedPageIndices = collectRemovedPageIndices(tree, nodeIdsToRemove, state.fumen.pages.length);
-
-            // Validate: cannot delete all pages
-            if (removedPageIndices.length === 0 || removedPageIndices.length >= state.fumen.pages.length) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-            const prunedTree = removeNode(tree, sourceNodeId, removeDescendants);
-            const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
-            const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
-
-            // Determine next active node
-            const activeNodeId = state.tree.activeNodeId;
-            const activeRemoved = activeNodeId !== null && (
-                activeNodeId === sourceNodeId ||
-                (removeDescendants && isDescendant(tree, sourceNodeId, activeNodeId))
-            );
-            const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
-            const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
-            const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
-            const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
-
-            const normalized = normalizeTreeAndPages(shiftedTree, newPages, nextCurrentIndex, nextActiveNodeId);
-            const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
-            const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-            const { mementoActions } = require('./memento');
-
-            return sequence(state, [
-                mementoActions.registerHistoryTask({ task }),
-                () => ({
-                    fumen: {
-                        ...state.fumen,
-                        pages: normalized.pages,
-                        maxPage: normalized.pages.length,
-                        currentIndex: normalized.currentIndex,
-                    },
-                    tree: {
-                        ...state.tree,
-                        nodes: normalized.tree.nodes,
-                        rootId: normalized.tree.rootId,
-                        activeNodeId: nextActiveNodeId,
-                        dragState: initialTreeDragState,
-                    },
-                }),
-            ]);
+            return removeNodesViaDrop(state, tree, sourceNodeId, moveSubtreeOnButtonDrop);
         }
 
         // Priority 1: Handle button drops (drag-to-button operation)
@@ -1549,67 +1541,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             if (targetButtonType === 'insert' && targetNode && !moveSubtreeOnButtonDrop) {
                 const sourceNode = findNode(tree, sourceNodeId);
                 if (sourceNode && sourceNode.parentId === targetButtonParentId) {
-                    const removedPageIndices = collectRemovedPageIndices(
-                        tree,
-                        [sourceNodeId],
-                        state.fumen.pages.length,
-                    );
-                    if (removedPageIndices.length === 0
-                        || removedPageIndices.length >= state.fumen.pages.length) {
-                        return treeOperationActions.endTreeDrag()(state);
-                    }
-
-                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                    const prunedTree = removeNode(tree, sourceNodeId, false);
-                    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
-                    const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
-
-                    const activeNodeId = state.tree.activeNodeId;
-                    const activeRemoved = activeNodeId !== null && activeNodeId === sourceNodeId;
-                    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
-                    const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
-                    const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
-                    const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
-
-                    const normalized = normalizeTreeAndPages(
-                        shiftedTree,
-                        newPages,
-                        nextCurrentIndex,
-                        nextActiveNodeId,
-                    );
-                    const nextSnapshot = createSnapshot(
-                        normalized.tree,
-                        normalized.pages,
-                        normalized.currentIndex,
-                    );
-                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-                    const { mementoActions } = require('./memento');
-
-                    return sequence(state, [
-                        mementoActions.registerHistoryTask({ task }),
-                        () => ({
-                            fumen: {
-                                ...state.fumen,
-                                pages: normalized.pages,
-                                maxPage: normalized.pages.length,
-                                currentIndex: normalized.currentIndex,
-                            },
-                            tree: {
-                                ...state.tree,
-                                nodes: normalized.tree.nodes,
-                                rootId: normalized.tree.rootId,
-                                activeNodeId: nextActiveNodeId,
-                                dragState: {
-                                    ...state.tree.dragState,
-                                    sourceNodeId: null,
-                                    targetNodeId: null,
-                                    dropSlotIndex: null,
-                                    targetButtonParentId: null,
-                                    targetButtonType: null,
-                                },
-                            },
-                        }),
-                    ]);
+                    return removeNodesViaDrop(state, tree, sourceNodeId, false);
                 }
             }
 
@@ -1629,69 +1561,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     && sourceNode?.parentId === targetButtonParentId;
 
                 if (sourceNode && isDeleteOnParentButton) {
-                    const nodeIdsToRemove = getDescendants(tree, sourceNodeId);
-                    const removedPageIndices = collectRemovedPageIndices(
-                        tree,
-                        nodeIdsToRemove,
-                        state.fumen.pages.length,
-                    );
-                    if (removedPageIndices.length === 0
-                        || removedPageIndices.length >= state.fumen.pages.length) {
-                        return treeOperationActions.endTreeDrag()(state);
-                    }
-
-                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                    const prunedTree = removeNode(tree, sourceNodeId, true);
-                    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
-                    const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
-
-                    const activeNodeId = state.tree.activeNodeId;
-                    const activeRemoved = activeNodeId !== null
-                        && (activeNodeId === sourceNodeId || isDescendant(tree, sourceNodeId, activeNodeId));
-                    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
-                    const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
-                    const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
-                    const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
-
-                    const normalized = normalizeTreeAndPages(
-                        shiftedTree,
-                        newPages,
-                        nextCurrentIndex,
-                        nextActiveNodeId,
-                    );
-                    const nextSnapshot = createSnapshot(
-                        normalized.tree,
-                        normalized.pages,
-                        normalized.currentIndex,
-                    );
-                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-                    const { mementoActions } = require('./memento');
-
-                    return sequence(state, [
-                        mementoActions.registerHistoryTask({ task }),
-                        () => ({
-                            fumen: {
-                                ...state.fumen,
-                                pages: normalized.pages,
-                                maxPage: normalized.pages.length,
-                                currentIndex: normalized.currentIndex,
-                            },
-                            tree: {
-                                ...state.tree,
-                                nodes: normalized.tree.nodes,
-                                rootId: normalized.tree.rootId,
-                                activeNodeId: nextActiveNodeId,
-                                dragState: {
-                                    ...state.tree.dragState,
-                                    sourceNodeId: null,
-                                    targetNodeId: null,
-                                    dropSlotIndex: null,
-                                    targetButtonParentId: null,
-                                    targetButtonType: null,
-                                },
-                            },
-                        }),
-                    ]);
+                    return removeNodesViaDrop(state, tree, sourceNodeId, true);
                 }
 
                 if (tree.rootId && sourceNodeId === tree.rootId) {

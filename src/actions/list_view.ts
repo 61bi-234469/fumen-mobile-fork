@@ -15,7 +15,7 @@ import {
 import { generateTreeViewExportImage } from '../lib/tree_export';
 import { generateGifBlob } from '../lib/gif_export';
 import { decode, encode } from '../lib/fumen/fumen';
-import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import { LIST_VIEW_SCALE_RANGE, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { persistViewSettings } from './view_settings';
 import {
     createTreeFromPages,
@@ -563,7 +563,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         };
     },
     setListViewScale: ({ scale }) => (state): NextState => {
-        const clampedScale = Math.max(0.5, Math.min(3.0, scale));
+        const clampedScale = Math.max(LIST_VIEW_SCALE_RANGE.min, Math.min(LIST_VIEW_SCALE_RANGE.max, scale));
         return {
             listView: {
                 ...state.listView,

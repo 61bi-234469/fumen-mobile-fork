@@ -8,6 +8,10 @@ export type TreeNodeId = string;
 /** Page index for virtual root nodes (not mapped to pages array) */
 export const VIRTUAL_PAGE_INDEX = -1;
 
+/** Zoom scale clamp ranges for the list view and tree view */
+export const LIST_VIEW_SCALE_RANGE = { min: 0.5, max: 3.0 } as const;
+export const TREE_VIEW_SCALE_RANGE = { min: 0.3, max: 3.0 } as const;
+
 /** Add mode for determining behavior when adding pages */
 export enum AddMode {
     Branch = 'Branch',   // Create new branch from current node

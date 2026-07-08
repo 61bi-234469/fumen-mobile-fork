@@ -13,6 +13,7 @@ import {
     SerializedTree,
     TreeDragMode,
     TreeDragState,
+    TREE_VIEW_SCALE_RANGE,
     initialTreeDragState,
 } from '../lib/fumen/tree_types';
 import {
@@ -824,7 +825,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * Set zoom scale for tree view
      */
     setTreeViewScale: ({ scale }) => (state): NextState => {
-        const clampedScale = Math.max(0.3, Math.min(3.0, scale));
+        const clampedScale = Math.max(TREE_VIEW_SCALE_RANGE.min, Math.min(TREE_VIEW_SCALE_RANGE.max, scale));
         return {
             tree: {
                 ...state.tree,

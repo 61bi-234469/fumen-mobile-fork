@@ -46,7 +46,7 @@ import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Pages, PageFieldOperation } from '../lib/pages';
-import { localStorageWrapper } from '../memento';
+import { persistViewSettings } from './view_settings';
 
 // ============================================================================
 // Helpers for root reparenting
@@ -1327,17 +1327,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         };
 
         if (data.buttonDropMovesSubtree !== undefined || data.grayAfterLineClear !== undefined) {
-            localStorageWrapper.saveViewSettings({
-                trimTopBlank: state.listView.trimTopBlank,
-                shortenUrls: state.listView.shortenUrls,
+            persistViewSettings(state, {
                 buttonDropMovesSubtree: nextTree.tree.buttonDropMovesSubtree,
                 grayAfterLineClear: nextTree.tree.grayAfterLineClear,
-                coldClearTopBranchCount: state.coldClear.topBranchCount,
-                coldClearHoldAllowed: state.coldClear.holdAllowed,
-                coldClearSpeculate: state.coldClear.speculate,
-                coldClearNextLimit: state.coldClear.nextLimit,
-                coldClearWeightsPreset: state.coldClear.weightsPreset,
-                coldClearThinkMs: state.coldClear.thinkMs,
             });
         }
 

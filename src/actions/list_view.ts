@@ -16,7 +16,7 @@ import {
 import { generateGifBlob } from '../lib/gif_export';
 import { decode, encode } from '../lib/fumen/fumen';
 import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
-import { localStorageWrapper } from '../memento';
+import { persistViewSettings } from './view_settings';
 import {
     createTreeFromPages,
     embedTreeInPages,
@@ -549,18 +549,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        localStorageWrapper.saveViewSettings({
-            trimTopBlank: enabled,
-            shortenUrls: state.listView.shortenUrls,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
-            grayAfterLineClear: state.tree.grayAfterLineClear,
-            coldClearTopBranchCount: state.coldClear.topBranchCount,
-            coldClearHoldAllowed: state.coldClear.holdAllowed,
-            coldClearSpeculate: state.coldClear.speculate,
-            coldClearNextLimit: state.coldClear.nextLimit,
-            coldClearWeightsPreset: state.coldClear.weightsPreset,
-            coldClearThinkMs: state.coldClear.thinkMs,
-        });
+        persistViewSettings(state, { trimTopBlank: enabled });
         return {
             listView: {
                 ...state.listView,
@@ -862,18 +851,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        localStorageWrapper.saveViewSettings({
-            trimTopBlank: state.listView.trimTopBlank,
-            shortenUrls: enabled,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
-            grayAfterLineClear: state.tree.grayAfterLineClear,
-            coldClearTopBranchCount: state.coldClear.topBranchCount,
-            coldClearHoldAllowed: state.coldClear.holdAllowed,
-            coldClearSpeculate: state.coldClear.speculate,
-            coldClearNextLimit: state.coldClear.nextLimit,
-            coldClearWeightsPreset: state.coldClear.weightsPreset,
-            coldClearThinkMs: state.coldClear.thinkMs,
-        });
+        persistViewSettings(state, { shortenUrls: enabled });
         return {
             listView: {
                 ...state.listView,

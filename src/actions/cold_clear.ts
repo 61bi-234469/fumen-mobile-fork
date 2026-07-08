@@ -37,7 +37,7 @@ import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
 import type { FieldEditorActions } from './field_editor';
-import { localStorageWrapper } from '../memento';
+import { persistViewSettings } from './view_settings';
 
 declare const M: any;
 
@@ -211,23 +211,13 @@ const saveColdClearViewSettings = (
         thinkMs: number;
     }>,
 ) => {
-    if (typeof localStorage === 'undefined') {
-        return;
-    }
-
-    localStorageWrapper.saveViewSettings({
-        trimTopBlank: state.listView?.trimTopBlank ?? false,
-        shortenUrls: state.listView?.shortenUrls ?? false,
-        buttonDropMovesSubtree: state.tree?.buttonDropMovesSubtree ?? false,
-        grayAfterLineClear: state.tree?.grayAfterLineClear ?? false,
-        coldClearTopBranchCount: overrides?.topBranchCount ?? state.coldClear.topBranchCount,
-        coldClearHoldAllowed: overrides?.holdAllowed ?? state.coldClear.holdAllowed,
-        coldClearSpeculate: overrides?.speculate ?? state.coldClear.speculate,
-        coldClearNextLimit: overrides?.nextLimit !== undefined
-            ? overrides.nextLimit
-            : state.coldClear.nextLimit,
-        coldClearWeightsPreset: overrides?.weightsPreset ?? state.coldClear.weightsPreset,
-        coldClearThinkMs: overrides?.thinkMs ?? state.coldClear.thinkMs,
+    persistViewSettings(state, {
+        coldClearTopBranchCount: overrides?.topBranchCount,
+        coldClearHoldAllowed: overrides?.holdAllowed,
+        coldClearSpeculate: overrides?.speculate,
+        coldClearNextLimit: overrides?.nextLimit,
+        coldClearWeightsPreset: overrides?.weightsPreset,
+        coldClearThinkMs: overrides?.thinkMs,
     });
 };
 

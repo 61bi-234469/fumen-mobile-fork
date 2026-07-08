@@ -8,25 +8,23 @@ import { i18n } from '../locales/keys';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
+import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canMoveNode, findNode, getDescendants, isVirtualNode } from '../lib/fumen/tree_utils';
+import { canDeleteNode, canMoveNode, findNode, isVirtualNode } from '../lib/fumen/tree_utils';
 import { displayShortcut } from '../lib/shortcuts';
 import {
-    TREE_ADD_BUTTON_SIZE,
-    TREE_BUTTON_X,
     calculateTreeMinDepth,
-    TREE_COPY_BUTTON_MARGIN_BOTTOM,
-    TREE_COPY_BUTTON_SIZE,
-    TREE_DELETE_BADGE_OFFSET_X,
-    TREE_DELETE_BADGE_OFFSET_Y,
-    TREE_DELETE_BADGE_SIZE,
-    TREE_NODE_EXTRA_HEIGHT,
+    TREE_BUTTON_HIT_RADIUS,
+    TREE_COPY_BUTTON_HIT_RADIUS,
+    TREE_DELETE_BADGE_HIT_RADIUS,
     TREE_NODE_WIDTH,
-    TREE_PADDING,
-    TREE_THUMBNAIL_HEIGHT,
-    TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
+    getBranchButtonOffset,
+    getCopyButtonOffset,
+    getDeleteBadgeOffset,
+    getInsertButtonOffset,
+    getRootGhostRect,
     shouldShowDeleteBadge,
 } from '../lib/fumen/tree_view_layout';
 const TOOLS_HEIGHT = 50;
@@ -48,8 +46,6 @@ let pinchState: {
 let touchDragActive = false;
 let treeTouchDragActive = false;
 
-// Touch start position for detecting button taps (clientX/clientY coordinates)
-let treeTouchStartPosition: { x: number; y: number } | null = null;
 let treeTouchContainerElement: HTMLElement | null = null;
 let treeTouchStartTarget: EventTarget | null = null;
 let treeTouchEndHandled = false;
@@ -59,10 +55,7 @@ let latestTreeTouchEndHandler: ((e: TouchEvent) => void) | null = null;
 let latestTreeTouchCancelHandler: ((e: TouchEvent) => void) | null = null;
 
 const clearTreeTouchStartPosition = () => {
-    treeTouchStartPosition = null;
-    if (typeof window !== 'undefined') {
-        (window as any).__treeTouchStartPosition = undefined;
-    }
+    setTreeTouchStartPosition(null);
 };
 
 const cleanupTreeTouchEndListeners = () => {
@@ -294,30 +287,34 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
+    // Computed once per render (rather than on every touch event) and shared by the tree
+    // touch handlers below; Hyperapp re-runs view() on every state change, so this always
+    // reflects the state at render time, matching what the handlers previously recomputed.
+    const treeForView = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+    const treeViewLayout = isTreeView
+        ? calculateTreeViewLayout(treeForView, state.fumen.pages, trimTopBlank)
+        : null;
+    const toSvgPoint = (clientX: number, clientY: number, scrollContainer: HTMLElement) => {
+        const rect = scrollContainer.getBoundingClientRect();
+        return {
+            x: (clientX - rect.left + scrollContainer.scrollLeft) / state.tree.scale,
+            y: (clientY - rect.top + scrollContainer.scrollTop) / state.tree.scale,
+        };
+    };
+
     // Detect if a position is over a button (returns button info or null)
     const detectButtonAtPosition = (
         clientX: number,
         clientY: number,
         container: HTMLElement,
     ): { nodeId: string; type: 'insert' | 'branch' | 'copy' } | null => {
+        if (!treeViewLayout) return null;
         const svgElement = container.querySelector('svg') as SVGSVGElement;
         if (!svgElement) return null;
         const scrollContainer = svgElement.parentElement as HTMLElement;
         if (!scrollContainer) return null;
 
-        const scrollContainerRect = scrollContainer.getBoundingClientRect();
-        const scale = state.tree.scale;
-        const svgX = (clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
-        const svgY = (clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
-
-        const tree = {
-            nodes: state.tree.nodes,
-            rootId: state.tree.rootId,
-            version: 1 as const,
-        };
-        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
-        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
-        const copyHitRadius = TREE_COPY_BUTTON_SIZE / 2 + 6;
+        const { x: svgX, y: svgY } = toSvgPoint(clientX, clientY, scrollContainer);
 
         for (const node of state.tree.nodes) {
             const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
@@ -328,44 +325,45 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeHeight = nodeLayout.height;
             const canCopy = !isVirtualNode(node);
 
-            const copyButtonCenterX = nodeX + TREE_NODE_WIDTH / 2;
-            const copyButtonCenterY = nodeY + nodeHeight
-                + TREE_COPY_BUTTON_MARGIN_BOTTOM
-                + TREE_COPY_BUTTON_SIZE / 2;
+            const copyOffset = getCopyButtonOffset(nodeHeight);
+            const copyButtonCenterX = nodeX + copyOffset.x;
+            const copyButtonCenterY = nodeY + copyOffset.y;
 
             const distToCopy = Math.sqrt(
                 (svgX - copyButtonCenterX) ** 2 +
                 (svgY - copyButtonCenterY) ** 2,
             );
 
-            if (canCopy && distToCopy <= copyHitRadius) {
+            if (canCopy && distToCopy <= TREE_COPY_BUTTON_HIT_RADIUS) {
                 return { nodeId: node.id, type: 'copy' };
             }
 
             // Check INSERT button (green)
-            const insertButtonCenterX = nodeX + TREE_BUTTON_X;
-            const insertButtonCenterY = nodeY + nodeHeight / 2;
+            const insertOffset = getInsertButtonOffset(nodeHeight);
+            const insertButtonCenterX = nodeX + insertOffset.x;
+            const insertButtonCenterY = nodeY + insertOffset.y;
 
             const distToInsert = Math.sqrt(
                 (svgX - insertButtonCenterX) ** 2 +
                 (svgY - insertButtonCenterY) ** 2,
             );
 
-            if (distToInsert <= buttonHitRadius) {
+            if (distToInsert <= TREE_BUTTON_HIT_RADIUS) {
                 return { nodeId: node.id, type: 'insert' };
             }
 
             // Check BRANCH button (orange) - only if node has children
             if (node.childrenIds.length > 0) {
-                const branchButtonCenterX = nodeX + TREE_BUTTON_X;
-                const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
+                const branchOffset = getBranchButtonOffset(nodeHeight);
+                const branchButtonCenterX = nodeX + branchOffset.x;
+                const branchButtonCenterY = nodeY + branchOffset.y;
 
                 const distToBranch = Math.sqrt(
                     (svgX - branchButtonCenterX) ** 2 +
                     (svgY - branchButtonCenterY) ** 2,
                 );
 
-                if (distToBranch <= buttonHitRadius) {
+                if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
                     return { nodeId: node.id, type: 'branch' };
                 }
             }
@@ -382,11 +380,8 @@ export const view: View<State, Actions> = (state, actions) => {
 
         const touch = e.touches[0];
 
-        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
-        const globalTouchPos = typeof window !== 'undefined'
-            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
-            : undefined;
-        const startPos = globalTouchPos ?? treeTouchStartPosition;
+        // Get touch start position (set by fumen_graph.tsx node's ontouchstart)
+        const startPos = getTreeTouchStartPosition();
 
         // Require minimum movement distance before activating drag (prevents accidental drag on button tap)
         if (!treeTouchDragActive && startPos) {
@@ -399,6 +394,8 @@ export const view: View<State, Actions> = (state, actions) => {
             }
         }
 
+        if (!treeViewLayout) return;
+
         treeTouchDragActive = true;
         const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
         treeTouchContainerElement = container;
@@ -409,22 +406,9 @@ export const view: View<State, Actions> = (state, actions) => {
         const scrollContainer = svgElement.parentElement as HTMLElement;
         if (!scrollContainer) return;
 
-        const scrollContainerRect = scrollContainer.getBoundingClientRect();
+        const { x: svgX, y: svgY } = toSvgPoint(touch.clientX, touch.clientY, scrollContainer);
 
-        // Calculate position relative to scroll container, then add scroll offset
-        // This gives us the position within the full SVG content
-        const scale = state.tree.scale;
-        const svgX = (touch.clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
-        const svgY = (touch.clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
-
-        // Build tree structure for layout calculation
-        const tree = {
-            nodes: state.tree.nodes,
-            rootId: state.tree.rootId,
-            version: 1 as const,
-        };
-
-        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
+        const tree = treeForView;
         const dragMode = state.tree.dragState.mode;
         const sourceNodeId = state.tree.dragState.sourceNodeId;
         const sourceParentId = sourceNodeId ? findNode(tree, sourceNodeId)?.parentId ?? null : null;
@@ -438,7 +422,6 @@ export const view: View<State, Actions> = (state, actions) => {
         let foundButtonParentId: string | null = null;
         let foundButtonType: 'insert' | 'branch' | 'delete' | null = null;
 
-        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
         const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
         const canDropOnRootGhost = tree.rootId !== null
             && sourceNodeId !== null
@@ -459,22 +442,17 @@ export const view: View<State, Actions> = (state, actions) => {
                 sourceNodeLayout
                 && shouldShowDeleteBadge(tree, treeViewLayout.layout, sourceNodeId, minDepth)
             ) {
-                const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
-                const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
-                const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;
+                const badgeOffset = getDeleteBadgeOffset();
+                const deleteBadgeX = sourceNodeLayout.x + badgeOffset.x;
+                const deleteBadgeY = sourceNodeLayout.y + badgeOffset.y;
                 const distToDelete = Math.sqrt(
                     (svgX - deleteBadgeX) ** 2 + (svgY - deleteBadgeY) ** 2,
                 );
 
-                if (distToDelete <= deleteHitRadius) {
-                    // Check delete eligibility
-                    const nodeIds = buttonDropMovesSubtree ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
-                    const pageIndices = new Set<number>();
-                    for (const id of nodeIds) {
-                        const node = findNode(tree, id);
-                        if (node && node.pageIndex >= 0) pageIndices.add(node.pageIndex);
-                    }
-                    const canDelete = pageIndices.size > 0 && pageIndices.size < state.fumen.pages.length;
+                if (distToDelete <= TREE_DELETE_BADGE_HIT_RADIUS) {
+                    const canDelete = canDeleteNode(
+                        tree, sourceNodeId, buttonDropMovesSubtree, state.fumen.pages.length,
+                    );
 
                     if (canDelete) {
                         foundButtonParentId = sourceNodeId;
@@ -486,15 +464,11 @@ export const view: View<State, Actions> = (state, actions) => {
 
         // Check the top-level ghost frame as a branch drop onto the virtual root.
         if (foundButtonParentId === null && canDropOnRootGhost && tree.rootId !== null) {
-            const minGhostNodeHeight = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
-            const ghostNodeWidth = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
-            const ghostNodeHeight = Math.max(56, Math.round(minGhostNodeHeight * 0.38));
-            const ghostNodeX = TREE_PADDING + (TREE_NODE_WIDTH - ghostNodeWidth) / 2;
-            const ghostNodeY = TREE_PADDING + treeViewLayout.contentHeight + TREE_VERTICAL_GAP;
-            const isInsideRootGhost = svgX >= ghostNodeX
-                && svgX <= ghostNodeX + ghostNodeWidth
-                && svgY >= ghostNodeY
-                && svgY <= ghostNodeY + ghostNodeHeight;
+            const ghostRect = getRootGhostRect(treeViewLayout.contentHeight);
+            const isInsideRootGhost = svgX >= ghostRect.x
+                && svgX <= ghostRect.x + ghostRect.width
+                && svgY >= ghostRect.y
+                && svgY <= ghostRect.y + ghostRect.height;
 
             if (isInsideRootGhost) {
                 foundButtonParentId = tree.rootId;
@@ -513,15 +487,16 @@ export const view: View<State, Actions> = (state, actions) => {
                 const nodeHeight = nodeLayout.height;
 
                 // Check INSERT button (green)
-                const insertButtonCenterX = nodeX + TREE_BUTTON_X;
-                const insertButtonCenterY = nodeY + nodeHeight / 2;
+                const insertOffset = getInsertButtonOffset(nodeHeight);
+                const insertButtonCenterX = nodeX + insertOffset.x;
+                const insertButtonCenterY = nodeY + insertOffset.y;
 
                 const distToInsert = Math.sqrt(
                     (svgX - insertButtonCenterX) ** 2 +
                     (svgY - insertButtonCenterY) ** 2,
                 );
 
-                if (distToInsert <= buttonHitRadius) {
+                if (distToInsert <= TREE_BUTTON_HIT_RADIUS) {
                     const isValidTarget = !isRootDragSource
                         && canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: allowDescendantOnButtonDrop });
                     if (isValidTarget) {
@@ -538,15 +513,16 @@ export const view: View<State, Actions> = (state, actions) => {
                     && sourceParentId === node.id
                     && node.childrenIds.length <= 1;
                 if (node.childrenIds.length > 0 && !hideBranchButton) {
-                    const branchButtonCenterX = nodeX + TREE_BUTTON_X;
-                    const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
+                    const branchOffset = getBranchButtonOffset(nodeHeight);
+                    const branchButtonCenterX = nodeX + branchOffset.x;
+                    const branchButtonCenterY = nodeY + branchOffset.y;
 
                     const distToBranch = Math.sqrt(
                         (svgX - branchButtonCenterX) ** 2 +
                         (svgY - branchButtonCenterY) ** 2,
                     );
 
-                    if (distToBranch <= buttonHitRadius) {
+                    if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
                         const opts = { allowDescendant: allowDescendantOnButtonDrop };
                         const isValidTarget = !isRootDragSource
                             && canMoveNode(tree, sourceNodeId!, node.id, opts);
@@ -645,12 +621,9 @@ export const view: View<State, Actions> = (state, actions) => {
         cleanupTreeTouchEndListeners();
         const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
 
-        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
+        // Get touch start position (set by fumen_graph.tsx node's ontouchstart).
         // This is necessary because the node's ontouchstart fires before the container's
-        const globalTouchPos = typeof window !== 'undefined'
-            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
-            : undefined;
-        const touchStartPos = globalTouchPos ?? treeTouchStartPosition;
+        const touchStartPos = getTreeTouchStartPosition();
 
         if (!treeTouchDragActive) {
             // No drag happened - check if this was a button tap
@@ -1005,7 +978,7 @@ export const view: View<State, Actions> = (state, actions) => {
                         initialDistance: getDistance(e.touches[0], e.touches[1]),
                         initialScale: isTreeView ? state.tree.scale : state.listView.scale,
                     };
-                    treeTouchStartPosition = null;
+                    setTreeTouchStartPosition(null);
                 } else if (e.touches.length === 1) {
                     // Reset drag active flags for new touch
                     touchDragActive = false;
@@ -1018,10 +991,10 @@ export const view: View<State, Actions> = (state, actions) => {
                     }
                     // Save touch start position for button tap detection
                     if (isTreeView) {
-                        treeTouchStartPosition = {
+                        setTreeTouchStartPosition({
                             x: e.touches[0].clientX,
                             y: e.touches[0].clientY,
-                        };
+                        });
                     }
                 }
             },

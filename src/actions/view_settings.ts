@@ -1,0 +1,32 @@
+import { State } from '../states';
+import { localStorageWrapper } from '../memento';
+
+type ViewSettingsOverrides = Partial<{
+    trimTopBlank: boolean;
+    shortenUrls: boolean;
+    buttonDropMovesSubtree: boolean;
+    grayAfterLineClear: boolean;
+    coldClearTopBranchCount: number;
+    coldClearHoldAllowed: boolean;
+    coldClearSpeculate: boolean;
+    coldClearNextLimit: number | null;
+    coldClearWeightsPreset: number;
+    coldClearThinkMs: number;
+}>;
+
+export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
+    if (typeof localStorage === 'undefined') return;
+    localStorageWrapper.saveViewSettings({
+        trimTopBlank: overrides.trimTopBlank ?? state.listView.trimTopBlank,
+        shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
+        buttonDropMovesSubtree: overrides.buttonDropMovesSubtree ?? state.tree.buttonDropMovesSubtree,
+        grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,
+        coldClearTopBranchCount: overrides.coldClearTopBranchCount ?? state.coldClear.topBranchCount,
+        coldClearHoldAllowed: overrides.coldClearHoldAllowed ?? state.coldClear.holdAllowed,
+        coldClearSpeculate: overrides.coldClearSpeculate ?? state.coldClear.speculate,
+        coldClearNextLimit: overrides.coldClearNextLimit !== undefined
+            ? overrides.coldClearNextLimit : state.coldClear.nextLimit,
+        coldClearWeightsPreset: overrides.coldClearWeightsPreset ?? state.coldClear.weightsPreset,
+        coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
+    });
+};

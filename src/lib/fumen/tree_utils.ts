@@ -209,13 +209,6 @@ export const getPathToNode = (tree: SerializedTree, nodeId: TreeNodeId): TreeNod
 };
 
 /**
- * Get all leaf nodes (nodes with no children)
- */
-export const getLeafNodes = (tree: SerializedTree): TreeNode[] => {
-    return tree.nodes.filter(node => node.childrenIds.length === 0 && !isVirtualNode(node));
-};
-
-/**
  * Get all descendants of a node (including the node itself)
  */
 export const getDescendants = (tree: SerializedTree, nodeId: TreeNodeId): TreeNodeId[] => {
@@ -421,31 +414,6 @@ export const getNodeDfsNumbers = (tree: SerializedTree): Map<TreeNodeId, number>
         : [rootNode.id];
     startNodeIds.forEach(traverse);
     return nodeNumbers;
-};
-
-/**
- * Flatten tree and reorder pages accordingly
- * Returns new pages array with updated indices
- */
-export const flattenTreeToPages = (
-    tree: SerializedTree,
-    pages: Page[],
-): { pages: Page[]; nodeToNewIndex: Map<TreeNodeId, number> } => {
-    const indices = flattenTreeToPageIndices(tree);
-    const nodeToNewIndex = new Map<TreeNodeId, number>();
-
-    const newPages: Page[] = indices.map((oldIndex, newIndex) => {
-        const node = tree.nodes.find(n => n.pageIndex === oldIndex);
-        if (node) {
-            nodeToNewIndex.set(node.id, newIndex);
-        }
-        return {
-            ...pages[oldIndex],
-            index: newIndex,
-        };
-    });
-
-    return { nodeToNewIndex, pages: newPages };
 };
 
 // ============================================================================
@@ -840,27 +808,33 @@ export const insertPagesIntoTree = (
 // ============================================================================
 
 /**
- * Get right siblings of a node (nodes that come after it in parent's children array)
- */
-export const getRightSiblings = (tree: SerializedTree, nodeId: TreeNodeId): TreeNodeId[] => {
-    const node = findNode(tree, nodeId);
-    if (!node || !node.parentId) return [];
-
-    const parent = findNode(tree, node.parentId);
-    if (!parent) return [];
-
-    const nodeIndex = parent.childrenIds.indexOf(nodeId);
-    if (nodeIndex === -1) return [];
-
-    return parent.childrenIds.slice(nodeIndex + 1);
-};
-
-/**
  * Check if targetId is a descendant of sourceId (to prevent cycles)
  */
 export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetId: TreeNodeId): boolean => {
     const descendants = getDescendants(tree, sourceId);
     return descendants.includes(targetId);
+};
+
+/**
+ * Check if a node (and optionally its descendants) can be deleted.
+ * Returns true if deletion would not remove all pages.
+ */
+export const canDeleteNode = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    moveSubtree: boolean,
+    totalPages: number,
+): boolean => {
+    const nodeIds = moveSubtree ? getDescendants(tree, nodeId) : [nodeId];
+    const pageIndices = new Set<number>();
+    for (const id of nodeIds) {
+        const node = findNode(tree, id);
+        if (node && node.pageIndex >= 0) {
+            pageIndices.add(node.pageIndex);
+        }
+    }
+    const count = pageIndices.size;
+    return count > 0 && count < totalPages;
 };
 
 /**
@@ -1215,167 +1189,6 @@ export const moveSubtreeToParent = (
     };
 };
 
-/**
- * Move a node and all its right siblings to become children of target node
- * The nodes are detached from their current parent and attached to the target
- */
-export const moveNodeWithRightSiblingsToParent = (
-    tree: SerializedTree,
-    sourceId: TreeNodeId,
-    targetId: TreeNodeId,
-): SerializedTree => {
-    const sourceNode = findNode(tree, sourceId);
-    if (!sourceNode || !sourceNode.parentId) return tree;
-
-    // Get right siblings
-    const rightSiblings = getRightSiblings(tree, sourceId);
-    const nodesToMove = [sourceId, ...rightSiblings];
-
-    // Check if any node to move is an ancestor of target
-    for (const nodeId of nodesToMove) {
-        if (!canMoveNode(tree, nodeId, targetId)) {
-            return tree;
-        }
-    }
-
-    const oldParentId = sourceNode.parentId;
-
-    // Update all nodes
-    const updatedNodes = tree.nodes.map((node) => {
-        // Remove all moved nodes from old parent's children
-        if (node.id === oldParentId) {
-            return {
-                ...node,
-                childrenIds: node.childrenIds.filter(id => !nodesToMove.includes(id)),
-            };
-        }
-
-        // Add all moved nodes to new parent's children
-        if (node.id === targetId) {
-            return {
-                ...node,
-                childrenIds: [...node.childrenIds, ...nodesToMove],
-            };
-        }
-
-        // Update moved nodes' parent
-        if (nodesToMove.includes(node.id)) {
-            return {
-                ...node,
-                parentId: targetId,
-            };
-        }
-
-        return node;
-    });
-
-    return {
-        ...tree,
-        nodes: updatedNodes,
-    };
-};
-
-/**
- * Reorder nodes by moving a node to a different position
- * Similar to list view reorder but maintains tree structure
- * The node is moved to become a sibling at a specific position
- */
-export const reorderNode = (
-    tree: SerializedTree,
-    sourceId: TreeNodeId,
-    targetId: TreeNodeId,
-    insertBefore: boolean = true,
-): SerializedTree => {
-    const sourceNode = findNode(tree, sourceId);
-    const targetNode = findNode(tree, targetId);
-    if (!sourceNode || !targetNode) return tree;
-
-    // Cannot reorder root
-    if (sourceId === tree.rootId) return tree;
-
-    // Source and target must have the same parent for simple reorder
-    // Or we need to move source to target's parent
-    const targetParentId = targetNode.parentId;
-    if (!targetParentId) return tree; // Cannot insert before/after root
-
-    const oldParentId = sourceNode.parentId;
-    const isSameParent = oldParentId === targetParentId;
-
-    if (isSameParent) {
-        // Simple reorder within same parent
-        const parent = findNode(tree, oldParentId!);
-        if (!parent) return tree;
-
-        const children = [...parent.childrenIds];
-        const sourceIndex = children.indexOf(sourceId);
-        const targetIndex = children.indexOf(targetId);
-
-        if (sourceIndex === -1 || targetIndex === -1) return tree;
-        if (sourceIndex === targetIndex) return tree;
-
-        // Remove source from current position
-        children.splice(sourceIndex, 1);
-
-        // Calculate new position
-        let insertIndex = children.indexOf(targetId);
-        if (!insertBefore) {
-            insertIndex += 1;
-        }
-
-        // Insert at new position
-        children.splice(insertIndex, 0, sourceId);
-
-        return {
-            ...tree,
-            nodes: tree.nodes.map((node) => {
-                if (node.id === oldParentId) {
-                    return { ...node, childrenIds: children };
-                }
-                return node;
-            }),
-        };
-    }
-    // Move to different parent
-    const targetParent = findNode(tree, targetParentId);
-    if (!targetParent) return tree;
-
-    // Check for cycles
-    if (isDescendant(tree, sourceId, targetParentId)) return tree;
-
-    const newChildren = [...targetParent.childrenIds];
-    const targetIndex = newChildren.indexOf(targetId);
-    const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
-    newChildren.splice(insertIndex, 0, sourceId);
-
-    return {
-        ...tree,
-        nodes: tree.nodes.map((node) => {
-            // Remove from old parent
-            if (node.id === oldParentId) {
-                return {
-                    ...node,
-                    childrenIds: node.childrenIds.filter(id => id !== sourceId),
-                };
-            }
-            // Add to new parent
-            if (node.id === targetParentId) {
-                return {
-                    ...node,
-                    childrenIds: newChildren,
-                };
-            }
-            // Update source node's parent
-            if (node.id === sourceId) {
-                return {
-                    ...node,
-                    parentId: targetParentId,
-                };
-            }
-            return node;
-        }),
-    };
-};
-
 // ============================================================================
 // Serialization (for fumen comment embedding)
 // ============================================================================
@@ -1446,8 +1259,6 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
             ? comment.slice(startIndex)
             : comment.slice(startIndex, endIndex);
 
-        console.log('parseTreeFromComment: base64 length =', base64.length, 'first 50 chars:', base64.substring(0, 50));
-
         let decoded: string;
         try {
             decoded = atob(base64.trim());
@@ -1455,9 +1266,6 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
             console.warn('Failed to decode base64 (may be truncated):', e);
             return null;
         }
-
-        console.log('parseTreeFromComment: decoded length =', decoded.length,
-            'first 50 chars:', decoded.substring(0, 50));
 
         let parsedTree: SerializedTree | null = null;
 
@@ -1699,7 +1507,6 @@ export const embedTreeInPages = (
     }
 
     const newComment = appendTreeToComment(currentComment, tree);
-    console.log('embedTreeInPages: tree nodes =', tree.nodes.length, 'newComment length =', newComment.length);
 
     return pages.map((page, index) => {
         if (index === 0) {
@@ -1740,8 +1547,6 @@ export const extractTreeFromPages = (
     if (!firstComment) {
         return { cleanedPages: pages, tree: null };
     }
-
-    console.log('extractTreeFromPages: firstComment =', firstComment.substring(0, 100));
 
     const tree = parseTreeFromComment(firstComment);
 

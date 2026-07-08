@@ -32,6 +32,34 @@ export const TREE_DELETE_BADGE_OFFSET_Y = 8;
 export const TREE_COPY_BUTTON_SIZE = 22;
 export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
 
+// Shared button/badge hit-test radii (visible circle radius + 6px touch/click slop).
+export const TREE_BUTTON_HIT_RADIUS = TREE_ADD_BUTTON_SIZE / 2 + 6;
+export const TREE_DELETE_BADGE_HIT_RADIUS = TREE_DELETE_BADGE_SIZE / 2 + 6;
+export const TREE_COPY_BUTTON_HIT_RADIUS = TREE_COPY_BUTTON_SIZE / 2 + 6;
+
+// Node-relative offsets for buttons/badges, shared between rendering (fumen_graph.tsx)
+// and hit-testing (fumen_graph.tsx mouse handler, views/list_view.ts touch handlers).
+export const getInsertButtonOffset = (nodeHeight: number) =>
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 });
+export const getBranchButtonOffset = (nodeHeight: number) =>
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4 });
+export const getDeleteBadgeOffset = () =>
+    ({ x: -TREE_DELETE_BADGE_OFFSET_X, y: TREE_DELETE_BADGE_OFFSET_Y });
+export const getCopyButtonOffset = (nodeHeight: number) =>
+    ({ x: TREE_NODE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 });
+
+// Root ghost frame (branch-drop target onto the virtual root / new top-level add) rectangle.
+export const getRootGhostRect = (contentHeight: number) => {
+    const minH = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
+    const width = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
+    const height = Math.max(56, Math.round(minH * 0.38));
+    return {
+        width, height,
+        x: TREE_PADDING + (TREE_NODE_WIDTH - width) / 2,
+        y: TREE_PADDING + contentHeight + TREE_VERTICAL_GAP,
+    };
+};
+
 export interface TreeNodeLayout {
     id: TreeNodeId;
     x: number;

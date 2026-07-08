@@ -6,16 +6,17 @@ import { PageFieldOperation, Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
+import { Field } from '../lib/fumen/field';
 import {
     downloadBlob,
     downloadImage,
     generateListViewExportImage,
-    generateTreeViewExportImage,
 } from '../lib/thumbnail';
+import { generateTreeViewExportImage } from '../lib/tree_export';
 import { generateGifBlob } from '../lib/gif_export';
 import { decode, encode } from '../lib/fumen/fumen';
-import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
-import { localStorageWrapper } from '../memento';
+import { LIST_VIEW_SCALE_RANGE, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import { persistViewSettings } from './view_settings';
 import {
     createTreeFromPages,
     embedTreeInPages,
@@ -26,7 +27,6 @@ import {
     getPathToNode,
     isVirtualNode,
     removeTreeFromComment,
-    updateTreePageIndices,
 } from '../lib/fumen/tree_utils';
 
 declare const M: any;
@@ -291,6 +291,44 @@ const openGeneratedUrl = (url: string, shortenUrls: boolean): void => {
     window.open(url, '_blank');
 };
 
+const showToast = (html: string, displayLength: number = 1500): void => {
+    M.toast({ html, displayLength, classes: 'top-toast' });
+};
+
+// Resolve the tree to embed for export, mirroring the previous per-callsite hasTreeData logic exactly.
+const getExportTree = (state: Readonly<State>): SerializedTree | null => {
+    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
+    if (hasTreeData) {
+        return { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+    }
+    return state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null;
+};
+
+// Resolve the pages to encode, honoring exportScope('left') for tree-enabled exports.
+const resolvePagesToEncode = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
+    if (state.tree.enabled && state.listView.exportScope === 'left') {
+        return extractRootToActiveSegmentPages(state);
+    }
+    return { pages: embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled) };
+};
+
+const buildShareParams = (
+    state: Readonly<State>,
+    encoded: string,
+    opts: { includeTreeParams: boolean },
+): URLSearchParams => {
+    const params = new URLSearchParams();
+    params.set('d', `v115@${encoded}`);
+    params.set('screen', 'list');
+    if (opts.includeTreeParams) {
+        params.set('tree', state.tree.enabled ? '1' : '0');
+        params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
+    } else {
+        params.set('tree', '0');
+    }
+    return params;
+};
+
 export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
     const tree: SerializedTree = {
         nodes: state.tree.nodes,
@@ -423,36 +461,6 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     return rebuildPageRefs(pages, originalFirstPageColorize, originalFirstPageSrs);
 }
 
-const buildReorderIndexMap = (pageCount: number, fromIndex: number, toIndex: number): Map<number, number> => {
-    const indexMap = new Map<number, number>();
-    if (fromIndex === toIndex) {
-        for (let i = 0; i < pageCount; i += 1) {
-            indexMap.set(i, i);
-        }
-        return indexMap;
-    }
-
-    for (let i = 0; i < pageCount; i += 1) {
-        let newIndex = i;
-        if (fromIndex < toIndex) {
-            if (i === fromIndex) {
-                newIndex = toIndex;
-            } else if (i > fromIndex && i <= toIndex) {
-                newIndex = i - 1;
-            }
-        } else if (fromIndex > toIndex) {
-            if (i === fromIndex) {
-                newIndex = toIndex;
-            } else if (i >= toIndex && i < fromIndex) {
-                newIndex = i + 1;
-            }
-        }
-        indexMap.set(i, newIndex);
-    }
-
-    return indexMap;
-};
-
 function rebuildPageRefs(
     pages: Page[],
     originalFirstPageColorize: boolean,
@@ -498,7 +506,6 @@ function rebuildPageRefs(
                     newPage.field = { obj: resolvedField };
                 } else {
                     // Fallback: create empty field if resolution fails
-                    const { Field } = require('../lib/fumen/field');
                     newPage.field = { obj: new Field({}) };
                 }
             }
@@ -556,7 +563,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         };
     },
     setListViewScale: ({ scale }) => (state): NextState => {
-        const clampedScale = Math.max(0.5, Math.min(3.0, scale));
+        const clampedScale = Math.max(LIST_VIEW_SCALE_RANGE.min, Math.min(LIST_VIEW_SCALE_RANGE.max, scale));
         return {
             listView: {
                 ...state.listView,
@@ -580,18 +587,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        localStorageWrapper.saveViewSettings({
-            trimTopBlank: enabled,
-            shortenUrls: state.listView.shortenUrls,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
-            grayAfterLineClear: state.tree.grayAfterLineClear,
-            coldClearTopBranchCount: state.coldClear.topBranchCount,
-            coldClearHoldAllowed: state.coldClear.holdAllowed,
-            coldClearSpeculate: state.coldClear.speculate,
-            coldClearNextLimit: state.coldClear.nextLimit,
-            coldClearWeightsPreset: state.coldClear.weightsPreset,
-            coldClearThinkMs: state.coldClear.thinkMs,
-        });
+        persistViewSettings(state, { trimTopBlank: enabled });
         return {
             listView: {
                 ...state.listView,
@@ -627,27 +623,6 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         const newPages = reorderPagesInternal([...state.fumen.pages], fromIndex, actualTargetIndex);
 
-        const updateTree = state.tree.enabled && state.tree.rootId
-            ? (() => {
-                const currentTree = {
-                    nodes: state.tree.nodes,
-                    rootId: state.tree.rootId,
-                    version: 1 as const,
-                };
-                const indexMap = buildReorderIndexMap(state.fumen.pages.length, fromIndex, actualTargetIndex);
-                const newTree = updateTreePageIndices(currentTree, indexMap);
-                const currentNode = findNodeByPageIndex(newTree, actualTargetIndex);
-                return {
-                    tree: {
-                        ...state.tree,
-                        nodes: newTree.nodes,
-                        rootId: newTree.rootId,
-                        activeNodeId: currentNode?.id ?? state.tree.activeNodeId,
-                    },
-                };
-            })()
-            : {};
-
         const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
 
         return sequence(state, [
@@ -658,7 +633,6 @@ export const listViewActions: Readonly<ListViewActions> = {
                     pages: newPages,
                     currentIndex: actualTargetIndex,
                 },
-                ...updateTree,
                 listView: {
                     ...state.listView,
                     dragState: {
@@ -756,29 +730,16 @@ export const listViewActions: Readonly<ListViewActions> = {
     exportListViewAsUrl: () => (state): NextState => {
         (async () => {
             try {
-                const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
-                const tree = hasTreeData
-                    ? {
-                        nodes: state.tree.nodes,
-                        rootId: state.tree.rootId,
-                        version: 1 as const,
-                    }
-                    : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                const pagesToEncode = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
                 const encoded = await encode(pagesToEncode);
 
-                const params = new URLSearchParams();
-                params.set('d', `v115@${encoded}`);
-                params.set('screen', 'list');
-                params.set('tree', state.tree.enabled ? '1' : '0');
-                params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
-
+                const params = buildShareParams(state, encoded, { includeTreeParams: true });
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to export URL: ${error}`);
             }
         })();
 
@@ -789,24 +750,20 @@ export const listViewActions: Readonly<ListViewActions> = {
             try {
                 const segment = extractRootToActiveSegmentPages(state);
                 if ('error' in segment) {
-                    M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+                    showToast(segment.error);
                     return;
                 }
 
                 // 6. Encode (no tree embedding)
                 const encoded = await encode(segment.pages);
 
-                const params = new URLSearchParams();
-                params.set('d', `v115@${encoded}`);
-                params.set('screen', 'list');
-                params.set('tree', '0');
-
+                const params = buildShareParams(state, encoded, { includeTreeParams: false });
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to export URL: ${error}`);
             }
         })();
 
@@ -815,47 +772,28 @@ export const listViewActions: Readonly<ListViewActions> = {
     copyListViewUrlToClipboard: () => (state): NextState => {
         (async () => {
             try {
-                const params = new URLSearchParams();
-                if (state.tree.enabled && state.listView.exportScope === 'left') {
-                    const segment = extractRootToActiveSegmentPages(state);
-                    if ('error' in segment) {
-                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
-                        return;
-                    }
-
-                    const encoded = await encode(segment.pages);
-                    params.set('d', `v115@${encoded}`);
-                    params.set('screen', 'list');
-                    params.set('tree', '0');
-                } else {
-                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
-                    const tree = hasTreeData
-                        ? {
-                            nodes: state.tree.nodes,
-                            rootId: state.tree.rootId,
-                            version: 1 as const,
-                        }
-                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                    const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
-                    const encoded = await encode(pagesToEncode);
-                    params.set('d', `v115@${encoded}`);
-                    params.set('screen', 'list');
-                    params.set('tree', state.tree.enabled ? '1' : '0');
-                    params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
+                const isLeftScope = state.tree.enabled && state.listView.exportScope === 'left';
+                const resolved = resolvePagesToEncode(state);
+                if ('error' in resolved) {
+                    showToast(resolved.error);
+                    return;
                 }
+
+                const encoded = await encode(resolved.pages);
+                const params = buildShareParams(state, encoded, { includeTreeParams: !isLeftScope });
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 if (state.listView.shortenUrls) {
                     openGeneratedUrl(url, true);
                 } else if (copyTextToClipboard(url)) {
-                    M.toast({ html: 'Copied share URL', classes: 'top-toast', displayLength: 1000 });
+                    showToast('Copied share URL', 1000);
                 } else {
-                    M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
+                    showToast('Failed to copy');
                 }
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to copy URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to copy URL: ${error}`);
             }
         })();
 
@@ -864,7 +802,7 @@ export const listViewActions: Readonly<ListViewActions> = {
     exportLeftSegmentAsImage: () => (state): NextState => {
         const segment = extractRootToActiveSegmentPages(state);
         if ('error' in segment) {
-            M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+            showToast(segment.error);
             return undefined;
         }
 
@@ -884,7 +822,7 @@ export const listViewActions: Readonly<ListViewActions> = {
     exportLeftSegmentAsGif: () => (state): NextState => {
         const segment = extractRootToActiveSegmentPages(state);
         if ('error' in segment) {
-            M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+            showToast(segment.error);
             return undefined;
         }
 
@@ -915,18 +853,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        localStorageWrapper.saveViewSettings({
-            trimTopBlank: state.listView.trimTopBlank,
-            shortenUrls: enabled,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
-            grayAfterLineClear: state.tree.grayAfterLineClear,
-            coldClearTopBranchCount: state.coldClear.topBranchCount,
-            coldClearHoldAllowed: state.coldClear.holdAllowed,
-            coldClearSpeculate: state.coldClear.speculate,
-            coldClearNextLimit: state.coldClear.nextLimit,
-            coldClearWeightsPreset: state.coldClear.weightsPreset,
-            coldClearThinkMs: state.coldClear.thinkMs,
-        });
+        persistViewSettings(state, { shortenUrls: enabled });
         return {
             listView: {
                 ...state.listView,
@@ -937,31 +864,17 @@ export const listViewActions: Readonly<ListViewActions> = {
     openListViewInFumenZui: () => (state): NextState => {
         (async () => {
             try {
-                let pagesToEncode: Page[];
-                if (state.tree.enabled && state.listView.exportScope === 'left') {
-                    const segment = extractRootToActiveSegmentPages(state);
-                    if ('error' in segment) {
-                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
-                        return;
-                    }
-                    pagesToEncode = segment.pages;
-                } else {
-                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
-                    const tree = hasTreeData
-                        ? {
-                            nodes: state.tree.nodes,
-                            rootId: state.tree.rootId,
-                            version: 1 as const,
-                        }
-                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                const resolved = resolvePagesToEncode(state);
+                if ('error' in resolved) {
+                    showToast(resolved.error);
+                    return;
                 }
 
-                const encoded = await encode(pagesToEncode);
+                const encoded = await encode(resolved.pages);
                 openGeneratedUrl(`https://fumen.zui.jp/?v115@${encoded}`, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to open: ${error}`);
             }
         })();
 
@@ -970,34 +883,20 @@ export const listViewActions: Readonly<ListViewActions> = {
     openListViewInFumenForMobile: () => (state): NextState => {
         (async () => {
             try {
-                let pagesToEncode: Page[];
-                if (state.tree.enabled && state.listView.exportScope === 'left') {
-                    const segment = extractRootToActiveSegmentPages(state);
-                    if ('error' in segment) {
-                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
-                        return;
-                    }
-                    pagesToEncode = segment.pages;
-                } else {
-                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
-                    const tree = hasTreeData
-                        ? {
-                            nodes: state.tree.nodes,
-                            rootId: state.tree.rootId,
-                            version: 1 as const,
-                        }
-                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                const resolved = resolvePagesToEncode(state);
+                if ('error' in resolved) {
+                    showToast(resolved.error);
+                    return;
                 }
 
-                const encoded = await encode(pagesToEncode);
+                const encoded = await encode(resolved.pages);
                 openGeneratedUrl(
                     `https://knewjade.github.io/fumen-for-mobile/#?d=v115@${encoded}`,
                     state.listView.shortenUrls,
                 );
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to open: ${error}`);
             }
         })();
 
@@ -1006,32 +905,18 @@ export const listViewActions: Readonly<ListViewActions> = {
     openListViewInExternalSite: () => (state): NextState => {
         (async () => {
             try {
-                let pagesToEncode: Page[];
-                if (state.tree.enabled && state.listView.exportScope === 'left') {
-                    const segment = extractRootToActiveSegmentPages(state);
-                    if ('error' in segment) {
-                        M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
-                        return;
-                    }
-                    pagesToEncode = segment.pages;
-                } else {
-                    const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
-                    const tree = hasTreeData
-                        ? {
-                            nodes: state.tree.nodes,
-                            rootId: state.tree.rootId,
-                            version: 1 as const,
-                        }
-                        : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                    pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                const resolved = resolvePagesToEncode(state);
+                if ('error' in resolved) {
+                    showToast(resolved.error);
+                    return;
                 }
 
-                const encoded = await encode(pagesToEncode);
+                const encoded = await encode(resolved.pages);
                 const url = `https://fumen.zui.jp/?D115@${encoded}`;
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to open: ${error}`);
             }
         })();
 
@@ -1040,7 +925,7 @@ export const listViewActions: Readonly<ListViewActions> = {
     copyLeftSegmentToClipboard: () => (state): NextState => {
         const segment = extractRootToActiveSegmentPages(state);
         if ('error' in segment) {
-            M.toast({ html: segment.error, classes: 'top-toast', displayLength: 1500 });
+            showToast(segment.error);
             return undefined;
         }
 
@@ -1050,27 +935,13 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const encoded = await encode(segment.pages);
                 const url = `v115@${encoded}`;
 
-                const element = document.createElement('pre');
-                element.style.position = 'fixed';
-                element.style.left = '-100%';
-                element.textContent = url;
-                document.body.appendChild(element);
-
-                const selection = document.getSelection();
-                if (selection) {
-                    selection.selectAllChildren(element);
-                    const success = document.execCommand('copy');
-                    if (success) {
-                        const msg = `Copied ${segment.pages.length} pages`;
-                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
-                    } else {
-                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
-                    }
+                if (copyTextToClipboard(url)) {
+                    showToast(`Copied ${segment.pages.length} pages`, 1000);
+                } else {
+                    showToast('Failed to copy');
                 }
-
-                document.body.removeChild(element);
             } catch (error) {
-                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to copy: ${error}`);
             }
         })();
 
@@ -1201,7 +1072,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const parsedInput = parseClipboardInput(text);
                 if (!parsedInput) {
-                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
+                    showToast('No fumen data in clipboard');
                     return;
                 }
 
@@ -1223,7 +1094,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                         loadedFumen: fumenData,
                     });
                     const msg = `Replaced with ${decodedPages.length} pages`;
-                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    showToast(msg, 1000);
                     return;
                 }
 
@@ -1234,10 +1105,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                     pages: decodedPages,
                 });
                 const msg = `Added ${decodedPages.length} pages`;
-                M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                showToast(msg, 1000);
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to import: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`Failed to import: ${error}`);
             }
         })();
 

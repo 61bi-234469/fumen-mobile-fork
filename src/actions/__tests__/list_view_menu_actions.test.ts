@@ -250,3 +250,66 @@ describe('copyLeftSegmentToClipboard', () => {
         expect(document.execCommand).toHaveBeenCalledWith('copy');
     });
 });
+
+describe('exportListViewAsUrl', () => {
+    test('encodes a share URL without tree data when tree mode is disabled', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: false, shortenUrls: false });
+
+        listViewActions.exportListViewAsUrl()(state);
+        await flushPromises();
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        const url = (openSpy.mock.calls[0][0] as string);
+        expect(url).toMatch(/#\?d=v115%40ENC&screen=list&tree=0&treeView=list$/);
+        openSpy.mockRestore();
+    });
+
+    test('includes tree=1 in the share URL when tree mode is enabled', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: true, shortenUrls: false });
+
+        listViewActions.exportListViewAsUrl()(state);
+        await flushPromises();
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        const url = (openSpy.mock.calls[0][0] as string);
+        expect(url).toContain('tree=1');
+        openSpy.mockRestore();
+    });
+
+    test('opens a TinyURL creation link when shortenUrls is enabled', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        const state = createState({ treeEnabled: false, shortenUrls: true });
+
+        listViewActions.exportListViewAsUrl()(state);
+        await flushPromises();
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        const url = (openSpy.mock.calls[0][0] as string);
+        expect(url.startsWith('https://tinyurl.com/create.php?url=')).toBe(true);
+        openSpy.mockRestore();
+    });
+});
+
+describe('copyListViewUrlToClipboard toast', () => {
+    test('shows the "Copied share URL" toast when tree mode is disabled', async () => {
+        const selectAllChildren = jest.fn();
+        const selectionSpy = jest.spyOn(document, 'getSelection').mockReturnValue({ selectAllChildren } as any);
+        document.execCommand = jest.fn(() => true);
+        const state = createState({ treeEnabled: false, exportScope: 'all' });
+
+        listViewActions.copyListViewUrlToClipboard()(state);
+        await flushPromises();
+        await flushPromises();
+
+        expect(document.execCommand).toHaveBeenCalledWith('copy');
+        expect((global as any).M.toast).toHaveBeenCalledWith(
+            expect.objectContaining({ html: 'Copied share URL' }),
+        );
+        selectionSpy.mockRestore();
+    });
+});

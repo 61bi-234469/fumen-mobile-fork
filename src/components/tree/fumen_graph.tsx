@@ -6,33 +6,42 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { TreeNode, TreeNodeId, SerializedTree, TreeDragMode } from '../../lib/fumen/tree_types';
-import { findNode, canMoveNode, isDescendant, isVirtualNode, getDescendants } from '../../lib/fumen/tree_utils';
+import {
+    canDeleteNode,
+    findNode,
+    canMoveNode,
+    isDescendant,
+    isVirtualNode,
+} from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import {
     TREE_ADD_BUTTON_SIZE,
     calculateTreeMinDepth,
+    TREE_BUTTON_HIT_RADIUS,
     TREE_COMMENT_HEIGHT,
     TREE_COMMENT_MARGIN_X,
     TREE_COMMENT_TOP_OFFSET,
     TREE_COMMENT_WIDTH,
-    TREE_COPY_BUTTON_MARGIN_BOTTOM,
+    TREE_COPY_BUTTON_HIT_RADIUS,
     TREE_COPY_BUTTON_SIZE,
-    TREE_DELETE_BADGE_OFFSET_X,
-    TREE_DELETE_BADGE_OFFSET_Y,
+    TREE_DELETE_BADGE_HIT_RADIUS,
     TREE_DELETE_BADGE_SIZE,
     TREE_HORIZONTAL_GAP,
-    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
     TREE_PADDING,
     TREE_PAGE_NUMBER_OFFSET,
     TREE_SCROLL_PADDING_BOTTOM,
     TREE_SCROLL_PADDING_RIGHT,
-    TREE_THUMBNAIL_HEIGHT,
     TREE_THUMBNAIL_WIDTH,
     TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
+    getBranchButtonOffset,
+    getCopyButtonOffset,
+    getDeleteBadgeOffset,
+    getInsertButtonOffset,
+    getRootGhostRect,
     shouldShowDeleteBadge,
     TreeNodeLayout,
 } from '../../lib/fumen/tree_view_layout';
@@ -148,28 +157,6 @@ const getNodeLayout = (
 };
 
 /**
- * Check if a node (and optionally its descendants) can be deleted.
- * Returns true if deletion would not remove all pages.
- */
-const canDeleteNode = (
-    tree: SerializedTree,
-    nodeId: TreeNodeId,
-    moveSubtree: boolean,
-    totalPages: number,
-): boolean => {
-    const nodeIds = moveSubtree ? getDescendants(tree, nodeId) : [nodeId];
-    const pageIndices = new Set<number>();
-    for (const id of nodeIds) {
-        const node = findNode(tree, id);
-        if (node && node.pageIndex >= 0) {
-            pageIndices.add(node.pageIndex);
-        }
-    }
-    const count = pageIndices.size;
-    return count > 0 && count < totalPages;
-};
-
-/**
  * Render connection line between nodes
  */
 const renderConnection = (
@@ -246,6 +233,11 @@ const renderNode = (
     const page = pages[node.pageIndex];
     const nodeHeight = nodeLayout.height;
     const thumbnailHeight = nodeLayout.thumbnailHeight;
+
+    const insertButtonOffset = getInsertButtonOffset(nodeHeight);
+    const branchButtonOffset = getBranchButtonOffset(nodeHeight);
+    const deleteBadgeOffset = getDeleteBadgeOffset();
+    const copyButtonOffset = getCopyButtonOffset(nodeHeight);
 
     // Generate thumbnail with error handling
     let thumbnailSrc = '';
@@ -331,25 +323,20 @@ const renderNode = (
 
                     if (isOverButtonArea) {
                         // Mouse is in button area - check which button
-                        const buttonCenterX = TREE_NODE_WIDTH + 4;
-                        const insertButtonCenterY = nodeHeight / 2;
-                        const branchButtonCenterY = nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
-                        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
-
                         const distToInsert = Math.sqrt(
-                            (xInNode - buttonCenterX) ** 2 + (yInNode - insertButtonCenterY) ** 2,
+                            (xInNode - insertButtonOffset.x) ** 2 + (yInNode - insertButtonOffset.y) ** 2,
                         );
                         const distToBranch = Math.sqrt(
-                            (xInNode - buttonCenterX) ** 2 + (yInNode - branchButtonCenterY) ** 2,
+                            (xInNode - branchButtonOffset.x) ** 2 + (yInNode - branchButtonOffset.y) ** 2,
                         );
 
-                        if (distToInsert <= buttonHitRadius && isValidButtonTarget) {
+                        if (distToInsert <= TREE_BUTTON_HIT_RADIUS && isValidButtonTarget) {
                             e.stopPropagation(); // Prevent SVG handler from overriding
                             actions.onDragOverButton(node.id, 'insert');
                             return;
                         }
                         if (!hideBranchButton && node.childrenIds.length > 0
-                            && distToBranch <= buttonHitRadius && isValidButtonTarget) {
+                            && distToBranch <= TREE_BUTTON_HIT_RADIUS && isValidButtonTarget) {
                             e.stopPropagation(); // Prevent SVG handler from overriding
                             actions.onDragOverButton(node.id, 'branch');
                             return;
@@ -502,7 +489,7 @@ const renderNode = (
             {/* Copy button - below the node (outside node bounds) */}
             {canCopy && !isDragging && (
                 <g
-                    transform={`translate(${TREE_NODE_WIDTH / 2}, ${nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2})`}
+                    transform={`translate(${copyButtonOffset.x}, ${copyButtonOffset.y})`}
                     style={style({
                         cursor: isDragging ? 'default' : 'pointer',
                         pointerEvents: isDragging ? 'none' : 'auto',
@@ -532,7 +519,7 @@ const renderNode = (
                 >
                     {/* Larger hit area for touch */}
                     <circle
-                        r={TREE_COPY_BUTTON_SIZE / 2 + 6}
+                        r={TREE_COPY_BUTTON_HIT_RADIUS}
                         fill="transparent"
                     />
                     {/* Visible button */}
@@ -553,7 +540,7 @@ const renderNode = (
             {/* Delete badge - appears on drag source when left-edge or parent is on different lane */}
             {isDragSource && showDeleteBadge && (
                 <g
-                    transform={`translate(${-TREE_DELETE_BADGE_OFFSET_X}, ${TREE_DELETE_BADGE_OFFSET_Y})`}
+                    transform={`translate(${deleteBadgeOffset.x}, ${deleteBadgeOffset.y})`}
                     style={style({ cursor: canDelete ? 'pointer' : 'not-allowed' })}
                     onmouseenter={(e: MouseEvent) => {
                         if (isDragging && canDelete) {
@@ -574,7 +561,7 @@ const renderNode = (
                     }}
                 >
                     <circle
-                        r={TREE_DELETE_BADGE_SIZE / 2 + 6}
+                        r={TREE_DELETE_BADGE_HIT_RADIUS}
                         fill="transparent"
                     />
                     <circle
@@ -600,7 +587,7 @@ const renderNode = (
                 <g key="add-buttons">
                     {/* INSERT button - green normally, red when parent of drag source */}
                     <g
-                        transform={`translate(${TREE_NODE_WIDTH + 4}, ${nodeHeight / 2})`}
+                        transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
                         }}
@@ -635,7 +622,7 @@ const renderNode = (
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
-                            r={TREE_ADD_BUTTON_SIZE / 2 + 6}
+                            r={TREE_BUTTON_HIT_RADIUS}
                             fill="transparent"
                         />
                         <circle
@@ -652,7 +639,7 @@ const renderNode = (
                     {/* Orange Branch button */}
                     {!hideBranchButton && (
                     <g
-                        transform={`translate(${TREE_NODE_WIDTH + 4}, ${nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4})`}
+                        transform={`translate(${branchButtonOffset.x}, ${branchButtonOffset.y})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
                         }}
@@ -687,7 +674,7 @@ const renderNode = (
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
-                            r={TREE_ADD_BUTTON_SIZE / 2 + 6}
+                            r={TREE_BUTTON_HIT_RADIUS}
                             fill="transparent"
                         />
                         <circle
@@ -739,7 +726,7 @@ const renderNode = (
                     style={style({ cursor: 'pointer' })}
                 >
                     <circle
-                        r={TREE_ADD_BUTTON_SIZE / 2 + 6}
+                        r={TREE_BUTTON_HIT_RADIUS}
                         fill="transparent"
                     />
                     <circle
@@ -845,11 +832,11 @@ export const FumenGraph: Component<Props> = ({
     const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
     const { layout } = treeViewLayout;
     const isDragging = dragSourceNodeId !== null;
-    const minGhostNodeHeight = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
-    const ghostNodeWidth = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
-    const ghostNodeHeight = Math.max(56, Math.round(minGhostNodeHeight * 0.38));
-    const ghostNodeX = TREE_PADDING + (TREE_NODE_WIDTH - ghostNodeWidth) / 2;
-    const ghostNodeY = TREE_PADDING + treeViewLayout.contentHeight + TREE_VERTICAL_GAP;
+    const rootGhostRect = getRootGhostRect(treeViewLayout.contentHeight);
+    const ghostNodeWidth = rootGhostRect.width;
+    const ghostNodeHeight = rootGhostRect.height;
+    const ghostNodeX = rootGhostRect.x;
+    const ghostNodeY = rootGhostRect.y;
     const ghostTreeContentHeight = treeViewLayout.contentHeight + TREE_VERTICAL_GAP + ghostNodeHeight;
     const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
     const canDropOnRootGhost = isDragging
@@ -1279,7 +1266,6 @@ export const FumenGraph: Component<Props> = ({
         const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
 
         // First, check for button hits (priority over slots)
-        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
         let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' | 'delete' } | null = null;
 
         // Check delete badge first (for drag source node: left-edge or parent on different lane)
@@ -1289,14 +1275,14 @@ export const FumenGraph: Component<Props> = ({
                 sourceNodeLayout
                 && shouldShowDeleteBadge(tree, layout, dragSourceNodeId, minDepth)
             ) {
-                const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
-                const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
-                const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;
+                const badgeOffset = getDeleteBadgeOffset();
+                const deleteBadgeX = sourceNodeLayout.x + badgeOffset.x;
+                const deleteBadgeY = sourceNodeLayout.y + badgeOffset.y;
                 const distToDelete = Math.sqrt(
                     (mouseX - deleteBadgeX) ** 2 + (mouseY - deleteBadgeY) ** 2,
                 );
 
-                if (distToDelete <= deleteHitRadius) {
+                if (distToDelete <= TREE_DELETE_BADGE_HIT_RADIUS) {
                     const canDelete = canDeleteNode(tree, dragSourceNodeId, buttonDropMovesSubtree, pages.length);
                     if (canDelete) {
                         foundButton = { nodeId: dragSourceNodeId, type: 'delete' };
@@ -1328,13 +1314,14 @@ export const FumenGraph: Component<Props> = ({
                     && !isRootDragSource
                     && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
-                const insertBtnX = nodeLayout.x + TREE_NODE_WIDTH + 4;
-                const insertBtnY = nodeLayout.y + nodeLayout.height / 2;
+                const insertOffset = getInsertButtonOffset(nodeLayout.height);
+                const insertBtnX = nodeLayout.x + insertOffset.x;
+                const insertBtnY = nodeLayout.y + insertOffset.y;
                 const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
 
                 if (!isValidTarget) continue;
 
-                if (distToInsert <= buttonHitRadius) {
+                if (distToInsert <= TREE_BUTTON_HIT_RADIUS) {
                     foundButton = { nodeId: node.id, type: 'insert' };
                     break;
                 }
@@ -1344,10 +1331,12 @@ export const FumenGraph: Component<Props> = ({
                     && sourceParentId === node.id
                     && node.childrenIds.length <= 1;
                 if (node.childrenIds.length > 0 && !hideBranchButton) {
-                    const branchBtnY = nodeLayout.y + nodeLayout.height / 2 + TREE_ADD_BUTTON_SIZE + 4;
-                    const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
+                    const branchOffset = getBranchButtonOffset(nodeLayout.height);
+                    const branchBtnX = nodeLayout.x + branchOffset.x;
+                    const branchBtnY = nodeLayout.y + branchOffset.y;
+                    const distToBranch = Math.sqrt((mouseX - branchBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
 
-                    if (distToBranch <= buttonHitRadius) {
+                    if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
                         foundButton = { nodeId: node.id, type: 'branch' };
                         break;
                     }

@@ -816,6 +816,28 @@ export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetI
 };
 
 /**
+ * Check if a node (and optionally its descendants) can be deleted.
+ * Returns true if deletion would not remove all pages.
+ */
+export const canDeleteNode = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    moveSubtree: boolean,
+    totalPages: number,
+): boolean => {
+    const nodeIds = moveSubtree ? getDescendants(tree, nodeId) : [nodeId];
+    const pageIndices = new Set<number>();
+    for (const id of nodeIds) {
+        const node = findNode(tree, id);
+        if (node && node.pageIndex >= 0) {
+            pageIndices.add(node.pageIndex);
+        }
+    }
+    const count = pageIndices.size;
+    return count > 0 && count < totalPages;
+};
+
+/**
  * Check if a node can be moved to a target node
  * Returns false if:
  * - Source and target are the same

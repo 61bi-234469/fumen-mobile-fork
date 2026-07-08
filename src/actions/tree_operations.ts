@@ -31,7 +31,6 @@ import {
     moveNodeToInsertPosition,
     moveSubtreeToInsertPosition,
     moveSubtreeToParent,
-    moveNodeWithRightSiblingsToParent,
     canMoveNode,
     isDescendant,
     validateTree,
@@ -205,7 +204,6 @@ const attachDetachedNodeToTarget = (
         // Update target children
         if (node.id === targetId) {
             if (buttonType === 'insert') {
-                const firstChild = node.childrenIds[0];
                 const rest = node.childrenIds.slice(1);
                 return {
                     ...node,
@@ -293,7 +291,6 @@ export interface TreeOperationActions {
     syncTreeWithPages: () => action;
 
     // Drag operations
-    setTreeDragMode: (data: { mode: TreeDragMode }) => action;
     startTreeDrag: (data: { sourceNodeId: TreeNodeId }) => action;
     updateTreeDragTarget: (data: { targetNodeId: TreeNodeId | null }) => action;
     updateTreeDropSlot: (data: { slotIndex: number | null }) => action;
@@ -1352,21 +1349,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     // ============================================================================
 
     /**
-     * Set the current drag mode
-     */
-    setTreeDragMode: ({ mode }) => (state): NextState => {
-        return {
-            tree: {
-                ...state.tree,
-                dragState: {
-                    ...state.tree.dragState,
-                    mode,
-                },
-            },
-        };
-    },
-
-    /**
      * Start dragging a node
      */
     startTreeDrag: ({ sourceNodeId }) => (state): NextState => {
@@ -1977,141 +1959,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             ]);
         }
 
-        // Tree view reorder via drag is disabled.
-        if (mode === TreeDragMode.Reorder) {
-            return treeOperationActions.endTreeDrag()(state);
-        }
-
-        // Priority 3: For Attach modes, use node-based targeting
-        if (sourceNodeId === null || targetNodeId === null) {
-            return treeOperationActions.endTreeDrag()(state);
-        }
-
-        const tree = getOrCreateTree(state);
-
-        // Root-specific handling for attach modes
-        if (tree.rootId && sourceNodeId === tree.rootId) {
-            const rerooted = rerootByFirstChild(tree);
-            if (!rerooted || targetNodeId === null) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            // Use attach semantics similar to branch (append) for AttachSingle/AttachBranch
-            const buttonType = mode === TreeDragMode.AttachSingle ? 'branch' : 'branch';
-            const reparentedTree = attachDetachedNodeToTarget(
-                rerooted.tree,
-                sourceNodeId,
-                targetNodeId,
-                buttonType,
-            );
-
-            const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-            const normalized = normalizeTreeAndPages(
-                reparentedTree,
-                state.fumen.pages,
-                state.fumen.currentIndex,
-                state.tree.activeNodeId,
-            );
-            const nextSnapshot = createSnapshot(
-                normalized.tree,
-                normalized.pages,
-                normalized.currentIndex,
-            );
-            const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-            const { mementoActions } = require('./memento');
-
-            return sequence(state, [
-                mementoActions.registerHistoryTask({ task }),
-                () => ({
-                    fumen: {
-                        ...state.fumen,
-                        pages: normalized.pages,
-                        maxPage: normalized.pages.length,
-                        currentIndex: normalized.currentIndex,
-                    },
-                    tree: {
-                        ...state.tree,
-                        nodes: normalized.tree.nodes,
-                        rootId: normalized.tree.rootId,
-                        dragState: {
-                            ...state.tree.dragState,
-                            sourceNodeId: null,
-                            targetNodeId: null,
-                            dropSlotIndex: null,
-                            targetButtonParentId: null,
-                            targetButtonType: null,
-                        },
-                    },
-                }),
-            ]);
-        }
-
-        // Validate the operation
-        if (!canMoveNode(tree, sourceNodeId, targetNodeId)) {
-            return treeOperationActions.endTreeDrag()(state);
-        }
-
-        // Create previous snapshot for history
-        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-
-        let newTree: SerializedTree;
-
-        switch (mode) {
-        case TreeDragMode.AttachSingle:
-            // Attach single: move node to become a child of target
-            newTree = moveNodeToParent(tree, sourceNodeId, targetNodeId);
-            break;
-
-        case TreeDragMode.AttachBranch:
-            // Attach branch: move node and its right siblings to become children of target
-            newTree = moveNodeWithRightSiblingsToParent(tree, sourceNodeId, targetNodeId);
-            break;
-
-        default:
-            newTree = tree;
-        }
-
-        // Create next snapshot for history
-        const normalized = normalizeTreeAndPages(
-            newTree,
-            state.fumen.pages,
-            state.fumen.currentIndex,
-            state.tree.activeNodeId,
-        );
-        const nextSnapshot = createSnapshot(
-            normalized.tree,
-            normalized.pages,
-            normalized.currentIndex,
-        );
-
-        // Create history task
-        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-
-        const { mementoActions } = require('./memento');
-
-        return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
-            () => ({
-                fumen: {
-                    ...state.fumen,
-                    pages: normalized.pages,
-                    maxPage: normalized.pages.length,
-                    currentIndex: normalized.currentIndex,
-                },
-                tree: {
-                    ...state.tree,
-                    nodes: normalized.tree.nodes,
-                    rootId: normalized.tree.rootId,
-                    dragState: {
-                        ...state.tree.dragState,
-                        sourceNodeId: null,
-                        targetNodeId: null,
-                        dropSlotIndex: null,
-                        targetButtonParentId: null,
-                        targetButtonType: null,
-                    },
-                },
-            }),
-        ]);
+        // No drop besides button drops is possible (dragState.mode is always Reorder).
+        return treeOperationActions.endTreeDrag()(state);
     },
 };

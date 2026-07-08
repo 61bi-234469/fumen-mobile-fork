@@ -808,22 +808,6 @@ export const insertPagesIntoTree = (
 // ============================================================================
 
 /**
- * Get right siblings of a node (nodes that come after it in parent's children array)
- */
-export const getRightSiblings = (tree: SerializedTree, nodeId: TreeNodeId): TreeNodeId[] => {
-    const node = findNode(tree, nodeId);
-    if (!node || !node.parentId) return [];
-
-    const parent = findNode(tree, node.parentId);
-    if (!parent) return [];
-
-    const nodeIndex = parent.childrenIds.indexOf(nodeId);
-    if (nodeIndex === -1) return [];
-
-    return parent.childrenIds.slice(nodeIndex + 1);
-};
-
-/**
  * Check if targetId is a descendant of sourceId (to prevent cycles)
  */
 export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetId: TreeNodeId): boolean => {
@@ -1168,66 +1152,6 @@ export const moveSubtreeToParent = (
         }
 
         if (node.id === sourceId) {
-            return {
-                ...node,
-                parentId: targetId,
-            };
-        }
-
-        return node;
-    });
-
-    return {
-        ...tree,
-        nodes: updatedNodes,
-    };
-};
-
-/**
- * Move a node and all its right siblings to become children of target node
- * The nodes are detached from their current parent and attached to the target
- */
-export const moveNodeWithRightSiblingsToParent = (
-    tree: SerializedTree,
-    sourceId: TreeNodeId,
-    targetId: TreeNodeId,
-): SerializedTree => {
-    const sourceNode = findNode(tree, sourceId);
-    if (!sourceNode || !sourceNode.parentId) return tree;
-
-    // Get right siblings
-    const rightSiblings = getRightSiblings(tree, sourceId);
-    const nodesToMove = [sourceId, ...rightSiblings];
-
-    // Check if any node to move is an ancestor of target
-    for (const nodeId of nodesToMove) {
-        if (!canMoveNode(tree, nodeId, targetId)) {
-            return tree;
-        }
-    }
-
-    const oldParentId = sourceNode.parentId;
-
-    // Update all nodes
-    const updatedNodes = tree.nodes.map((node) => {
-        // Remove all moved nodes from old parent's children
-        if (node.id === oldParentId) {
-            return {
-                ...node,
-                childrenIds: node.childrenIds.filter(id => !nodesToMove.includes(id)),
-            };
-        }
-
-        // Add all moved nodes to new parent's children
-        if (node.id === targetId) {
-            return {
-                ...node,
-                childrenIds: [...node.childrenIds, ...nodesToMove],
-            };
-        }
-
-        // Update moved nodes' parent
-        if (nodesToMove.includes(node.id)) {
             return {
                 ...node,
                 parentId: targetId,

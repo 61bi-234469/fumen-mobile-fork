@@ -209,13 +209,6 @@ export const getPathToNode = (tree: SerializedTree, nodeId: TreeNodeId): TreeNod
 };
 
 /**
- * Get all leaf nodes (nodes with no children)
- */
-export const getLeafNodes = (tree: SerializedTree): TreeNode[] => {
-    return tree.nodes.filter(node => node.childrenIds.length === 0 && !isVirtualNode(node));
-};
-
-/**
  * Get all descendants of a node (including the node itself)
  */
 export const getDescendants = (tree: SerializedTree, nodeId: TreeNodeId): TreeNodeId[] => {
@@ -421,31 +414,6 @@ export const getNodeDfsNumbers = (tree: SerializedTree): Map<TreeNodeId, number>
         : [rootNode.id];
     startNodeIds.forEach(traverse);
     return nodeNumbers;
-};
-
-/**
- * Flatten tree and reorder pages accordingly
- * Returns new pages array with updated indices
- */
-export const flattenTreeToPages = (
-    tree: SerializedTree,
-    pages: Page[],
-): { pages: Page[]; nodeToNewIndex: Map<TreeNodeId, number> } => {
-    const indices = flattenTreeToPageIndices(tree);
-    const nodeToNewIndex = new Map<TreeNodeId, number>();
-
-    const newPages: Page[] = indices.map((oldIndex, newIndex) => {
-        const node = tree.nodes.find(n => n.pageIndex === oldIndex);
-        if (node) {
-            nodeToNewIndex.set(node.id, newIndex);
-        }
-        return {
-            ...pages[oldIndex],
-            index: newIndex,
-        };
-    });
-
-    return { nodeToNewIndex, pages: newPages };
 };
 
 // ============================================================================
@@ -1272,107 +1240,6 @@ export const moveNodeWithRightSiblingsToParent = (
     return {
         ...tree,
         nodes: updatedNodes,
-    };
-};
-
-/**
- * Reorder nodes by moving a node to a different position
- * Similar to list view reorder but maintains tree structure
- * The node is moved to become a sibling at a specific position
- */
-export const reorderNode = (
-    tree: SerializedTree,
-    sourceId: TreeNodeId,
-    targetId: TreeNodeId,
-    insertBefore: boolean = true,
-): SerializedTree => {
-    const sourceNode = findNode(tree, sourceId);
-    const targetNode = findNode(tree, targetId);
-    if (!sourceNode || !targetNode) return tree;
-
-    // Cannot reorder root
-    if (sourceId === tree.rootId) return tree;
-
-    // Source and target must have the same parent for simple reorder
-    // Or we need to move source to target's parent
-    const targetParentId = targetNode.parentId;
-    if (!targetParentId) return tree; // Cannot insert before/after root
-
-    const oldParentId = sourceNode.parentId;
-    const isSameParent = oldParentId === targetParentId;
-
-    if (isSameParent) {
-        // Simple reorder within same parent
-        const parent = findNode(tree, oldParentId!);
-        if (!parent) return tree;
-
-        const children = [...parent.childrenIds];
-        const sourceIndex = children.indexOf(sourceId);
-        const targetIndex = children.indexOf(targetId);
-
-        if (sourceIndex === -1 || targetIndex === -1) return tree;
-        if (sourceIndex === targetIndex) return tree;
-
-        // Remove source from current position
-        children.splice(sourceIndex, 1);
-
-        // Calculate new position
-        let insertIndex = children.indexOf(targetId);
-        if (!insertBefore) {
-            insertIndex += 1;
-        }
-
-        // Insert at new position
-        children.splice(insertIndex, 0, sourceId);
-
-        return {
-            ...tree,
-            nodes: tree.nodes.map((node) => {
-                if (node.id === oldParentId) {
-                    return { ...node, childrenIds: children };
-                }
-                return node;
-            }),
-        };
-    }
-    // Move to different parent
-    const targetParent = findNode(tree, targetParentId);
-    if (!targetParent) return tree;
-
-    // Check for cycles
-    if (isDescendant(tree, sourceId, targetParentId)) return tree;
-
-    const newChildren = [...targetParent.childrenIds];
-    const targetIndex = newChildren.indexOf(targetId);
-    const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
-    newChildren.splice(insertIndex, 0, sourceId);
-
-    return {
-        ...tree,
-        nodes: tree.nodes.map((node) => {
-            // Remove from old parent
-            if (node.id === oldParentId) {
-                return {
-                    ...node,
-                    childrenIds: node.childrenIds.filter(id => id !== sourceId),
-                };
-            }
-            // Add to new parent
-            if (node.id === targetParentId) {
-                return {
-                    ...node,
-                    childrenIds: newChildren,
-                };
-            }
-            // Update source node's parent
-            if (node.id === sourceId) {
-                return {
-                    ...node,
-                    parentId: targetParentId,
-                };
-            }
-            return node;
-        }),
     };
 };
 

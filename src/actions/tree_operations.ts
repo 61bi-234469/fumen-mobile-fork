@@ -819,23 +819,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * Creates a new page that references the current page's field
      */
     addBranchFromCurrentNode: (data = {}) => (state): NextState => {
-        console.log('addBranchFromCurrentNode called', {
-            enabled: state.tree.enabled,
-            parentNodeId: data.parentNodeId,
-            activeNodeId: state.tree.activeNodeId,
-            treeNodes: state.tree.nodes.length,
-        });
-
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
         const currentNode = getCurrentNode(state, data.parentNodeId);
-
-        console.log('addBranchFromCurrentNode tree state', {
-            treeNodesCount: tree.nodes.length,
-            rootId: tree.rootId,
-            currentNode: currentNode ? { id: currentNode.id, pageIndex: currentNode.pageIndex } : null,
-        });
 
         if (!currentNode) return undefined;
 
@@ -1035,26 +1022,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * If current node has no children: simply add as the first child (same visual result as branch)
      */
     insertNodeAfterCurrent: (data = {}) => (state): NextState => {
-        console.log('insertNodeAfterCurrent called', {
-            enabled: state.tree.enabled,
-            parentNodeId: data.parentNodeId,
-            activeNodeId: state.tree.activeNodeId,
-            addMode: state.tree.addMode,
-            treeNodes: state.tree.nodes.length,
-        });
-
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
         const currentNode = getCurrentNode(state, data.parentNodeId);
-
-        console.log('insertNodeAfterCurrent tree state', {
-            treeNodesCount: tree.nodes.length,
-            rootId: tree.rootId,
-            currentNode: currentNode
-                ? { id: currentNode.id, pageIndex: currentNode.pageIndex, childrenIds: currentNode.childrenIds }
-                : null,
-        });
 
         if (!currentNode) return undefined;
 
@@ -1291,22 +1262,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * Add page respecting current tree mode and add mode setting
      */
     addPageInTreeMode: (data = {}) => (state): NextState => {
-        console.log('addPageInTreeMode called', {
-            enabled: state.tree.enabled,
-            addMode: state.tree.addMode,
-            parentNodeId: data.parentNodeId,
-        });
-
         if (!state.tree.enabled) {
             // If tree mode is not enabled, fall back to normal page add
             return undefined;
         }
 
         if (state.tree.addMode === AddMode.Branch) {
-            console.log('Calling addBranchFromCurrentNode');
             return treeOperationActions.addBranchFromCurrentNode({ parentNodeId: data.parentNodeId })(state);
         }
-        console.log('Calling insertNodeAfterCurrent');
         return treeOperationActions.insertNodeAfterCurrent({ parentNodeId: data.parentNodeId })(state);
     },
 

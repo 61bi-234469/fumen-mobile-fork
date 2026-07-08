@@ -1446,8 +1446,6 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
             ? comment.slice(startIndex)
             : comment.slice(startIndex, endIndex);
 
-        console.log('parseTreeFromComment: base64 length =', base64.length, 'first 50 chars:', base64.substring(0, 50));
-
         let decoded: string;
         try {
             decoded = atob(base64.trim());
@@ -1455,9 +1453,6 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
             console.warn('Failed to decode base64 (may be truncated):', e);
             return null;
         }
-
-        console.log('parseTreeFromComment: decoded length =', decoded.length,
-            'first 50 chars:', decoded.substring(0, 50));
 
         let parsedTree: SerializedTree | null = null;
 
@@ -1699,7 +1694,6 @@ export const embedTreeInPages = (
     }
 
     const newComment = appendTreeToComment(currentComment, tree);
-    console.log('embedTreeInPages: tree nodes =', tree.nodes.length, 'newComment length =', newComment.length);
 
     return pages.map((page, index) => {
         if (index === 0) {
@@ -1740,8 +1734,6 @@ export const extractTreeFromPages = (
     if (!firstComment) {
         return { cleanedPages: pages, tree: null };
     }
-
-    console.log('extractTreeFromPages: firstComment =', firstComment.substring(0, 100));
 
     const tree = parseTreeFromComment(firstComment);
 

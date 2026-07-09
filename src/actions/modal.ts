@@ -1,5 +1,6 @@
 import { NextState, sequence } from './commons';
 import { action } from '../actions';
+import { UserSettingsTab } from '../states';
 
 export interface ModalActions {
     showOpenErrorMessage: (data: { message: string }) => action;
@@ -7,7 +8,7 @@ export interface ModalActions {
     openMenuModal: () => action;
     openAppendModal: () => action;
     openClipboardModal: () => action;
-    openUserSettingsModal: () => action;
+    openUserSettingsModal: (data?: { initialTab?: UserSettingsTab }) => action;
     openListViewReplaceModal: () => action;
     openListViewMenuModal: () => action;
     openTreeDisableConfirmModal: () => action;
@@ -67,11 +68,15 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    openUserSettingsModal: () => (state): NextState => {
+    openUserSettingsModal: (data = {}) => (state): NextState => {
         return {
             modal: {
                 ...state.modal,
                 userSettings: true,
+            },
+            temporary: {
+                ...state.temporary,
+                userSettingsTab: data.initialTab ?? 'field',
             },
         };
     },

@@ -33,6 +33,16 @@ export const i18n = {
     UserSettings: {
         Title: () => t('UserSettings.Title'),
         Notice: () => t('UserSettings.Notice'),
+        Tabs: {
+            Field: () => t('UserSettings.Tabs.Field'),
+            View: () => t('UserSettings.Tabs.View'),
+            Shortcuts: () => t('UserSettings.Tabs.Shortcuts'),
+            Misc: () => t('UserSettings.Tabs.Misc'),
+        },
+        Switch: {
+            Off: () => t('UserSettings.Switch.Off'),
+            On: () => t('UserSettings.Switch.On'),
+        },
         Ghost: {
             Title: () => t('UserSettings.Ghost.Title'),
             Off: () => t('UserSettings.Ghost.Off'),

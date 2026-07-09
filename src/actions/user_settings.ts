@@ -1,6 +1,6 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, RotationSystem, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 import { normalizeGifFrameDelayMs } from '../lib/gif_export';
@@ -18,6 +18,10 @@ export interface UserSettingsActions {
     keepPieceShortcutDas: (data: { dasMs: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    keepGrayAfterLineClear: (data: { enable: boolean }) => action;
+    keepTrimTopBlank: (data: { enable: boolean }) => action;
+    keepButtonDropMovesSubtree: (data: { enable: boolean }) => action;
+    setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
 export const userSettingsActions: Readonly<UserSettingsActions> = {
@@ -36,6 +40,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
+                    grayAfterLineClear: state.tree.grayAfterLineClear,
+                    trimTopBlank: state.listView.trimTopBlank,
+                    buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
                 },
             },
         };
@@ -63,6 +70,14 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
+            }),
+            // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
+            actions.setTreeState({
+                grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
+                buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
+            }),
+            actions.setListViewTrimTopBlank({
+                enabled: state.temporary.userSettings.trimTopBlank,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -302,6 +317,63 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     ...state.temporary.userSettings,
                     rotationSystem,
                 },
+            },
+        };
+    },
+    keepGrayAfterLineClear: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    grayAfterLineClear: enable,
+                },
+            },
+        };
+    },
+    keepTrimTopBlank: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    trimTopBlank: enable,
+                },
+            },
+        };
+    },
+    keepButtonDropMovesSubtree: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    buttonDropMovesSubtree: enable,
+                },
+            },
+        };
+    },
+    setUserSettingsTab: ({ tab }) => (state): NextState => {
+        if (state.temporary.userSettingsTab === tab) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettingsTab: tab,
             },
         };
     },

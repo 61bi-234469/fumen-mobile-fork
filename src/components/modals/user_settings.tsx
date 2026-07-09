@@ -1,6 +1,6 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem } from '../../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, UserSettingsTab } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
@@ -20,6 +20,10 @@ interface UserSettingsModalProps {
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
+    grayAfterLineClear: boolean;
+    trimTopBlank: boolean;
+    buttonDropMovesSubtree: boolean;
+    currentTab: UserSettingsTab;
     actions: {
         closeUserSettingsModal: () => void;
         commitUserSettings: () => void;
@@ -34,6 +38,10 @@ interface UserSettingsModalProps {
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
+        keepGrayAfterLineClear: (data: { enable: boolean }) => void;
+        keepTrimTopBlank: (data: { enable: boolean }) => void;
+        keepButtonDropMovesSubtree: (data: { enable: boolean }) => void;
+        setUserSettingsTab: (data: { tab: UserSettingsTab }) => void;
     };
 }
 
@@ -81,6 +89,15 @@ const rotationSystemLabels: Record<RotationSystem, () => string> = {
     srsPlus: i18n.UserSettings.RotationSystem.SrsPlus,
 };
 
+const tabKeys: UserSettingsTab[] = ['field', 'view', 'shortcuts', 'misc'];
+
+const tabLabels: Record<UserSettingsTab, () => string> = {
+    field: i18n.UserSettings.Tabs.Field,
+    view: i18n.UserSettings.Tabs.View,
+    shortcuts: i18n.UserSettings.Tabs.Shortcuts,
+    misc: i18n.UserSettings.Tabs.Misc,
+};
+
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
@@ -93,6 +110,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasMs,
         gifFrameDelayMs,
         rotationSystem,
+        grayAfterLineClear,
+        trimTopBlank,
+        buttonDropMovesSubtree,
+        currentTab,
         actions,
     },
 ) => {
@@ -129,46 +150,41 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         actions.closeUserSettingsModal();
     };
 
-    const onupdateGhost = (e: HTMLInputElement) => {
-        if (e.checked !== ghostVisible) {
-            e.checked = ghostVisible;
-        }
-    };
+    // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
+    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange }: {
+        key: string;
+        datatest: string;
+        title: string;
+        checked: boolean;
+        offLabel: string;
+        onLabel: string;
+        onChange: (checked: boolean) => void;
+    }) => {
+        const onupdate = (e: HTMLInputElement) => {
+            if (e.checked !== checked) {
+                e.checked = checked;
+            }
+        };
+        const onchange = (e: Event) => {
+            if (!e || !e.target) {
+                return;
+            }
+            const target = e.target as HTMLInputElement;
+            onChange(target.checked);
+        };
+        return (
+            <div key={key} class="switch">
+                <h6>{title}</h6>
 
-    const onchangeGhost = (e: Event) => {
-        if (!e || !e.target) {
-            return;
-        }
-        const target = e.target as HTMLInputElement;
-        actions.keepGhostVisible({ visible: target.checked });
-    };
-
-    const onupdateLoop = (e: HTMLInputElement) => {
-        if (e.checked !== loop) {
-            e.checked = loop;
-        }
-    };
-
-    const onchangeLoop = (e: Event) => {
-        if (!e || !e.target) {
-            return;
-        }
-        const target = e.target as HTMLInputElement;
-        actions.keepLoop({ enable: target.checked });
-    };
-
-    const onupdateShortcutLabelVisible = (e: HTMLInputElement) => {
-        if (e.checked !== shortcutLabelVisible) {
-            e.checked = shortcutLabelVisible;
-        }
-    };
-
-    const onchangeShortcutLabelVisible = (e: Event) => {
-        if (!e || !e.target) {
-            return;
-        }
-        const target = e.target as HTMLInputElement;
-        actions.keepShortcutLabelVisible({ visible: target.checked });
+                <label>
+                    {offLabel}
+                    <input type="checkbox" dataTest={datatest}
+                           onupdate={onupdate} onchange={onchange}/>
+                    <span class="lever"/>
+                    {onLabel}
+                </label>
+            </div>
+        );
     };
 
     const onchangeGradient = (index: number, value: string) => {
@@ -262,6 +278,35 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         }
     };
 
+    const tabHeaderStyle = style({
+        display: 'flex',
+        flexDirection: 'row',
+        marginTop: px(12),
+        borderBottom: 'solid 1px #ddd',
+        overflowX: 'auto',
+    });
+
+    const tabItemStyle = (active: boolean) => style({
+        flexGrow: 1,
+        padding: '8px 6px',
+        textAlign: 'center',
+        fontSize: px(13),
+        whiteSpace: 'nowrap',
+        color: active ? '#f44336' : '#666',
+        fontWeight: active ? 'bold' : 'normal',
+        borderBottom: active ? 'solid 2px #f44336' : 'solid 2px transparent',
+        cursor: 'pointer',
+    });
+
+    const panelStyle = (tab: UserSettingsTab) => style({
+        display: currentTab === tab ? 'block' : 'none',
+    });
+
+    const switchLabels = {
+        off: i18n.UserSettings.Switch.Off(),
+        on: i18n.UserSettings.Switch.On(),
+    };
+
     return (
         <div key="user-settings-modal-top">
             <div key="mdl-user-settings" datatest="mdl-user-settings"
@@ -274,88 +319,281 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         {i18n.UserSettings.Notice()}
                     </div>
 
-                    <div style={style({ color: '#333', marginTop: px(15) })}>
-                        <div class="switch">
-                            <h6>{i18n.UserSettings.Ghost.Title()}</h6>
+                    <div key="user-settings-tabs" style={tabHeaderStyle}>
+                        {tabKeys.map(tab => (
+                            <a href="#" key={`tab-user-settings-${tab}`} datatest={`tab-user-settings-${tab}`}
+                               style={tabItemStyle(currentTab === tab)}
+                               onclick={(event: MouseEvent) => {
+                                   actions.setUserSettingsTab({ tab });
+                                   event.stopPropagation();
+                                   event.preventDefault();
+                               }}>
+                                {tabLabels[tab]()}
+                            </a>
+                        ))}
+                    </div>
 
-                            <label>
-                                {i18n.UserSettings.Ghost.Off()}
-                                <input type="checkbox" dataTest="switch-ghost-visible"
-                                       onupdate={onupdateGhost} onchange={onchangeGhost}/>
-                                <span class="lever"/>
-                                {i18n.UserSettings.Ghost.On()}
-                            </label>
-                        </div>
+                    <div style={style({ color: '#333', marginTop: px(15), minHeight: px(300) })}>
+                        <div key="panel-user-settings-field" datatest="panel-user-settings-field"
+                             style={panelStyle('field')}>
+                            {renderSwitch({
+                                key: 'switch-row-ghost-visible',
+                                datatest: 'switch-ghost-visible',
+                                title: i18n.UserSettings.Ghost.Title(),
+                                checked: ghostVisible,
+                                offLabel: i18n.UserSettings.Ghost.Off(),
+                                onLabel: i18n.UserSettings.Ghost.On(),
+                                onChange: checked => actions.keepGhostVisible({ visible: checked }),
+                            })}
 
-                        <div class="switch">
-                            <h6>{i18n.UserSettings.Loop.Title()}</h6>
+                            <div>
+                                <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
 
-                            <label>
-                                {i18n.UserSettings.Loop.Off()}
-                                <input type="checkbox" dataTest="switch-loop"
-                                       onupdate={onupdateLoop} onchange={onchangeLoop}/>
-                                <span class="lever"/>
-                                {i18n.UserSettings.Loop.On()}
-                            </label>
-                        </div>
-
-                        <div class="switch">
-                            <h6>{i18n.UserSettings.ShortcutLabel.Title()}</h6>
-
-                            <label>
-                                {i18n.UserSettings.ShortcutLabel.Off()}
-                                <input type="checkbox" dataTest="switch-shortcut-label"
-                                       onupdate={onupdateShortcutLabelVisible}
-                                       onchange={onchangeShortcutLabelVisible}/>
-                                <span class="lever"/>
-                                {i18n.UserSettings.ShortcutLabel.On()}
-                            </label>
-                        </div>
-
-                        <div>
-                            <h6>{i18n.UserSettings.Gradient.Title()}</h6>
-
-                            {gradientPieces.map((piece, index) => {
-                                const name = `group${piece}`;
-                                const selected = gradient[index] || '0';
-                                const params = [
-                                    { label: '■', value: `${GradientPattern.None}` },
-                                    { label: '◢', value: `${GradientPattern.Triangle}` },
-                                    { label: '/', value: `${GradientPattern.Line}` },
-                                    { label: '●', value: `${GradientPattern.Circle}` },
-
-                                ];
-                                const labels = params.map(({ label, value }) => {
+                                {rotationSystemValues.map((value) => {
                                     return <label>
-                                        <input name={name} type="radio" checked={value === selected}
-                                               onchange={() => onchangeGradient(index, value)}/>
-                                        <span style={style({ marginRight: px(20) })}>{label}</span>
+                                        <input name="rotation-system" type="radio"
+                                               checked={value === rotationSystem}
+                                               dataTest={`radio-rotation-system-${value}`}
+                                               onchange={() => onchangeRotationSystem(value)}/>
+                                        <span style={style({ marginRight: px(20) })}>
+                                            {rotationSystemLabels[value]()}
+                                        </span>
                                     </label>;
-                                });
+                                })}
+                            </div>
 
-                                return div([
-                                    <div>{parsePieceName(piece)}</div>,
-                                    ...labels,
-                                ]);
+                            {renderSwitch({
+                                key: 'switch-row-gray-after-line-clear-field',
+                                datatest: 'switch-gray-after-line-clear-field',
+                                title: i18n.TreeView.GrayAfterLineClear(),
+                                checked: grayAfterLineClear,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
+                            })}
+
+                            <div>
+                                <h6>{i18n.UserSettings.Gradient.Title()}</h6>
+
+                                {gradientPieces.map((piece, index) => {
+                                    const name = `group${piece}`;
+                                    const selected = gradient[index] || '0';
+                                    const params = [
+                                        { label: '■', value: `${GradientPattern.None}` },
+                                        { label: '◢', value: `${GradientPattern.Triangle}` },
+                                        { label: '/', value: `${GradientPattern.Line}` },
+                                        { label: '●', value: `${GradientPattern.Circle}` },
+
+                                    ];
+                                    const labels = params.map(({ label, value }) => {
+                                        return <label>
+                                            <input name={name} type="radio" checked={value === selected}
+                                                   onchange={() => onchangeGradient(index, value)}/>
+                                            <span style={style({ marginRight: px(20) })}>{label}</span>
+                                        </label>;
+                                    });
+
+                                    return div([
+                                        <div>{parsePieceName(piece)}</div>,
+                                        ...labels,
+                                    ]);
+                                })}
+                            </div>
+                        </div>
+
+                        <div key="panel-user-settings-view" datatest="panel-user-settings-view"
+                             style={panelStyle('view')}>
+                            {renderSwitch({
+                                key: 'switch-row-trim-top-blank',
+                                datatest: 'switch-trim-top-blank',
+                                title: i18n.ListView.TrimTopBlank(),
+                                checked: trimTopBlank,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepTrimTopBlank({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-move-with-children',
+                                datatest: 'switch-move-with-children',
+                                title: i18n.TreeView.MoveWithChildren(),
+                                checked: buttonDropMovesSubtree,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepButtonDropMovesSubtree({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-gray-after-line-clear-view',
+                                datatest: 'switch-gray-after-line-clear-view',
+                                title: i18n.TreeView.GrayAfterLineClear(),
+                                checked: grayAfterLineClear,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
                             })}
                         </div>
 
-                        <div>
-                            <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
-
-                            {rotationSystemValues.map((value) => {
-                                return <label>
-                                    <input name="rotation-system" type="radio" checked={value === rotationSystem}
-                                           dataTest={`radio-rotation-system-${value}`}
-                                           onchange={() => onchangeRotationSystem(value)}/>
-                                    <span style={style({ marginRight: px(20) })}>
-                                        {rotationSystemLabels[value]()}
-                                    </span>
-                                </label>;
+                        <div key="panel-user-settings-shortcuts" datatest="panel-user-settings-shortcuts"
+                             style={panelStyle('shortcuts')}>
+                            {renderSwitch({
+                                key: 'switch-row-shortcut-label',
+                                datatest: 'switch-shortcut-label',
+                                title: i18n.UserSettings.ShortcutLabel.Title(),
+                                checked: shortcutLabelVisible,
+                                offLabel: i18n.UserSettings.ShortcutLabel.Off(),
+                                onLabel: i18n.UserSettings.ShortcutLabel.On(),
+                                onChange: checked => actions.keepShortcutLabelVisible({ visible: checked }),
                             })}
+
+                            <div>
+                                <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>
+                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
+                                    {i18n.UserSettings.PaletteShortcuts.Description()}
+                                </div>
+
+                                <div style={style({
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr',
+                                    gap: px(8),
+                                    alignItems: 'center',
+                                })}>
+                                    {paletteKeys.map((palette) => {
+                                        const code = paletteShortcuts[palette];
+                                        const notSetText = i18n.UserSettings.PaletteShortcuts.NotSet();
+                                        const display = code ? displayShortcut(code) : notSetText;
+                                        return [
+                                            <div style={style({ fontWeight: 'bold', minWidth: px(50) })}>
+                                                {palette}
+                                            </div>,
+                                            <input
+                                                type="text"
+                                                readonly
+                                                value={display}
+                                                onkeydown={(e: KeyboardEvent) => onkeydownShortcut(palette, e)}
+                                                style={style({
+                                                    cursor: 'pointer',
+                                                    textAlign: 'center',
+                                                    color: code ? '#333' : '#999',
+                                                    marginBottom: px(0),
+                                                    height: px(32),
+                                                })}
+                                            />,
+                                        ];
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h6>{i18n.UserSettings.EditShortcuts.Title()}</h6>
+                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
+                                    {i18n.UserSettings.EditShortcuts.Description()}
+                                </div>
+
+                                <div style={style({
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr',
+                                    gap: px(8),
+                                    alignItems: 'center',
+                                })}>
+                                    {editShortcutKeys.map((shortcut) => {
+                                        const code = editShortcuts[shortcut];
+                                        const notSetText = i18n.UserSettings.EditShortcuts.NotSet();
+                                        const display = code ? displayShortcut(code) : notSetText;
+                                        return [
+                                            <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
+                                                {editShortcutLabels[shortcut]()}
+                                            </div>,
+                                            <input
+                                                type="text"
+                                                readonly
+                                                value={display}
+                                                onkeydown={(e: KeyboardEvent) => onkeydownEditShortcut(shortcut, e)}
+                                                style={style({
+                                                    cursor: 'pointer',
+                                                    textAlign: 'center',
+                                                    color: code ? '#333' : '#999',
+                                                    marginBottom: px(0),
+                                                    height: px(32),
+                                                })}
+                                            />,
+                                        ];
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h6>{i18n.UserSettings.PieceShortcuts.Title()}</h6>
+                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
+                                    {i18n.UserSettings.PieceShortcuts.Description()}
+                                </div>
+
+                                <div style={style({
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr',
+                                    gap: px(8),
+                                    alignItems: 'center',
+                                })}>
+                                    {pieceShortcutKeys.map((shortcut) => {
+                                        const code = pieceShortcuts[shortcut];
+                                        const notSetText = i18n.UserSettings.PieceShortcuts.NotSet();
+                                        const display = code ? displayShortcut(code) : notSetText;
+                                        return [
+                                            <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
+                                                {pieceShortcutLabels[shortcut]()}
+                                            </div>,
+                                            <input
+                                                type="text"
+                                                readonly
+                                                value={display}
+                                                onkeydown={(e: KeyboardEvent) => onkeydownPieceShortcut(shortcut, e)}
+                                                style={style({
+                                                    cursor: 'pointer',
+                                                    textAlign: 'center',
+                                                    color: code ? '#333' : '#999',
+                                                    marginBottom: px(0),
+                                                    height: px(32),
+                                                })}
+                                            />,
+                                        ];
+                                    })}
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasMs()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        value={pieceShortcutDasMs}
+                                        min={50}
+                                        max={1000}
+                                        step={10}
+                                        onchange={onchangeDas}
+                                        style={style({
+                                            width: px(80),
+                                            textAlign: 'center',
+                                        })}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
-                        <div>
+                        <div key="panel-user-settings-misc" datatest="panel-user-settings-misc"
+                             style={panelStyle('misc')}>
+                            {renderSwitch({
+                                key: 'switch-row-loop',
+                                datatest: 'switch-loop',
+                                title: i18n.UserSettings.Loop.Title(),
+                                checked: loop,
+                                offLabel: i18n.UserSettings.Loop.Off(),
+                                onLabel: i18n.UserSettings.Loop.On(),
+                                onChange: checked => actions.keepLoop({ enable: checked }),
+                            })}
+
                             <div style={style({ marginTop: px(15), marginBottom: px(15) })}>
                                 <div style={style({ fontWeight: 'bold' })}>
                                     {i18n.UserSettings.GifFrameDelayMs.Title()}
@@ -378,137 +616,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     />
                                     <span>ms</span>
                                 </div>
-                            </div>
-
-                            <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>
-                            <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                {i18n.UserSettings.PaletteShortcuts.Description()}
-                            </div>
-
-                            <div style={style({
-                                display: 'grid',
-                                gridTemplateColumns: 'auto 1fr',
-                                gap: px(8),
-                                alignItems: 'center',
-                            })}>
-                                {paletteKeys.map((palette) => {
-                                    const code = paletteShortcuts[palette];
-                                    const notSetText = i18n.UserSettings.PaletteShortcuts.NotSet();
-                                    const display = code ? displayShortcut(code) : notSetText;
-                                    return [
-                                        <div style={style({ fontWeight: 'bold', minWidth: px(50) })}>{palette}</div>,
-                                        <input
-                                            type="text"
-                                            readonly
-                                            value={display}
-                                            onkeydown={(e: KeyboardEvent) => onkeydownShortcut(palette, e)}
-                                            style={style({
-                                                cursor: 'pointer',
-                                                textAlign: 'center',
-                                                color: code ? '#333' : '#999',
-                                                marginBottom: px(0),
-                                                height: px(32),
-                                            })}
-                                        />,
-                                    ];
-                                })}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h6>{i18n.UserSettings.EditShortcuts.Title()}</h6>
-                            <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                {i18n.UserSettings.EditShortcuts.Description()}
-                            </div>
-
-                            <div style={style({
-                                display: 'grid',
-                                gridTemplateColumns: 'auto 1fr',
-                                gap: px(8),
-                                alignItems: 'center',
-                            })}>
-                                {editShortcutKeys.map((shortcut) => {
-                                    const code = editShortcuts[shortcut];
-                                    const notSetText = i18n.UserSettings.EditShortcuts.NotSet();
-                                    const display = code ? displayShortcut(code) : notSetText;
-                                    return [
-                                        <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
-                                            {editShortcutLabels[shortcut]()}
-                                        </div>,
-                                        <input
-                                            type="text"
-                                            readonly
-                                            value={display}
-                                            onkeydown={(e: KeyboardEvent) => onkeydownEditShortcut(shortcut, e)}
-                                            style={style({
-                                                cursor: 'pointer',
-                                                textAlign: 'center',
-                                                color: code ? '#333' : '#999',
-                                                marginBottom: px(0),
-                                                height: px(32),
-                                            })}
-                                        />,
-                                    ];
-                                })}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h6>{i18n.UserSettings.PieceShortcuts.Title()}</h6>
-                            <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                {i18n.UserSettings.PieceShortcuts.Description()}
-                            </div>
-
-                            <div style={style({
-                                display: 'grid',
-                                gridTemplateColumns: 'auto 1fr',
-                                gap: px(8),
-                                alignItems: 'center',
-                            })}>
-                                {pieceShortcutKeys.map((shortcut) => {
-                                    const code = pieceShortcuts[shortcut];
-                                    const notSetText = i18n.UserSettings.PieceShortcuts.NotSet();
-                                    const display = code ? displayShortcut(code) : notSetText;
-                                    return [
-                                        <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
-                                            {pieceShortcutLabels[shortcut]()}
-                                        </div>,
-                                        <input
-                                            type="text"
-                                            readonly
-                                            value={display}
-                                            onkeydown={(e: KeyboardEvent) => onkeydownPieceShortcut(shortcut, e)}
-                                            style={style({
-                                                cursor: 'pointer',
-                                                textAlign: 'center',
-                                                color: code ? '#333' : '#999',
-                                                marginBottom: px(0),
-                                                height: px(32),
-                                            })}
-                                        />,
-                                    ];
-                                })}
-                            </div>
-
-                            <div style={style({ marginTop: px(15) })}>
-                                <div style={style({ fontWeight: 'bold' })}>
-                                    {i18n.UserSettings.PieceShortcuts.DasMs()}
-                                </div>
-                                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                    {i18n.UserSettings.PieceShortcuts.DasDescription()}
-                                </div>
-                                <input
-                                    type="number"
-                                    value={pieceShortcutDasMs}
-                                    min={50}
-                                    max={1000}
-                                    step={10}
-                                    onchange={onchangeDas}
-                                    style={style({
-                                        width: px(80),
-                                        textAlign: 'center',
-                                    })}
-                                />
                             </div>
                         </div>
                     </div>

@@ -24,6 +24,16 @@ export const resources = {
     UserSettings: {
         Title: 'ユーザー設定',
         Notice: 'ブラウザのキャッシュを削除すると、これらの設定は初期化されます。',
+        Tabs: {
+            Field: 'フィールド',
+            View: 'リスト/ツリービュー',
+            Shortcuts: 'ショートカット',
+            Misc: 'その他',
+        },
+        Switch: {
+            Off: '無効',
+            On: '有効',
+        },
         Ghost: {
             Title: 'ゴーストの表示',
             Off: () => 'しない',

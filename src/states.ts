@@ -46,6 +46,8 @@ export const defaultPieceShortcuts: PieceShortcuts = {
 
 export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
+export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
+
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
@@ -131,7 +133,11 @@ export interface State {
             pieceShortcutDasMs: number;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
+            grayAfterLineClear: boolean;
+            trimTopBlank: boolean;
+            buttonDropMovesSubtree: boolean;
         };
+        userSettingsTab: UserSettingsTab;
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -269,7 +275,11 @@ export const initState: Readonly<State> = {
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
+            grayAfterLineClear: false,
+            trimTopBlank: false,
+            buttonDropMovesSubtree: false,
         },
+        userSettingsTab: 'field',
     },
     handlers: {
         animation: undefined,

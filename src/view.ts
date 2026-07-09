@@ -99,6 +99,10 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
+            grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
+            trimTopBlank: state.temporary.userSettings.trimTopBlank,
+            buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
+            currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

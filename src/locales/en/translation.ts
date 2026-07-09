@@ -28,6 +28,16 @@
     UserSettings: {
         Title: 'User Settings',
         Notice: 'Clearing the browser cache will initialize the settings.',
+        Tabs: {
+            Field: 'Field',
+            View: 'List & Tree View',
+            Shortcuts: 'Shortcuts',
+            Misc: 'Others',
+        },
+        Switch: {
+            Off: 'Off',
+            On: 'On',
+        },
         Ghost: {
             Title: 'Show the ghost',
             Off: () => 'Off',

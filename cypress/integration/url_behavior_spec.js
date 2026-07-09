@@ -104,7 +104,7 @@ describe('URL behavior', () => {
         cy.wait(400);
 
         cy.get('[title="Enable tree mode"]').click();
-        cy.get('[title="Show pages in tree graph view"]').click();
+        cy.get('[title="Show pages in tree view"]').click();
         cy.wait(300);
 
         cy.get(datatest('btn-list-view-menu')).click();

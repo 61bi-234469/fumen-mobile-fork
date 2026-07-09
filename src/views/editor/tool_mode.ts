@@ -92,7 +92,7 @@ export const toolMode = ({
             key: 'btn-editor-user-settings',
             onclick: () => actions.openUserSettingsModal({ initialTab: 'field' }),
         }, iconContents({
-            description: 'config',
+            description: 'settings',
             iconSize: 22,
             iconName: 'settings',
         })),

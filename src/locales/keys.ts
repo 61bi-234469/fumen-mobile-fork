@@ -170,6 +170,14 @@ export const i18n = {
         ZoomIn: () => t('TreeView.ZoomIn'),
         ZoomOut: () => t('TreeView.ZoomOut'),
         ZoomReset: () => t('TreeView.ZoomReset'),
+        ToggleTooltip: {
+            Disable: () => t('TreeView.ToggleTooltip.Disable'),
+            Enable: () => t('TreeView.ToggleTooltip.Enable'),
+        },
+        ViewModeTooltip: {
+            List: () => t('TreeView.ViewModeTooltip.List'),
+            Tree: () => t('TreeView.ViewModeTooltip.Tree'),
+        },
         DisableConfirm: {
             Title: () => t('TreeView.DisableConfirm.Title'),
             Message: () => t('TreeView.DisableConfirm.Message'),
@@ -180,6 +188,17 @@ export const i18n = {
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
+    },
+    ListViewReplace: {
+        Title: () => t('ListViewReplace.Title'),
+        Before: () => t('ListViewReplace.Before'),
+        After: () => t('ListViewReplace.After'),
+        FindPlaceholder: () => t('ListViewReplace.FindPlaceholder'),
+        ReplacePlaceholder: () => t('ListViewReplace.ReplacePlaceholder'),
+        Buttons: {
+            Replace: () => t('ListViewReplace.Buttons.Replace'),
+            Cancel: () => t('ListViewReplace.Buttons.Cancel'),
+        },
     },
     ListViewMenu: {
         Title: () => t('ListViewMenu.Title'),

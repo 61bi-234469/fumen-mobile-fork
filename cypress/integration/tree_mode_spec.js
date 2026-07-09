@@ -25,7 +25,7 @@ describe('Tree mode in list view', () => {
 
         cy.get(datatest('btn-list-view')).click();
         cy.get('[title="Enable tree mode"]').click();
-        cy.get('[title="Show pages in tree graph view"]').click();
+        cy.get('[title="Show pages in tree view"]').click();
 
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 2);
@@ -94,7 +94,7 @@ describe('Tree mode in list view', () => {
 
         cy.get(datatest('btn-list-view')).click();
         cy.get('[title="Enable tree mode"]').click();
-        cy.get('[title="Show pages in tree graph view"]').click();
+        cy.get('[title="Show pages in tree view"]').click();
 
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 2);

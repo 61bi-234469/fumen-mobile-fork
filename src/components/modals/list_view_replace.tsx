@@ -1,6 +1,7 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { resources } from '../../states';
+import { i18n } from '../../locales/keys';
 
 declare const M: any;
 
@@ -88,25 +89,25 @@ export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ act
             <div key="mdl-list-view-replace" datatest="mdl-list-view-replace"
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content">
-                    <h4 key="replace-label">コメント置換</h4>
+                    <h4 key="replace-label">{i18n.ListViewReplace.Title()}</h4>
 
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>置換前：</label>
+                        <label style={labelStyle}>{i18n.ListViewReplace.Before()}</label>
                         <input
                             type="text"
                             id="replace-search-text"
                             style={inputStyle}
-                            placeholder="検索するテキスト"
+                            placeholder={i18n.ListViewReplace.FindPlaceholder()}
                         />
                     </div>
 
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>置換後：</label>
+                        <label style={labelStyle}>{i18n.ListViewReplace.After()}</label>
                         <input
                             type="text"
                             id="replace-replace-text"
                             style={inputStyle}
-                            placeholder="置換するテキスト"
+                            placeholder={i18n.ListViewReplace.ReplacePlaceholder()}
                         />
                     </div>
                 </div>
@@ -114,12 +115,12 @@ export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ act
                 <div key="modal-footer" className="modal-footer">
                     <a href="#" key="btn-replace" datatest="btn-replace"
                        className="waves-effect waves-light btn red" onclick={doReplace}>
-                        置換
+                        {i18n.ListViewReplace.Buttons.Replace()}
                     </a>
 
                     <a href="#" key="btn-cancel" datatest="btn-cancel"
                        className="waves-effect waves-teal btn-flat" onclick={cancel}>
-                        キャンセル
+                        {i18n.ListViewReplace.Buttons.Cancel()}
                     </a>
                 </div>
             </div>

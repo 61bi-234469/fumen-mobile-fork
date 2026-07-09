@@ -54,7 +54,7 @@
             On: () => 'On',
         },
         Gradient: {
-            Title: 'Adding a marker to the surface of the block',
+            Title: 'Block surface marker',
         },
         RotationSystem: {
             Title: 'Kick table',
@@ -133,7 +133,7 @@
     GifExport: {
         Buttons: {
             Gif: 'Download GIF Image',
-            GifLeftToActive: 'GIF Image (to Active Node)',
+            GifLeftToActive: 'GIF Image (up to selected page)',
         },
     },
     Menu: {
@@ -171,9 +171,17 @@
         ZoomIn: 'Zoom in',
         ZoomOut: 'Zoom out',
         ZoomReset: 'Reset zoom',
+        ToggleTooltip: {
+            Disable: 'Disable tree mode',
+            Enable: 'Enable tree mode',
+        },
+        ViewModeTooltip: {
+            List: 'Show pages in list view',
+            Tree: 'Show pages in tree view',
+        },
         DisableConfirm: {
             Title: 'Disable Tree mode?',
-            Message: 'The tree structure will be deleted. This cannot be undone after saving or sharing.',
+            Message: 'The tree structure will be deleted.',
             Cancel: 'Cancel',
             Confirm: 'Disable',
         },
@@ -182,12 +190,23 @@
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
     },
+    ListViewReplace: {
+        Title: 'Replace comments',
+        Before: 'Find:',
+        After: 'Replace with:',
+        FindPlaceholder: 'Text to find',
+        ReplacePlaceholder: 'Replacement text',
+        Buttons: {
+            Replace: 'Replace',
+            Cancel: 'Cancel',
+        },
+    },
     ListViewMenu: {
         Title: 'Import/Export',
         Sections: {
             Read: 'Import',
             Image: 'Save image',
-            Export: 'Share (FUMEN / URL)',
+            Export: 'Share (fumen / URL)',
             External: 'Open in external site',
             Settings: 'Settings',
         },
@@ -208,7 +227,7 @@
             ImportHint: 'Replace current fumen',
             Png: 'PNG',
             Gif: 'GIF',
-            Fumen: 'Copy FUMEN',
+            Fumen: 'Copy fumen data',
             Url: 'Open Share URL',
             UrlCopy: 'Copy share URL',
             FumenZui: 'Open in Fumen Editor',
@@ -262,7 +281,7 @@
         InitTimeout: 'AI: Initialization timeout',
         PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',
         UsageHint: 'Set pieces in comment (e.g. IOTLJSZ, T:IOSL) and enable Lock flag.',
-        TreeModeRequired: 'Enable Tree mode to use top-branch search.',
+        TreeModeRequired: 'Enable Tree mode to use Branch Search.',
         TopBranchesAdded: 'AI: Added {{count}} branch(es)',
         ShortPressTopBranches: 'CC short press: search top {{count}} branches',
         LongPressSequenceSearch: 'CC long press: search full sequence',

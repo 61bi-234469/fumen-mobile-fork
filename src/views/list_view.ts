@@ -952,6 +952,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 convertAllToMirror: () => actions.convertAllToMirror(),
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
                 openListViewMenuModal: () => actions.openListViewMenuModal(),
+                openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
                 toggleTreeMode: () => state.tree.enabled
                     ? actions.openTreeDisableConfirmModal()
                     : actions.toggleTreeMode(),

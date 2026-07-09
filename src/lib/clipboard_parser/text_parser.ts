@@ -35,7 +35,7 @@ const normalizeText = (text: string): string[] => {
  * Validates that a character is a valid piece symbol
  */
 const isValidSymbol = (char: string): boolean => {
-    return VALID_PIECE_SYMBOLS.has(char.toUpperCase()) || VALID_PIECE_SYMBOLS.has(char);
+    return VALID_PIECE_SYMBOLS.has(char.toUpperCase());
 };
 
 /**

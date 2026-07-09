@@ -354,14 +354,9 @@ const appendPages = (
         }
 
         const firstPage = pages[0];
-        if (
-            firstPage === undefined
-            || firstPage.flags.colorize !== currentPage.flags.colorize
-            || firstPage.flags.srs !== currentPage.flags.srs
-        ) {
+        if (firstPage === undefined || firstPage.flags.colorize !== currentPage.flags.colorize) {
             const primitivePage = toPrimitivePage(currentPage);
             currentPage.flags.colorize = firstPage !== undefined ? firstPage.flags.colorize : true;
-            currentPage.flags.srs = firstPage !== undefined ? firstPage.flags.srs : true;
             tasks.push(toSinglePageTask(pageIndex, primitivePage, currentPage));
         }
     }

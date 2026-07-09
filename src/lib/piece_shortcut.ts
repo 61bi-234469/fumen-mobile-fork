@@ -8,6 +8,7 @@ type PieceShortcutActions = {
     harddrop?: () => void;
     rotateToLeft?: () => void;
     rotateToRight?: () => void;
+    rotateTo180?: () => void;
     clearPiece?: () => void;
 };
 
@@ -30,6 +31,9 @@ export const executePieceShortcut = (
         break;
     case 'RotateRight':
         actions.rotateToRight?.();
+        break;
+    case 'Rotate180':
+        actions.rotateTo180?.();
         break;
     case 'Reset':
         actions.clearPiece?.();

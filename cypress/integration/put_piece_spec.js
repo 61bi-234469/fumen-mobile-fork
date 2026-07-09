@@ -386,6 +386,40 @@ describe('Put pieces', () => {
         cy.get(datatest('img-rotation-right')).should('be.visible');
     });
 
+    it('180 rotation is only available with SRS+ rotation system', () => {
+        visit({ mode: 'edit' });
+
+        operations.mode.piece.open();
+        operations.mode.piece.draw();
+
+        minoPosition(Piece.T, Rotation.Spawn)(3, 3).forEach(position => {
+            operations.mode.block.click(position[0], position[1]);
+        });
+
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
+
+        // Default rotation system (guideline SRS) has no 180 rotation
+        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
+
+        // Switch to SRS+ (TETR.IO)
+        operations.menu.setRotationSystem('srsPlus');
+
+        cy.get(datatest('btn-rotate-to-180')).should('be.visible').and('not.have.class', 'disabled');
+
+        operations.mode.piece.rotateTo180();
+
+        cy.get(datatest('img-rotation-reverse')).should('be.visible');
+
+        operations.mode.piece.rotateTo180();
+
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
+
+        // Switching back to guideline SRS hides the 180 button again
+        operations.menu.setRotationSystem('srs');
+
+        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
+    });
+
     it('Spawn guideline piece', () => {
         visit({ mode: 'edit' });
 
@@ -417,6 +451,10 @@ describe('Put pieces', () => {
 
     it('Spawn classic piece', () => {
         visit({ fumen: 'v115@vhAAAA', mode: 'edit' });
+
+        // Rotation system is a global user setting (not tied to the imported fumen's
+        // colorize flag), so classic spawn behavior must be selected explicitly.
+        operations.menu.setRotationSystem('classic');
 
         operations.mode.piece.open();
 
@@ -558,6 +596,8 @@ describe('Put pieces', () => {
         cy.get(datatest('btn-move-to-right-end')).should('have.class', 'disabled');
         cy.get(datatest('btn-move-to-left-end')).should('have.class', 'disabled');
         cy.get(datatest('btn-harddrop')).should('have.class', 'disabled');
+        // 180 rotation button is hidden entirely with the default (guideline SRS) rotation system
+        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
 
         operations.mode.block.click(5, 5);
 

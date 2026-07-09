@@ -398,12 +398,11 @@ export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages
     }
 
     const originalFirstColorize = extractedPages[0]?.flags.colorize ?? true;
-    const originalFirstSrs = extractedPages[0]?.flags.srs ?? true;
     const reindexedPages: Page[] = extractedPages.map((page, i) => ({
         ...page,
         index: i,
         flags: i === 0
-            ? { ...page.flags, colorize: originalFirstColorize, srs: originalFirstSrs }
+            ? { ...page.flags, colorize: originalFirstColorize }
             : page.flags,
     }));
 
@@ -450,7 +449,6 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
 
     // 元の最初のページのcolorizeフラグを保存
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
 
     const [movedPage] = pages.splice(fromIndex, 1);
 
@@ -458,13 +456,12 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     // so no additional adjustment is needed here
     pages.splice(toIndex, 0, movedPage);
 
-    return rebuildPageRefs(pages, originalFirstPageColorize, originalFirstPageSrs);
+    return rebuildPageRefs(pages, originalFirstPageColorize);
 }
 
 function rebuildPageRefs(
     pages: Page[],
     originalFirstPageColorize: boolean,
-    originalFirstPageSrs: boolean,
 ): Page[] {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
@@ -480,7 +477,6 @@ function rebuildPageRefs(
             newPage.flags = {
                 ...page.flags,
                 colorize: originalFirstPageColorize,
-                srs: originalFirstPageSrs,
             };
         }
 

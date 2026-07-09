@@ -39,7 +39,6 @@ const defaultFlags = {
     colorize: true,
     rise: false,
     quiz: false,
-    srs: true,
 };
 
 const createPages = (): Page[] => {

@@ -370,6 +370,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.rotationSystem !== undefined) {
+        main.changeRotationSystem({ rotationSystem: settings.rotationSystem });
+        updated = true;
+    }
+
     const viewSettings = localStorageWrapper.loadViewSettings();
     if (viewSettings.trimTopBlank !== undefined) {
         main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });

@@ -13,7 +13,7 @@ import {
 import { EditorLayout, toolStyle } from './editor';
 import { Move, Page } from '../../lib/fumen/types';
 import { PageFieldOperation, Pages } from '../../lib/pages';
-import { PieceShortcuts, State } from '../../states';
+import { PieceShortcuts, RotationSystem, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
@@ -25,7 +25,7 @@ export const pieceMode = ({
     move,
     pages,
     existInferences,
-    srs,
+    rotationSystem,
     flags,
     pieceShortcuts,
     shortcutLabelVisible,
@@ -40,7 +40,7 @@ export const pieceMode = ({
     move?: Move;
     pages: Page[],
     existInferences: boolean,
-    srs: boolean,
+    rotationSystem: RotationSystem,
     flags: {
         lock: boolean;
     },
@@ -56,8 +56,9 @@ export const pieceMode = ({
         openColdClearMenuModal: () => void;
         swapCurrentPieceWithHoldQueue: () => void;
         clearPiece: () => void;
-        rotateToLeft: (data?: { srs?: boolean }) => void;
-        rotateToRight: (data?: { srs?: boolean }) => void;
+        rotateToLeft: () => void;
+        rotateToRight: () => void;
+        rotateTo180: () => void;
         moveToLeft: () => void;
         moveToLeftEnd: () => void;
         moveToRight: () => void;
@@ -254,7 +255,7 @@ export const pieceMode = ({
                 datatest: 'btn-rotate-to-left',
                 key: 'btn-rotate-to-left',
                 enable: operate,
-                onclick: () => actions.rotateToLeft({ srs }),
+                onclick: () => actions.rotateToLeft(),
                 shortcutLabel: getShortcutLabel('RotateLeft'),
                 shortcutLabelColor: '#666',
             }, iconContents({
@@ -272,7 +273,7 @@ export const pieceMode = ({
                 datatest: 'btn-rotate-to-right',
                 key: 'btn-rotate-to-right',
                 enable: operate,
-                onclick: () => actions.rotateToRight({ srs }),
+                onclick: () => actions.rotateToRight(),
                 shortcutLabel: getShortcutLabel('RotateRight'),
                 shortcutLabelColor: '#666',
             }, iconContents({
@@ -281,6 +282,32 @@ export const pieceMode = ({
                 iconName: 'rotate_right',
             })),
         ]),
+        ...(rotationSystem === 'srsPlus' ? [
+            div({
+                key: 'btn-rotate-180-row',
+                style: style({
+                    display: 'flex',
+                    flexDirection: 'row',
+                    width: px(layout.buttons.size.width),
+                    margin: `${px(toolButtonMargin)} 0px`,
+                }),
+            }, [
+                toolButton({
+                    borderWidth: 1,
+                    width: layout.buttons.size.width,
+                    margin: 0,
+                    backgroundColorClass: 'white',
+                    textColor: '#333',
+                    borderColor: '#333',
+                    datatest: 'btn-rotate-to-180',
+                    key: 'btn-rotate-to-180',
+                    enable: operate,
+                    onclick: () => actions.rotateTo180(),
+                    shortcutLabel: getShortcutLabel('Rotate180'),
+                    shortcutLabelColor: '#666',
+                }, '180°'),
+            ]),
+        ] : []),
         toolButton({
             borderWidth: 1,
             width: layout.buttons.size.width,

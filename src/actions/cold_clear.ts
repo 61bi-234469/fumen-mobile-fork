@@ -65,7 +65,6 @@ interface SingleRunSession extends SessionBase {
     speculate: boolean;
     nextLimit: number | null;
     colorize: boolean;
-    srs: boolean;
 }
 
 interface Top3RunSession extends SessionBase {
@@ -80,7 +79,6 @@ interface Top3RunSession extends SessionBase {
     holdAllowed: boolean;
     speculate: boolean;
     colorize: boolean;
-    srs: boolean;
 }
 
 interface PlacedRunSession extends SessionBase {
@@ -1070,7 +1068,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
             colorize: page.flags.colorize,
-            srs: page.flags.srs,
         };
         currentSession = session;
 
@@ -1145,7 +1142,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
             colorize: page.flags.colorize,
-            srs: page.flags.srs,
         };
         currentSession = session;
 
@@ -1481,7 +1477,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         }
         const runtimeActions = appActions;
 
-        const srs = state.fumen.pages[0]?.flags.srs ?? true;
+        const srs = state.mode.rotationSystem !== 'classic';
         return sequence(state, [
             () => {
                 runtimeActions.setCommentText({ pageIndex, text: nextComment });
@@ -1717,7 +1713,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             flags: {
                 lock: true,
                 colorize: session.colorize,
-                srs: session.srs,
                 mirror: false,
                 rise: false,
                 quiz: false,

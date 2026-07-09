@@ -32,7 +32,6 @@ import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
 import { parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
-import { syncSrsAndColorizeFlags } from '../lib/fumen/flag_sync';
 
 declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
@@ -76,7 +75,6 @@ const createPageFromField = (field: Field): Page => ({
         colorize: true,
         rise: false,
         quiz: false,
-        srs: true,
     },
 });
 
@@ -107,7 +105,6 @@ export interface PageActions {
     changeLockFlag: (data: { index: number, enable: boolean }) => action;
     changeRiseFlag: (data: { index: number, enable: boolean }) => action;
     changeMirrorFlag: (data: { index: number, enable: boolean }) => action;
-    changeSrsFlag: (data: { enable: boolean }) => action;
     copyCurrentPageToClipboard: () => action;
     cutCurrentPage: () => action;
     insertPageFromClipboard: () => action;
@@ -146,10 +143,8 @@ export const pageActions: Readonly<PageActions> = {
         const blocks = parseToBlocks(field, page.piece, page.commands);
 
         // テト譜の仕様により、最初のページのフラグが全体に反映される
-        // SRS OFF 時はクラシック色を優先する（ct 相当の挙動）
         const globalFlags = state.fumen.pages[0]?.flags;
-        const useSrs = globalFlags?.srs ?? true;
-        const guideLineColor = useSrs && (globalFlags?.colorize ?? true);
+        const guideLineColor = globalFlags?.colorize ?? true;
 
         return sequence(state, [
             state.play.status === AnimationState.Play ? actions.startAnimation() : undefined,
@@ -490,36 +485,6 @@ export const pageActions: Readonly<PageActions> = {
             },
         ]);
     },
-    changeSrsFlag: ({ enable }) => (state): NextState => {
-        const pages = state.fumen.pages;
-        if (pages.length === 0) {
-            return undefined;
-        }
-
-        const page0 = pages[0];
-        const primitivePrev = toPrimitivePage(page0);
-
-        page0.flags = syncSrsAndColorizeFlags({
-            ...page0.flags,
-            colorize: enable,
-            srs: enable,
-        });
-
-        const task = toSinglePageTask(0, primitivePrev, page0);
-
-        return sequence(state, [
-            actions.registerHistoryTask({ task }),
-            (newState) => {
-                return {
-                    fumen: {
-                        ...newState.fumen,
-                        pages,
-                    },
-                };
-            },
-            actions.reopenCurrentPage(),
-        ]);
-    },
     clearToEnd: () => (state): NextState => {
         return sequence(state, [
             actions.fixInferencePiece(),
@@ -548,10 +513,6 @@ export const pageActions: Readonly<PageActions> = {
 
         // 現在のページを独立したKeyPageとして構築
         const currentPage = pages[currentIndex];
-        const normalizedGlobalFlags = syncSrsAndColorizeFlags({
-            colorize: pages[0]?.flags.colorize ?? true,
-            srs: pages[0]?.flags.srs ?? true,
-        });
         const singlePage: Page = {
             index: 0,
             field: { obj: field.copy() },
@@ -564,8 +525,7 @@ export const pageActions: Readonly<PageActions> = {
             },
             flags: {
                 ...currentPage.flags,
-                colorize: normalizedGlobalFlags.colorize,
-                srs: normalizedGlobalFlags.srs,
+                colorize: pages[0]?.flags.colorize ?? true,
             },
             piece: currentPage.piece, // ピースも含める（ライン消去前の状態）
         };
@@ -612,11 +572,6 @@ export const pageActions: Readonly<PageActions> = {
 
         // 現在のページを独立したKeyPageとして構築
         const currentPage = pages[currentIndex];
-        // 元のfumenの最初のページのcolorizeフラグを継承
-        const normalizedGlobalFlags = syncSrsAndColorizeFlags({
-            colorize: pages[0]?.flags.colorize ?? true,
-            srs: pages[0]?.flags.srs ?? true,
-        });
         const singlePage: Page = {
             index: 0,
             field: { obj: field.copy() },
@@ -628,9 +583,9 @@ export const pageActions: Readonly<PageActions> = {
                         : ''),
             },
             flags: {
+                // 元のfumenの最初のページのcolorizeフラグを継承
                 ...currentPage.flags,
-                colorize: normalizedGlobalFlags.colorize,
-                srs: normalizedGlobalFlags.srs,
+                colorize: pages[0]?.flags.colorize ?? true,
             },
             piece: currentPage.piece,
         };
@@ -1311,10 +1266,6 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
             if (index === 0 && currentPage.flags.colorize !== nextPage.flags.colorize) {
                 nextPage.flags.colorize = currentPage.flags.colorize;
             }
-
-            if (index === 0 && currentPage.flags.srs !== nextPage.flags.srs) {
-                nextPage.flags.srs = currentPage.flags.srs;
-            }
         }
 
         // 現ページの削除
@@ -1371,13 +1322,9 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
             tasks.push(toFreezeCommentTask(nextPageIndex));
         }
 
-        if (
-            index === 0 &&
-            (currentPage.flags.colorize !== nextPage.flags.colorize || currentPage.flags.srs !== nextPage.flags.srs)
-        ) {
+        if (index === 0 && currentPage.flags.colorize !== nextPage.flags.colorize) {
             const primitiveNextPage = toPrimitivePage(nextPage);
             nextPage.flags.colorize = currentPage.flags.colorize;
-            nextPage.flags.srs = currentPage.flags.srs;
             tasks.push(toSinglePageTask(nextPageIndex, primitiveNextPage, nextPage));
         }
     }
@@ -1539,10 +1486,6 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
             if (firstPage.flags.colorize !== currentPage.flags.colorize) {
                 currentPage.flags.colorize = firstPage.flags.colorize;
             }
-
-            if (firstPage.flags.srs !== currentPage.flags.srs) {
-                currentPage.flags.srs = firstPage.flags.srs;
-            }
         }
 
         // 前までのページを削除
@@ -1596,10 +1539,9 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
             tasks.push(toFreezeCommentTask(pageIndex));
         }
 
-        if (firstPage.flags.colorize !== currentPage.flags.colorize || firstPage.flags.srs !== currentPage.flags.srs) {
+        if (firstPage.flags.colorize !== currentPage.flags.colorize) {
             const primitivePage = toPrimitivePage(currentPage);
             currentPage.flags.colorize = firstPage.flags.colorize;
-            currentPage.flags.srs = firstPage.flags.srs;
             tasks.push(toSinglePageTask(pageIndex, primitivePage, currentPage));
         }
     }

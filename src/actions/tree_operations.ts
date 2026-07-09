@@ -451,7 +451,6 @@ const rebuildPageRefsForOrder = (
     pages: Page[],
     originalPages: Page[],
     originalFirstPageColorize: boolean,
-    originalFirstPageSrs: boolean,
 ): Page[] => {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
@@ -471,7 +470,6 @@ const rebuildPageRefsForOrder = (
             newPage.flags = {
                 ...page.flags,
                 colorize: originalFirstPageColorize,
-                srs: originalFirstPageSrs,
             };
         }
 
@@ -575,12 +573,10 @@ export const normalizeTreeAndPages = (
 
     const reorderedPages = order.map(oldIndex => pages[oldIndex]);
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
     const newPages = rebuildPageRefsForOrder(
         reorderedPages,
         pages,
         originalFirstPageColorize,
-        originalFirstPageSrs,
     );
 
     const newTree = updateTreePageIndices(tree, indexMap);

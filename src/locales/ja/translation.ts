@@ -42,6 +42,12 @@ export const resources = {
         Gradient: {
             Title: 'ブロックの表面のマーク',
         },
+        RotationSystem: {
+            Title: '回転方式',
+            Classic: () => 'クラシック',
+            Srs: () => 'SRS',
+            SrsPlus: () => 'SRS+ (TETR.IO)',
+        },
         PaletteShortcuts: {
             Title: 'パレットショートカット',
             Description: 'キーを押して割り当て。Backspaceでクリア。',
@@ -74,6 +80,7 @@ export const resources = {
             Drop: 'DROP',
             RotateLeft: '左回転',
             RotateRight: '右回転',
+            Rotate180: '180°回転',
             Reset: 'ピースリセット',
             DasMs: 'DAS(ms)',
             DasDescription: '左右移動の長押しで端まで移動',

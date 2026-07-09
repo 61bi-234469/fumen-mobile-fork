@@ -209,6 +209,9 @@ export const operations = {
             rotateToLeft: () => {
                 cy.get(datatest('btn-rotate-to-left')).click();
             },
+            rotateTo180: () => {
+                cy.get(datatest('btn-rotate-to-180')).click();
+            },
             moveToRight: () => {
                 cy.get(datatest('btn-move-to-right')).click();
             },
@@ -523,6 +526,11 @@ export const operations = {
         loopOn: () => {
             operations.menu.openUserSettings();
             cy.get(datatest('switch-loop')).check({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        setRotationSystem: (value) => {
+            operations.menu.openUserSettings();
+            cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
     },

@@ -98,6 +98,7 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
+            rotationSystem: state.temporary.userSettings.rotationSystem,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

@@ -14,7 +14,7 @@ export type PaletteShortcuts = {
 };
 
 export const defaultPaletteShortcuts: PaletteShortcuts = {
-    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyA', J: 'KeyF', S: 'KeyS',
+    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyV', J: 'KeyF', S: 'KeyS',
     Empty: 'KeyD', Gray: 'KeyG', Comp: 'KeyC',
 };
 
@@ -31,7 +31,7 @@ export const defaultEditShortcuts: EditShortcuts = {
 };
 
 export type PieceShortcuts = {
-    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Reset']: string;
+    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Rotate180' | 'Reset']: string;
 };
 
 export const defaultPieceShortcuts: PieceShortcuts = {
@@ -40,8 +40,11 @@ export const defaultPieceShortcuts: PieceShortcuts = {
     Drop: 'ArrowDown',
     RotateLeft: 'KeyZ',
     RotateRight: 'KeyX',
+    Rotate180: 'KeyA',
     Reset: 'Escape',
 };
+
+export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
@@ -127,6 +130,7 @@ export interface State {
             pieceShortcuts: PieceShortcuts;
             pieceShortcutDasMs: number;
             gifFrameDelayMs: number;
+            rotationSystem: RotationSystem;
         };
     };
     handlers: {
@@ -156,6 +160,7 @@ export interface State {
         pieceShortcuts: PieceShortcuts;
         pieceShortcutDasMs: number;
         gifFrameDelayMs: number;
+        rotationSystem: RotationSystem;
     };
     history: {
         undoCount: number;
@@ -231,7 +236,6 @@ export const initState: Readonly<State> = {
                 mirror: false,
                 quiz: false,
                 rise: false,
-                srs: true,
             },
         }],
         value: undefined,
@@ -264,6 +268,7 @@ export const initState: Readonly<State> = {
             pieceShortcuts: { ...defaultPieceShortcuts },
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
+            rotationSystem: 'srs',
         },
     },
     handlers: {
@@ -291,6 +296,7 @@ export const initState: Readonly<State> = {
         pieceShortcuts: { ...defaultPieceShortcuts },
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
+        rotationSystem: 'srs',
     },
     history: {
         undoCount: 0,

@@ -9,6 +9,7 @@ import { movePieceActions } from './move_piece';
 import { PageFieldOperation, Pages } from '../lib/pages';
 import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
+import { test180Rotation, testLeftRotationSrsPlus, testRightRotationSrsPlus } from '../lib/srs_plus';
 import { fillRowActions } from './fill_row';
 import { coldClearActions } from './cold_clear';
 import { ViewError } from '../lib/errors';
@@ -58,9 +59,11 @@ export interface FieldEditorActions {
 
     clearFieldAndPiece(): action;
 
-    rotateToLeft(data?: { srs?: boolean }): action;
+    rotateToLeft(): action;
 
-    rotateToRight(data?: { srs?: boolean }): action;
+    rotateToRight(): action;
+
+    rotateTo180(): action;
 
     moveToLeft(): action;
 
@@ -340,7 +343,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.clearPiece(),
         ]);
     },
-    rotateToLeft: (data = {}) => (state): NextState => {
+    rotateToLeft: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -356,10 +359,12 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const pagesObj = new Pages(pages);
         const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
 
-        const useSrs = data.srs ?? (pages[0]?.flags.srs ?? true);
-        const testObj = useSrs
-            ? testLeftRotation(piece.type, piece.rotation)
-            : classicTestLeftRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y);
+        const rotationSystem = state.mode.rotationSystem;
+        const testObj = rotationSystem === 'classic'
+            ? classicTestLeftRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y)
+            : rotationSystem === 'srsPlus'
+                ? testLeftRotationSrsPlus(piece.type, piece.rotation)
+                : testLeftRotation(piece.type, piece.rotation);
         const nextRotation = testObj.rotation;
         const test = testCallback(field, piece.type, nextRotation);
 
@@ -389,7 +394,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    rotateToRight: (data = {}) => (state): NextState => {
+    rotateToRight: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -405,10 +410,62 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const pagesObj = new Pages(pages);
         const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
 
-        const useSrs = data.srs ?? (pages[0]?.flags.srs ?? true);
-        const testObj = useSrs
-            ? testRightRotation(piece.type, piece.rotation)
-            : classicTestRightRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y);
+        const rotationSystem = state.mode.rotationSystem;
+        const testObj = rotationSystem === 'classic'
+            ? classicTestRightRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y)
+            : rotationSystem === 'srsPlus'
+                ? testRightRotationSrsPlus(piece.type, piece.rotation)
+                : testRightRotation(piece.type, piece.rotation);
+        const nextRotation = testObj.rotation;
+        const test = testCallback(field, piece.type, nextRotation);
+
+        const coordinate = piece.coordinate;
+        const testPositions = testObj.test.map((value) => {
+            return [value[0] + coordinate.x, value[1] + coordinate.y];
+        });
+
+        const element = testPositions.find(position => test(position[0], position[1]));
+        if (element === undefined) {
+            return undefined;
+        }
+
+        const prevPage = toPrimitivePage(page);
+        page.piece = {
+            ...piece,
+            rotation: nextRotation,
+            coordinate: {
+                x: element[0],
+                y: element[1],
+            },
+        };
+
+        return sequence(state, [
+            fieldEditorActions.resetInferencePiece(),
+            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            actions.reopenCurrentPage(),
+        ]);
+    },
+    rotateTo180: () => (state): NextState => {
+        if (state.mode.rotationSystem !== 'srsPlus') {
+            return undefined;
+        }
+
+        const pages = state.fumen.pages;
+        const pageIndex = state.fumen.currentIndex;
+        const page = pages[pageIndex];
+        if (page === undefined) {
+            return undefined;
+        }
+
+        const piece = page.piece;
+        if (piece === undefined) {
+            return undefined;
+        }
+
+        const pagesObj = new Pages(pages);
+        const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+
+        const testObj = test180Rotation(piece.type, piece.rotation);
         const nextRotation = testObj.rotation;
         const test = testCallback(field, piece.type, nextRotation);
 

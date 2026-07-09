@@ -51,6 +51,12 @@ export const i18n = {
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),
         },
+        RotationSystem: {
+            Title: () => t('UserSettings.RotationSystem.Title'),
+            Classic: () => t('UserSettings.RotationSystem.Classic'),
+            Srs: () => t('UserSettings.RotationSystem.Srs'),
+            SrsPlus: () => t('UserSettings.RotationSystem.SrsPlus'),
+        },
         PaletteShortcuts: {
             Title: () => t('UserSettings.PaletteShortcuts.Title'),
             Description: () => t('UserSettings.PaletteShortcuts.Description'),
@@ -83,6 +89,7 @@ export const i18n = {
             Drop: () => t('UserSettings.PieceShortcuts.Drop'),
             RotateLeft: () => t('UserSettings.PieceShortcuts.RotateLeft'),
             RotateRight: () => t('UserSettings.PieceShortcuts.RotateRight'),
+            Rotate180: () => t('UserSettings.PieceShortcuts.Rotate180'),
             Reset: () => t('UserSettings.PieceShortcuts.Reset'),
             DasMs: () => t('UserSettings.PieceShortcuts.DasMs'),
             DasDescription: () => t('UserSettings.PieceShortcuts.DasDescription'),

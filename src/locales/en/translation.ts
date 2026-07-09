@@ -46,6 +46,12 @@
         Gradient: {
             Title: 'Adding a marker to the surface of the block',
         },
+        RotationSystem: {
+            Title: 'Rotation system',
+            Classic: () => 'Classic',
+            Srs: () => 'SRS',
+            SrsPlus: () => 'SRS+ (TETR.IO)',
+        },
         PaletteShortcuts: {
             Title: 'Palette Shortcuts',
             Description: 'Press a key to assign. Press Backspace to clear.',
@@ -78,6 +84,7 @@
             Drop: 'Hard Drop',
             RotateLeft: 'Rotate Left',
             RotateRight: 'Rotate Right',
+            Rotate180: 'Rotate 180°',
             Reset: 'Reset Piece',
             DasMs: 'DAS (ms)',
             DasDescription: 'Long-press left/right moves to edge',

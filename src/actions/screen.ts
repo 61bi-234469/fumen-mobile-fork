@@ -3,7 +3,7 @@ import { action, actions, main } from '../actions';
 import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes } from '../lib/enums';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State } from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
@@ -31,6 +31,7 @@ export interface ScreenActions {
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
+    changeRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
@@ -271,6 +272,21 @@ export const modeActions: Readonly<ScreenActions> = {
                     mode: {
                         ...state.mode,
                         gradient: gradientObj,
+                    },
+                };
+            },
+        ]);
+    },
+    changeRotationSystem: ({ rotationSystem }) => (state): NextState => {
+        if (state.mode.rotationSystem === rotationSystem) {
+            return undefined;
+        }
+        return sequence(state, [
+            (state) => {
+                return {
+                    mode: {
+                        ...state.mode,
+                        rotationSystem,
                     },
                 };
             },

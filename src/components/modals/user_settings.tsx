@@ -1,6 +1,6 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources } from '../../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
@@ -19,6 +19,7 @@ interface UserSettingsModalProps {
     pieceShortcuts: PieceShortcuts;
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
+    rotationSystem: RotationSystem;
     actions: {
         closeUserSettingsModal: () => void;
         commitUserSettings: () => void;
@@ -32,6 +33,7 @@ interface UserSettingsModalProps {
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
+        keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
     };
 }
 
@@ -58,7 +60,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
-    'MoveLeft', 'MoveRight', 'Drop', 'RotateLeft', 'RotateRight', 'Reset',
+    'MoveLeft', 'MoveRight', 'Drop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Reset',
 ];
 
 const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
@@ -67,7 +69,16 @@ const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
     Drop: i18n.UserSettings.PieceShortcuts.Drop,
     RotateLeft: i18n.UserSettings.PieceShortcuts.RotateLeft,
     RotateRight: i18n.UserSettings.PieceShortcuts.RotateRight,
+    Rotate180: i18n.UserSettings.PieceShortcuts.Rotate180,
     Reset: i18n.UserSettings.PieceShortcuts.Reset,
+};
+
+const rotationSystemValues: RotationSystem[] = ['classic', 'srs', 'srsPlus'];
+
+const rotationSystemLabels: Record<RotationSystem, () => string> = {
+    classic: i18n.UserSettings.RotationSystem.Classic,
+    srs: i18n.UserSettings.RotationSystem.Srs,
+    srsPlus: i18n.UserSettings.RotationSystem.SrsPlus,
 };
 
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
@@ -81,6 +92,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcuts,
         pieceShortcutDasMs,
         gifFrameDelayMs,
+        rotationSystem,
         actions,
     },
 ) => {
@@ -162,6 +174,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     const onchangeGradient = (index: number, value: string) => {
         const replaced = gradient.substring(0, index) + value + gradient.substring(index + 1, gradient.length);
         actions.keepGradient({ gradient: replaced });
+    };
+
+    const onchangeRotationSystem = (value: RotationSystem) => {
+        actions.keepRotationSystem({ rotationSystem: value });
     };
 
     const onkeydownShortcut = (palette: keyof PaletteShortcuts, e: KeyboardEvent) => {
@@ -321,6 +337,21 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     <div>{parsePieceName(piece)}</div>,
                                     ...labels,
                                 ]);
+                            })}
+                        </div>
+
+                        <div>
+                            <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
+
+                            {rotationSystemValues.map((value) => {
+                                return <label>
+                                    <input name="rotation-system" type="radio" checked={value === rotationSystem}
+                                           dataTest={`radio-rotation-system-${value}`}
+                                           onchange={() => onchangeRotationSystem(value)}/>
+                                    <span style={style({ marginRight: px(20) })}>
+                                        {rotationSystemLabels[value]()}
+                                    </span>
+                                </label>;
                             })}
                         </div>
 

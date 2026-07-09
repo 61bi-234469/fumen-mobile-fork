@@ -28,13 +28,13 @@ describe('colorize export', () => {
                 index: 0,
                 field: { obj: new Field({}) },
                 comment: { text: '' },
-                flags: { lock: true, mirror: false, colorize: true, rise: false, quiz: false, srs: true },
+                flags: { lock: true, mirror: false, colorize: true, rise: false, quiz: false },
             },
             {
                 index: 1,
                 field: { obj: new Field({}) },
                 comment: { text: '' },
-                flags: { lock: true, mirror: false, colorize: false, rise: false, quiz: false, srs: true },
+                flags: { lock: true, mirror: false, colorize: false, rise: false, quiz: false },
             },
         ];
 
@@ -54,13 +54,13 @@ describe('colorize export', () => {
                 index: 0,
                 field: { obj: new Field({}) },
                 comment: { text: '' },
-                flags: { lock: true, mirror: false, colorize: false, rise: false, quiz: false, srs: true },
+                flags: { lock: true, mirror: false, colorize: false, rise: false, quiz: false },
             },
             {
                 index: 1,
                 field: { obj: new Field({}) },
                 comment: { text: '' },
-                flags: { lock: true, mirror: false, colorize: true, rise: false, quiz: false, srs: true },
+                flags: { lock: true, mirror: false, colorize: true, rise: false, quiz: false },
             },
         ];
 

@@ -3,6 +3,7 @@ import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
+import { RotationSystem } from './states';
 import lodash from 'lodash';
 
 interface SaverProp {
@@ -167,6 +168,7 @@ interface UserSettings {
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
+    rotationSystem: RotationSystem;
 }
 
 interface ViewSettings {
@@ -196,6 +198,10 @@ const safer = {
     },
     number: (value: any): number | undefined => {
         return lodash.isNumber(value) && !isNaN(value) ? value : undefined;
+    },
+    // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
+    rotationSystem: (value: any): RotationSystem => {
+        return value === 'classic' || value === 'srs' || value === 'srsPlus' ? value : 'srs';
     },
 };
 
@@ -227,6 +233,7 @@ export const localStorageWrapper = {
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
+            rotationSystem: safer.rotationSystem(obj.rotationSystem),
         };
     },
     saveViewSettings: (data: ViewSettings) => {

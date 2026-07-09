@@ -4,7 +4,6 @@ import { generateKey } from './lib/random';
 import { Move, Page, PreCommand } from './lib/fumen/types';
 import { decode } from './lib/fumen/fumen';
 import { Field, PlayField } from './lib/fumen/field';
-import { syncSrsAndColorizeFlags } from './lib/fumen/flag_sync';
 
 export type HistoryTask = OperationTask | FixedTask;
 
@@ -275,7 +274,6 @@ export interface PrimitivePage {
         colorize: boolean;
         rise: boolean;
         quiz: boolean;
-        srs: boolean;
     };
 }
 
@@ -313,7 +311,6 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
             colorize: page.flags.colorize,
             rise: page.flags.rise,
             quiz: page.flags.quiz,
-            srs: page.flags.srs,
         },
     };
 };
@@ -321,10 +318,6 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
 export const toPage = (page: PrimitivePage): Page => {
     const field = page.field.obj;
     const commands = page.commands;
-    const normalizedFlags = syncSrsAndColorizeFlags({
-        colorize: page.flags.colorize,
-        srs: page.flags.srs ?? page.flags.colorize,
-    });
     return {
         index: page.index,
         field: {
@@ -347,10 +340,9 @@ export const toPage = (page: PrimitivePage): Page => {
         flags: {
             lock: page.flags.lock,
             mirror: page.flags.mirror,
-            colorize: normalizedFlags.colorize,
+            colorize: page.flags.colorize,
             rise: page.flags.rise,
             quiz: page.flags.quiz,
-            srs: normalizedFlags.srs,
         },
     };
 };

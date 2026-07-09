@@ -513,23 +513,31 @@ export const operations = {
             operations.menu.open();
             cy.get(datatest('btn-user-settings')).click();
         },
+        // ユーザー設定モーダル内のタブを選択する
+        selectUserSettingsTab: (tab) => {
+            cy.get(datatest(`tab-user-settings-${tab}`)).click();
+        },
         ghostOn: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
             cy.get(datatest('switch-ghost-visible')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         ghostOff: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
             cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         loopOn: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('misc');
             cy.get(datatest('switch-loop')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         setRotationSystem: (value) => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },

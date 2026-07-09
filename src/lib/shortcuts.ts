@@ -10,9 +10,6 @@ export const isMac = (): boolean => {
         || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
 };
 
-// Normalize shortcut code (use event.code as-is)
-export const normalizeShortcut = (code: string): string => code;
-
 // Normalize shortcut from keyboard event, converting Ctrl/Cmd to Mod
 export const normalizeShortcutFromEvent = (event: KeyboardEvent): string => {
     const hasModifier = event.ctrlKey || event.metaKey;

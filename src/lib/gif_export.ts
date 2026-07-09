@@ -4,6 +4,7 @@ import { Pages } from './pages';
 import { decideBackgroundColor, decidePieceColor } from './colors';
 import { FieldConstants, Piece } from './enums';
 import { HighlightType } from '../state_types';
+import { RGBColor } from './clipboard_parser/palette';
 import {
     BLOCK_SIZE,
     THUMBNAIL_WIDTH,
@@ -275,13 +276,7 @@ class GifEncoder {
     }
 }
 
-interface RgbColor {
-    r: number;
-    g: number;
-    b: number;
-}
-
-const parseHexColor = (color: string): RgbColor => {
+const parseHexColor = (color: string): RGBColor => {
     const hex = color.replace('#', '');
     return {
         r: parseInt(hex.slice(0, 2), 16),
@@ -290,7 +285,7 @@ const parseHexColor = (color: string): RgbColor => {
     };
 };
 
-const createGifPalette = (): RgbColor[] => {
+const createGifPalette = (): RGBColor[] => {
     const colors: string[] = [
         GIF_BACKGROUND,
         GIF_COMMENT_BACKGROUND,

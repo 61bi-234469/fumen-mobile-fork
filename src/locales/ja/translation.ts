@@ -53,10 +53,10 @@ export const resources = {
             Title: 'ブロックの表面のマーク',
         },
         RotationSystem: {
-            Title: '回転方式',
+            Title: 'キックテーブル',
             Classic: () => 'クラシック',
             Srs: () => 'SRS',
-            SrsPlus: () => 'SRS+ (TETR.IO)',
+            SrsPlus: () => 'SRS+',
         },
         PaletteShortcuts: {
             Title: 'パレットショートカット',

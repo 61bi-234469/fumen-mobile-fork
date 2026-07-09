@@ -57,10 +57,10 @@
             Title: 'Adding a marker to the surface of the block',
         },
         RotationSystem: {
-            Title: 'Rotation system',
+            Title: 'Kick table',
             Classic: () => 'Classic',
             Srs: () => 'SRS',
-            SrsPlus: () => 'SRS+ (TETR.IO)',
+            SrsPlus: () => 'SRS+',
         },
         PaletteShortcuts: {
             Title: 'Palette Shortcuts',

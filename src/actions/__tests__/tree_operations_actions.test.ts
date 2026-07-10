@@ -93,6 +93,31 @@ const createBaseState = () => {
     } as any;
 };
 
+describe('tree node navigation', () => {
+    test('activates a node without changing the current editor page', () => {
+        const state = createBaseState();
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const firstNode = findNodeByPageIndex(tree, 0)!;
+
+        const next = treeOperationActions.activateTreeNode({ nodeId: firstNode.id })(state) as any;
+
+        expect(next.tree.activeNodeId).toBe(firstNode.id);
+        expect(next.fumen).toBeUndefined();
+        expect(state.fumen.currentIndex).toBe(1);
+    });
+
+    test('selects the linked page when navigating from its page number', () => {
+        const state = createBaseState();
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const firstNode = findNodeByPageIndex(tree, 0)!;
+
+        const next = treeOperationActions.selectTreeNode({ nodeId: firstNode.id })(state) as any;
+
+        expect(next.tree.activeNodeId).toBe(firstNode.id);
+        expect(next.fumen.currentIndex).toBe(0);
+    });
+});
+
 describe('addBranchFromCurrentNode', () => {
     test('adds a new page referencing the active node comment', () => {
         const state = createBaseState();

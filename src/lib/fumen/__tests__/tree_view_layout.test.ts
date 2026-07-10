@@ -1,13 +1,12 @@
 import {
     getBranchButtonOffset,
-    getChildCountBadgeOffset,
-    getDeleteButtonOffset,
     getDragHandleOffset,
     getInsertButtonOffset,
     getNodeOccupiedHeight,
     TREE_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_HIT_RADIUS,
-    TREE_CHILD_COUNT_BADGE_RADIUS,
+    TREE_ADD_BUTTON_SIZE,
+    TREE_DROP_BUTTON_SIZE,
     TREE_DRAG_HANDLE_HIT_RADIUS,
     TREE_NODE_FOOTER_HEIGHT,
 } from '../tree_view_layout';
@@ -15,18 +14,18 @@ import {
 describe('tree_view_layout node control geometry', () => {
     const nodeHeight = 310; // full thumbnail (230) + extra height (80)
 
-    test('two add buttons are placed symmetrically around the card center', () => {
-        const insert = getInsertButtonOffset(nodeHeight, true);
+    test('add buttons follow the outgoing horizontal line and its branch curve', () => {
+        const insert = getInsertButtonOffset(nodeHeight);
         const branch = getBranchButtonOffset(nodeHeight);
         const center = nodeHeight / 2;
 
-        expect(center - insert.y).toBeCloseTo(branch.y - center);
+        expect(insert.y).toBe(center);
         expect(insert.y).toBeLessThan(branch.y);
         expect(insert.x).toBe(branch.x);
     });
 
     test('a lone insert button stays at the connection-line level', () => {
-        expect(getInsertButtonOffset(nodeHeight, false).y).toBe(nodeHeight / 2);
+        expect(getInsertButtonOffset(nodeHeight).y).toBe(nodeHeight / 2);
     });
 
     test('add buttons expose at least a 44px effective tap target', () => {
@@ -34,12 +33,9 @@ describe('tree_view_layout node control geometry', () => {
         expect(TREE_DELETE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(40);
     });
 
-    test('delete button (top-right) and child-count badge (top-left) do not overlap', () => {
-        const deleteOffset = getDeleteButtonOffset();
-        const badgeOffset = getChildCountBadgeOffset();
-        const distance = Math.hypot(deleteOffset.x - badgeOffset.x, deleteOffset.y - badgeOffset.y);
-
-        expect(distance).toBeGreaterThan(TREE_DELETE_BUTTON_HIT_RADIUS + TREE_CHILD_COUNT_BADGE_RADIUS);
+    test('drop targets visibly expand beyond the normal add buttons', () => {
+        expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_ADD_BUTTON_SIZE);
+        expect(TREE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(44);
     });
 
     test('occupied height covers the footer controls below the card', () => {
@@ -55,7 +51,7 @@ describe('tree_view_layout node control geometry', () => {
         const branch = getBranchButtonOffset(smallHeight);
 
         expect(branch.y + TREE_BUTTON_HIT_RADIUS).toBeLessThanOrEqual(getNodeOccupiedHeight(smallHeight));
-        const insert = getInsertButtonOffset(smallHeight, true);
+        const insert = getInsertButtonOffset(smallHeight);
         expect(insert.y - TREE_BUTTON_HIT_RADIUS).toBeGreaterThanOrEqual(0);
     });
 });

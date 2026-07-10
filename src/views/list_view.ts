@@ -431,7 +431,7 @@ export const view: View<State, Actions> = (state, actions) => {
             }
 
             // Check INSERT button (green)
-            const insertOffset = getInsertButtonOffset(nodeHeight, node.childrenIds.length > 0);
+            const insertOffset = getInsertButtonOffset(nodeHeight);
             const distToInsert = Math.hypot(
                 svgX - (nodeX + insertOffset.x),
                 svgY - (nodeY + insertOffset.y),
@@ -1040,11 +1040,14 @@ export const view: View<State, Actions> = (state, actions) => {
                     buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
                     autoFocusPending: state.tree.autoFocusPending,
                     actions: {
-                        onNodeClick: (nodeId) => {
-                            // Only navigate if not dragging
+                        onNodeActivate: (nodeId) => {
+                            if (state.tree.dragState.sourceNodeId === null) {
+                                actions.activateTreeNode({ nodeId });
+                            }
+                        },
+                        onPageClick: (nodeId) => {
                             if (state.tree.dragState.sourceNodeId === null) {
                                 actions.selectTreeNode({ nodeId });
-                                // Navigate to editor after selecting node
                                 actions.changeToEditorFromListView();
                             }
                         },

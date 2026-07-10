@@ -22,7 +22,6 @@ import { i18n } from '../../locales/keys';
 import {
     TREE_ADD_BUTTON_SIZE,
     TREE_BUTTON_HIT_RADIUS,
-    TREE_CHILD_COUNT_BADGE_RADIUS,
     TREE_COMMENT_HEIGHT,
     TREE_COMMENT_MARGIN_X,
     TREE_COMMENT_TOP_OFFSET,
@@ -31,8 +30,10 @@ import {
     TREE_COPY_BUTTON_SIZE,
     TREE_DELETE_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_SIZE,
+    TREE_DRAG_HANDLE_HEIGHT,
     TREE_DRAG_HANDLE_HIT_RADIUS,
-    TREE_DRAG_HANDLE_SIZE,
+    TREE_DRAG_HANDLE_WIDTH,
+    TREE_DROP_BUTTON_SIZE,
     TREE_HORIZONTAL_GAP,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
@@ -45,7 +46,6 @@ import {
     calculateTreeViewLayout,
     findTreeButtonDropTarget,
     getBranchButtonOffset,
-    getChildCountBadgeOffset,
     getCopyButtonOffset,
     getDeleteButtonOffset,
     getDragHandleOffset,
@@ -78,7 +78,6 @@ const TREE_COLORS = {
     branchHover: '#FBBF24',
     delete: '#EF4444',
     disabled: '#94A3B8',
-    handle: '#64748B',
     ghostFill: '#F8FAFC',
     ghostBorder: '#94A3B8',
     commentChangedBg: '#10B981',
@@ -111,15 +110,15 @@ const iconTrash = (
     </g>
 );
 
-// 6-dot drag handle icon
+// Quiet 6-dot grip used inside the bar-shaped drag handle.
 const iconDragDots = (
-    <g fill="#fff">
-        <circle cx={-2.8} cy={-4.4} r={1.4} />
-        <circle cx={-2.8} cy={0} r={1.4} />
-        <circle cx={-2.8} cy={4.4} r={1.4} />
-        <circle cx={2.8} cy={-4.4} r={1.4} />
-        <circle cx={2.8} cy={0} r={1.4} />
-        <circle cx={2.8} cy={4.4} r={1.4} />
+    <g fill="#64748B">
+        <circle cx={-5} cy={-2} r={1} />
+        <circle cx={0} cy={-2} r={1} />
+        <circle cx={5} cy={-2} r={1} />
+        <circle cx={-5} cy={2} r={1} />
+        <circle cx={0} cy={2} r={1} />
+        <circle cx={5} cy={2} r={1} />
     </g>
 );
 
@@ -142,7 +141,8 @@ interface Props {
     trimTopBlank: boolean;
     autoFocusPending?: boolean;
     actions: {
-        onNodeClick: (nodeId: TreeNodeId) => void;
+        onNodeActivate: (nodeId: TreeNodeId) => void;
+        onPageClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
         onInsertNode: (parentNodeId: TreeNodeId) => void;
         onCopyNode: (nodeId: TreeNodeId) => void;
@@ -215,43 +215,24 @@ const renderConnection = (
     );
 };
 
-/**
- * Render a single node
- */
-const renderNode = (
+/** Render the card body below comments and controls. */
+const renderNodeCard = (
     node: TreeNode,
     nodeLayout: TreeNodeLayout,
     pages: Page[],
     guideLineColor: boolean,
     activeNodeId: TreeNodeId | null,
     actions: Props['actions'],
-    pageNumber: number,
     isDragSource: boolean,
     isDragging: boolean,
-    isInsertButtonHighlighted: boolean,
-    isBranchButtonHighlighted: boolean,
-    hideButtons: boolean,
-    hideBranchButton: boolean,
     trimTopBlank: boolean,
-    canDelete: boolean,
-    canCopy: boolean,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
-
     const isActive = node.id === activeNodeId;
     const page = pages[node.pageIndex];
     const nodeHeight = nodeLayout.height;
     const thumbnailHeight = nodeLayout.thumbnailHeight;
 
-    const hasBranchButton = node.childrenIds.length > 0;
-    const insertButtonOffset = getInsertButtonOffset(nodeHeight, hasBranchButton);
-    const branchButtonOffset = getBranchButtonOffset(nodeHeight);
-    const deleteButtonOffset = getDeleteButtonOffset();
-    const childCountBadgeOffset = getChildCountBadgeOffset();
-    const copyButtonOffset = getCopyButtonOffset(nodeHeight);
-    const dragHandleOffset = getDragHandleOffset(nodeHeight);
-
-    // Generate thumbnail with error handling
     let thumbnailSrc = '';
     try {
         if (page) {
@@ -261,9 +242,93 @@ const renderNode = (
         console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
     }
 
-    const nodeStyle = style({
-        cursor: 'pointer',
-    });
+    const fillColor = isActive ? TREE_COLORS.cardActiveFill : TREE_COLORS.cardFill;
+    const strokeColor = isActive ? TREE_COLORS.accent : TREE_COLORS.cardBorder;
+    const strokeWidth = isActive ? 2 : 1;
+
+    return (
+        <g
+            key={`node-card-${node.id}`}
+            datatest={`tree-node-${node.id}`}
+            transform={`translate(${pos.x}, ${pos.y})`}
+            style={style({ cursor: 'pointer' })}
+            onclick={() => {
+                if (!isDragging) {
+                    actions.onNodeActivate(node.id);
+                }
+            }}
+        >
+            <g opacity={isDragSource ? 0.5 : 1}>
+                {isActive && (
+                    <rect
+                        x={-3}
+                        y={-3}
+                        width={TREE_NODE_WIDTH + 6}
+                        height={nodeHeight + 6}
+                        rx={TREE_NODE_RADIUS + 3}
+                        ry={TREE_NODE_RADIUS + 3}
+                        fill="none"
+                        stroke={TREE_COLORS.accentHalo}
+                        stroke-width={4}
+                    />
+                )}
+                <rect
+                    width={TREE_NODE_WIDTH}
+                    height={nodeHeight}
+                    rx={TREE_NODE_RADIUS}
+                    ry={TREE_NODE_RADIUS}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    stroke-width={strokeWidth}
+                    filter="url(#tree-card-shadow)"
+                />
+                {thumbnailSrc && (
+                    <image
+                        x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
+                        y={8}
+                        width={TREE_THUMBNAIL_WIDTH}
+                        height={thumbnailHeight}
+                        href={thumbnailSrc}
+                    />
+                )}
+            </g>
+        </g>
+    );
+};
+
+/** Render page and operation controls above comments. */
+const renderNodeControls = (
+    node: TreeNode,
+    nodeLayout: TreeNodeLayout,
+    activeNodeId: TreeNodeId | null,
+    actions: Props['actions'],
+    pageNumber: number,
+    isDragSource: boolean,
+    isDragging: boolean,
+    isInsertButtonHighlighted: boolean,
+    isBranchButtonHighlighted: boolean,
+    isInsertDropTarget: boolean,
+    isBranchDropTarget: boolean,
+    hideButtons: boolean,
+    hideBranchButton: boolean,
+    canDelete: boolean,
+    canCopy: boolean,
+) => {
+    const pos = { x: nodeLayout.x, y: nodeLayout.y };
+
+    const isActive = node.id === activeNodeId;
+    const nodeHeight = nodeLayout.height;
+    const thumbnailHeight = nodeLayout.thumbnailHeight;
+
+    const hasBranchButton = node.childrenIds.length > 0;
+    const insertButtonOffset = getInsertButtonOffset(nodeHeight);
+    const branchButtonOffset = getBranchButtonOffset(nodeHeight);
+    const deleteButtonOffset = getDeleteButtonOffset();
+    const copyButtonOffset = getCopyButtonOffset(nodeHeight);
+    const dragHandleOffset = getDragHandleOffset(nodeHeight);
+    const insertButtonSize = isInsertDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
+    const branchButtonSize = isBranchDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
+
     const dragOpacity = isDragSource ? 0.5 : 1;
     const handleButtonTouchStart = (e: TouchEvent) => {
         if (e.cancelable) {
@@ -277,68 +342,12 @@ const renderNode = (
         }
     };
 
-    // Determine node background and stroke based on drag state
-    let fillColor = TREE_COLORS.cardFill;
-    let strokeColor = TREE_COLORS.cardBorder;
-    let strokeWidth = 1;
-
-    if (isActive) {
-        fillColor = TREE_COLORS.cardActiveFill;
-        strokeColor = TREE_COLORS.accent;
-        strokeWidth = 2;
-    }
-
     return (
         <g
-            key={`node-${node.id}`}
-            datatest={`tree-node-${node.id}`}
+            key={`node-controls-${node.id}`}
             transform={`translate(${pos.x}, ${pos.y})`}
-            style={nodeStyle}
-            onclick={() => {
-                if (!isDragging) {
-                    actions.onNodeClick(node.id);
-                }
-            }}
         >
-            {/* Node content wrapper - semi-transparent when dragging */}
             <g opacity={dragOpacity}>
-            {/* Focus halo for the active node */}
-            {isActive && (
-                <rect
-                    x={-3}
-                    y={-3}
-                    width={TREE_NODE_WIDTH + 6}
-                    height={nodeHeight + 6}
-                    rx={TREE_NODE_RADIUS + 3}
-                    ry={TREE_NODE_RADIUS + 3}
-                    fill="none"
-                    stroke={TREE_COLORS.accentHalo}
-                    stroke-width={4}
-                />
-            )}
-            {/* Node background */}
-            <rect
-                width={TREE_NODE_WIDTH}
-                height={nodeHeight}
-                rx={TREE_NODE_RADIUS}
-                ry={TREE_NODE_RADIUS}
-                fill={fillColor}
-                stroke={strokeColor}
-                stroke-width={strokeWidth}
-                filter="url(#tree-card-shadow)"
-            />
-
-            {/* Thumbnail */}
-            {thumbnailSrc && (
-                <image
-                    x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
-                    y={8}
-                    width={TREE_THUMBNAIL_WIDTH}
-                    height={thumbnailHeight}
-                    href={thumbnailSrc}
-                />
-            )}
-
             {/* Page number - clickable pill badge to jump to page */}
             {(() => {
                 const label = `#${pageNumber}`;
@@ -347,11 +356,12 @@ const renderNode = (
                 const pillCenterY = thumbnailHeight + TREE_PAGE_NUMBER_OFFSET - 5;
                 return (
                     <g
+                        datatest={`tree-page-link-${node.id}`}
                         style={style({ cursor: 'pointer' })}
                         onclick={(e: MouseEvent) => {
                             e.stopPropagation();
                             if (!isDragging) {
-                                actions.onNodeClick(node.id);
+                                actions.onPageClick(node.id);
                             }
                         }}
                         onmousedown={(e: MouseEvent) => {
@@ -385,27 +395,6 @@ const renderNode = (
                 );
             })()}
 
-            {/* Branch indicator with children count (top-left, shows if node has multiple children) */}
-            {node.childrenIds.length > 1 && (
-                <g transform={`translate(${childCountBadgeOffset.x}, ${childCountBadgeOffset.y})`}>
-                    <circle
-                        r={TREE_CHILD_COUNT_BADGE_RADIUS}
-                        fill={TREE_COLORS.branch}
-                        stroke="#fff"
-                        stroke-width={1.5}
-                    />
-                    <text
-                        text-anchor="middle"
-                        dominant-baseline="central"
-                        font-size="11"
-                        font-weight="bold"
-                        fill="#fff"
-                    >
-                        {node.childrenIds.length}
-                    </text>
-                </g>
-            )}
-
             {/* Permanent delete button (top-right). Grayed out when the removal
                 would delete every page. */}
             <g
@@ -433,7 +422,7 @@ const renderNode = (
                     fill={canDelete ? TREE_COLORS.delete : TREE_COLORS.disabled}
                     stroke="#fff"
                     stroke-width={2}
-                    filter="url(#tree-button-shadow)"
+                    filter="url(#tree-control-button-shadow)"
                 />
                 {iconTrash}
             </g>
@@ -480,14 +469,14 @@ const renderNode = (
                         fill={TREE_COLORS.accent}
                         stroke="#fff"
                         stroke-width={2}
-                        filter="url(#tree-button-shadow)"
+                        filter="url(#tree-control-button-shadow)"
                     />
                     {/* Duplicate-page icon */}
                     {iconCopy}
                 </g>
             )}
 
-            {/* Drag handle - below the node, right-aligned. Dragging starts only here. */}
+            {/* Low-profile drag grip below the node. Dragging starts only here. */}
             <g
                 datatest={`tree-handle-${node.id}`}
                 transform={`translate(${dragHandleOffset.x}, ${dragHandleOffset.y})`}
@@ -511,16 +500,23 @@ const renderNode = (
                 }}
             >
                 <title>{i18n.TreeView.DragHandle()}</title>
-                <circle
-                    r={TREE_DRAG_HANDLE_HIT_RADIUS}
+                <rect
+                    x={-TREE_DRAG_HANDLE_HIT_RADIUS}
+                    y={-TREE_DRAG_HANDLE_HIT_RADIUS}
+                    width={TREE_DRAG_HANDLE_HIT_RADIUS * 2}
+                    height={TREE_DRAG_HANDLE_HIT_RADIUS * 2}
                     fill="transparent"
                 />
-                <circle
-                    r={TREE_DRAG_HANDLE_SIZE / 2}
-                    fill={TREE_COLORS.handle}
-                    stroke="#fff"
-                    stroke-width={2}
-                    filter="url(#tree-button-shadow)"
+                <rect
+                    x={-TREE_DRAG_HANDLE_WIDTH / 2}
+                    y={-TREE_DRAG_HANDLE_HEIGHT / 2}
+                    width={TREE_DRAG_HANDLE_WIDTH}
+                    height={TREE_DRAG_HANDLE_HEIGHT}
+                    rx={TREE_DRAG_HANDLE_HEIGHT / 2}
+                    ry={TREE_DRAG_HANDLE_HEIGHT / 2}
+                    fill="#E2E8F0"
+                    stroke="#CBD5E1"
+                    stroke-width={1}
                 />
                 {iconDragDots}
             </g>
@@ -535,6 +531,7 @@ const renderNode = (
                 // INSERT (green, above) and Branch (orange, below)
                 <g key="add-buttons">
                     <g
+                        datatest={`btn-tree-insert-${node.id}`}
                         transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
@@ -553,17 +550,18 @@ const renderNode = (
                             fill="transparent"
                         />
                         <circle
-                            r={TREE_ADD_BUTTON_SIZE / 2}
+                            r={insertButtonSize / 2}
                             fill={isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert}
                             stroke="#fff"
                             stroke-width={isInsertButtonHighlighted ? 3 : 2}
-                            filter="url(#tree-button-shadow)"
+                            filter="url(#tree-control-button-shadow)"
                         />
                         {iconPlus(6)}
                     </g>
                     {/* Orange Branch button */}
                     {!hideBranchButton && (
                     <g
+                        datatest={`btn-tree-branch-${node.id}`}
                         transform={`translate(${branchButtonOffset.x}, ${branchButtonOffset.y})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
@@ -582,11 +580,11 @@ const renderNode = (
                             fill="transparent"
                         />
                         <circle
-                            r={TREE_ADD_BUTTON_SIZE / 2}
+                            r={branchButtonSize / 2}
                             fill={isBranchButtonHighlighted ? TREE_COLORS.branchHover : TREE_COLORS.branch}
                             stroke="#fff"
                             stroke-width={isBranchButtonHighlighted ? 3 : 2}
-                            filter="url(#tree-button-shadow)"
+                            filter="url(#tree-control-button-shadow)"
                         />
                         {iconPlus(6)}
                     </g>
@@ -595,6 +593,7 @@ const renderNode = (
             ) : (
                 // Single button: INSERT (green, centered at the connection-line level)
                 <g
+                    datatest={`btn-tree-insert-${node.id}`}
                     transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
                     onmousedown={(e: MouseEvent) => {
                         e.stopPropagation();
@@ -613,11 +612,11 @@ const renderNode = (
                         fill="transparent"
                     />
                     <circle
-                        r={TREE_ADD_BUTTON_SIZE / 2}
+                        r={insertButtonSize / 2}
                         fill={isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert}
                         stroke="#fff"
                         stroke-width={isInsertButtonHighlighted ? 3 : 2}
-                        filter="url(#tree-button-shadow)"
+                        filter="url(#tree-control-button-shadow)"
                     />
                     {iconPlus(6)}
                 </g>
@@ -744,8 +743,8 @@ export const FumenGraph: Component<Props> = ({
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
     const sourceParentId = sourceNode?.parentId ?? null;
 
-    // Render nodes with page numbers and drag state
-    const nodes = renderableNodes.map((node) => {
+    // Render cards below comments and controls above them.
+    const nodeLayers = renderableNodes.map((node) => {
         const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
         const hideButtons = isDragging
@@ -756,6 +755,18 @@ export const FumenGraph: Component<Props> = ({
         const hideBranchButton = isDragging
             && sourceParentId === node.id
             && node.childrenIds.length <= 1;
+        const allowDescendant = !buttonDropMovesSubtree;
+        const isRootDragSource = isDragging && buttonDropMovesSubtree
+            && tree.rootId !== null && dragSourceNodeId === tree.rootId;
+        const isValidDropParent = isDragging
+            && dragSourceNodeId !== null
+            && node.id !== dragSourceNodeId
+            && !isRootDragSource
+            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
+        const isInsertDropTarget = isValidDropParent && sourceParentId !== node.id;
+        const isBranchDropTarget = isValidDropParent
+            && node.childrenIds.length > 0
+            && !hideBranchButton;
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -778,25 +789,39 @@ export const FumenGraph: Component<Props> = ({
             return null;
         }
 
-        return renderNode(
-            node,
-            nodeLayout,
-            pages,
-            guideLineColor,
-            activeNodeId,
-            actions,
-            pageNumber,
-            isDragSource,
-            isDragging,
-            isInsertButtonHighlighted,
-            isBranchButtonHighlighted,
-            hideButtons,
-            hideBranchButton,
-            trimTopBlank,
-            canDelete,
-            canCopy,
-        );
+        return {
+            card: renderNodeCard(
+                node,
+                nodeLayout,
+                pages,
+                guideLineColor,
+                activeNodeId,
+                actions,
+                isDragSource,
+                isDragging,
+                trimTopBlank,
+            ),
+            controls: renderNodeControls(
+                node,
+                nodeLayout,
+                activeNodeId,
+                actions,
+                pageNumber,
+                isDragSource,
+                isDragging,
+                isInsertButtonHighlighted,
+                isBranchButtonHighlighted,
+                isInsertDropTarget,
+                isBranchDropTarget,
+                hideButtons,
+                hideBranchButton,
+                canDelete,
+                canCopy,
+            ),
+        };
     });
+    const nodeCards = nodeLayers.map(node => node?.card);
+    const nodeControls = nodeLayers.map(node => node?.controls);
 
     const stopPropagation = (e: Event) => {
         e.stopPropagation();
@@ -1175,7 +1200,7 @@ export const FumenGraph: Component<Props> = ({
                 style={canvasStyle}
             >
                 <svg
-                    key="fumen-graph-svg"
+                    key="fumen-graph-base-svg"
                     width={scaledWidth}
                     height={scaledHeight}
                     style={style({ display: 'block', position: 'absolute', left: '0', top: '0', zIndex: 1 })}
@@ -1189,15 +1214,6 @@ export const FumenGraph: Component<Props> = ({
                                 stdDeviation="2"
                                 flood-color="#0F172A"
                                 flood-opacity="0.14"
-                            />
-                        </filter>
-                        <filter id="tree-button-shadow" x="-60%" y="-60%" width="220%" height="220%">
-                            <feDropShadow
-                                dx="0"
-                                dy="1"
-                                stdDeviation="1"
-                                flood-color="#0F172A"
-                                flood-opacity="0.25"
                             />
                         </filter>
                         <pattern id="tree-dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -1215,17 +1231,40 @@ export const FumenGraph: Component<Props> = ({
                             {connections}
                         </g>
 
-                        {/* Nodes layer */}
-                        <g key="nodes-layer">
-                            {nodes}
-                            {rootAddGhostButton}
+                        {/* Card layer (below comments and controls) */}
+                        <g key="cards-layer">
+                            {nodeCards}
                         </g>
-
-                        {/* Drag ghost layer (topmost, follows the pointer) */}
-                        {dragGhost}
                     </g>
                 </svg>
                 {commentInputs}
+                <svg
+                    key="fumen-graph-controls-svg"
+                    width={scaledWidth}
+                    height={scaledHeight}
+                    style={style({ display: 'block', position: 'absolute', left: '0', top: '0', zIndex: 3 })}
+                    onmousemove={handleSvgMouseMove}
+                >
+                    <defs>
+                        <filter id="tree-control-button-shadow" x="-60%" y="-60%" width="220%" height="220%">
+                            <feDropShadow
+                                dx="0"
+                                dy="1"
+                                stdDeviation="1"
+                                flood-color="#0F172A"
+                                flood-opacity="0.25"
+                            />
+                        </filter>
+                    </defs>
+                    <g key="controls-scale-group" transform={`scale(${scale})`}>
+                        <g key="controls-layer">
+                            {nodeControls}
+                            {rootAddGhostButton}
+                        </g>
+                        {/* Drag ghost stays above every control. */}
+                        {dragGhost}
+                    </g>
+                </svg>
             </div>
         </div>
     );

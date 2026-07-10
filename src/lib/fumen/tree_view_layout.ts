@@ -13,8 +13,9 @@ export const TREE_VERTICAL_GAP = 30;
 export const TREE_PADDING = 20;
 export const TREE_SCROLL_PADDING_RIGHT = 150;
 export const TREE_SCROLL_PADDING_BOTTOM = 150;
-export const TREE_ADD_BUTTON_SIZE = 40;
-export const TREE_ADD_BUTTON_GAP = 8;
+export const TREE_ADD_BUTTON_SIZE = 32;
+export const TREE_DROP_BUTTON_SIZE = 36;
+export const TREE_ADD_BUTTON_GAP = 4;
 export const TREE_BUTTON_X = TREE_NODE_WIDTH + 4;
 export const TREE_PAGE_NUMBER_OFFSET = 24;
 export const TREE_COMMENT_MARGIN_X = 8;
@@ -28,45 +29,40 @@ export const TREE_COMMENT_HEIGHT =
 export const TREE_DELETE_BUTTON_SIZE = 22;
 export const TREE_DELETE_BUTTON_HIT_RADIUS = 20;
 
-// Children-count badge (top-left corner of the card, display only)
-export const TREE_CHILD_COUNT_BADGE_RADIUS = 9;
-
 // Copy button (below the node, centered)
 export const TREE_COPY_BUTTON_SIZE = 22;
 export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
 
 // Drag handle (below the node, right-aligned)
-export const TREE_DRAG_HANDLE_SIZE = 22;
+export const TREE_DRAG_HANDLE_WIDTH = 32;
+export const TREE_DRAG_HANDLE_HEIGHT = 10;
 export const TREE_DRAG_HANDLE_HIT_RADIUS = 20;
 
-// Shared button hit-test radii. The add buttons get a ~48px effective tap target;
-// visible size and hit area are decoupled on purpose.
-export const TREE_BUTTON_HIT_RADIUS = TREE_ADD_BUTTON_SIZE / 2 + 4;
+// Insert/Branch grow only slightly while dragging, while the invisible hit area
+// still provides the 44px mobile target size.
+export const TREE_BUTTON_HIT_RADIUS = 22;
 export const TREE_COPY_BUTTON_HIT_RADIUS = TREE_COPY_BUTTON_SIZE / 2 + 6;
 
 // Footer strip occupied by the copy button / drag handle below the card.
 // Included in the lane height so adjacent lanes never overlap these controls.
 export const TREE_NODE_FOOTER_HEIGHT =
-    TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_DRAG_HANDLE_SIZE / 2 + TREE_DRAG_HANDLE_HIT_RADIUS;
+    TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 + TREE_DRAG_HANDLE_HIT_RADIUS;
 
 // Node-relative offsets for buttons/badges, shared between rendering (fumen_graph.tsx)
 // and hit-testing (fumen_graph.tsx mouse handler, views/list_view.ts touch handlers).
-// When both add buttons are visible they are placed symmetrically around the card center;
-// a lone insert button stays at the center (connection-line level).
-export const getInsertButtonOffset = (nodeHeight: number, hasBranchButton: boolean) =>
-    hasBranchButton
-        ? { x: TREE_BUTTON_X, y: nodeHeight / 2 - (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 }
-        : { x: TREE_BUTTON_X, y: nodeHeight / 2 };
+// Insert stays on the outgoing horizontal connection. Branch stays at its
+// original position near the downward curve.
+export const getInsertButtonOffset = (nodeHeight: number) =>
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 });
 export const getBranchButtonOffset = (nodeHeight: number) =>
-    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 });
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP });
 export const getDeleteButtonOffset = () =>
     ({ x: TREE_NODE_WIDTH - 10, y: 10 });
-export const getChildCountBadgeOffset = () =>
-    ({ x: 10, y: 10 });
 export const getCopyButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_NODE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 });
 export const getDragHandleOffset = (nodeHeight: number) =>
-    ({ x: TREE_NODE_WIDTH - 16, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_DRAG_HANDLE_SIZE / 2 });
+    ({ x: TREE_NODE_WIDTH - TREE_DRAG_HANDLE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM
+        + TREE_COPY_BUTTON_SIZE / 2 });
 
 /**
  * Total vertical space a node occupies inside its lane: the card itself, the
@@ -74,7 +70,7 @@ export const getDragHandleOffset = (nodeHeight: number) =>
  * extends lower).
  */
 export const getNodeOccupiedHeight = (nodeHeight: number): number => {
-    const buttonsBottom = nodeHeight / 2 + (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 + TREE_BUTTON_HIT_RADIUS;
+    const buttonsBottom = getBranchButtonOffset(nodeHeight).y + TREE_BUTTON_HIT_RADIUS;
     return Math.max(nodeHeight + TREE_NODE_FOOTER_HEIGHT, buttonsBottom);
 };
 
@@ -233,7 +229,7 @@ export const findTreeButtonDropTarget = (
 
         // Insert is invalid on the source's own parent (formerly the drag-delete drop).
         if (sourceParentId !== node.id) {
-            const insertOffset = getInsertButtonOffset(nodeLayout.height, hasBranchButton);
+            const insertOffset = getInsertButtonOffset(nodeLayout.height);
             const distToInsert = Math.hypot(
                 svgX - (nodeLayout.x + insertOffset.x),
                 svgY - (nodeLayout.y + insertOffset.y),

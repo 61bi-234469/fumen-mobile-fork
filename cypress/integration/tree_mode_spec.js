@@ -83,9 +83,7 @@ describe('Tree mode in list view', () => {
 
         // Move with children ON: deleting the middle node removes its subtree
         toggleMoveWithChildren();
-        cy.contains('[datatest^="tree-node-"]', '#2')
-            .find('[datatest^="btn-tree-node-delete-"]')
-            .click({ force: true });
+        cy.get('[datatest^="btn-tree-node-delete-"]').eq(1).click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
 
         // Deleting the last remaining page is rejected (button disabled)
@@ -93,12 +91,19 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
 
-    it('does not start a drag from the card body and keeps tap-to-select working', () => {
+    it('activates a card without leaving the tree and navigates only from its page number', () => {
         cy.viewport('iphone-6');
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 
         enterTreeGraphView();
         buildThreeNodeChain();
+
+        // A card click changes only the active node and keeps the tree visible.
+        cy.get('[datatest^="tree-node-"]').eq(1).find('image').click({ force: true });
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
+        cy.get('[datatest^="tree-page-link-"]').eq(1)
+            .find('rect[fill="#2563EB"]')
+            .should('exist');
 
         // Swipe across a card body: no drag state, no ghost
         cy.window().then(async (win) => {
@@ -121,6 +126,10 @@ describe('Tree mode in list view', () => {
 
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        // The #number remains the explicit link to the editor.
+        cy.get('[datatest^="tree-page-link-"]').eq(1).click({ force: true });
+        cy.get('[datatest="fumen-graph-container"]').should('not.exist');
     });
 
     it('moves a node by dragging its handle onto an insert button', () => {
@@ -128,6 +137,14 @@ describe('Tree mode in list view', () => {
 
         enterTreeGraphView();
         buildThreeNodeChain();
+
+        cy.get('[datatest^="tree-handle-"]').first().within(() => {
+            cy.get(':scope > circle').should('not.exist');
+            cy.get('rect[width="32"][height="10"]').should('exist');
+        });
+        cy.get('[datatest^="btn-tree-insert-"]').first()
+            .find('circle').eq(1)
+            .should('have.attr', 'r', '16');
 
         cy.window().then(async (win) => {
             const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -153,6 +170,13 @@ describe('Tree mode in list view', () => {
             await wait(60);
             fireTouch('touchmove', mid);
             await wait(60);
+
+            // Valid Insert/Branch targets visibly grow from 32px to 36px.
+            const expandedInsert = win.document.querySelector(
+                '[datatest^="btn-tree-insert-"] circle:nth-of-type(2)',
+            );
+            expect(expandedInsert.getAttribute('r')).to.equal('18');
+
             fireTouch('touchmove', end);
             await wait(120);
             fireTouch('touchend', end);
@@ -162,8 +186,8 @@ describe('Tree mode in list view', () => {
         // node order in the DOM stays creation order, so the second node now
         // shows #3 and the third one #2.
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
-        cy.get('[datatest^="tree-node-"]').eq(1).contains('#3');
-        cy.get('[datatest^="tree-node-"]').eq(2).contains('#2');
+        cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
+        cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
     });
 

@@ -270,6 +270,7 @@ export interface TreeOperationActions {
     ackTreeAutoFocus: () => action;
 
     // Tree navigation
+    activateTreeNode: (data: { nodeId: TreeNodeId }) => action;
     selectTreeNode: (data: { nodeId: TreeNodeId }) => action;
 
     // Tree operations with history support
@@ -873,9 +874,22 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         },
     }),
 
-    /**
-     * Select a tree node and navigate to its page
-     */
+    /** Select a tree node without changing the current editor page. */
+    activateTreeNode: ({ nodeId }) => (state): NextState => {
+        const tree = getOrCreateTree(state);
+        const node = findNode(tree, nodeId);
+
+        if (!node || isVirtualNode(node)) return undefined;
+
+        return {
+            tree: {
+                ...state.tree,
+                activeNodeId: nodeId,
+            },
+        };
+    },
+
+    /** Select a tree node and navigate to its page. */
     selectTreeNode: ({ nodeId }) => (state): NextState => {
         const tree = getOrCreateTree(state);
         const node = findNode(tree, nodeId);

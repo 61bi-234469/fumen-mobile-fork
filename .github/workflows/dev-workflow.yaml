@@ -16,7 +16,8 @@ jobs:
       - run: yarn webpack-prod
         env:
           DEBUG_ON: false
-      - run: yarn serve > serve.log 2>&1 &
+      - run: mkdir -p logs
+      - run: yarn serve > logs/serve.log 2> logs/serve.err.log &
       - run: yarn cy-run-ci
       - uses: actions/upload-artifact@v5
         if: ${{ failure() }}

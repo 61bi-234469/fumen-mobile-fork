@@ -15,7 +15,7 @@ const buildThreeNodeChain = () => {
 
 const toggleMoveWithChildren = () => {
     cy.get(datatest('btn-view-settings')).click();
-    cy.contains('Move with children').click();
+    cy.contains('Move/delete with children').click();
     cy.get(datatest('btn-view-settings')).click();
 };
 
@@ -98,8 +98,21 @@ describe('Tree mode in list view', () => {
         enterTreeGraphView();
         buildThreeNodeChain();
 
-        // A card click changes only the active node and keeps the tree visible.
-        cy.get('[datatest^="tree-node-"]').eq(1).find('image').click({ force: true });
+        // A click at the visible card body reaches the card (not the controls overlay),
+        // changes only the active node, and keeps the tree visible.
+        cy.window().then((win) => {
+            const node = win.document.querySelectorAll('[datatest^="tree-node-"]')[1];
+            const rect = node.getBoundingClientRect();
+            const point = { x: rect.left + 40, y: rect.top + 60 };
+            const target = win.document.elementFromPoint(point.x, point.y);
+
+            expect(target.closest('[datatest^="tree-node-"]')).to.equal(node);
+            target.dispatchEvent(new win.MouseEvent('click', {
+                bubbles: true,
+                clientX: point.x,
+                clientY: point.y,
+            }));
+        });
         cy.get('[datatest="fumen-graph-container"]').should('exist');
         cy.get('[datatest^="tree-page-link-"]').eq(1)
             .find('rect[fill="#2563EB"]')
@@ -149,6 +162,9 @@ describe('Tree mode in list view', () => {
         cy.window().then(async (win) => {
             const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
             const handles = win.document.querySelectorAll('[datatest^="tree-handle-"]');
+            const parentNodeId = win.document.querySelectorAll('[datatest^="tree-node-"]')[1]
+                .getAttribute('datatest')
+                .replace('tree-node-', '');
             const handle = handles[2]; // last node in the chain
             const handleRect = handle.getBoundingClientRect();
             const start = {
@@ -171,6 +187,15 @@ describe('Tree mode in list view', () => {
             fireTouch('touchmove', mid);
             await wait(60);
 
+            // The source's parent cannot receive the move, so neither of its
+            // Insert/Branch controls should remain visible during the drag.
+            expect(win.document.querySelector(
+                `[datatest="btn-tree-insert-${parentNodeId}"]`,
+            )).to.equal(null);
+            expect(win.document.querySelector(
+                `[datatest="btn-tree-branch-${parentNodeId}"]`,
+            )).to.equal(null);
+
             // Valid Insert/Branch targets visibly grow from 32px to 36px.
             const expandedInsert = win.document.querySelector(
                 '[datatest^="btn-tree-insert-"] circle:nth-of-type(2)',
@@ -189,6 +214,46 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
         cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('hides the source parent insert button even when the parent is branched', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+
+        cy.get('[datatest^="tree-node-"]').first().then(($parent) => {
+            const parentNodeId = $parent.attr('datatest').replace('tree-node-', '');
+            cy.get(`[datatest="btn-tree-branch-${parentNodeId}"]`).click({ force: true });
+            cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+            cy.window().then(async (win) => {
+                const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                const handle = win.document.querySelectorAll('[datatest^="tree-handle-"]')[2];
+                const rect = handle.getBoundingClientRect();
+                const start = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                };
+                const moved = { x: start.x + 30, y: start.y };
+                const fireTouch = createTouchDispatcher(win, handle);
+
+                fireTouch('touchstart', start);
+                await wait(60);
+                fireTouch('touchmove', moved);
+                await wait(60);
+
+                expect(win.document.querySelector(
+                    `[datatest="btn-tree-insert-${parentNodeId}"]`,
+                )).to.equal(null);
+                expect(win.document.querySelector(
+                    `[datatest="btn-tree-branch-${parentNodeId}"]`,
+                )).to.not.equal(null);
+
+                fireTouch('touchend', moved);
+            });
+        });
     });
 
     it('auto-scrolls the tree while dragging near the container edge', () => {

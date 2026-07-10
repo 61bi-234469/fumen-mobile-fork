@@ -141,7 +141,7 @@ export const resources = {
         },
     },
     TreeView: {
-        MoveWithChildren: '子ノードごと移動',
+        MoveWithChildren: '子ノードごと移動／削除',
         GrayAfterLineClear: 'ライン消去後にグレーアウト',
         ZoomIn: '拡大',
         ZoomOut: '縮小',

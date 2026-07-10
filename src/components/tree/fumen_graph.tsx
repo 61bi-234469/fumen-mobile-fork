@@ -310,6 +310,7 @@ const renderNodeControls = (
     isInsertDropTarget: boolean,
     isBranchDropTarget: boolean,
     hideButtons: boolean,
+    hideInsertButton: boolean,
     hideBranchButton: boolean,
     canDelete: boolean,
     canCopy: boolean,
@@ -530,6 +531,7 @@ const renderNodeControls = (
                 // Two buttons placed symmetrically around the card center:
                 // INSERT (green, above) and Branch (orange, below)
                 <g key="add-buttons">
+                    {!hideInsertButton && (
                     <g
                         datatest={`btn-tree-insert-${node.id}`}
                         transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
@@ -558,6 +560,7 @@ const renderNodeControls = (
                         />
                         {iconPlus(6)}
                     </g>
+                    )}
                     {/* Orange Branch button */}
                     {!hideBranchButton && (
                     <g
@@ -592,6 +595,7 @@ const renderNodeControls = (
                 </g>
             ) : (
                 // Single button: INSERT (green, centered at the connection-line level)
+                !hideInsertButton && (
                 <g
                     datatest={`btn-tree-insert-${node.id}`}
                     transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
@@ -620,6 +624,7 @@ const renderNodeControls = (
                     />
                     {iconPlus(6)}
                 </g>
+                )
             ))}
             </g>
         </g>
@@ -747,14 +752,17 @@ export const FumenGraph: Component<Props> = ({
     const nodeLayers = renderableNodes.map((node) => {
         const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
-        const hideButtons = isDragging
+        const hideDescendantButtons = isDragging
             && buttonDropMovesSubtree
             && dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && isDescendant(tree, dragSourceNodeId, node.id);
-        const hideBranchButton = isDragging
-            && sourceParentId === node.id
+        const isSourceParent = isDragging && sourceParentId === node.id;
+        const hideSourceParentButtons = isSourceParent
             && node.childrenIds.length <= 1;
+        const hideButtons = hideDescendantButtons || hideSourceParentButtons;
+        const hideInsertButton = isSourceParent;
+        const hideBranchButton = hideSourceParentButtons;
         const allowDescendant = !buttonDropMovesSubtree;
         const isRootDragSource = isDragging && buttonDropMovesSubtree
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
@@ -814,6 +822,7 @@ export const FumenGraph: Component<Props> = ({
                 isInsertDropTarget,
                 isBranchDropTarget,
                 hideButtons,
+                hideInsertButton,
                 hideBranchButton,
                 canDelete,
                 canCopy,
@@ -1242,7 +1251,14 @@ export const FumenGraph: Component<Props> = ({
                     key="fumen-graph-controls-svg"
                     width={scaledWidth}
                     height={scaledHeight}
-                    style={style({ display: 'block', position: 'absolute', left: '0', top: '0', zIndex: 3 })}
+                    style={style({
+                        display: 'block',
+                        position: 'absolute',
+                        left: '0',
+                        top: '0',
+                        zIndex: 3,
+                        pointerEvents: 'none',
+                    })}
                     onmousemove={handleSvgMouseMove}
                 >
                     <defs>
@@ -1257,7 +1273,7 @@ export const FumenGraph: Component<Props> = ({
                         </filter>
                     </defs>
                     <g key="controls-scale-group" transform={`scale(${scale})`}>
-                        <g key="controls-layer">
+                        <g key="controls-layer" style={style({ pointerEvents: 'auto' })}>
                             {nodeControls}
                             {rootAddGhostButton}
                         </g>

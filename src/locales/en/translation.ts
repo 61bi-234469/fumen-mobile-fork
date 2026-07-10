@@ -166,7 +166,7 @@
         },
     },
     TreeView: {
-        MoveWithChildren: 'Move with children',
+        MoveWithChildren: 'Move/delete with children',
         GrayAfterLineClear: 'Gray out cleared lines',
         ZoomIn: 'Zoom in',
         ZoomOut: 'Zoom out',

@@ -57,7 +57,7 @@ export const getInsertButtonOffset = (nodeHeight: number) =>
 export const getBranchButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP });
 export const getDeleteButtonOffset = () =>
-    ({ x: TREE_NODE_WIDTH - 10, y: 10 });
+    ({ x: TREE_NODE_WIDTH + 4, y: 8 });
 export const getCopyButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_NODE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 });
 export const getDragHandleOffset = (nodeHeight: number) =>

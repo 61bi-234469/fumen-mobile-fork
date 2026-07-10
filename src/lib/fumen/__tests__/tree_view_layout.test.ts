@@ -1,14 +1,17 @@
 import {
     getBranchButtonOffset,
+    getDeleteButtonOffset,
     getDragHandleOffset,
     getInsertButtonOffset,
     getNodeOccupiedHeight,
     TREE_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_HIT_RADIUS,
+    TREE_DELETE_BUTTON_SIZE,
     TREE_ADD_BUTTON_SIZE,
     TREE_DROP_BUTTON_SIZE,
     TREE_DRAG_HANDLE_HIT_RADIUS,
     TREE_NODE_FOOTER_HEIGHT,
+    TREE_NODE_WIDTH,
 } from '../tree_view_layout';
 
 describe('tree_view_layout node control geometry', () => {
@@ -36,6 +39,12 @@ describe('tree_view_layout node control geometry', () => {
     test('drop targets visibly expand beyond the normal add buttons', () => {
         expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_ADD_BUTTON_SIZE);
         expect(TREE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(44);
+    });
+
+    test('delete button sits outside the field area at the card edge', () => {
+        const deleteOffset = getDeleteButtonOffset();
+
+        expect(deleteOffset.x - TREE_DELETE_BUTTON_SIZE / 2).toBeGreaterThan(TREE_NODE_WIDTH - 10);
     });
 
     test('occupied height covers the footer controls below the card', () => {

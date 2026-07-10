@@ -4,6 +4,38 @@ import { operations } from '../support/operations';
 // エディットモード左サイドパネル（リスト/ツリー）
 // デフォルトの viewport はモバイル相当 (375x667) のため、PC 相当に広げてから検証する。
 describe('Editor side panel', () => {
+    it('resizes from the divider, persists the width, and resets to automatic width', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false });
+        operations.editorPanel.enable();
+
+        cy.get(datatest('editor-side-panel')).then(($panel) => {
+            const automaticWidth = $panel[0].getBoundingClientRect().width;
+            const dividerX = $panel[0].getBoundingClientRect().right;
+            const resizedWidth = automaticWidth - 180;
+
+            cy.get(datatest('editor-side-panel-resize-handle'))
+                .trigger('mousedown', { button: 0, clientX: dividerX, force: true });
+            cy.document().trigger('mousemove', { clientX: dividerX - 180, force: true });
+            cy.document().trigger('mouseup', { clientX: dividerX - 180, force: true });
+
+            cy.get(datatest('editor-side-panel')).should(($resizedPanel) => {
+                expect($resizedPanel[0].getBoundingClientRect().width).to.be.closeTo(resizedWidth, 1);
+            });
+
+            visit({ mode: 'edit', mobile: false, reload: true });
+            cy.get(datatest('editor-side-panel')).should(($persistedPanel) => {
+                expect($persistedPanel[0].getBoundingClientRect().width).to.be.closeTo(resizedWidth, 1);
+            });
+
+            cy.get(datatest('editor-side-panel-resize-handle')).dblclick({ force: true });
+            cy.get(datatest('editor-side-panel')).should(($resetPanel) => {
+                expect($resetPanel[0].getBoundingClientRect().width).to.be.closeTo(automaticWidth, 1);
+            });
+        });
+    });
+
     it('is hidden by default, toggles via user settings, persists, and auto-hides on narrow widths', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();
@@ -40,6 +72,16 @@ describe('Editor side panel', () => {
 
         operations.editorPanel.enable();
         cy.get(datatest('editor-side-panel')).should('be.visible');
+
+        // パネルが広いときも通常のリストビューと同じ最大160pxのカードを
+        // 折り返して並べ、2列へ引き伸ばさない。
+        cy.get(datatest('list-view-item-0')).then(($first) => {
+            const firstRect = $first[0].getBoundingClientRect();
+            expect(firstRect.width).to.be.closeTo(160, 1);
+            cy.get(datatest('list-view-item-2')).should(($third) => {
+                expect($third[0].getBoundingClientRect().top).to.be.closeTo(firstRect.top, 1);
+            });
+        });
 
         // 現在ページのハイライトが表示される (初期は 1 ページ目)
         cy.get(datatest('list-view-item-0'))

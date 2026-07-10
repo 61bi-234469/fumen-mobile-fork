@@ -15,12 +15,22 @@ import {
     stopTreeDragFeedback,
 } from '../tree_mouse_interaction';
 import { handleTreeNodeDelete } from '../tree_node_delete';
-import { SIDE_PANEL_TAB_BAR_HEIGHT } from './side_panel_layout';
+import { getSidePanelWidthBounds, SIDE_PANEL_TAB_BAR_HEIGHT } from './side_panel_layout';
 
 // フル画面と同時表示されないため、FumenGraph 内の datatest をそのまま共有する
 const PANEL_TREE_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
 
 const ZOOM_CONTROLS_HEIGHT = 36;
+const RESIZE_HANDLE_HIT_WIDTH = 12;
+
+let resizeCleanup: (() => void) | null = null;
+
+const stopPanelResize = () => {
+    if (resizeCleanup) {
+        resizeCleanup();
+        resizeCleanup = null;
+    }
+};
 
 interface PanelSize {
     width: number;
@@ -122,13 +132,6 @@ const renderZoomControls = (state: State, actions: Actions) => {
 };
 
 const renderListTab = (state: State, actions: Actions, size: PanelSize) => {
-    // パネル幅からリスト2列ぶんの表示スケールを自動算出する
-    // (ListViewGrid: 左右padding 10px ずつ + アイテム間 gap 8px + 縦スクロールバー分の余裕)
-    const scrollBarAllowance = 18;
-    const baseItemSize = Math.max(100, Math.min(160, Math.floor((size.width - 20) / 5)));
-    const desiredItemSize = (size.width - 20 - 8 - scrollBarAllowance) / 2;
-    const listScale = desiredItemSize / baseItemSize;
-
     return ListViewGrid({
         trimTopBlank: state.listView.trimTopBlank,
         pages: state.fumen.pages,
@@ -137,7 +140,7 @@ const renderListTab = (state: State, actions: Actions, size: PanelSize) => {
         dropTargetIndex: state.listView.dragState.dropTargetIndex,
         containerWidth: size.width,
         containerHeight: size.height - SIDE_PANEL_TAB_BAR_HEIGHT,
-        scale: listScale,
+        scale: state.listView.scale,
         sortable: !state.tree.enabled,
         currentIndex: state.fumen.currentIndex,
         actions: {
@@ -375,6 +378,52 @@ export const sidePanel = (state: State, actions: Actions, size: PanelSize) => {
         stopTreeDragFeedback();
     }
 
+    const clampPanelWidth = (width: number) => {
+        const bounds = getSidePanelWidthBounds(state);
+        return Math.max(bounds.min, Math.min(bounds.max, Math.round(width)));
+    };
+
+    const startPanelResize = (e: MouseEvent) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        stopPanelResize();
+
+        const startX = e.clientX;
+        const startWidth = size.width;
+        let latestWidth = startWidth;
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const widthAt = (clientX: number) => clampPanelWidth(startWidth + clientX - startX);
+        const onMouseMove = (event: MouseEvent) => {
+            latestWidth = widthAt(event.clientX);
+            actions.setEditorSidePanelWidth({ width: latestWidth, persist: false });
+        };
+        const onMouseUp = (event: MouseEvent) => {
+            latestWidth = widthAt(event.clientX);
+            stopPanelResize();
+            actions.setEditorSidePanelWidth({ width: latestWidth, persist: true });
+        };
+        const onWindowBlur = () => {
+            stopPanelResize();
+            actions.setEditorSidePanelWidth({ width: latestWidth, persist: true });
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('blur', onWindowBlur);
+        resizeCleanup = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            window.removeEventListener('blur', onWindowBlur);
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+        };
+    };
+
     return div({
         key: 'editor-side-panel',
         datatest: 'editor-side-panel',
@@ -388,8 +437,10 @@ export const sidePanel = (state: State, actions: Actions, size: PanelSize) => {
             borderRight: 'solid 1px #E2E8F0',
             boxSizing: 'border-box',
             userSelect: 'none',
+            position: 'relative',
         }),
         ondestroy: () => {
+            stopPanelResize();
             cancelPendingMouseDrag();
             stopTreeDragFeedback();
         },
@@ -412,5 +463,40 @@ export const sidePanel = (state: State, actions: Actions, size: PanelSize) => {
         ...(currentTab === 'tree'
             ? renderTreeTab(state, actions, size)
             : [renderListTab(state, actions, size)]),
+
+        div({
+            key: 'editor-side-panel-resize-handle',
+            datatest: 'editor-side-panel-resize-handle',
+            role: 'separator',
+            'aria-orientation': 'vertical',
+            style: style({
+                position: 'absolute',
+                top: 0,
+                right: px(-RESIZE_HANDLE_HIT_WIDTH / 2),
+                width: px(RESIZE_HANDLE_HIT_WIDTH),
+                height: '100%',
+                cursor: 'col-resize',
+                zIndex: 10,
+                display: 'flex',
+                justifyContent: 'center',
+            }),
+            onmousedown: startPanelResize,
+            ondblclick: (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stopPanelResize();
+                actions.setEditorSidePanelWidth({ width: null, persist: true });
+            },
+        }, [
+            div({
+                key: 'editor-side-panel-resize-line',
+                style: style({
+                    width: px(1),
+                    height: '100%',
+                    backgroundColor: '#CBD5E1',
+                    pointerEvents: 'none',
+                }),
+            }),
+        ]),
     ]);
 };

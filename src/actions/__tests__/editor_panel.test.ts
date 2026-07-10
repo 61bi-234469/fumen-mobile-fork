@@ -41,6 +41,7 @@ const createState = (override: any = {}) => ({
     editorPanel: {
         enabled: false,
         tab: 'list',
+        width: null,
     },
     ...override,
 });
@@ -64,6 +65,7 @@ describe('editorPanelActions', () => {
                 grayAfterLineClear: false,
                 editorSidePanel: true,
                 editorSidePanelTab: 'list',
+                editorSidePanelWidth: null,
                 coldClearTopBranchCount: 5,
                 coldClearHoldAllowed: true,
                 coldClearSpeculate: true,
@@ -101,6 +103,40 @@ describe('editorPanelActions', () => {
 
             expect(next).toBeUndefined();
             expect(saveViewSettingsMock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('setEditorSidePanelWidth', () => {
+        test('updates transiently without persisting while dragging', () => {
+            const state = createState();
+            const next = editorPanelActions.setEditorSidePanelWidth({ width: 480, persist: false })(state);
+
+            expect(next.editorPanel.width).toBe(480);
+            expect(saveViewSettingsMock).not.toHaveBeenCalled();
+        });
+
+        test('persists the final width even if the transient value is unchanged', () => {
+            const state = createState({
+                editorPanel: { enabled: true, tab: 'tree', width: 480 },
+            });
+            const next = editorPanelActions.setEditorSidePanelWidth({ width: 480 })(state);
+
+            expect(next).toBeUndefined();
+            expect(saveViewSettingsMock).toHaveBeenCalledWith(expect.objectContaining({
+                editorSidePanelWidth: 480,
+            }));
+        });
+
+        test('resets to automatic width with null', () => {
+            const state = createState({
+                editorPanel: { enabled: true, tab: 'tree', width: 480 },
+            });
+            const next = editorPanelActions.setEditorSidePanelWidth({ width: null })(state);
+
+            expect(next.editorPanel.width).toBeNull();
+            expect(saveViewSettingsMock).toHaveBeenCalledWith(expect.objectContaining({
+                editorSidePanelWidth: null,
+            }));
         });
     });
 });

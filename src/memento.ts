@@ -178,6 +178,7 @@ interface ViewSettings {
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
     editorSidePanelTab: EditorSidePanelTab;
+    editorSidePanelWidth: number | null;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -264,6 +265,9 @@ export const localStorageWrapper = {
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
             editorSidePanel: safer.boolean(obj.editorSidePanel),
             editorSidePanelTab: safer.editorSidePanelTab(obj.editorSidePanelTab),
+            editorSidePanelWidth: obj.editorSidePanelWidth === null
+                ? null
+                : safer.number(obj.editorSidePanelWidth),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
             coldClearHoldAllowed: safer.boolean(obj.coldClearHoldAllowed),
             coldClearSpeculate: safer.boolean(obj.coldClearSpeculate),

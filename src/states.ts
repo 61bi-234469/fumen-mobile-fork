@@ -189,6 +189,7 @@ export interface State {
     editorPanel: {
         enabled: boolean;
         tab: EditorSidePanelTab;
+        width: number | null;
     };
     tree: TreeState;
     coldClear: {
@@ -334,6 +335,7 @@ export const initState: Readonly<State> = {
     editorPanel: {
         enabled: false,
         tab: 'list',
+        width: null,
     },
     tree: initialTreeState,
     coldClear: {

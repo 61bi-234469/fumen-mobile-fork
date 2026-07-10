@@ -6,10 +6,12 @@ const createState = (override: {
     platform?: Platforms;
     screen?: Screens;
     width?: number;
+    panelWidth?: number | null;
 } = {}) => ({
     editorPanel: {
         enabled: override.enabled ?? true,
         tab: 'list',
+        width: override.panelWidth ?? null,
     },
     platform: override.platform ?? Platforms.PC,
     mode: {
@@ -39,18 +41,24 @@ describe('getSidePanelWidth', () => {
         expect(getSidePanelWidth(createState({ width: 1023 }))).toBe(0);
     });
 
-    test('clamps to the minimum width at the threshold', () => {
-        // 1024 * 0.22 = 225.28 -> clamped up to 280
-        expect(getSidePanelWidth(createState({ width: 1024 }))).toBe(280);
+    test('uses otherwise-unused editor width at the display threshold', () => {
+        expect(getSidePanelWidth(createState({ width: 1024 }))).toBe(606);
     });
 
-    test('scales with the display width between the clamp bounds', () => {
-        // 1300 * 0.22 = 286
-        expect(getSidePanelWidth(createState({ width: 1300 }))).toBe(286);
+    test('grows by the available editor width', () => {
+        expect(getSidePanelWidth(createState({ width: 1300 }))).toBe(882);
     });
 
-    test('clamps to the maximum width on wide displays', () => {
-        // 2000 * 0.22 = 440 -> clamped down to 400
-        expect(getSidePanelWidth(createState({ width: 2000 }))).toBe(400);
+    test('keeps all surplus width in the side panel on wide displays', () => {
+        expect(getSidePanelWidth(createState({ width: 2000 }))).toBe(1582);
+    });
+
+    test('uses a manually selected width within the available bounds', () => {
+        expect(getSidePanelWidth(createState({ width: 1300, panelWidth: 500 }))).toBe(500);
+    });
+
+    test('clamps a manually selected width to the available editor space', () => {
+        expect(getSidePanelWidth(createState({ width: 1300, panelWidth: 1200 }))).toBe(882);
+        expect(getSidePanelWidth(createState({ width: 1300, panelWidth: 100 }))).toBe(280);
     });
 });

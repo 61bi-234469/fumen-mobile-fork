@@ -170,6 +170,13 @@ export const i18n = {
         ZoomIn: () => t('TreeView.ZoomIn'),
         ZoomOut: () => t('TreeView.ZoomOut'),
         ZoomReset: () => t('TreeView.ZoomReset'),
+        DeleteNode: () => t('TreeView.DeleteNode'),
+        DragHandle: () => t('TreeView.DragHandle'),
+        DeleteToast: {
+            DeletedOne: () => t('TreeView.DeleteToast.DeletedOne'),
+            DeletedMany: (count: number) => t('TreeView.DeleteToast.DeletedMany', { count }),
+            Undo: () => t('TreeView.DeleteToast.Undo'),
+        },
         ToggleTooltip: {
             Disable: () => t('TreeView.ToggleTooltip.Disable'),
             Enable: () => t('TreeView.ToggleTooltip.Enable'),

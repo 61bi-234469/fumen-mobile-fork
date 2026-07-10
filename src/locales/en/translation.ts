@@ -171,6 +171,13 @@
         ZoomIn: 'Zoom in',
         ZoomOut: 'Zoom out',
         ZoomReset: 'Reset zoom',
+        DeleteNode: 'Delete page',
+        DragHandle: 'Drag to move',
+        DeleteToast: {
+            DeletedOne: '1 page deleted',
+            DeletedMany: '{{count}} pages deleted',
+            Undo: 'Undo',
+        },
         ToggleTooltip: {
             Disable: 'Disable tree mode',
             Enable: 'Enable tree mode',

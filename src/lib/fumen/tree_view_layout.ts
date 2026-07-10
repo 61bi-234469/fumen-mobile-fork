@@ -1,6 +1,6 @@
 import { Page } from './types';
 import { SerializedTree, TreeLayout, TreeNodeId } from './tree_types';
-import { calculateTreeLayout, findNode, isVirtualNode } from './tree_utils';
+import { calculateTreeLayout, canMoveNode, findNode, isVirtualNode } from './tree_utils';
 import { getThumbnailHeight, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../thumbnail';
 
 export const TREE_THUMBNAIL_WIDTH = THUMBNAIL_WIDTH;
@@ -13,7 +13,8 @@ export const TREE_VERTICAL_GAP = 30;
 export const TREE_PADDING = 20;
 export const TREE_SCROLL_PADDING_RIGHT = 150;
 export const TREE_SCROLL_PADDING_BOTTOM = 150;
-export const TREE_ADD_BUTTON_SIZE = 32;
+export const TREE_ADD_BUTTON_SIZE = 40;
+export const TREE_ADD_BUTTON_GAP = 8;
 export const TREE_BUTTON_X = TREE_NODE_WIDTH + 4;
 export const TREE_PAGE_NUMBER_OFFSET = 24;
 export const TREE_COMMENT_MARGIN_X = 8;
@@ -23,30 +24,59 @@ export const TREE_COMMENT_WIDTH = TREE_NODE_WIDTH - TREE_COMMENT_MARGIN_X * 2;
 export const TREE_COMMENT_HEIGHT =
     TREE_NODE_EXTRA_HEIGHT - TREE_COMMENT_TOP_OFFSET - TREE_COMMENT_BOTTOM_PADDING;
 
-// Delete badge constants (smaller badge that appears on drag source for left-edge nodes)
-export const TREE_DELETE_BADGE_SIZE = 22;
-export const TREE_DELETE_BADGE_OFFSET_X = 6;
-export const TREE_DELETE_BADGE_OFFSET_Y = 8;
+// Permanent delete button (top-right corner of the card)
+export const TREE_DELETE_BUTTON_SIZE = 22;
+export const TREE_DELETE_BUTTON_HIT_RADIUS = 20;
 
-// Copy button constants (smaller button below the node)
+// Children-count badge (top-left corner of the card, display only)
+export const TREE_CHILD_COUNT_BADGE_RADIUS = 9;
+
+// Copy button (below the node, centered)
 export const TREE_COPY_BUTTON_SIZE = 22;
 export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
 
-// Shared button/badge hit-test radii (visible circle radius + 6px touch/click slop).
-export const TREE_BUTTON_HIT_RADIUS = TREE_ADD_BUTTON_SIZE / 2 + 6;
-export const TREE_DELETE_BADGE_HIT_RADIUS = TREE_DELETE_BADGE_SIZE / 2 + 6;
+// Drag handle (below the node, right-aligned)
+export const TREE_DRAG_HANDLE_SIZE = 22;
+export const TREE_DRAG_HANDLE_HIT_RADIUS = 20;
+
+// Shared button hit-test radii. The add buttons get a ~48px effective tap target;
+// visible size and hit area are decoupled on purpose.
+export const TREE_BUTTON_HIT_RADIUS = TREE_ADD_BUTTON_SIZE / 2 + 4;
 export const TREE_COPY_BUTTON_HIT_RADIUS = TREE_COPY_BUTTON_SIZE / 2 + 6;
+
+// Footer strip occupied by the copy button / drag handle below the card.
+// Included in the lane height so adjacent lanes never overlap these controls.
+export const TREE_NODE_FOOTER_HEIGHT =
+    TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_DRAG_HANDLE_SIZE / 2 + TREE_DRAG_HANDLE_HIT_RADIUS;
 
 // Node-relative offsets for buttons/badges, shared between rendering (fumen_graph.tsx)
 // and hit-testing (fumen_graph.tsx mouse handler, views/list_view.ts touch handlers).
-export const getInsertButtonOffset = (nodeHeight: number) =>
-    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 });
+// When both add buttons are visible they are placed symmetrically around the card center;
+// a lone insert button stays at the center (connection-line level).
+export const getInsertButtonOffset = (nodeHeight: number, hasBranchButton: boolean) =>
+    hasBranchButton
+        ? { x: TREE_BUTTON_X, y: nodeHeight / 2 - (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 }
+        : { x: TREE_BUTTON_X, y: nodeHeight / 2 };
 export const getBranchButtonOffset = (nodeHeight: number) =>
-    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4 });
-export const getDeleteBadgeOffset = () =>
-    ({ x: -TREE_DELETE_BADGE_OFFSET_X, y: TREE_DELETE_BADGE_OFFSET_Y });
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 });
+export const getDeleteButtonOffset = () =>
+    ({ x: TREE_NODE_WIDTH - 10, y: 10 });
+export const getChildCountBadgeOffset = () =>
+    ({ x: 10, y: 10 });
 export const getCopyButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_NODE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 });
+export const getDragHandleOffset = (nodeHeight: number) =>
+    ({ x: TREE_NODE_WIDTH - 16, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_DRAG_HANDLE_SIZE / 2 });
+
+/**
+ * Total vertical space a node occupies inside its lane: the card itself, the
+ * footer controls below it, and the enlarged add-button hit areas (whichever
+ * extends lower).
+ */
+export const getNodeOccupiedHeight = (nodeHeight: number): number => {
+    const buttonsBottom = nodeHeight / 2 + (TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP) / 2 + TREE_BUTTON_HIT_RADIUS;
+    return Math.max(nodeHeight + TREE_NODE_FOOTER_HEIGHT, buttonsBottom);
+};
 
 // Root ghost frame (branch-drop target onto the virtual root / new top-level add) rectangle.
 export const getRootGhostRect = (contentHeight: number) => {
@@ -66,6 +96,7 @@ export interface TreeNodeLayout {
     y: number;
     width: number;
     height: number;
+    occupiedHeight: number;
     lane: number;
     laneHeight: number;
     thumbnailHeight: number;
@@ -87,7 +118,11 @@ export const calculateTreeViewLayout = (
     const layout = calculateTreeLayout(tree);
     const nodeLayouts = new Map<TreeNodeId, TreeNodeLayout>();
     const laneHeights = Array(layout.maxLane + 1).fill(0);
-    const nodeHeights = new Map<TreeNodeId, { height: number; thumbnailHeight: number }>();
+    const nodeHeights = new Map<TreeNodeId, {
+        height: number;
+        occupiedHeight: number;
+        thumbnailHeight: number;
+    }>();
 
     tree.nodes
         .filter(node => !isVirtualNode(node))
@@ -97,9 +132,10 @@ export const calculateTreeViewLayout = (
 
             const thumbnailHeight = getThumbnailHeight(pages, node.pageIndex, trimTopBlank);
             const nodeHeight = thumbnailHeight + TREE_NODE_EXTRA_HEIGHT;
+            const occupiedHeight = getNodeOccupiedHeight(nodeHeight);
 
-            nodeHeights.set(node.id, { thumbnailHeight, height: nodeHeight });
-            laneHeights[pos.y] = Math.max(laneHeights[pos.y], nodeHeight);
+            nodeHeights.set(node.id, { thumbnailHeight, occupiedHeight, height: nodeHeight });
+            laneHeights[pos.y] = Math.max(laneHeights[pos.y], occupiedHeight);
         });
 
     const laneOffsets: number[] = [];
@@ -113,11 +149,11 @@ export const calculateTreeViewLayout = (
         const pos = layout.positions.get(nodeId);
         if (!pos) return;
 
-        const laneHeight = laneHeights[pos.y] ?? metrics.height;
+        const laneHeight = laneHeights[pos.y] ?? metrics.occupiedHeight;
         const x = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
         const laneOffset = trimTopBlank
-            ? (laneHeight - metrics.height) / 2
-            : (laneHeight - metrics.height);
+            ? (laneHeight - metrics.occupiedHeight) / 2
+            : (laneHeight - metrics.occupiedHeight);
         const y = TREE_PADDING + laneOffsets[pos.y] + laneOffset;
 
         nodeLayouts.set(nodeId, {
@@ -128,6 +164,7 @@ export const calculateTreeViewLayout = (
             thumbnailHeight: metrics.thumbnailHeight,
             width: TREE_NODE_WIDTH,
             height: metrics.height,
+            occupiedHeight: metrics.occupiedHeight,
             lane: pos.y,
         });
     });
@@ -147,47 +184,77 @@ export const calculateTreeViewLayout = (
 };
 
 /**
- * Get minimum depth (x) among renderable nodes.
- * Returns Infinity when no renderable node positions are available.
+ * Hit-test the enlarged insert/branch drop targets (and the root ghost frame)
+ * for an active drag. Shared by the mouse handler (fumen_graph.tsx), the touch
+ * handler (views/list_view.ts), and the auto-scroll re-evaluation so all input
+ * paths agree on the same geometry and validity rules.
+ *
+ * Coordinates are pre-scale SVG (tree) coordinates.
  */
-export const calculateTreeMinDepth = (
+export const findTreeButtonDropTarget = (
     tree: SerializedTree,
-    layout: TreeLayout,
-): number => {
-    let minDepth = Infinity;
+    treeViewLayout: TreeViewLayout,
+    svgX: number,
+    svgY: number,
+    sourceNodeId: TreeNodeId,
+    buttonDropMovesSubtree: boolean,
+): { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null => {
+    const sourceNode = findNode(tree, sourceNodeId);
+    const sourceParentId = sourceNode?.parentId ?? null;
+    const allowDescendant = !buttonDropMovesSubtree;
+    const isRootDragSource = buttonDropMovesSubtree
+        && tree.rootId !== null && sourceNodeId === tree.rootId;
+
+    // Top-level ghost frame acts as a branch drop onto the virtual root.
+    const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
+    const canDropOnRootGhost = tree.rootId !== null
+        && sourceNodeId !== tree.rootId
+        && rootNode !== undefined
+        && isVirtualNode(rootNode)
+        && canMoveNode(tree, sourceNodeId, tree.rootId, { allowDescendant });
+    if (canDropOnRootGhost && tree.rootId !== null) {
+        const ghostRect = getRootGhostRect(treeViewLayout.contentHeight);
+        if (svgX >= ghostRect.x && svgX <= ghostRect.x + ghostRect.width
+            && svgY >= ghostRect.y && svgY <= ghostRect.y + ghostRect.height) {
+            return { nodeId: tree.rootId, type: 'branch' };
+        }
+    }
 
     for (const node of tree.nodes) {
-        if (isVirtualNode(node)) {
-            continue;
+        const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+        if (!nodeLayout) continue;
+
+        const isValidTarget = node.id !== sourceNodeId
+            && !isRootDragSource
+            && canMoveNode(tree, sourceNodeId, node.id, { allowDescendant });
+        if (!isValidTarget) continue;
+
+        const hasBranchButton = node.childrenIds.length > 0;
+
+        // Insert is invalid on the source's own parent (formerly the drag-delete drop).
+        if (sourceParentId !== node.id) {
+            const insertOffset = getInsertButtonOffset(nodeLayout.height, hasBranchButton);
+            const distToInsert = Math.hypot(
+                svgX - (nodeLayout.x + insertOffset.x),
+                svgY - (nodeLayout.y + insertOffset.y),
+            );
+            if (distToInsert <= TREE_BUTTON_HIT_RADIUS) {
+                return { nodeId: node.id, type: 'insert' };
+            }
         }
-        const pos = layout.positions.get(node.id);
-        if (pos) {
-            minDepth = Math.min(minDepth, pos.x);
+
+        const hideBranchButton = sourceParentId === node.id && node.childrenIds.length <= 1;
+        if (hasBranchButton && !hideBranchButton) {
+            const branchOffset = getBranchButtonOffset(nodeLayout.height);
+            const distToBranch = Math.hypot(
+                svgX - (nodeLayout.x + branchOffset.x),
+                svgY - (nodeLayout.y + branchOffset.y),
+            );
+            if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
+                return { nodeId: node.id, type: 'branch' };
+            }
         }
     }
 
-    return minDepth;
-};
-
-/**
- * Delete badge visibility condition:
- * show when node is on left-most depth OR when parent is on different lane.
- */
-export const shouldShowDeleteBadge = (
-    tree: SerializedTree,
-    layout: TreeLayout,
-    nodeId: TreeNodeId,
-    minDepth: number,
-): boolean => {
-    const nodePos = layout.positions.get(nodeId);
-    if (!nodePos) {
-        return false;
-    }
-
-    const isLeftEdgeNode = nodePos.x === minDepth;
-    const node = findNode(tree, nodeId);
-    const parentPos = node?.parentId ? layout.positions.get(node.parentId) : undefined;
-    const hasDistantParent = parentPos !== undefined && nodePos.y !== parentPos.y;
-
-    return isLeftEdgeNode || hasDistantParent;
+    return null;
 };

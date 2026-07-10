@@ -146,6 +146,13 @@ export const resources = {
         ZoomIn: '拡大',
         ZoomOut: '縮小',
         ZoomReset: 'ズームをリセット',
+        DeleteNode: 'ページを削除',
+        DragHandle: 'ドラッグして移動',
+        DeleteToast: {
+            DeletedOne: '1ページを削除しました',
+            DeletedMany: '{{count}}ページを削除しました',
+            Undo: '元に戻す',
+        },
         ToggleTooltip: {
             Disable: 'ツリーモードを無効にする',
             Enable: 'ツリーモードを有効にする',

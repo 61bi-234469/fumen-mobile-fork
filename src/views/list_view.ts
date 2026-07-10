@@ -891,8 +891,12 @@ export const view: View<State, Actions> = (state, actions) => {
                     actions: {
                         onNodeActivate: (nodeId) => {
                             if (state.tree.dragState.sourceNodeId === null) {
-                                actions.activateTreeNode({ nodeId });
-                                actions.reopenCurrentPage();
+                                if (state.tree.activeNodeId === nodeId) {
+                                    actions.selectTreeNode({ nodeId });
+                                    actions.changeToEditorFromListView();
+                                } else {
+                                    actions.activateTreeNode({ nodeId });
+                                }
                             }
                         },
                         onPageClick: (nodeId) => {
@@ -980,6 +984,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     containerHeight: gridContainerHeight,
                     scale: state.listView.scale,
                     sortable: !state.tree.enabled,
+                    currentIndex: state.fumen.currentIndex,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({
@@ -1047,6 +1052,9 @@ export const view: View<State, Actions> = (state, actions) => {
                                 pageIndex,
                                 comment,
                             });
+                        },
+                        onItemClick: (pageIndex: number) => {
+                            actions.activatePageInListView({ pageIndex });
                         },
                         onPageClick: (pageIndex: number) => {
                             actions.navigateToPageFromListView({ pageIndex });

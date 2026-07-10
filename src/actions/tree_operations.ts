@@ -3,7 +3,7 @@
  */
 
 import { State } from '../states';
-import { action, main } from '../actions';
+import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import {
     AddMode,
@@ -662,6 +662,7 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
                 ...(input.resetDragState ? { dragState: initialTreeDragState } : {}),
             },
         }),
+        actions.reopenCurrentPage(),
     ]);
 };
 
@@ -861,6 +862,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: state.tree.activeNodeId,
                 },
             }),
+            actions.reopenCurrentPage(),
         ]);
     },
 

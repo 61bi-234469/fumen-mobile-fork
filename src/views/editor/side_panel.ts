@@ -212,6 +212,9 @@ const renderListTab = (state: State, actions: Actions, size: PanelSize) => {
                     actions.reopenCurrentPage();
                 }
             },
+            onItemClick: (pageIndex: number) => {
+                actions.openPage({ index: pageIndex });
+            },
             onPageClick: (pageIndex: number) => {
                 actions.openPage({ index: pageIndex });
             },

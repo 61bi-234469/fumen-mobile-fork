@@ -229,6 +229,7 @@ export interface ListViewActions {
     setListViewShortenUrls: (data: { enabled: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
+    activatePageInListView: (data: { pageIndex: number }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
     exportListViewAsGif: () => action;
@@ -648,6 +649,46 @@ export const listViewActions: Readonly<ListViewActions> = {
             fumen: {
                 ...state.fumen,
                 pages: pagesObj.pages,
+            },
+        };
+    },
+    activatePageInListView: ({ pageIndex }) => (state): NextState => {
+        if (pageIndex < 0 || pageIndex >= state.fumen.pages.length) {
+            return undefined;
+        }
+
+        if (!state.tree.enabled) {
+            if (state.fumen.currentIndex === pageIndex) {
+                return listViewActions.navigateToPageFromListView({ pageIndex })(state);
+            }
+            return {
+                fumen: {
+                    ...state.fumen,
+                    currentIndex: pageIndex,
+                },
+            };
+        }
+
+        const tree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+        const node = findNodeByPageIndex(tree, pageIndex);
+        if (!node || isVirtualNode(node)) return undefined;
+
+        if (state.tree.activeNodeId === node.id) {
+            return listViewActions.navigateToPageFromListView({ pageIndex })(state);
+        }
+
+        return {
+            fumen: {
+                ...state.fumen,
+                currentIndex: pageIndex,
+            },
+            tree: {
+                ...state.tree,
+                activeNodeId: node.id,
             },
         };
     },

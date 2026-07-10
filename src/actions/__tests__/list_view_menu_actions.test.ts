@@ -6,7 +6,9 @@ import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
 
 jest.mock('../../actions', () => ({
-    actions: {},
+    actions: {
+        reopenCurrentPage: () => () => undefined,
+    },
     main: {},
 }));
 
@@ -132,6 +134,26 @@ describe('setExportScope', () => {
         const state = createState({ exportScope: 'all' });
         const next = listViewActions.setExportScope({ scope: 'left' })(state) as any;
         expect(next.listView.exportScope).toBe('left');
+    });
+});
+
+describe('activatePageInListView', () => {
+    test('selects and highlights a page before navigating when tree mode is off', () => {
+        const state = createState({ treeEnabled: false });
+
+        const next = listViewActions.activatePageInListView({ pageIndex: 1 })(state) as any;
+
+        expect(next.fumen.currentIndex).toBe(1);
+        expect(next.tree).toBeUndefined();
+    });
+
+    test('selects the matching tree node before navigating when tree mode is on', () => {
+        const state = createState({ treeEnabled: true });
+
+        const next = listViewActions.activatePageInListView({ pageIndex: 1 })(state) as any;
+
+        expect(next.fumen.currentIndex).toBe(1);
+        expect(next.tree.activeNodeId).toBe('n1');
     });
 });
 

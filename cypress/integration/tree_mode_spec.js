@@ -44,6 +44,41 @@ const createTouchDispatcher = (win, target) => (type, point) => {
 };
 
 describe('Tree mode in list view', () => {
+    it('selects list cards first, then jumps on a second click with tree off and on', () => {
+        const openList = () => {
+            cy.viewport(1280, 800);
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', mobile: false, fumen: 'v115@vhF0MJ9NJXDJ2OJzEJi/I', lng: 'en' });
+            cy.get(datatest('btn-list-view')).click();
+        };
+        const selectThenJump = () => {
+            cy.get('[datatest^="list-view-item-"]').then(($items) => {
+                const item = Array.from($items).find((element) => {
+                    return getComputedStyle(element).borderTopColor !== 'rgb(37, 99, 235)';
+                });
+                expect(item).to.exist;
+
+                const pageIndex = Number(item.getAttribute('datatest').replace('list-view-item-', ''));
+                const selector = datatest(`list-view-item-${pageIndex}`);
+                cy.get(selector).children('div').first().click({ force: true });
+                cy.get(selector).should('have.css', 'border-top-color', 'rgb(37, 99, 235)');
+                cy.get(datatest('list-view-tools')).should('exist');
+
+                cy.get(selector).children('div').first().click({ force: true });
+                cy.get(datatest('list-view-tools')).should('not.exist');
+                cy.get(datatest('tools')).find(datatest('text-pages'))
+                    .should('have.text', `${pageIndex + 1} / 6`);
+            });
+        };
+
+        openList();
+        selectThenJump();
+
+        openList();
+        cy.get('[title="Enable tree mode"]').click();
+        selectThenJump();
+    });
+
     it('disables list reordering and confirms before deleting the tree structure', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 
@@ -91,7 +126,7 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
 
-    it('activates a card without leaving the tree and navigates only from its page number', () => {
+    it('activates a card first and navigates from a second card click', () => {
         cy.viewport('iphone-6');
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 
@@ -140,8 +175,13 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
 
-        // The #number remains the explicit link to the editor.
-        cy.get('[datatest^="tree-page-link-"]').eq(1).click({ force: true });
+        // A second click on the active card follows the same page jump behavior as #number.
+        cy.window().then((win) => {
+            const node = win.document.querySelectorAll('[datatest^="tree-node-"]')[1];
+            node.dispatchEvent(new win.MouseEvent('click', {
+                bubbles: true,
+            }));
+        });
         cy.get('[datatest="fumen-graph-container"]').should('not.exist');
     });
 

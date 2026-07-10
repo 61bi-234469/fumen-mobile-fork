@@ -42,6 +42,7 @@ interface Props {
         onDrop: () => void;
         onDragEnd: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
+        onItemClick: (pageIndex: number) => void;
         onPageClick: (pageIndex: number) => void;
     };
 }
@@ -236,6 +237,11 @@ export const ListViewItem: Component<Props> = ({
                 ontouchmove={handleTouchMove}
                 ontouchend={handleTouchEnd}
                 ontouchcancel={handleTouchEnd}
+                onclick={() => {
+                    if (!touchDragState.isDragging) {
+                        actions.onItemClick(pageIndex);
+                    }
+                }}
                 oncontextmenu={(e: Event) => {
                     e.preventDefault();
                 }}

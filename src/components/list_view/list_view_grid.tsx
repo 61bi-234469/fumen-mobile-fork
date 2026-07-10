@@ -24,6 +24,7 @@ interface Props {
         onDrop: () => void;
         onDragEnd: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
+        onItemClick: (pageIndex: number) => void;
         onPageClick: (pageIndex: number) => void;
     };
 }

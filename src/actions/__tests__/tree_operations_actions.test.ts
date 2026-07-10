@@ -4,7 +4,9 @@ import { AddMode, TreeViewMode, initialTreeDragState } from '../../lib/fumen/tre
 import { createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
 
 jest.mock('../../actions', () => ({
-    actions: {},
+    actions: {
+        reopenCurrentPage: () => () => undefined,
+    },
     main: {},
 }));
 

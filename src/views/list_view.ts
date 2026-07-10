@@ -892,6 +892,7 @@ export const view: View<State, Actions> = (state, actions) => {
                         onNodeActivate: (nodeId) => {
                             if (state.tree.dragState.sourceNodeId === null) {
                                 actions.activateTreeNode({ nodeId });
+                                actions.reopenCurrentPage();
                             }
                         },
                         onPageClick: (nodeId) => {

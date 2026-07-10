@@ -4,6 +4,21 @@ import { operations } from '../support/operations';
 // エディットモード左サイドパネル（リスト/ツリー）
 // デフォルトの viewport はモバイル相当 (375x667) のため、PC 相当に広げてから検証する。
 describe('Editor side panel', () => {
+    it('refreshes list thumbnails after editing the current page', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhF0MJ9NJXDJ2OJzEJi/I' });
+        operations.editorPanel.enable();
+
+        cy.get(datatest('list-view-item-0')).find('img').invoke('attr', 'src').then((before) => {
+            operations.mode.piece.open();
+            operations.mode.piece.resetPiece();
+            cy.get(datatest('list-view-item-0')).find('img').should(($thumbnail) => {
+                expect($thumbnail.attr('src')).not.to.equal(before);
+            });
+        });
+    });
+
     it('resizes from the divider, persists the width, and resets to automatic width', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();
@@ -133,6 +148,15 @@ describe('Editor side panel', () => {
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '3 / 3');
+
+        // ノード本体の選択はアクティブ状態だけでなく、エディタのページと盤面も切り替える。
+        cy.get('[datatest^="tree-node-"]').first().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 3');
+
+        // エディタ側でページを送ると、対応するツリーノードもアクティブになる。
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 3');
+        cy.get('[datatest^="tree-node-"]').eq(1).find('rect[fill="#EFF6FF"]').should('exist');
 
         // ノードのページ番号クリックで盤面がジャンプする（画面遷移しない）
         cy.get('[datatest^="tree-page-link-"]').first().click({ force: true });

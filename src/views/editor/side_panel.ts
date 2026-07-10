@@ -281,6 +281,7 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
                 onNodeActivate: (nodeId: TreeNodeId) => {
                     if (state.tree.dragState.sourceNodeId === null) {
                         actions.activateTreeNode({ nodeId });
+                        actions.reopenCurrentPage();
                     }
                 },
                 onPageClick: (nodeId: TreeNodeId) => {

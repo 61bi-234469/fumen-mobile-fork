@@ -874,7 +874,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         },
     }),
 
-    /** Select a tree node without changing the current editor page. */
+    /** Select a tree node and synchronize the current editor page. */
     activateTreeNode: ({ nodeId }) => (state): NextState => {
         const tree = getOrCreateTree(state);
         const node = findNode(tree, nodeId);
@@ -885,6 +885,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             tree: {
                 ...state.tree,
                 activeNodeId: nodeId,
+            },
+            fumen: {
+                ...state.fumen,
+                currentIndex: node.pageIndex,
             },
         };
     },

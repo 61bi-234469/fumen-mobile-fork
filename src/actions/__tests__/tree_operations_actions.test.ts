@@ -94,7 +94,7 @@ const createBaseState = () => {
 };
 
 describe('tree node navigation', () => {
-    test('activates a node without changing the current editor page', () => {
+    test('activates a node and synchronizes the current editor page', () => {
         const state = createBaseState();
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const firstNode = findNodeByPageIndex(tree, 0)!;
@@ -102,8 +102,7 @@ describe('tree node navigation', () => {
         const next = treeOperationActions.activateTreeNode({ nodeId: firstNode.id })(state) as any;
 
         expect(next.tree.activeNodeId).toBe(firstNode.id);
-        expect(next.fumen).toBeUndefined();
-        expect(state.fumen.currentIndex).toBe(1);
+        expect(next.fumen.currentIndex).toBe(0);
     });
 
     test('selects the linked page when navigating from its page number', () => {

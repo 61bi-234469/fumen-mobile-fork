@@ -1,4 +1,4 @@
-import { State } from '../states';
+import { EditorSidePanelTab, State } from '../states';
 import { localStorageWrapper } from '../memento';
 
 type ViewSettingsOverrides = Partial<{
@@ -6,6 +6,8 @@ type ViewSettingsOverrides = Partial<{
     shortenUrls: boolean;
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
+    editorSidePanel: boolean;
+    editorSidePanelTab: EditorSidePanelTab;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -21,6 +23,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
         buttonDropMovesSubtree: overrides.buttonDropMovesSubtree ?? state.tree.buttonDropMovesSubtree,
         grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,
+        editorSidePanel: overrides.editorSidePanel ?? state.editorPanel.enabled,
+        editorSidePanelTab: overrides.editorSidePanelTab ?? state.editorPanel.tab,
         coldClearTopBranchCount: overrides.coldClearTopBranchCount ?? state.coldClear.topBranchCount,
         coldClearHoldAllowed: overrides.coldClearHoldAllowed ?? state.coldClear.holdAllowed,
         coldClearSpeculate: overrides.coldClearSpeculate ?? state.coldClear.speculate,

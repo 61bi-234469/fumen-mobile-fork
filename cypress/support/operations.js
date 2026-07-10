@@ -542,4 +542,23 @@ export const operations = {
             cy.get(datatest('btn-save')).click();
         },
     },
+    editorPanel: {
+        // ユーザー設定 View タブでリスト/ツリーパネル(PC)の表示を切り替える
+        enable: () => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('view');
+            cy.get(datatest('switch-editor-side-panel')).check({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        disable: () => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('view');
+            cy.get(datatest('switch-editor-side-panel')).uncheck({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        // パネル内のタブ切替 ('list' | 'tree')
+        selectTab: (tab) => {
+            cy.get(datatest(`editor-panel-tab-${tab}`)).click();
+        },
+    },
 };

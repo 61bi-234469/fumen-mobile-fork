@@ -99,10 +99,17 @@
             DasMs: 'DAS (ms)',
             DasDescription: 'Long-press left/right moves to edge',
         },
+        EditorSidePanel: 'Show list/tree panel (PC)',
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',
         },
+    },
+    EditorPanel: {
+        ListTab: 'List',
+        TreeTab: 'Tree',
+        EnableTreeMode: 'Enable tree mode',
+        TreeModeDisabled: 'Tree mode is disabled.',
     },
     Clipboard: {
         Title: 'Copy to clipboard',

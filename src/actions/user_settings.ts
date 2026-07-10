@@ -21,6 +21,7 @@ export interface UserSettingsActions {
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepButtonDropMovesSubtree: (data: { enable: boolean }) => action;
+    keepEditorSidePanel: (data: { enable: boolean }) => action;
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
@@ -43,6 +44,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                    editorSidePanel: state.editorPanel.enabled,
                 },
             },
         };
@@ -78,6 +80,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.setListViewTrimTopBlank({
                 enabled: state.temporary.userSettings.trimTopBlank,
+            }),
+            actions.setEditorSidePanelEnabled({
+                enabled: state.temporary.userSettings.editorSidePanel,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -361,6 +366,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     buttonDropMovesSubtree: enable,
+                },
+            },
+        };
+    },
+    keepEditorSidePanel: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    editorSidePanel: enable,
                 },
             },
         };

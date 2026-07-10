@@ -29,6 +29,7 @@ import { CommentActions, commentActions } from './actions/comment';
 import { convertActions, ConvertActions } from './actions/convert';
 import { userSettingsActions, UserSettingsActions } from './actions/user_settings';
 import { listViewActions, ListViewActions } from './actions/list_view';
+import { editorPanelActions, EditorPanelActions } from './actions/editor_panel';
 import { treeOperationActions, TreeOperationActions } from './actions/tree_operations';
 import { coldClearActions, ColdClearActions, initColdClearActions } from './actions/cold_clear';
 import { i18n } from './locales/keys';
@@ -52,6 +53,7 @@ export type Actions = AnimationActions
     & ConvertActions
     & UserSettingsActions
     & ListViewActions
+    & EditorPanelActions
     & TreeOperationActions
     & ColdClearActions;
 
@@ -68,6 +70,7 @@ export const actions: Readonly<Actions> = {
     ...convertActions,
     ...userSettingsActions,
     ...listViewActions,
+    ...editorPanelActions,
     ...treeOperationActions,
     ...coldClearActions,
 };
@@ -381,6 +384,12 @@ const loadUserSettings = () => {
     }
     if (viewSettings.shortenUrls !== undefined) {
         main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
+    }
+    if (viewSettings.editorSidePanel !== undefined) {
+        main.setEditorSidePanelEnabled({ enabled: viewSettings.editorSidePanel });
+    }
+    if (viewSettings.editorSidePanelTab !== undefined) {
+        main.setEditorSidePanelTab({ tab: viewSettings.editorSidePanelTab });
     }
     if (viewSettings.coldClearTopBranchCount !== undefined) {
         main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });

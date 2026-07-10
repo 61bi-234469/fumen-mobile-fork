@@ -9,34 +9,33 @@ import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
-import { resetTreeDragGhost, updateTreeDragGhost } from '../components/tree/tree_drag_ghost';
-import {
-    startTreeAutoScroll,
-    stopTreeAutoScroll,
-    updateTreeAutoScrollPointer,
-} from '../components/tree/tree_auto_scroll';
+import { updateTreeAutoScrollPointer } from '../components/tree/tree_auto_scroll';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canDeleteNode, findNode, getDescendants, isVirtualNode } from '../lib/fumen/tree_utils';
+import { isVirtualNode } from '../lib/fumen/tree_utils';
 import { displayShortcut } from '../lib/shortcuts';
 import {
     TREE_BUTTON_HIT_RADIUS,
     TREE_COPY_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_HIT_RADIUS,
     calculateTreeViewLayout,
-    findTreeButtonDropTarget,
     getBranchButtonOffset,
     getCopyButtonOffset,
     getDeleteButtonOffset,
     getInsertButtonOffset,
 } from '../lib/fumen/tree_view_layout';
-
-declare const M: any;
+import {
+    TREE_DRAG_START_THRESHOLD,
+    beginPendingMouseDrag,
+    beginTreeAutoScroll,
+    cancelPendingMouseDrag,
+    evaluateTreeDropTargetAt,
+    setTreeMouseInteractionDeps,
+    stopTreeDragFeedback,
+} from './tree_mouse_interaction';
+import { handleTreeNodeDelete } from './tree_node_delete';
 
 const TOOLS_HEIGHT = 50;
-
-// Minimum pointer travel (px) before a pending handle-drag becomes an active drag
-const TREE_DRAG_START_THRESHOLD = 10;
 
 const TREE_SCROLL_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
 
@@ -60,7 +59,6 @@ let treeTouchDragActive = false;
 // Pending drag started on a node handle: the drag state itself starts only after
 // the pointer moved TREE_DRAG_START_THRESHOLD px (both touch and mouse).
 let treePendingDragNodeId: string | null = null;
-let pendingMouseDragCleanup: (() => void) | null = null;
 
 let treeTouchContainerElement: HTMLElement | null = null;
 let treeTouchStartTarget: EventTarget | null = null;
@@ -69,9 +67,6 @@ let treeTouchEndCleanup: (() => void) | null = null;
 let latestTreeTouchMoveHandler: ((e: TouchEvent) => void) | null = null;
 let latestTreeTouchEndHandler: ((e: TouchEvent) => void) | null = null;
 let latestTreeTouchCancelHandler: ((e: TouchEvent) => void) | null = null;
-// Re-evaluates the drop target at the given client position after auto-scroll moved
-// the tree under a stationary pointer. Reassigned on every render.
-let latestTreeDropReevaluate: ((clientX: number, clientY: number) => void) | null = null;
 
 const clearTreeTouchStartPosition = () => {
     setTreeTouchStartPosition(null);
@@ -84,74 +79,12 @@ const cleanupTreeTouchEndListeners = () => {
     }
 };
 
-const cancelPendingMouseDrag = () => {
-    if (pendingMouseDragCleanup) {
-        pendingMouseDragCleanup();
-        pendingMouseDragCleanup = null;
-    }
-};
-
 const resetTreeTouchTracking = () => {
     cleanupTreeTouchEndListeners();
     treeTouchDragActive = false;
     treePendingDragNodeId = null;
     treeTouchStartTarget = null;
     clearTreeTouchStartPosition();
-};
-
-const stopTreeDragFeedback = () => {
-    stopTreeAutoScroll();
-    resetTreeDragGhost();
-};
-
-const getTreeScrollContainer = (): HTMLElement | null =>
-    document.querySelector(TREE_SCROLL_CONTAINER_SELECTOR) as HTMLElement | null;
-
-const beginTreeAutoScroll = () => {
-    const container = getTreeScrollContainer();
-    if (container) {
-        startTreeAutoScroll(container, (clientX, clientY) => {
-            if (latestTreeDropReevaluate) {
-                latestTreeDropReevaluate(clientX, clientY);
-            }
-        });
-    }
-};
-
-/**
- * Show the post-delete toast with an Undo action. The Undo listener is attached
- * to the created toast element and detached on click / when the toast finishes.
- */
-const showDeleteUndoToast = (actions: Actions, removedPageCount: number) => {
-    const message = removedPageCount === 1
-        ? i18n.TreeView.DeleteToast.DeletedOne()
-        : i18n.TreeView.DeleteToast.DeletedMany(removedPageCount);
-
-    const toast = M.toast({
-        html: '<span class="tree-delete-toast-message"></span>'
-            + '<button class="btn-flat toast-action" datatest="btn-tree-delete-undo"></button>',
-        classes: 'top-toast',
-        displayLength: 4000,
-    });
-
-    const messageElement = toast.el.querySelector('.tree-delete-toast-message');
-    if (messageElement) {
-        // textContent (not innerHTML) so no markup is ever injected
-        messageElement.textContent = message;
-    }
-    const undoButton = toast.el.querySelector('[datatest="btn-tree-delete-undo"]');
-    if (undoButton) {
-        undoButton.textContent = i18n.TreeView.DeleteToast.Undo();
-        const onUndo = () => {
-            undoButton.removeEventListener('click', onUndo);
-            actions.undo();
-            toast.dismiss();
-        };
-        undoButton.addEventListener('click', onUndo);
-        toast.options.completeCallback = () => {
-            undoButton.removeEventListener('click', onUndo);
-        };
-    }
 };
 
 const registerTreeTouchStartTarget = (target: EventTarget) => {
@@ -458,69 +391,6 @@ export const view: View<State, Actions> = (state, actions) => {
         return null;
     };
 
-    // Delete a node from its permanent delete button, then offer Undo via toast.
-    // Scope mirrors the removeTreeNode action: leaf = node only, with children =
-    // follow the buttonDropMovesSubtree setting.
-    const handleTreeNodeDelete = (nodeId: string) => {
-        const node = findNode(treeForView, nodeId);
-        if (!node || isVirtualNode(node)) return;
-
-        const removeDescendants = node.childrenIds.length > 0 && buttonDropMovesSubtree;
-        if (!canDeleteNode(treeForView, nodeId, removeDescendants, state.fumen.pages.length)) return;
-
-        const removedPageIndices = new Set<number>();
-        const nodeIdsToRemove = removeDescendants ? getDescendants(treeForView, nodeId) : [nodeId];
-        nodeIdsToRemove.forEach((id) => {
-            const target = findNode(treeForView, id);
-            if (target && target.pageIndex >= 0) {
-                removedPageIndices.add(target.pageIndex);
-            }
-        });
-
-        actions.removeTreeNode({ nodeId });
-        showDeleteUndoToast(actions, removedPageIndices.size);
-    };
-
-    // Re-evaluate the drop target (and the ghost position) at a client position.
-    // Used by touch moves and by auto-scroll frames while the pointer stays still.
-    const evaluateTreeDropTargetAt = (clientX: number, clientY: number) => {
-        if (!treeViewLayout) return;
-        const sourceNodeId = state.tree.dragState.sourceNodeId;
-        if (sourceNodeId === null) return;
-
-        const container = getTreeScrollContainer();
-        if (!container) return;
-        const svgElement = container.querySelector('svg') as SVGSVGElement;
-        if (!svgElement) return;
-        const scrollContainer = svgElement.parentElement as HTMLElement;
-        if (!scrollContainer) return;
-
-        const { x: svgX, y: svgY } = toSvgPoint(clientX, clientY, scrollContainer);
-
-        updateTreeDragGhost(svgX, svgY);
-
-        const foundButton = findTreeButtonDropTarget(
-            treeForView,
-            treeViewLayout,
-            svgX,
-            svgY,
-            sourceNodeId,
-            buttonDropMovesSubtree,
-        );
-
-        if (foundButton !== null) {
-            if (state.tree.dragState.targetButtonParentId !== foundButton.nodeId ||
-                state.tree.dragState.targetButtonType !== foundButton.type) {
-                actions.updateTreeDragButtonTarget({
-                    parentNodeId: foundButton.nodeId,
-                    buttonType: foundButton.type,
-                });
-            }
-        } else if (state.tree.dragState.targetButtonParentId !== null) {
-            actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
-        }
-    };
-
     // Tree view touch handlers
     const handleTreeTouchMove = (e: TouchEvent) => {
         if (e.touches.length !== 1) return;
@@ -583,7 +453,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     } else if (buttonHit.type === 'copy') {
                         actions.copyTreeNode({ nodeId: buttonHit.nodeId });
                     } else {
-                        handleTreeNodeDelete(buttonHit.nodeId);
+                        handleTreeNodeDelete(state, actions, buttonHit.nodeId);
                     }
                     pinchState.active = false;
                     stopTreeDragFeedback();
@@ -639,36 +509,15 @@ export const view: View<State, Actions> = (state, actions) => {
         resetTreeTouchTracking();
     };
 
-    // Pending drag from the handle (PC): start the drag state only after the
-    // mouse traveled the threshold with the button held down.
-    const beginPendingMouseDrag = (nodeId: string, startX: number, startY: number) => {
-        cancelPendingMouseDrag();
-
-        const onMove = (e: MouseEvent) => {
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            if (Math.sqrt(dx * dx + dy * dy) < TREE_DRAG_START_THRESHOLD) return;
-            cancelPendingMouseDrag();
-            actions.startTreeDrag({ sourceNodeId: nodeId });
-            beginTreeAutoScroll();
-            updateTreeAutoScrollPointer(e.clientX, e.clientY);
-        };
-        const onUp = () => {
-            cancelPendingMouseDrag();
-        };
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-        pendingMouseDragCleanup = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-        };
-    };
-
     latestTreeTouchMoveHandler = handleTreeTouchMove;
     latestTreeTouchEndHandler = handleTreeTouchEnd;
     latestTreeTouchCancelHandler = handleTreeTouchCancel;
-    latestTreeDropReevaluate = evaluateTreeDropTargetAt;
+    setTreeMouseInteractionDeps({
+        state,
+        actions,
+        treeViewLayout,
+        containerSelector: TREE_SCROLL_CONTAINER_SELECTOR,
+    });
 
     // Safety net: if the drag state is gone (drop, undo, view switch), make sure
     // the auto-scroll loop and the ghost are not left running.
@@ -1064,7 +913,7 @@ export const view: View<State, Actions> = (state, actions) => {
                             actions.copyTreeNode({ nodeId });
                         },
                         onDeleteNode: (nodeId) => {
-                            handleTreeNodeDelete(nodeId);
+                            handleTreeNodeDelete(state, actions, nodeId);
                         },
                         onAddRoot: () => {
                             actions.addRootFromCurrentNode();

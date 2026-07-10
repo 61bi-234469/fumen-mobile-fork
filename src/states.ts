@@ -48,6 +48,8 @@ export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
 export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
 
+export type EditorSidePanelTab = 'list' | 'tree';
+
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
@@ -136,6 +138,7 @@ export interface State {
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             buttonDropMovesSubtree: boolean;
+            editorSidePanel: boolean;
         };
         userSettingsTab: UserSettingsTab;
     };
@@ -182,6 +185,10 @@ export interface State {
         shortenUrls: boolean;
         exportScope: 'all' | 'left';
         settingsOpened: boolean;
+    };
+    editorPanel: {
+        enabled: boolean;
+        tab: EditorSidePanelTab;
     };
     tree: TreeState;
     coldClear: {
@@ -278,6 +285,7 @@ export const initState: Readonly<State> = {
             grayAfterLineClear: false,
             trimTopBlank: false,
             buttonDropMovesSubtree: false,
+            editorSidePanel: false,
         },
         userSettingsTab: 'field',
     },
@@ -322,6 +330,10 @@ export const initState: Readonly<State> = {
         shortenUrls: false,
         exportScope: 'all',
         settingsOpened: false,
+    },
+    editorPanel: {
+        enabled: false,
+        tab: 'list',
     },
     tree: initialTreeState,
     coldClear: {

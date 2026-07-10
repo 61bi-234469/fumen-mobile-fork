@@ -3,7 +3,7 @@ import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
-import { RotationSystem } from './states';
+import { EditorSidePanelTab, RotationSystem } from './states';
 import lodash from 'lodash';
 
 interface SaverProp {
@@ -176,6 +176,8 @@ interface ViewSettings {
     shortenUrls: boolean;
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
+    editorSidePanel: boolean;
+    editorSidePanelTab: EditorSidePanelTab;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -202,6 +204,9 @@ const safer = {
     // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
     rotationSystem: (value: any): RotationSystem => {
         return value === 'classic' || value === 'srs' || value === 'srsPlus' ? value : 'srs';
+    },
+    editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
+        return value === 'list' || value === 'tree' ? value : undefined;
     },
 };
 
@@ -257,6 +262,8 @@ export const localStorageWrapper = {
             shortenUrls: safer.boolean(obj.shortenUrls),
             buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
+            editorSidePanel: safer.boolean(obj.editorSidePanel),
+            editorSidePanelTab: safer.editorSidePanelTab(obj.editorSidePanelTab),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
             coldClearHoldAllowed: safer.boolean(obj.coldClearHoldAllowed),
             coldClearSpeculate: safer.boolean(obj.coldClearSpeculate),

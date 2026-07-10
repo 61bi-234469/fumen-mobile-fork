@@ -95,10 +95,17 @@ export const resources = {
             DasMs: 'DAS(ms)',
             DasDescription: '左右移動の長押しで端まで移動',
         },
+        EditorSidePanel: 'リスト/ツリーパネルを表示（PC）',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
         },
+    },
+    EditorPanel: {
+        ListTab: 'リスト',
+        TreeTab: 'ツリー',
+        EnableTreeMode: 'ツリーモードを有効にする',
+        TreeModeDisabled: 'ツリーモードが無効です。',
     },
     GifFrameDelayMs: {
         Title: 'GIFページ送り間隔',

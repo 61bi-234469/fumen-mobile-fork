@@ -108,10 +108,17 @@ export const i18n = {
             Title: () => t('GifFrameDelayMs.Title'),
             Description: () => t('GifFrameDelayMs.Description'),
         },
+        EditorSidePanel: () => t('UserSettings.EditorSidePanel'),
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),
         },
+    },
+    EditorPanel: {
+        ListTab: () => t('EditorPanel.ListTab'),
+        TreeTab: () => t('EditorPanel.TreeTab'),
+        EnableTreeMode: () => t('EditorPanel.EnableTreeMode'),
+        TreeModeDisabled: () => t('EditorPanel.TreeModeDisabled'),
     },
     Clipboard: {
         Title: () => t('Clipboard.Title'),

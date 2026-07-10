@@ -34,6 +34,7 @@ interface Props {
     showLeftIndicator: boolean;
     showRightIndicator: boolean;
     sortable: boolean;
+    isCurrent?: boolean;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -55,6 +56,7 @@ export const ListViewItem: Component<Props> = ({
     showLeftIndicator,
     showRightIndicator,
     sortable,
+    isCurrent,
     actions,
 }) => {
     const containerStyle = style({
@@ -63,7 +65,7 @@ export const ListViewItem: Component<Props> = ({
         padding: '4px',
         boxSizing: 'border-box',
         opacity: isDragging ? 0.5 : 1,
-        border: '2px solid transparent',
+        border: isCurrent ? '2px solid #2563EB' : '2px solid transparent',
         borderRadius: '4px',
         backgroundColor: 'transparent',
         cursor: sortable ? 'grab' : 'default',
@@ -217,12 +219,14 @@ export const ListViewItem: Component<Props> = ({
             {showLeftIndicator && (
                 <div
                     key="left-indicator"
+                    datatest="drop-indicator-left"
                     style={{ ...indicatorStyle, left: '-6px' }}
                 />
             )}
             {showRightIndicator && (
                 <div
                     key="right-indicator"
+                    datatest="drop-indicator-right"
                     style={{ ...indicatorStyle, right: '-6px' }}
                 />
             )}

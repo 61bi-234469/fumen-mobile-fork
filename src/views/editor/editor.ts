@@ -23,6 +23,8 @@ import { pieceSelectMode } from './piece_select_mode';
 import { navigatorElement } from '../navigator';
 import { commentMode } from './comment_mode';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
+import { getSidePanelWidth } from './side_panel_layout';
+import { sidePanel } from './side_panel';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -54,14 +56,16 @@ export interface EditorLayout {
 }
 
 export const getFieldLayout = (
-    { topLeftY, width, height }: { topLeftY: number, width: number, height: number },
+    { topLeftY, width, height, sidePanelWidth }: {
+        topLeftY: number, width: number, height: number, sidePanelWidth: number,
+    },
 ): FieldLayout => {
     const commentHeight = 35;
     const toolsHeight = 50;
     const borderWidthBottomField = 2.4;
 
     const canvasSize = {
-        width,
+        width: width - sidePanelWidth,
         height: height - (toolsHeight + commentHeight + topLeftY),
     };
 
@@ -88,14 +92,17 @@ export const getFieldLayout = (
 };
 
 const getLayout = (
-    { topLeftY, width, height }: { topLeftY: number, width: number, height: number },
+    { topLeftY, width, height, sidePanelWidth }: {
+        topLeftY: number, width: number, height: number, sidePanelWidth: number,
+    },
 ): EditorLayout => {
     const commentHeight = 35;
     const toolsHeight = 50;
     const borderWidthBottomField = 2.4;
 
+    // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
     const canvasSize = {
-        width,
+        width: width - sidePanelWidth,
         height: height - (toolsHeight + commentHeight + topLeftY),
     };
 
@@ -366,6 +373,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             alignItems: 'center',
             userSelect: 'none',
             outline: 'none', // フォーカス時�E枠線を消す
+            flex: '1 1 auto',
+            minWidth: '0',
         }),
         onclick: handleFieldClick,
     }, getChildren());
@@ -477,9 +486,11 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
 
 export const view: View<State, Actions> = (state, actions) => {
     const navigatorHeight = getNavigatorHeight(state.platform);
+    const sidePanelWidth = getSidePanelWidth(state);
 
     // 初期匁E
     const layout = getLayout({
+        sidePanelWidth,
         ...state.display,
         topLeftY: navigatorHeight,
     });
@@ -499,7 +510,21 @@ export const view: View<State, Actions> = (state, actions) => {
             height: navigatorHeight,
         }),
 
-        ScreenField(state, actions, layout),
+        div({
+            key: 'editor-body',
+            style: style({
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'stretch',
+            }),
+        }, [
+            ...(0 < sidePanelWidth ? [sidePanel(state, actions, {
+                width: sidePanelWidth,
+                height: layout.canvas.size.height,
+            })] : []),
+
+            ScreenField(state, actions, layout),
+        ]),
 
         div({
             key: 'menu-top',

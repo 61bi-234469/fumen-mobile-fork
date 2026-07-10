@@ -21,6 +21,7 @@ interface MenuProps {
         height: number;
     };
     platform: Platforms;
+    editorSidePanelWidth: number;
     actions: {
         closeMenuModal: () => void;
         changeToReaderScreen: () => void;
@@ -45,7 +46,7 @@ interface MenuProps {
 export const MenuModal: Component<MenuProps> = (
     {
         version, screen, currentIndex, maxPageIndex, comment,
-        display, platform, actions,
+        display, platform, editorSidePanelWidth, actions,
     },
 ) => {
     const oncreate = (element: HTMLDivElement) => {
@@ -196,9 +197,12 @@ export const MenuModal: Component<MenuProps> = (
                                                    break;
                                                }
                                                case Screens.Editor: {
+                                                   // キャプチャ座標はKonvaステージ相対のため、
+                                                   // パネル表示中もブロックサイズの一致だけ合わせればよい
                                                    const layout = getEditorFieldLayout({
                                                        ...display,
                                                        topLeftY: getNavigatorHeight(platform),
+                                                       sidePanelWidth: editorSidePanelWidth,
                                                    });
                                                    savePlayfieldToImage({
                                                        ...layout.topLeft,

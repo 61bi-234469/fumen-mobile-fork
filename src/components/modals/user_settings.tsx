@@ -23,6 +23,7 @@ interface UserSettingsModalProps {
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     buttonDropMovesSubtree: boolean;
+    editorSidePanel: boolean;
     currentTab: UserSettingsTab;
     actions: {
         closeUserSettingsModal: () => void;
@@ -41,6 +42,7 @@ interface UserSettingsModalProps {
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepButtonDropMovesSubtree: (data: { enable: boolean }) => void;
+        keepEditorSidePanel: (data: { enable: boolean }) => void;
         setUserSettingsTab: (data: { tab: UserSettingsTab }) => void;
     };
 }
@@ -113,6 +115,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         grayAfterLineClear,
         trimTopBlank,
         buttonDropMovesSubtree,
+        editorSidePanel,
         currentTab,
         actions,
     },
@@ -431,6 +434,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-editor-side-panel',
+                                datatest: 'switch-editor-side-panel',
+                                title: i18n.UserSettings.EditorSidePanel(),
+                                checked: editorSidePanel,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepEditorSidePanel({ enable: checked }),
                             })}
                         </div>
 

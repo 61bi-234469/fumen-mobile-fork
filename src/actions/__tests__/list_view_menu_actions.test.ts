@@ -106,6 +106,10 @@ const createState = (overrides: any = {}) => ({
         dragState: { draggingIndex: null, dropTargetIndex: null },
     },
     tree: treeState(overrides.treeEnabled ?? false),
+    editorPanel: {
+        enabled: false,
+        tab: 'list',
+    },
     mode: { gifFrameDelayMs: 100 },
     coldClear: {
         topBranchCount: 3,

@@ -36,6 +36,7 @@ const baseUserSettings = {
     grayAfterLineClear: false,
     trimTopBlank: false,
     buttonDropMovesSubtree: false,
+    editorSidePanel: false,
 };
 
 const createState = (override: any = {}) => ({
@@ -57,6 +58,10 @@ const createState = (override: any = {}) => ({
     },
     listView: {
         trimTopBlank: true,
+    },
+    editorPanel: {
+        enabled: true,
+        tab: 'list',
     },
     modal: {
         userSettings: true,
@@ -81,6 +86,7 @@ describe('userSettingsActions', () => {
             expect(next.temporary.userSettings.grayAfterLineClear).toBe(true);
             expect(next.temporary.userSettings.trimTopBlank).toBe(true);
             expect(next.temporary.userSettings.buttonDropMovesSubtree).toBe(true);
+            expect(next.temporary.userSettings.editorSidePanel).toBe(true);
         });
     });
 
@@ -119,6 +125,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepEditorSidePanel', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepEditorSidePanel({ enable: true })(state);
+
+            expect(next.temporary.userSettings.editorSidePanel).toBe(true);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepEditorSidePanel({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
     describe('setUserSettingsTab', () => {
         test('switches the active tab', () => {
             const state = createState();
@@ -141,7 +162,7 @@ describe('userSettingsActions', () => {
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changeGifFrameDelay', 'changeRotationSystem',
-                'setTreeState', 'setListViewTrimTopBlank', 'reopenCurrentPage',
+                'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {
                 mockActions[name] = jest.fn(() => () => undefined);
@@ -155,6 +176,7 @@ describe('userSettingsActions', () => {
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 buttonDropMovesSubtree: false,
+                editorSidePanel: true,
             };
 
             userSettingsActions.commitUserSettings()(state);
@@ -164,6 +186,7 @@ describe('userSettingsActions', () => {
                 buttonDropMovesSubtree: false,
             });
             expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
+            expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
             expect(saveUserSettingsMock).toHaveBeenCalled();
         });
     });

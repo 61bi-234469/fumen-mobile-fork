@@ -15,6 +15,8 @@ interface Props {
     scale: number;
     trimTopBlank: boolean;
     sortable: boolean;
+    // 現在ページのハイライト（エディタのサイドパネル用。フル画面では undefined）
+    currentIndex?: number;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -40,6 +42,7 @@ export const ListViewGrid: Component<Props> = ({
     scale,
     trimTopBlank,
     sortable,
+    currentIndex,
     actions,
 }) => {
     const baseItemSize = Math.max(
@@ -120,6 +123,7 @@ export const ListViewGrid: Component<Props> = ({
             comment: commentText,
             isCommentChanged: commentChanged,
             isDragging: draggingIndex === index,
+            isCurrent: currentIndex === index,
         });
     });
 

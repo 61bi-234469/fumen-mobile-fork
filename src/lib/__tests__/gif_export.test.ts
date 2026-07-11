@@ -14,7 +14,6 @@ const createPage = (index: number, field: Field, comment: string = ''): Page => 
         colorize: true,
         rise: false,
         quiz: false,
-        srs: true,
     },
 });
 

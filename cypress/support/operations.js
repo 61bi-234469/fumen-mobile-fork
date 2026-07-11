@@ -92,6 +92,14 @@ export const operations = {
 
                 body.trigger('mouseup', px(x), py(to));
             },
+            // 高速ポインタの再現: 開始セルと終了セルのイベントだけを発火する。
+            // 中間セルはアプリ側のストローク補間で埋まることを検証する用途。
+            dragSparse: ({ from, to }, y) => {
+                let body = cy.get('body');
+                body = body.trigger('mousedown', px(from), py(y));
+                body = body.trigger('mousemove', px(to), py(y));
+                body.trigger('mouseup', px(to), py(y));
+            },
         },
         fill: {
             open: ({ home = true } = {}) => {
@@ -208,6 +216,9 @@ export const operations = {
             },
             rotateToLeft: () => {
                 cy.get(datatest('btn-rotate-to-left')).click();
+            },
+            rotateTo180: () => {
+                cy.get(datatest('btn-rotate-to-180')).click();
             },
             moveToRight: () => {
                 cy.get(datatest('btn-move-to-right')).click();
@@ -510,20 +521,52 @@ export const operations = {
             operations.menu.open();
             cy.get(datatest('btn-user-settings')).click();
         },
+        // ユーザー設定モーダル内のタブを選択する
+        selectUserSettingsTab: (tab) => {
+            cy.get(datatest(`tab-user-settings-${tab}`)).click();
+        },
         ghostOn: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
             cy.get(datatest('switch-ghost-visible')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         ghostOff: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
             cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         loopOn: () => {
             operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('misc');
             cy.get(datatest('switch-loop')).check({ force: true });
             cy.get(datatest('btn-save')).click();
+        },
+        setRotationSystem: (value) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
+            cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+    },
+    editorPanel: {
+        // ユーザー設定 View タブでサイドパネル(PC)の表示を切り替える
+        enable: () => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('view');
+            cy.get(datatest('switch-editor-side-panel')).check({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        disable: () => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('view');
+            cy.get(datatest('switch-editor-side-panel')).uncheck({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        // パネル内のタブ切替 ('list' | 'tree')
+        selectTab: (tab) => {
+            cy.get(datatest(`editor-panel-tab-${tab}`)).click();
         },
     },
 };

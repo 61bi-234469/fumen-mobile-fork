@@ -3,7 +3,7 @@
  */
 
 import { State } from '../states';
-import { action, main } from '../actions';
+import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import {
     AddMode,
@@ -32,6 +32,7 @@ import {
     moveNodeToInsertPosition,
     moveSubtreeToInsertPosition,
     moveSubtreeToParent,
+    canDeleteNode,
     canMoveNode,
     isDescendant,
     validateTree,
@@ -269,6 +270,7 @@ export interface TreeOperationActions {
     ackTreeAutoFocus: () => action;
 
     // Tree navigation
+    activateTreeNode: (data: { nodeId: TreeNodeId }) => action;
     selectTreeNode: (data: { nodeId: TreeNodeId }) => action;
 
     // Tree operations with history support
@@ -277,6 +279,7 @@ export interface TreeOperationActions {
     insertNodeAfterCurrent: (data?: { parentNodeId?: TreeNodeId }) => action;
     copyTreeNode: (data: { nodeId: TreeNodeId }) => action;
     removeCurrentTreeNode: (data?: { removeDescendants?: boolean }) => action;
+    removeTreeNode: (data: { nodeId: TreeNodeId }) => action;
 
     // Add page respecting tree mode
     addPageInTreeMode: (data?: { parentNodeId?: TreeNodeId }) => action;
@@ -297,7 +300,7 @@ export interface TreeOperationActions {
     updateTreeDropSlot: (data: { slotIndex: number | null }) => action;
     updateTreeDragButtonTarget: (data: {
         parentNodeId: TreeNodeId | null;
-        buttonType: 'insert' | 'branch' | 'delete' | null;
+        buttonType: 'insert' | 'branch' | null;
     }) => action;
     endTreeDrag: () => action;
     executeTreeDrop: () => action;
@@ -451,7 +454,6 @@ const rebuildPageRefsForOrder = (
     pages: Page[],
     originalPages: Page[],
     originalFirstPageColorize: boolean,
-    originalFirstPageSrs: boolean,
 ): Page[] => {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
@@ -471,7 +473,6 @@ const rebuildPageRefsForOrder = (
             newPage.flags = {
                 ...page.flags,
                 colorize: originalFirstPageColorize,
-                srs: originalFirstPageSrs,
             };
         }
 
@@ -575,12 +576,10 @@ export const normalizeTreeAndPages = (
 
     const reorderedPages = order.map(oldIndex => pages[oldIndex]);
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
     const newPages = rebuildPageRefsForOrder(
         reorderedPages,
         pages,
         originalFirstPageColorize,
-        originalFirstPageSrs,
     );
 
     const newTree = updateTreePageIndices(tree, indexMap);
@@ -663,40 +662,41 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
                 ...(input.resetDragState ? { dragState: initialTreeDragState } : {}),
             },
         }),
+        actions.reopenCurrentPage(),
     ]);
 };
 
 /**
- * Shared node-removal path for the three drag-to-delete flows in executeTreeDrop:
- * the delete badge, a single-node delete via the parent's insert button, and a
- * subtree delete via the parent's insert button (when buttonDropMovesSubtree is on).
+ * Shared node-removal path used by removeTreeNode / removeCurrentTreeNode.
+ * Removes the node (and optionally its descendants) together with the matching pages.
+ * Returns undefined without touching state when the removal would delete every page.
  */
-const removeNodesViaDrop = (
+const removeTreeNodeById = (
     state: State,
     tree: SerializedTree,
-    sourceNodeId: TreeNodeId,
+    nodeId: TreeNodeId,
     removeDescendants: boolean,
 ): NextState => {
-    const sourceNode = findNode(tree, sourceNodeId);
-    if (!sourceNode) return treeOperationActions.endTreeDrag()(state);
+    const node = findNode(tree, nodeId);
+    if (!node || isVirtualNode(node)) return undefined;
+    if (!canDeleteNode(tree, nodeId, removeDescendants, state.fumen.pages.length)) return undefined;
 
-    const nodeIdsToRemove = removeDescendants ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
+    const nodeIdsToRemove = removeDescendants ? getDescendants(tree, nodeId) : [nodeId];
     const removedPageIndices = collectRemovedPageIndices(tree, nodeIdsToRemove, state.fumen.pages.length);
     if (removedPageIndices.length === 0 || removedPageIndices.length >= state.fumen.pages.length) {
-        return treeOperationActions.endTreeDrag()(state);
+        return undefined;
     }
 
     const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-    const prunedTree = removeNode(tree, sourceNodeId, removeDescendants);
+    const prunedTree = removeNode(tree, nodeId, removeDescendants);
     const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
     const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
 
     const activeNodeId = state.tree.activeNodeId;
-    const activeRemoved = activeNodeId !== null && (
-        activeNodeId === sourceNodeId
-        || (removeDescendants && isDescendant(tree, sourceNodeId, activeNodeId))
-    );
-    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+    const activeRemoved = activeNodeId === null
+        || activeNodeId === nodeId
+        || (removeDescendants && isDescendant(tree, nodeId, activeNodeId));
+    const preferredActiveNodeId = activeRemoved ? node.parentId : activeNodeId;
     const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
     const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
 
@@ -706,13 +706,33 @@ const removeNodesViaDrop = (
         pages: newPages,
         currentIndex: nextActiveNode?.pageIndex ?? 0,
         activeNodeId: nextActiveNodeId,
-        resetDragState: true,
     });
 };
 
 // ============================================================================
 // Action Implementations
 // ============================================================================
+
+// Both tree navigation actions update the same state. Their user-visible
+// difference is intentionally owned by the view that decides whether to
+// reopen the editor or only jump to the linked page.
+const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState => {
+    const tree = getOrCreateTree(state);
+    const node = findNode(tree, nodeId);
+
+    if (!node || isVirtualNode(node)) return undefined;
+
+    return {
+        tree: {
+            ...state.tree,
+            activeNodeId: nodeId,
+        },
+        fumen: {
+            ...state.fumen,
+            currentIndex: node.pageIndex,
+        },
+    };
+};
 
 export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
@@ -863,6 +883,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: state.tree.activeNodeId,
                 },
             }),
+            actions.reopenCurrentPage(),
         ]);
     },
 
@@ -876,26 +897,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         },
     }),
 
-    /**
-     * Select a tree node and navigate to its page
-     */
-    selectTreeNode: ({ nodeId }) => (state): NextState => {
-        const tree = getOrCreateTree(state);
-        const node = findNode(tree, nodeId);
+    /** Select a tree node and synchronize the current editor page. */
+    activateTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
 
-        if (!node || isVirtualNode(node)) return undefined;
-
-        return {
-            tree: {
-                ...state.tree,
-                activeNodeId: nodeId,
-            },
-            fumen: {
-                ...state.fumen,
-                currentIndex: node.pageIndex,
-            },
-        };
-    },
+    /** Select a tree node and navigate to its page. */
+    selectTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
 
     /**
      * Add a branch from the current node
@@ -1200,43 +1206,23 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         if (!currentNode) return undefined;
 
-        // Cannot remove root if it's the only node
-        if (currentNode.id === tree.rootId && tree.nodes.length === 1) {
-            return undefined;
-        }
+        return removeTreeNodeById(state, tree, currentNode.id, data.removeDescendants ?? true);
+    },
 
-        const removeDescendants = data.removeDescendants ?? true;
-        const nodeIdsToRemove = removeDescendants
-            ? getDescendants(tree, currentNode.id)
-            : [currentNode.id];
-        const removedPageIndices = collectRemovedPageIndices(
-            tree,
-            nodeIdsToRemove,
-            state.fumen.pages.length,
-        );
-        if (removedPageIndices.length === 0) return undefined;
-        if (removedPageIndices.length >= state.fumen.pages.length) return undefined;
+    /**
+     * Remove a node specified by ID (permanent delete button).
+     * Leaf nodes always remove only themselves; nodes with children follow
+     * the buttonDropMovesSubtree setting (off: node only, on: whole subtree).
+     */
+    removeTreeNode: ({ nodeId }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
 
-        // Create previous snapshot for history
-        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+        const tree = getOrCreateTree(state);
+        const node = findNode(tree, nodeId);
+        if (!node || isVirtualNode(node)) return undefined;
 
-        // Remove node from tree and delete matching pages
-        const prunedTree = removeNode(tree, currentNode.id, removeDescendants);
-        const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
-        const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
-
-        const preferredActiveNodeId = currentNode.parentId ?? shiftedTree.rootId;
-        const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
-        const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
-        const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
-
-        return commitTreeOperation(state, {
-            prevSnapshot,
-            tree: shiftedTree,
-            pages: newPages,
-            currentIndex: nextCurrentIndex,
-            activeNodeId: nextActiveNodeId,
-        });
+        const removeDescendants = node.childrenIds.length > 0 && state.tree.buttonDropMovesSubtree;
+        return removeTreeNodeById(state, tree, nodeId, removeDescendants);
     },
 
     /**
@@ -1419,33 +1405,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         if (!state.tree.enabled) return undefined;
         if (state.tree.dragState.sourceNodeId === null) return undefined;
 
-        // For delete button, parentNodeId must equal sourceNodeId (delete self)
-        if (buttonType === 'delete') {
-            if (parentNodeId !== state.tree.dragState.sourceNodeId) {
-                return {
-                    tree: {
-                        ...state.tree,
-                        dragState: {
-                            ...state.tree.dragState,
-                            targetButtonParentId: null,
-                            targetButtonType: null,
-                        },
-                    },
-                };
-            }
-            // Skip canMoveNode validation for delete - it's handled by canDeleteNode in UI
-            return {
-                tree: {
-                    ...state.tree,
-                    dragState: {
-                        ...state.tree.dragState,
-                        targetButtonParentId: parentNodeId,
-                        targetButtonType: buttonType,
-                    },
-                },
-            };
-        }
-
         // Validate that we can move to this target (for insert/branch)
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
@@ -1459,6 +1418,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             if (state.tree.buttonDropMovesSubtree && tree.rootId
                 && state.tree.dragState.sourceNodeId === tree.rootId) {
                 canMove = false;
+            }
+            // Dropping onto the source's own parent insert button used to mean delete;
+            // it is now an invalid drop (no highlight, no-op).
+            if (buttonType === 'insert') {
+                const sourceNode = findNode(tree, state.tree.dragState.sourceNodeId);
+                if (sourceNode?.parentId === parentNodeId) {
+                    canMove = false;
+                }
             }
             if (!canMove) {
                 return {
@@ -1513,36 +1480,22 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         const {
             sourceNodeId,
-            targetNodeId,
-            dropSlotIndex,
-            mode,
             targetButtonParentId,
             targetButtonType,
         } = state.tree.dragState;
         const moveSubtreeOnButtonDrop = state.tree.buttonDropMovesSubtree;
 
-        // Priority 0: Handle DELETE button drops (self-deletion via left-edge badge)
-        if (sourceNodeId !== null && targetButtonType === 'delete') {
-            // Verify targetButtonParentId === sourceNodeId (delete requires dropping on self)
-            if (targetButtonParentId !== sourceNodeId) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            const tree = getOrCreateTree(state);
-            return removeNodesViaDrop(state, tree, sourceNodeId, moveSubtreeOnButtonDrop);
-        }
-
-        // Priority 1: Handle button drops (drag-to-button operation)
+        // Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
             const tree = getOrCreateTree(state);
             const targetNode = findNode(tree, targetButtonParentId);
 
-            // Delete the dragged node when dropping onto its parent's insert button
-            // (only when MoveWithChildren is off; subtree deletion is handled below)
-            if (targetButtonType === 'insert' && targetNode && !moveSubtreeOnButtonDrop) {
+            // Invalid drop guard: dropping onto the source's own parent insert button
+            // used to mean delete; drag-to-delete has been removed, so treat it as a no-op.
+            if (targetButtonType === 'insert') {
                 const sourceNode = findNode(tree, sourceNodeId);
                 if (sourceNode && sourceNode.parentId === targetButtonParentId) {
-                    return removeNodesViaDrop(state, tree, sourceNodeId, false);
+                    return treeOperationActions.endTreeDrag()(state);
                 }
             }
 
@@ -1557,14 +1510,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             }
 
             if (moveSubtreeOnButtonDrop) {
-                const sourceNode = findNode(tree, sourceNodeId);
-                const isDeleteOnParentButton = targetButtonType === 'insert'
-                    && sourceNode?.parentId === targetButtonParentId;
-
-                if (sourceNode && isDeleteOnParentButton) {
-                    return removeNodesViaDrop(state, tree, sourceNodeId, true);
-                }
-
                 if (tree.rootId && sourceNodeId === tree.rootId) {
                     return treeOperationActions.endTreeDrag()(state);
                 }
@@ -1602,12 +1547,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 if (!rerooted) {
                     return treeOperationActions.endTreeDrag()(state);
                 }
-                // Note: 'delete' is already handled above, so targetButtonType here is 'insert' | 'branch'
                 const reparentedTree = attachDetachedNodeToTarget(
                     rerooted.tree,
                     sourceNodeId,
                     targetButtonParentId,
-                    targetButtonType as 'insert' | 'branch',
+                    targetButtonType,
                 );
 
                 // Create history snapshots
@@ -1635,13 +1579,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const targetIsDescendant = isDescendant(tree, sourceNodeId, targetButtonParentId);
             if (targetIsDescendant) {
                 // Detach first to avoid cycles, then attach under target
-                // Note: 'delete' is already handled above, so targetButtonType here is 'insert' | 'branch'
                 const detachedTree = detachNodeLeavingChildren(tree, sourceNodeId);
                 newTree = attachDetachedNodeToTarget(
                     detachedTree,
                     sourceNodeId,
                     targetButtonParentId,
-                    targetButtonType as 'insert' | 'branch',
+                    targetButtonType,
                 );
             } else if (targetButtonType === 'insert') {
                 // INSERT: Move node to become first child of target, taking over target's first child

@@ -6,7 +6,9 @@ import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
 
 jest.mock('../../actions', () => ({
-    actions: {},
+    actions: {
+        reopenCurrentPage: () => () => undefined,
+    },
     main: {},
 }));
 
@@ -51,7 +53,6 @@ const defaultFlags = {
     colorize: true,
     rise: false,
     quiz: false,
-    srs: true,
 };
 
 const segmentPages = (): Page[] => [
@@ -107,6 +108,10 @@ const createState = (overrides: any = {}) => ({
         dragState: { draggingIndex: null, dropTargetIndex: null },
     },
     tree: treeState(overrides.treeEnabled ?? false),
+    editorPanel: {
+        enabled: false,
+        tab: 'list',
+    },
     mode: { gifFrameDelayMs: 100 },
     coldClear: {
         topBranchCount: 3,
@@ -129,6 +134,36 @@ describe('setExportScope', () => {
         const state = createState({ exportScope: 'all' });
         const next = listViewActions.setExportScope({ scope: 'left' })(state) as any;
         expect(next.listView.exportScope).toBe('left');
+    });
+});
+
+describe('activatePageInListView', () => {
+    test('selects and highlights a page before navigating when tree mode is off', () => {
+        const state = createState({ treeEnabled: false });
+
+        const next = listViewActions.activatePageInListView({ pageIndex: 1 })(state) as any;
+
+        expect(next.fumen.currentIndex).toBe(1);
+        expect(next.tree).toBeUndefined();
+    });
+
+    test('selects the matching tree node before navigating when tree mode is on', () => {
+        const state = createState({ treeEnabled: true });
+
+        const next = listViewActions.activatePageInListView({ pageIndex: 1 })(state) as any;
+
+        expect(next.fumen.currentIndex).toBe(1);
+        expect(next.tree.activeNodeId).toBe('n1');
+    });
+});
+
+describe('updatePageComment', () => {
+    test('keeps the pages array reference so the thumbnail cache survives', () => {
+        const state = createState();
+        const next = listViewActions.updatePageComment({ pageIndex: 1, comment: 'edited' })(state) as any;
+
+        expect(next.fumen.pages).toBe(state.fumen.pages);
+        expect(next.fumen.pages[1].comment.text).toBe('edited');
     });
 });
 

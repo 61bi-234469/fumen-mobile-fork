@@ -28,6 +28,16 @@
     UserSettings: {
         Title: 'User Settings',
         Notice: 'Clearing the browser cache will initialize the settings.',
+        Tabs: {
+            Field: 'Field',
+            View: 'List & Tree View',
+            Shortcuts: 'Shortcuts',
+            Misc: 'Others',
+        },
+        Switch: {
+            Off: 'Off',
+            On: 'On',
+        },
         Ghost: {
             Title: 'Show the ghost',
             Off: () => 'Off',
@@ -44,7 +54,13 @@
             On: () => 'On',
         },
         Gradient: {
-            Title: 'Adding a marker to the surface of the block',
+            Title: 'Block surface marker',
+        },
+        RotationSystem: {
+            Title: 'Kick table',
+            Classic: () => 'Classic',
+            Srs: () => 'SRS',
+            SrsPlus: () => 'SRS+',
         },
         PaletteShortcuts: {
             Title: 'Palette Shortcuts',
@@ -78,14 +94,22 @@
             Drop: 'Hard Drop',
             RotateLeft: 'Rotate Left',
             RotateRight: 'Rotate Right',
+            Rotate180: 'Rotate 180°',
             Reset: 'Reset Piece',
             DasMs: 'DAS (ms)',
             DasDescription: 'Long-press left/right moves to edge',
         },
+        EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',
         },
+    },
+    EditorPanel: {
+        ListTab: 'List',
+        TreeTab: 'Tree',
+        EnableTreeMode: 'Enable tree mode',
+        TreeModeDisabled: 'Tree mode is disabled.',
     },
     Clipboard: {
         Title: 'Copy to clipboard',
@@ -116,7 +140,7 @@
     GifExport: {
         Buttons: {
             Gif: 'Download GIF Image',
-            GifLeftToActive: 'GIF Image (to Active Node)',
+            GifLeftToActive: 'GIF Image (up to selected page)',
         },
     },
     Menu: {
@@ -149,14 +173,29 @@
         },
     },
     TreeView: {
-        MoveWithChildren: 'Move with children',
+        MoveWithChildren: 'Move/delete with children',
         GrayAfterLineClear: 'Gray out cleared lines',
         ZoomIn: 'Zoom in',
         ZoomOut: 'Zoom out',
         ZoomReset: 'Reset zoom',
+        DeleteNode: 'Delete page',
+        DragHandle: 'Drag to move',
+        DeleteToast: {
+            DeletedOne: '1 page deleted',
+            DeletedMany: '{{count}} pages deleted',
+            Undo: 'Undo',
+        },
+        ToggleTooltip: {
+            Disable: 'Disable tree mode',
+            Enable: 'Enable tree mode',
+        },
+        ViewModeTooltip: {
+            List: 'Show pages in list view',
+            Tree: 'Show pages in tree view',
+        },
         DisableConfirm: {
             Title: 'Disable Tree mode?',
-            Message: 'The tree structure will be deleted. This cannot be undone after saving or sharing.',
+            Message: 'The tree structure will be deleted.',
             Cancel: 'Cancel',
             Confirm: 'Disable',
         },
@@ -165,12 +204,23 @@
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
     },
+    ListViewReplace: {
+        Title: 'Replace comments',
+        Before: 'Find:',
+        After: 'Replace with:',
+        FindPlaceholder: 'Text to find',
+        ReplacePlaceholder: 'Replacement text',
+        Buttons: {
+            Replace: 'Replace',
+            Cancel: 'Cancel',
+        },
+    },
     ListViewMenu: {
         Title: 'Import/Export',
         Sections: {
             Read: 'Import',
             Image: 'Save image',
-            Export: 'Share (FUMEN / URL)',
+            Export: 'Share (fumen / URL)',
             External: 'Open in external site',
             Settings: 'Settings',
         },
@@ -191,7 +241,7 @@
             ImportHint: 'Replace current fumen',
             Png: 'PNG',
             Gif: 'GIF',
-            Fumen: 'Copy FUMEN',
+            Fumen: 'Copy fumen data',
             Url: 'Open Share URL',
             UrlCopy: 'Copy share URL',
             FumenZui: 'Open in Fumen Editor',
@@ -201,8 +251,8 @@
         },
     },
     Navigator: {
-        OpenInPC: 'Open in Hard Drop',
-        ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',
+        ShowSidePanel: 'Show side panel',
+        HideSidePanel: 'Hide side panel',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',
@@ -245,7 +295,7 @@
         InitTimeout: 'AI: Initialization timeout',
         PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',
         UsageHint: 'Set pieces in comment (e.g. IOTLJSZ, T:IOSL) and enable Lock flag.',
-        TreeModeRequired: 'Enable Tree mode to use top-branch search.',
+        TreeModeRequired: 'Enable Tree mode to use Branch Search.',
         TopBranchesAdded: 'AI: Added {{count}} branch(es)',
         ShortPressTopBranches: 'CC short press: search top {{count}} branches',
         LongPressSequenceSearch: 'CC long press: search full sequence',

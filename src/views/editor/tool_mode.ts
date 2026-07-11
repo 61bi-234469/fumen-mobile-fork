@@ -4,13 +4,11 @@ import {
     colorButton,
     iconContents,
     inferenceButton,
-    switchButton,
-    switchIconContents,
     toolButton,
     toolSpace,
 } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
-import { EditShortcuts, PaletteShortcuts, State } from '../../states';
+import { EditShortcuts, PaletteShortcuts, State, UserSettingsTab } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { i18n } from '../../locales/keys';
 import { executePieceShortcut } from '../../lib/piece_shortcut';
@@ -18,7 +16,6 @@ import { executePieceShortcut } from '../../lib/piece_shortcut';
 export const toolMode = ({
     layout,
     currentIndex,
-    grayAfterLineClear,
     touchType,
     modePiece,
     colorize,
@@ -31,7 +28,6 @@ export const toolMode = ({
 }: {
     layout: EditorLayout;
     currentIndex: number;
-    grayAfterLineClear: boolean;
     touchType: TouchTypes;
     modePiece: Piece | undefined;
     colorize: boolean;
@@ -47,7 +43,8 @@ export const toolMode = ({
         changeToUtilsMode: () => void;
         changeToDrawPieceMode: () => void;
         changeToFillMode: () => void;
-        setTreeState: (data: { grayAfterLineClear: boolean }) => void;
+        openUserSettingsModal: (data?: { initialTab?: UserSettingsTab }) => void;
+        openListViewMenuModal: () => void;
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
         changeToMovePieceMode: () => void;
@@ -82,25 +79,44 @@ export const toolMode = ({
         return code ? displayShortcut(code) : undefined;
     };
     const toolButtonMargin = 3;
+    const topButtonGap = 2;
+    const topButtonWidth = (layout.buttons.size.width - topButtonGap) / 2;
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
 
     return div({ style: toolStyle(layout) }, [
-        switchButton({
-            borderWidth: 1,
-            width: layout.buttons.size.width,
-            margin: toolButtonMargin,
-            backgroundColorClass: 'red',
-            textColor: '#333',
-            borderColor: '#f44336',
-            datatest: 'btn-gray-after-line-clear',
-            key: 'btn-gray-after-line-clear',
-            onclick: () => actions.setTreeState({ grayAfterLineClear: !grayAfterLineClear }),
-            enable: grayAfterLineClear,
-        }, switchIconContents({
-            description: 'gray',
-            iconSize: 18,
-            enable: grayAfterLineClear,
-        })),
+        div({
+            key: 'editor-top-actions',
+            style: {
+                display: 'flex',
+                flexDirection: 'row',
+                gap: `${topButtonGap}px`,
+                width: '100%',
+                justifyContent: 'center',
+            },
+        }, [
+            toolButton({
+                borderWidth: 1,
+                width: topButtonWidth,
+                margin: toolButtonMargin,
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-editor-share',
+                key: 'btn-editor-share',
+                onclick: () => actions.openListViewMenuModal(),
+            }, iconContents({ description: '', iconSize: 22, iconName: 'import_export' })),
+            toolButton({
+                borderWidth: 1,
+                width: topButtonWidth,
+                margin: toolButtonMargin,
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-editor-user-settings',
+                key: 'btn-editor-user-settings',
+                onclick: () => actions.openUserSettingsModal({ initialTab: 'field' }),
+            }, iconContents({ description: '', iconSize: 22, iconName: 'settings' })),
+        ]),
         toolButton({
             borderWidth: 1,
             width: layout.buttons.size.width,

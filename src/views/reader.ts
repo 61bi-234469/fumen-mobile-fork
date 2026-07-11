@@ -346,8 +346,12 @@ export const view: View<State, Actions> = (state, actions) => {
 
         navigatorElement({
             palette,
-            actions,
             height: navigatorHeight,
+            enabled: state.editorPanel.enabled,
+            screen: Screens.Reader,
+            actions: {
+                toggleEditorSidePanel: actions.toggleEditorSidePanel,
+            },
         }),
 
         ScreenField(state, actions, layout),

@@ -57,7 +57,6 @@ const createFlags = () => ({
     colorize: true,
     rise: false,
     quiz: false,
-    srs: true,
 });
 
 describe('convertAllToMirror regression', () => {

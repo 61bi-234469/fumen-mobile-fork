@@ -18,6 +18,7 @@ import {
     TreeViewMode,
     VIRTUAL_PAGE_INDEX,
 } from '../lib/fumen/tree_types';
+import { clearThumbnailCache } from '../lib/thumbnail';
 
 export interface MementoActions {
     registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
@@ -35,6 +36,10 @@ export interface MementoActions {
 
 export const mementoActions: Readonly<MementoActions> = {
     registerHistoryTask: ({ task, mergeKey }) => (state): NextState => {
+        // Field strokes mutate pages in place and commit here exactly once per
+        // operation. The thumbnail cache is keyed by the pages array reference,
+        // so this is the single choke point to invalidate it.
+        clearThumbnailCache(state.fumen.pages);
         const undoCount = memento.register(task, mergeKey, state.tree.viewMode);
         return sequence(state, [
             mementoActions.setHistoryCount({ undoCount, redoCount: 0 }),
@@ -85,8 +90,13 @@ export const mementoActions: Readonly<MementoActions> = {
         ]);
     },
     loadPagesViaHistory: ({ pages, index, undoCount, redoCount, treeViewMode }) => (state): NextState => {
+        // Undo/redo may restore pages by mutating them in place; drop cached
+        // thumbnails for both the outgoing and the restored array references.
+        clearThumbnailCache(state.fumen.pages);
+
         // Extract tree data from restored pages if present
         const { cleanedPages, tree } = extractTreeFromPages(pages);
+        clearThumbnailCache(cleanedPages);
 
         const hasTreeState = state.tree.nodes.length > 0 && state.tree.rootId !== null;
         const treeInBounds = hasTreeState && state.tree.nodes.every(node => (

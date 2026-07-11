@@ -3,6 +3,7 @@ import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
+import { EditorSidePanelTab, RotationSystem } from './states';
 import lodash from 'lodash';
 
 interface SaverProp {
@@ -167,6 +168,7 @@ interface UserSettings {
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
+    rotationSystem: RotationSystem;
 }
 
 interface ViewSettings {
@@ -174,6 +176,9 @@ interface ViewSettings {
     shortenUrls: boolean;
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
+    editorSidePanel: boolean;
+    editorSidePanelTab: EditorSidePanelTab;
+    editorSidePanelWidth: number | null;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -196,6 +201,13 @@ const safer = {
     },
     number: (value: any): number | undefined => {
         return lodash.isNumber(value) && !isNaN(value) ? value : undefined;
+    },
+    // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
+    rotationSystem: (value: any): RotationSystem => {
+        return value === 'classic' || value === 'srs' || value === 'srsPlus' ? value : 'srs';
+    },
+    editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
+        return value === 'list' || value === 'tree' ? value : undefined;
     },
 };
 
@@ -227,6 +239,7 @@ export const localStorageWrapper = {
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
+            rotationSystem: safer.rotationSystem(obj.rotationSystem),
         };
     },
     saveViewSettings: (data: ViewSettings) => {
@@ -250,6 +263,11 @@ export const localStorageWrapper = {
             shortenUrls: safer.boolean(obj.shortenUrls),
             buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
+            editorSidePanel: safer.boolean(obj.editorSidePanel),
+            editorSidePanelTab: safer.editorSidePanelTab(obj.editorSidePanelTab),
+            editorSidePanelWidth: obj.editorSidePanelWidth === null
+                ? null
+                : safer.number(obj.editorSidePanelWidth),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
             coldClearHoldAllowed: safer.boolean(obj.coldClearHoldAllowed),
             coldClearSpeculate: safer.boolean(obj.coldClearSpeculate),

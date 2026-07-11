@@ -16,6 +16,8 @@ interface Props {
 
         ontouchEnd(): void;
 
+        resetFieldTouchTrail(): void;
+
         onrightStartField(data: { index: number }): void;
         onrightMoveField(data: { index: number }): void;
         onrightStartSentLine(data: { index: number }): void;
@@ -101,6 +103,8 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
 
         fieldLayer.on('touchleave mouseleave', () => {
             flags.mouseOnField = false;
+            // The pointer left the field; do not interpolate across the gap on re-entry.
+            actions.resetFieldTouchTrail();
 
             if (!flags.addBodyEvent) {
                 flags.addBodyEvent = true;

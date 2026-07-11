@@ -17,3 +17,4 @@ dest/
 coverage/
 cypress/videos/
 cypress/screenshots/
+logs/

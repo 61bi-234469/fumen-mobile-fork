@@ -1,6 +1,6 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 import { normalizeGifFrameDelayMs } from '../lib/gif_export';
@@ -17,6 +17,12 @@ export interface UserSettingsActions {
     keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
     keepPieceShortcutDas: (data: { dasMs: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
+    keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    keepGrayAfterLineClear: (data: { enable: boolean }) => action;
+    keepTrimTopBlank: (data: { enable: boolean }) => action;
+    keepButtonDropMovesSubtree: (data: { enable: boolean }) => action;
+    keepEditorSidePanel: (data: { enable: boolean }) => action;
+    setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
 export const userSettingsActions: Readonly<UserSettingsActions> = {
@@ -34,6 +40,11 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcuts: { ...state.mode.pieceShortcuts },
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
+                    rotationSystem: state.mode.rotationSystem,
+                    grayAfterLineClear: state.tree.grayAfterLineClear,
+                    trimTopBlank: state.listView.trimTopBlank,
+                    buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                    editorSidePanel: state.editorPanel.enabled,
                 },
             },
         };
@@ -58,6 +69,20 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
+            }),
+            actions.changeRotationSystem({
+                rotationSystem: state.temporary.userSettings.rotationSystem,
+            }),
+            // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
+            actions.setTreeState({
+                grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
+                buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
+            }),
+            actions.setListViewTrimTopBlank({
+                enabled: state.temporary.userSettings.trimTopBlank,
+            }),
+            actions.setEditorSidePanelEnabled({
+                enabled: state.temporary.userSettings.editorSidePanel,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -285,6 +310,93 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepRotationSystem: ({ rotationSystem }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    rotationSystem,
+                },
+            },
+        };
+    },
+    keepGrayAfterLineClear: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    grayAfterLineClear: enable,
+                },
+            },
+        };
+    },
+    keepTrimTopBlank: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    trimTopBlank: enable,
+                },
+            },
+        };
+    },
+    keepButtonDropMovesSubtree: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    buttonDropMovesSubtree: enable,
+                },
+            },
+        };
+    },
+    keepEditorSidePanel: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    editorSidePanel: enable,
+                },
+            },
+        };
+    },
+    setUserSettingsTab: ({ tab }) => (state): NextState => {
+        if (state.temporary.userSettingsTab === tab) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettingsTab: tab,
+            },
+        };
+    },
 };
 
 const saveToLocalStorage = (state: Readonly<State>): NextState => {
@@ -298,6 +410,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
         pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
+        rotationSystem: state.mode.rotationSystem,
     });
     return undefined;
 };

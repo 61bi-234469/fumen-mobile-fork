@@ -14,6 +14,7 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { TreeViewMode } from '../../lib/fumen/tree_types';
+import { i18n } from '../../locales/keys';
 
 // ============================================================================
 // Props Interface
@@ -162,7 +163,7 @@ export const TreeViewToggle: Component<Props> = ({
                     key="tree-switch"
                     style={switchStyle}
                     onclick={() => actions.onTreeToggle()}
-                    title={treeEnabled ? 'Disable tree mode' : 'Enable tree mode'}
+                    title={treeEnabled ? i18n.TreeView.ToggleTooltip.Disable() : i18n.TreeView.ToggleTooltip.Enable()}
                 >
                     <div style={switchKnobStyle} />
                 </div>
@@ -174,7 +175,7 @@ export const TreeViewToggle: Component<Props> = ({
                             key="btn-list-view"
                             style={segmentButtonStyle(currentViewMode === TreeViewMode.List)}
                             onclick={() => actions.onViewModeChange(TreeViewMode.List)}
-                            title="Show pages in list view"
+                            title={i18n.TreeView.ViewModeTooltip.List()}
                         >
                             <i className="material-icons" style={iconBox(20, 22)}>view_list</i>
                             {listShortcutLabel && (
@@ -187,7 +188,7 @@ export const TreeViewToggle: Component<Props> = ({
                             key="btn-tree-view"
                             style={segmentButtonStyle(currentViewMode === TreeViewMode.Tree)}
                             onclick={() => actions.onViewModeChange(TreeViewMode.Tree)}
-                            title="Show pages in tree graph view"
+                            title={i18n.TreeView.ViewModeTooltip.Tree()}
                         >
                             <i className="material-icons" style={iconBox(20, 22)}>device_hub</i>
                             {treeShortcutLabel && (

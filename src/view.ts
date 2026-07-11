@@ -17,6 +17,7 @@ import { TreeDisableConfirmModal } from './components/modals/tree_disable_confir
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
+import { getSidePanelWidth } from './views/editor/side_panel_layout';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
@@ -66,6 +67,7 @@ export const view: View<State, Actions> = (state, actions) => {
             comment: state.mode.comment,
             display: state.display,
             platform: state.platform,
+            editorSidePanelWidth: getSidePanelWidth(state),
         }) : undefined as any,
 
         state.modal.append ? AppendFumenModal({
@@ -98,6 +100,12 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
+            rotationSystem: state.temporary.userSettings.rotationSystem,
+            grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
+            trimTopBlank: state.temporary.userSettings.trimTopBlank,
+            buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
+            editorSidePanel: state.temporary.userSettings.editorSidePanel,
+            currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

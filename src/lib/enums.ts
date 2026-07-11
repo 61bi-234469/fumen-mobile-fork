@@ -181,6 +181,19 @@ export function nextRotationToRight(rotation: Rotation): Rotation {
     }
 }
 
+export function nextRotationTo180(rotation: Rotation): Rotation {
+    switch (rotation) {
+    case Rotation.Spawn:
+        return Rotation.Reverse;
+    case Rotation.Reverse:
+        return Rotation.Spawn;
+    case Rotation.Right:
+        return Rotation.Left;
+    case Rotation.Left:
+        return Rotation.Right;
+    }
+}
+
 export function parseRotationName(rotation: Rotation) {
     switch (rotation) {
     case Rotation.Spawn:

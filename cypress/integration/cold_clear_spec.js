@@ -10,7 +10,7 @@ const ensureTreeGraphView = () => {
         }
     });
 
-    cy.get('[title="Show pages in tree graph view"]').should('be.visible').click();
+    cy.get('[title="Show pages in tree view"]').should('be.visible').click();
     cy.get(datatest('btn-tree-ai-menu')).should('be.visible');
 };
 

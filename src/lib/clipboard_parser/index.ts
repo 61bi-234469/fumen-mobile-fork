@@ -47,6 +47,30 @@ const extractFumenFromText = (text: string): string | null => {
 };
 
 /**
+ * Try interpreting text as a fumen string, then as a 20x10 field.
+ * Returns null when neither matches so callers can decide the fallback.
+ */
+const resolveTextClipboardContent = (text: string): ClipboardContent | null => {
+    const fumen = extractFumenFromText(text);
+    if (fumen) {
+        return { fumen, type: 'fumen' };
+    }
+
+    if (looksLikeFieldText(text)) {
+        const result = parseFieldText(text);
+        if (result.success) {
+            return {
+                type: 'fieldText',
+                field: result.field,
+                warning: result.warning,
+            };
+        }
+    }
+
+    return null;
+};
+
+/**
  * Parse clipboard contents with detection order:
  * text -> fumen -> 20x10 text -> image -> none
  */
@@ -60,22 +84,9 @@ export const parseClipboard = async (): Promise<ClipboardContent> => {
                 const textBlob = await item.getType('text/plain');
                 const text = await textBlob.text();
 
-                // Try fumen first
-                const fumen = extractFumenFromText(text);
-                if (fumen) {
-                    return { fumen, type: 'fumen' };
-                }
-
-                // Try 20x10 field text
-                if (looksLikeFieldText(text)) {
-                    const result = parseFieldText(text);
-                    if (result.success) {
-                        return {
-                            type: 'fieldText',
-                            field: result.field,
-                            warning: result.warning,
-                        };
-                    }
+                const content = resolveTextClipboardContent(text);
+                if (content) {
+                    return content;
                 }
             }
         }
@@ -111,26 +122,7 @@ export const parseClipboard = async (): Promise<ClipboardContent> => {
 export const parseClipboardText = async (): Promise<ClipboardContent> => {
     try {
         const text = await navigator.clipboard.readText();
-
-        // Try fumen first
-        const fumen = extractFumenFromText(text);
-        if (fumen) {
-            return { fumen, type: 'fumen' };
-        }
-
-        // Try 20x10 field text
-        if (looksLikeFieldText(text)) {
-            const result = parseFieldText(text);
-            if (result.success) {
-                return {
-                    type: 'fieldText',
-                    field: result.field,
-                    warning: result.warning,
-                };
-            }
-        }
-
-        return { type: 'none' };
+        return resolveTextClipboardContent(text) ?? { type: 'none' };
     } catch (error) {
         console.error('Clipboard read error:', error);
         return { type: 'none' };

@@ -1,5 +1,5 @@
 import { decode, encode } from '../lib/fumen/fumen';
-import { toFumenTask, toPage, toPrimitivePage } from '../history_task';
+import { toFumenTask, toPrimitivePage } from '../history_task';
 
 describe('history', () => {
     test('fumen', async () => {
@@ -23,24 +23,4 @@ describe('history', () => {
         }
     });
 
-    test('toPage normalizes inconsistent colorize/srs flags', () => {
-        const restored = toPage({
-            index: 0,
-            field: { obj: undefined, ref: undefined },
-            piece: undefined,
-            comment: { text: '', ref: undefined },
-            commands: undefined,
-            flags: {
-                lock: true,
-                mirror: false,
-                colorize: false,
-                rise: false,
-                quiz: false,
-                srs: true,
-            },
-        });
-
-        expect(restored.flags.colorize).toBe(false);
-        expect(restored.flags.srs).toBe(false);
-    });
 });

@@ -52,18 +52,21 @@ describe('User settings', () => {
 
         // disable -> enable
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
         cy.get(datatest('switch-loop')).should('not.be.checked');
         cy.get(datatest('switch-loop')).check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // cancel
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
         cy.get(datatest('btn-cancel')).click();
 
         // reload
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
 
@@ -78,12 +81,14 @@ describe('User settings', () => {
 
         // enable -> disable
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // verify
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
         cy.get(datatest('switch-loop')).should('not.be.checked');
     });
 
@@ -103,6 +108,67 @@ describe('User settings', () => {
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
         cy.get(datatest('btn-back-page')).click();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
+    });
+
+    it('Open settings directly from editor and list view', () => {
+        cy.clearLocalStorage();
+
+        visit({ mode: 'edit' });
+
+        // エディタのツール列から直接開く(フィールドタブが初期表示)
+        // パネルは縦に長くCypressの可視判定が中心点基準で誤るため、displayスタイルで判定する
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
+
+        // タブ切替
+        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('panel-user-settings-misc')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
+
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+
+        // エディタの共有ボタンからImport/Exportモーダルを直接開く
+        cy.get(datatest('btn-editor-share')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('not.exist');
+
+        // リストビューの右上から開く(リスト/ツリービュータブが初期表示)
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-list-view-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+
+    it('Gray after line clear: tabs stay in sync and setting persists', () => {
+        cy.clearLocalStorage();
+
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-gray-after-line-clear-field')).should('not.be.checked');
+        cy.get(datatest('switch-gray-after-line-clear-field')).check({ force: true });
+
+        // 同一設定なのでリスト/ツリービュータブ側も連動する
+        cy.get(datatest('switch-gray-after-line-clear-view')).should('be.checked');
+        cy.get(datatest('btn-save')).click();
+
+        // 保存後に開き直しても有効のまま
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-gray-after-line-clear-field')).should('be.checked');
+
+        // キャンセルで閉じても保存値は変わらない
+        cy.get(datatest('switch-gray-after-line-clear-field')).uncheck({ force: true });
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-gray-after-line-clear-field')).should('be.checked');
+        cy.get(datatest('btn-cancel')).click();
     });
 });
 

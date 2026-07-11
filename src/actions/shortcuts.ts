@@ -28,7 +28,6 @@ let activeShortcut: ActiveShortcut = null;
 
 // DASタイマー状態（PIECE用）
 let dasTimer: ReturnType<typeof setTimeout> | null = null;
-let dasTriggered = false;
 
 // パレットキーの種類
 type PaletteKey = keyof PaletteShortcuts;
@@ -138,7 +137,6 @@ const isMino = (palette: PaletteKey): boolean => {
 // パレット短押し動作を実行
 const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Actions) => {
     const modeType = state.mode.type;
-    const colorize = state.fumen.guideLineColor;
 
     // Comp の場合
     if (palette === 'Comp') {
@@ -177,7 +175,7 @@ const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Ac
     // Empty/Gray は changeToDrawingToolMode + selectPieceColor
     case ModeTypes.SelectPiece:
         if (isMino(palette)) {
-            actions.spawnPiece({ piece, srs: state.fumen.pages[0]?.flags.srs ?? true });
+            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
             actions.changeToMovePieceMode();
             actions.changeToPieceMode();
         } else {
@@ -191,8 +189,6 @@ const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Ac
 
 // パレット長押し動作を実行
 const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
-    const colorize = state.fumen.guideLineColor;
-
     // Comp: convertToBlack
     if (palette === 'Comp') {
         actions.convertToBlack();
@@ -215,7 +211,7 @@ const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Act
     if (isMino(palette)) {
         const piece = paletteToPiece(palette);
         if (piece !== null) {
-            actions.spawnPiece({ piece, srs: state.fumen.pages[0]?.flags.srs ?? true });
+            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
             actions.changeToMovePieceMode();
         }
     }
@@ -431,10 +427,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
             // DASタイマー開始（MoveLeft/MoveRightのみ）
             if (hasPieceDas(pieceShortcut)) {
-                dasTriggered = false;
                 dasTimer = setTimeout(() => {
                     executePieceDas(pieceShortcut, getActions!());
-                    dasTriggered = true;
                     dasTimer = null;
                 }, state.mode.pieceShortcutDasMs);
             }
@@ -467,8 +461,6 @@ const handleKeyUp = (event: KeyboardEvent) => {
         clearTimeout(dasTimer);
         dasTimer = null;
     }
-    dasTriggered = false;
-
     if (!getState || !getActions) {
         pressedKey = null;
         activeShortcut = null;
@@ -524,7 +516,6 @@ const handleBlur = () => {
         clearTimeout(dasTimer);
         dasTimer = null;
     }
-    dasTriggered = false;
     pressedKey = null;
     activeShortcut = null;
     longPressExecuted = false;

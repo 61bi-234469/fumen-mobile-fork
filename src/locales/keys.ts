@@ -33,6 +33,16 @@ export const i18n = {
     UserSettings: {
         Title: () => t('UserSettings.Title'),
         Notice: () => t('UserSettings.Notice'),
+        Tabs: {
+            Field: () => t('UserSettings.Tabs.Field'),
+            View: () => t('UserSettings.Tabs.View'),
+            Shortcuts: () => t('UserSettings.Tabs.Shortcuts'),
+            Misc: () => t('UserSettings.Tabs.Misc'),
+        },
+        Switch: {
+            Off: () => t('UserSettings.Switch.Off'),
+            On: () => t('UserSettings.Switch.On'),
+        },
         Ghost: {
             Title: () => t('UserSettings.Ghost.Title'),
             Off: () => t('UserSettings.Ghost.Off'),
@@ -50,6 +60,12 @@ export const i18n = {
         },
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),
+        },
+        RotationSystem: {
+            Title: () => t('UserSettings.RotationSystem.Title'),
+            Classic: () => t('UserSettings.RotationSystem.Classic'),
+            Srs: () => t('UserSettings.RotationSystem.Srs'),
+            SrsPlus: () => t('UserSettings.RotationSystem.SrsPlus'),
         },
         PaletteShortcuts: {
             Title: () => t('UserSettings.PaletteShortcuts.Title'),
@@ -83,6 +99,7 @@ export const i18n = {
             Drop: () => t('UserSettings.PieceShortcuts.Drop'),
             RotateLeft: () => t('UserSettings.PieceShortcuts.RotateLeft'),
             RotateRight: () => t('UserSettings.PieceShortcuts.RotateRight'),
+            Rotate180: () => t('UserSettings.PieceShortcuts.Rotate180'),
             Reset: () => t('UserSettings.PieceShortcuts.Reset'),
             DasMs: () => t('UserSettings.PieceShortcuts.DasMs'),
             DasDescription: () => t('UserSettings.PieceShortcuts.DasDescription'),
@@ -91,10 +108,17 @@ export const i18n = {
             Title: () => t('GifFrameDelayMs.Title'),
             Description: () => t('GifFrameDelayMs.Description'),
         },
+        EditorSidePanel: () => t('UserSettings.EditorSidePanel'),
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),
         },
+    },
+    EditorPanel: {
+        ListTab: () => t('EditorPanel.ListTab'),
+        TreeTab: () => t('EditorPanel.TreeTab'),
+        EnableTreeMode: () => t('EditorPanel.EnableTreeMode'),
+        TreeModeDisabled: () => t('EditorPanel.TreeModeDisabled'),
     },
     Clipboard: {
         Title: () => t('Clipboard.Title'),
@@ -153,6 +177,21 @@ export const i18n = {
         ZoomIn: () => t('TreeView.ZoomIn'),
         ZoomOut: () => t('TreeView.ZoomOut'),
         ZoomReset: () => t('TreeView.ZoomReset'),
+        DeleteNode: () => t('TreeView.DeleteNode'),
+        DragHandle: () => t('TreeView.DragHandle'),
+        DeleteToast: {
+            DeletedOne: () => t('TreeView.DeleteToast.DeletedOne'),
+            DeletedMany: (count: number) => t('TreeView.DeleteToast.DeletedMany', { count }),
+            Undo: () => t('TreeView.DeleteToast.Undo'),
+        },
+        ToggleTooltip: {
+            Disable: () => t('TreeView.ToggleTooltip.Disable'),
+            Enable: () => t('TreeView.ToggleTooltip.Enable'),
+        },
+        ViewModeTooltip: {
+            List: () => t('TreeView.ViewModeTooltip.List'),
+            Tree: () => t('TreeView.ViewModeTooltip.Tree'),
+        },
         DisableConfirm: {
             Title: () => t('TreeView.DisableConfirm.Title'),
             Message: () => t('TreeView.DisableConfirm.Message'),
@@ -163,6 +202,17 @@ export const i18n = {
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
+    },
+    ListViewReplace: {
+        Title: () => t('ListViewReplace.Title'),
+        Before: () => t('ListViewReplace.Before'),
+        After: () => t('ListViewReplace.After'),
+        FindPlaceholder: () => t('ListViewReplace.FindPlaceholder'),
+        ReplacePlaceholder: () => t('ListViewReplace.ReplacePlaceholder'),
+        Buttons: {
+            Replace: () => t('ListViewReplace.Buttons.Replace'),
+            Cancel: () => t('ListViewReplace.Buttons.Cancel'),
+        },
     },
     ListViewMenu: {
         Title: () => t('ListViewMenu.Title'),
@@ -200,11 +250,8 @@ export const i18n = {
         },
     },
     Navigator: {
-        OpenInPC: () => t('Navigator.OpenInPC'),
-        ExternalFumenURL: (data: string) => t('Navigator.ExternalFumenURL', {
-            data,
-            interpolation: { escapeValue: false },
-        }),
+        ShowSidePanel: () => t('Navigator.ShowSidePanel'),
+        HideSidePanel: () => t('Navigator.HideSidePanel'),
     },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),

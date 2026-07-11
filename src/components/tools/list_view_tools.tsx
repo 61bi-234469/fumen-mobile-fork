@@ -18,6 +18,7 @@ interface Props {
         convertAllToMirror: () => void;
         openListViewReplaceModal: () => void;
         openListViewMenuModal: () => void;
+        openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
     };
@@ -119,10 +120,23 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}
-                        marginRight={3}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewMenuModal(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="settings"
+                        datatest="btn-list-view-user-settings"
+                        width={36}
+                        height={height - 10}
+                        key="btn-list-view-user-settings"
+                        fontSize={24}
+                        marginRight={3}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.openUserSettingsModal(),
                         }}
                     />
                 </div>

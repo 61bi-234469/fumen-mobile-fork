@@ -229,6 +229,7 @@ export interface ListViewActions {
     setListViewShortenUrls: (data: { enabled: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
+    activatePageInListView: (data: { pageIndex: number }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
     exportListViewAsGif: () => action;
@@ -398,12 +399,11 @@ export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages
     }
 
     const originalFirstColorize = extractedPages[0]?.flags.colorize ?? true;
-    const originalFirstSrs = extractedPages[0]?.flags.srs ?? true;
     const reindexedPages: Page[] = extractedPages.map((page, i) => ({
         ...page,
         index: i,
         flags: i === 0
-            ? { ...page.flags, colorize: originalFirstColorize, srs: originalFirstSrs }
+            ? { ...page.flags, colorize: originalFirstColorize }
             : page.flags,
     }));
 
@@ -450,7 +450,6 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
 
     // 元の最初のページのcolorizeフラグを保存
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
 
     const [movedPage] = pages.splice(fromIndex, 1);
 
@@ -458,13 +457,12 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     // so no additional adjustment is needed here
     pages.splice(toIndex, 0, movedPage);
 
-    return rebuildPageRefs(pages, originalFirstPageColorize, originalFirstPageSrs);
+    return rebuildPageRefs(pages, originalFirstPageColorize);
 }
 
 function rebuildPageRefs(
     pages: Page[],
     originalFirstPageColorize: boolean,
-    originalFirstPageSrs: boolean,
 ): Page[] {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
@@ -480,7 +478,6 @@ function rebuildPageRefs(
             newPage.flags = {
                 ...page.flags,
                 colorize: originalFirstPageColorize,
-                srs: originalFirstPageSrs,
             };
         }
 
@@ -644,7 +641,9 @@ export const listViewActions: Readonly<ListViewActions> = {
         ]);
     },
     updatePageComment: ({ pageIndex, comment }) => (state): NextState => {
-        const pages = [...state.fumen.pages];
+        // Keep the pages array reference: comments are not part of thumbnails,
+        // and a new reference would drop the whole WeakMap-keyed cache per keystroke.
+        const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
         pagesObj.setComment(pageIndex, comment);
 
@@ -652,6 +651,46 @@ export const listViewActions: Readonly<ListViewActions> = {
             fumen: {
                 ...state.fumen,
                 pages: pagesObj.pages,
+            },
+        };
+    },
+    activatePageInListView: ({ pageIndex }) => (state): NextState => {
+        if (pageIndex < 0 || pageIndex >= state.fumen.pages.length) {
+            return undefined;
+        }
+
+        if (!state.tree.enabled) {
+            if (state.fumen.currentIndex === pageIndex) {
+                return listViewActions.navigateToPageFromListView({ pageIndex })(state);
+            }
+            return {
+                fumen: {
+                    ...state.fumen,
+                    currentIndex: pageIndex,
+                },
+            };
+        }
+
+        const tree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+        const node = findNodeByPageIndex(tree, pageIndex);
+        if (!node || isVirtualNode(node)) return undefined;
+
+        if (state.tree.activeNodeId === node.id) {
+            return listViewActions.navigateToPageFromListView({ pageIndex })(state);
+        }
+
+        return {
+            fumen: {
+                ...state.fumen,
+                currentIndex: pageIndex,
+            },
+            tree: {
+                ...state.tree,
+                activeNodeId: node.id,
             },
         };
     },

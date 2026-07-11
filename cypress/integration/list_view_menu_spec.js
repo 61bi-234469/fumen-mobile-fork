@@ -102,7 +102,7 @@ describe('Unified import/export menu', () => {
             ['btn-add', 'クリップボードから挿入', 'add'],
             ['btn-export-image', 'PNG', 'image'],
             ['btn-export-gif', 'GIF', 'gif'],
-            ['btn-export-fumen', 'FUMENをコピー', 'content_copy'],
+            ['btn-export-fumen', 'テト譜データをコピー', 'content_copy'],
             ['btn-copy-url', '共有URLをコピー', 'content_copy'],
             ['btn-export-url', '共有URLを開く', 'link'],
             ['btn-export-fumen-zui', '連続テト譜エディタで開く', 'open_in_new'],

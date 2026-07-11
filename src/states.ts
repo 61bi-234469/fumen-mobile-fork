@@ -14,7 +14,7 @@ export type PaletteShortcuts = {
 };
 
 export const defaultPaletteShortcuts: PaletteShortcuts = {
-    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyA', J: 'KeyF', S: 'KeyS',
+    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyV', J: 'KeyF', S: 'KeyS',
     Empty: 'KeyD', Gray: 'KeyG', Comp: 'KeyC',
 };
 
@@ -31,7 +31,7 @@ export const defaultEditShortcuts: EditShortcuts = {
 };
 
 export type PieceShortcuts = {
-    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Reset']: string;
+    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Rotate180' | 'Reset']: string;
 };
 
 export const defaultPieceShortcuts: PieceShortcuts = {
@@ -40,8 +40,15 @@ export const defaultPieceShortcuts: PieceShortcuts = {
     Drop: 'ArrowDown',
     RotateLeft: 'KeyZ',
     RotateRight: 'KeyX',
+    Rotate180: 'KeyA',
     Reset: 'Escape',
 };
+
+export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
+
+export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
+
+export type EditorSidePanelTab = 'list' | 'tree';
 
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
@@ -127,7 +134,13 @@ export interface State {
             pieceShortcuts: PieceShortcuts;
             pieceShortcutDasMs: number;
             gifFrameDelayMs: number;
+            rotationSystem: RotationSystem;
+            grayAfterLineClear: boolean;
+            trimTopBlank: boolean;
+            buttonDropMovesSubtree: boolean;
+            editorSidePanel: boolean;
         };
+        userSettingsTab: UserSettingsTab;
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -138,6 +151,9 @@ export interface State {
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
+        // ストローク補間用: 現在のストロークで直前に触れたセル（field / sent line 別）
+        lastTouchedIndex?: number;
+        lastTouchedSentIndex?: number;
     };
     mode: {
         screen: Screens;
@@ -156,6 +172,7 @@ export interface State {
         pieceShortcuts: PieceShortcuts;
         pieceShortcutDasMs: number;
         gifFrameDelayMs: number;
+        rotationSystem: RotationSystem;
     };
     history: {
         undoCount: number;
@@ -171,6 +188,11 @@ export interface State {
         shortenUrls: boolean;
         exportScope: 'all' | 'left';
         settingsOpened: boolean;
+    };
+    editorPanel: {
+        enabled: boolean;
+        tab: EditorSidePanelTab;
+        width: number | null;
     };
     tree: TreeState;
     coldClear: {
@@ -231,7 +253,6 @@ export const initState: Readonly<State> = {
                 mirror: false,
                 quiz: false,
                 rise: false,
-                srs: true,
             },
         }],
         value: undefined,
@@ -264,7 +285,13 @@ export const initState: Readonly<State> = {
             pieceShortcuts: { ...defaultPieceShortcuts },
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
+            rotationSystem: 'srs',
+            grayAfterLineClear: false,
+            trimTopBlank: false,
+            buttonDropMovesSubtree: false,
+            editorSidePanel: false,
         },
+        userSettingsTab: 'field',
     },
     handlers: {
         animation: undefined,
@@ -275,6 +302,8 @@ export const initState: Readonly<State> = {
         inferences: [],
         prevPage: undefined,
         updated: false,
+        lastTouchedIndex: undefined,
+        lastTouchedSentIndex: undefined,
     },
     mode: {
         screen: getInitialScreen(),
@@ -291,6 +320,7 @@ export const initState: Readonly<State> = {
         pieceShortcuts: { ...defaultPieceShortcuts },
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
+        rotationSystem: 'srs',
     },
     history: {
         undoCount: 0,
@@ -306,6 +336,11 @@ export const initState: Readonly<State> = {
         shortenUrls: false,
         exportScope: 'all',
         settingsOpened: false,
+    },
+    editorPanel: {
+        enabled: false,
+        tab: 'list',
+        width: null,
     },
     tree: initialTreeState,
     coldClear: {

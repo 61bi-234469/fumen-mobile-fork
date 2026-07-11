@@ -90,11 +90,11 @@ function makeColdClearState(overrides: {
     nextLimit?: number | null;
     queuePreview?: { pageIndex: number; text: string } | null;
     commentText?: string;
-    flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean; srs: boolean };
+    flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean };
     treeEnabled?: boolean;
     activeNodeId?: string | null;
 } = {}) {
-    const flags = overrides.flags || { lock: true, mirror: false, rise: false, quiz: false, colorize: true, srs: true };
+    const flags = overrides.flags || { lock: true, mirror: false, rise: false, quiz: false, colorize: true };
     const initialField = new Field({});
     const treeEnabled = overrides.treeEnabled || false;
     const treeNodes = treeEnabled ? [
@@ -146,6 +146,9 @@ function makeColdClearState(overrides: {
             nodes: treeNodes,
             rootId: treeEnabled ? 'root' : null,
             activeNodeId: treeEnabled ? (overrides.activeNodeId || 'n0') : null,
+        },
+        mode: {
+            rotationSystem: 'srs',
         },
     } as any;
 }
@@ -264,7 +267,7 @@ describe('coldClearActions run isolation', () => {
 
     test('startColdClearSearch returns undefined for invalid flags', () => {
         const state = makeColdClearState({
-            flags: { lock: false, mirror: false, rise: false, quiz: false, colorize: true, srs: true },
+            flags: { lock: false, mirror: false, rise: false, quiz: false, colorize: true },
         });
         const result = coldClearActions.startColdClearSearch()(state);
         expect(result).toBeUndefined();
@@ -1437,7 +1440,7 @@ describe('coldClearActions run isolation', () => {
 
         const invalidFlagsState = makeColdClearState({
             commentText: 'IO',
-            flags: { lock: false, mirror: false, rise: false, quiz: false, colorize: true, srs: true },
+            flags: { lock: false, mirror: false, rise: false, quiz: false, colorize: true },
         });
         invalidFlagsState.fumen.pages[0].piece = {
             type: Piece.I,

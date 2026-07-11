@@ -24,10 +24,20 @@ export const resources = {
     UserSettings: {
         Title: 'ユーザー設定',
         Notice: 'ブラウザのキャッシュを削除すると、これらの設定は初期化されます。',
+        Tabs: {
+            Field: 'フィールド',
+            View: 'リスト/ツリービュー',
+            Shortcuts: 'ショートカット',
+            Misc: 'その他',
+        },
+        Switch: {
+            Off: '無効',
+            On: '有効',
+        },
         Ghost: {
-            Title: 'ゴーストの表示',
-            Off: () => 'しない',
-            On: () => 'する',
+            Title: 'ゴースト表示',
+            Off: () => '無効',
+            On: () => '有効',
         },
         Loop: {
             Title: 'ページ移動のループ [Reader]',
@@ -35,12 +45,18 @@ export const resources = {
             On: () => '有効',
         },
         ShortcutLabel: {
-            Title: 'ショートカットラベルの表示',
-            Off: () => 'しない',
-            On: () => 'する',
+            Title: 'ショートカットラベル表示',
+            Off: () => '無効',
+            On: () => '有効',
         },
         Gradient: {
-            Title: 'ブロックの表面のマーク',
+            Title: 'ブロック表面のマーク',
+        },
+        RotationSystem: {
+            Title: 'キックテーブル',
+            Classic: () => 'クラシック',
+            Srs: () => 'SRS',
+            SrsPlus: () => 'SRS+',
         },
         PaletteShortcuts: {
             Title: 'パレットショートカット',
@@ -71,17 +87,25 @@ export const resources = {
             NotSet: '未設定',
             MoveLeft: '左移動',
             MoveRight: '右移動',
-            Drop: 'DROP',
+            Drop: 'ハードドロップ',
             RotateLeft: '左回転',
             RotateRight: '右回転',
+            Rotate180: '180°回転',
             Reset: 'ピースリセット',
             DasMs: 'DAS(ms)',
             DasDescription: '左右移動の長押しで端まで移動',
         },
+        EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
         },
+    },
+    EditorPanel: {
+        ListTab: 'リスト',
+        TreeTab: 'ツリー',
+        EnableTreeMode: 'ツリーモードを有効にする',
+        TreeModeDisabled: 'ツリーモードが無効です。',
     },
     GifFrameDelayMs: {
         Title: 'GIFページ送り間隔',
@@ -112,7 +136,7 @@ export const resources = {
     GifExport: {
         Buttons: {
             Gif: 'GIF画像のダウンロード',
-            GifLeftToActive: 'GIF画像(アクティブノードまで)',
+            GifLeftToActive: 'GIF画像（選択中のページまで）',
         },
     },
     Menu: {
@@ -120,15 +144,30 @@ export const resources = {
             ImportExport: 'Import/Export',
         },
         Messages: {
-            NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
+            NoAvailableCommentButton: '編集モードのときだけ変更できます',
         },
     },
     TreeView: {
-        MoveWithChildren: 'Move with children',
-        GrayAfterLineClear: 'Gray out cleared lines',
+        MoveWithChildren: '子ノードごと移動／削除',
+        GrayAfterLineClear: 'ライン消去後にグレーアウト',
         ZoomIn: '拡大',
         ZoomOut: '縮小',
         ZoomReset: 'ズームをリセット',
+        DeleteNode: 'ページを削除',
+        DragHandle: 'ドラッグして移動',
+        DeleteToast: {
+            DeletedOne: '1ページを削除しました',
+            DeletedMany: '{{count}}ページを削除しました',
+            Undo: '元に戻す',
+        },
+        ToggleTooltip: {
+            Disable: 'ツリーモードを無効にする',
+            Enable: 'ツリーモードを有効にする',
+        },
+        ViewModeTooltip: {
+            List: 'ページをリストビューで表示',
+            Tree: 'ページをツリービューで表示',
+        },
         DisableConfirm: {
             Title: 'ツリーモードを無効にしますか？',
             Message: 'ツリー構造が削除されます。',
@@ -137,15 +176,26 @@ export const resources = {
         },
     },
     ListView: {
-        TrimTopBlank: 'Trim top blank',
+        TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
+    },
+    ListViewReplace: {
+        Title: 'コメント置換',
+        Before: '置換前：',
+        After: '置換後：',
+        FindPlaceholder: '検索するテキスト',
+        ReplacePlaceholder: '置換するテキスト',
+        Buttons: {
+            Replace: '置換',
+            Cancel: 'キャンセル',
+        },
     },
     ListViewMenu: {
         Title: 'Import/Export',
         Sections: {
             Read: '取り込み',
             Image: '画像を保存',
-            Export: '共有（FUMEN / URL）',
+            Export: '共有（テト譜データ / URL）',
             External: '外部サイトで開く',
             Settings: '設定',
         },
@@ -161,12 +211,12 @@ export const resources = {
         },
         Buttons: {
             Insert: 'クリップボードから挿入',
-            InsertHint: 'Fumenを追加',
+            InsertHint: 'テト譜を追加',
             Import: 'クリップボードから読み込む',
-            ImportHint: '現在のFumenを置き換え',
+            ImportHint: '現在のテト譜を置き換え',
             Png: 'PNG',
             Gif: 'GIF',
-            Fumen: 'FUMENをコピー',
+            Fumen: 'テト譜データをコピー',
             Url: '共有URLを開く',
             UrlCopy: '共有URLをコピー',
             FumenZui: '連続テト譜エディタで開く',
@@ -176,8 +226,8 @@ export const resources = {
         },
     },
     Navigator: {
-        OpenInPC: 'PC版で開く',
-        ExternalFumenURL: 'https://fumen.zui.jp/?{{data}}',
+        ShowSidePanel: 'サイドパネルを表示',
+        HideSidePanel: 'サイドパネルを隠す',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',
@@ -220,7 +270,7 @@ export const resources = {
         InitTimeout: 'AI: 初期化タイムアウト',
         PopupBlocked: 'AI: ポップアップがブロックされました。URLをコピーしました。',
         UsageHint: 'コメントにミノを指定してください (例: IOTLJSZ, T:IOSL)。Lock flagをONにしてください。',
-        TreeModeRequired: '上位候補探索を使うにはTreeモードを有効にしてください。',
+        TreeModeRequired: '分岐探索を使うにはツリーモードを有効にしてください。',
         TopBranchesAdded: 'AI: {{count}}件の分岐を追加しました',
         ShortPressTopBranches: 'CC短押し: 上位{{count}}手を探索します',
         LongPressSequenceSearch: 'CC長押し: 連続手順を探索します',

@@ -1,6 +1,6 @@
 import { NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
-import { decode, encode } from '../lib/fumen/fumen';
+import { decode } from '../lib/fumen/fumen';
 import { i18n } from '../locales/keys';
 import { FumenError } from '../lib/errors';
 import {
@@ -29,8 +29,6 @@ import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tre
 import { getURLQuery } from '../params';
 import { Screens } from '../lib/enums';
 
-declare const M: any;
-
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
     commitOpenFumenData: () => action;
@@ -47,7 +45,6 @@ export interface UtilsActions {
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     executeNewFumen: () => action;
     refresh: () => action;
-    openInPC: () => action;
     ontapCanvas: (e: any) => action;
 }
 
@@ -282,35 +279,6 @@ export const utilsActions: Readonly<UtilsActions> = {
     refresh: () => (): NextState => {
         return {};
     },
-    openInPC: () => (state): NextState => {
-        return sequence(state, [
-            actions.removeUnsettledItemsInField(),
-            (state) => {
-                // テト譜の変換
-                const encodePromise = (async () => {
-                    const tree: SerializedTree | null = state.tree.enabled ? {
-                        nodes: state.tree.nodes,
-                        rootId: state.tree.rootId,
-                        version: 1,
-                    } : null;
-                    const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
-                    const encoded = await encode(pagesToEncode);
-                    return `v115@${encoded}`;
-                });
-
-                encodePromise()
-                    .then((data) => {
-                        const url = i18n.Navigator.ExternalFumenURL(data);
-                        window.open(url, '_blank');
-                    })
-                    .catch((error) => {
-                        M.toast({ html: `Failed to open in PC: ${error}`, classes: 'top-toast', displayLength: 1500 });
-                    });
-
-                return undefined;
-            },
-        ]);
-    },
     ontapCanvas: (e: any) => (state): NextState => {
         const stage = e.currentTarget.getStage();
         const { x } = stage.getPointerPosition();
@@ -354,14 +322,9 @@ const appendPages = (
         }
 
         const firstPage = pages[0];
-        if (
-            firstPage === undefined
-            || firstPage.flags.colorize !== currentPage.flags.colorize
-            || firstPage.flags.srs !== currentPage.flags.srs
-        ) {
+        if (firstPage === undefined || firstPage.flags.colorize !== currentPage.flags.colorize) {
             const primitivePage = toPrimitivePage(currentPage);
             currentPage.flags.colorize = firstPage !== undefined ? firstPage.flags.colorize : true;
-            currentPage.flags.srs = firstPage !== undefined ? firstPage.flags.srs : true;
             tasks.push(toSinglePageTask(pageIndex, primitivePage, currentPage));
         }
     }

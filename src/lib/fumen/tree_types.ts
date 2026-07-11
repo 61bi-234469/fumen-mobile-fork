@@ -95,8 +95,8 @@ export interface TreeDragState {
     dropSlotIndex: number | null;
     /** Target button's parent node ID when dragging over an add button */
     targetButtonParentId: TreeNodeId | null;
-    /** Type of button being hovered: 'insert' (green), 'branch' (orange), or 'delete' (red badge) */
-    targetButtonType: 'insert' | 'branch' | 'delete' | null;
+    /** Type of button being hovered: 'insert' (green) or 'branch' (orange) */
+    targetButtonType: 'insert' | 'branch' | null;
 }
 
 /** Tree state for application state management */

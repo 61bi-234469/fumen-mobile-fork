@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Fumen Mobile Forkの使い方を、実際の操作画面で説明します。">
+  <title>Fumen Mobile Fork ユーザーマニュアル</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Fumen Mobile Fork<br>ユーザーマニュアル</h1>
+    <p>テト譜の作成、ページ整理、分岐検討、Cold Clearによる盤面分析をスマートフォンとPCで行えます。</p>
+  </div>
+</header>
+<nav aria-label="目次">
+  <a href="#start">はじめに</a><a href="#screens">画面</a><a href="#edit">編集</a><a href="#pages">ページ</a><a href="#list">リスト</a><a href="#tree">ツリー</a><a href="#side-panel">サイドパネル</a><a href="#ai">AI分析</a><a href="#share">読込・共有</a><a href="#settings">設定</a><a href="#tips">便利な操作</a><a href="#trouble">困ったとき</a>
+</nav>
+<main>
+  <section id="start">
+    <h2>まず使ってみる</h2>
+    <ol class="steps">
+      <li><a href="../index.html">Fumen Mobile Forkを開く</a>。</li>
+      <li>編集画面で色を選び、盤面をタップまたはドラッグしてブロックを置く。</li>
+      <li>下部の <strong>＋</strong> で次のページを作る。</li>
+      <li>左下のリストアイコンで全ページを確認する。</li>
+      <li>右下のメニューから読み込み、共有、設定、Helpを開く。</li>
+    </ol>
+    <div class="tip"><strong>スマートフォン：</strong>ボタンの長押しに追加操作があります。<strong>PC：</strong>Settingsでショートカットキーを設定できます。</div>
+  </section>
+
+  <section id="screens">
+    <h2>4つの画面を使い分ける</h2>
+    <div class="cards">
+      <div class="card"><h3>Reader</h3><p>完成したテト譜を閲覧します。前後ページへの移動、アニメーション再生、コメント確認に向いています。鉛筆アイコンでEditへ移動します。</p></div>
+      <div class="card"><h3>Edit</h3><p>盤面、ミノ、コメント、ページを編集します。通常の作業はこの画面から始めます。</p></div>
+      <div class="card"><h3>List</h3><p>全ページをカード形式で並べて確認します。並べ替え、コメント一括編集、画像やURLの出力に向いています。</p></div>
+      <div class="card"><h3>Tree</h3><p>同じ局面から複数の手順へ分岐させます。候補手、セットアップ、補完の整理に向いています。</p></div>
+    </div>
+    <p class="note">ListとTreeは同じ一覧画面内で切り替えます。ツリーを有効にすると、ページ順はツリー構造に合わせて管理されます。PCではEditの左側へList/Treeをサイドパネル表示することもできます。</p>
+  </section>
+
+  <section id="edit">
+    <h2>盤面を編集する</h2>
+    <figure class="shot"><img src="./images/editor.png" alt="現行の編集画面。右上にImport/Exportとフィールド設定の2つのボタンがあります。"><figcaption>現行のEdit。右上はImport/Export（上下矢印）とフィールド設定（歯車）に分かれています。</figcaption></figure>
+
+    <h3>色とブロック</h3>
+    <div class="cards">
+      <div class="card"><h3>7色</h3><p>選択した色で盤面を塗ります。色を長押しすると、対応するミノをSPAWNします。</p></div>
+      <div class="card"><h3>黒</h3><p>通常ブロックとして塗ります。黒を長押しすると盤面全体を黒にします。PCでは盤面の右クリックでも黒を置けます。</p></div>
+      <div class="card"><h3>灰色</h3><p>グレーブロックを置きます。長押しすると盤面全体をグレー化します。</p></div>
+      <div class="card"><h3>COMP</h3><p>グレー以外のブロックと配置中のピースを削除します。積み地形だけを残したいときに使います。</p></div>
+    </div>
+
+    <h3>上部の編集ツール</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ボタン</th><th>できること</th><th>長押し</th></tr></thead>
+        <tbody>
+          <tr><td>Import/Export<br>（上下矢印）</td><td>取り込み、画像保存、FUMEN・URL共有、外部サイト連携をまとめたモーダルを開く</td><td>—</td></tr>
+          <tr><td>フィールド設定<br>（歯車）</td><td>Settingsの「フィールド」タブを直接開く</td><td>—</td></tr>
+          <tr><td>ADD</td><td>現在ページの直後にページを追加する</td><td>—</td></tr>
+          <tr><td>INSERT</td><td>クリップボードのテト譜または盤面画像を次ページへ挿入する</td><td>全ページを読み込み内容で置き換える</td></tr>
+          <tr><td>COPY</td><td>現在ページをfumen v115形式でコピーする</td><td>全ページをコピーする</td></tr>
+          <tr><td>CUT</td><td>現在ページをコピーして削除する</td><td>全ページを切り取る</td></tr>
+          <tr><td>UTILS</td><td>反転、スライド、盤面変換などを開く</td><td>—</td></tr>
+          <tr><td>FLAGS</td><td>ロック、ミラー、カラーなどページ情報を設定する</td><td>—</td></tr>
+          <tr><td>PIECE</td><td>ミノの種類、向き、位置、NEXTキューを編集する</td><td>盤面上のSPAWNミノを削除する</td></tr>
+          <tr><td>AI</td><td>Cold Clearの探索メニューを開く</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>UTILSとFLAGS</h3>
+    <ul>
+      <li><strong>ALL MIRROR：</strong>全ページを左右反転します。</li>
+      <li><strong>SLIDE：</strong>盤面を1段上へ移動し、空いた最下段をグレーにします。</li>
+      <li><strong>GRAY：</strong>オンの状態でページを追加すると、ライン消去後のブロックをグレー化します。</li>
+      <li><strong>LOCK：</strong>ページ上のミノを固定し、次ページへ進むときにライン消去を反映します。</li>
+    </ul>
+  </section>
+
+  <section id="pages">
+    <h2>ページとコメントを管理する</h2>
+    <div class="cards">
+      <div class="card"><h3>前後へ移動</h3><p>下部の左右ボタンで移動します。長押しすると最初または最後のページへジャンプします。</p></div>
+      <div class="card"><h3>途中へ追加</h3><p>次ページがある状態でも <strong>＋</strong> や <strong>INSERT</strong> を使えます。新しいページは現在ページと次ページの間に入ります。</p></div>
+      <div class="card"><h3>元に戻す</h3><p>Undo / Redoで直前の編集を戻したりやり直したりできます。画面モードをまたぐ編集でも履歴が維持されます。</p></div>
+      <div class="card"><h3>コメント</h3><p>盤面下の欄へ説明やNEXTキューを書けます。Listでは全ページを見ながら編集・一括置換できます。</p></div>
+    </div>
+    <div class="tip warn"><strong>先頭ページの情報：</strong>色や回転法則など、一部の設定はテト譜全体に適用されます。先頭ページを変更する操作では、アプリが必要な情報を引き継ぎます。</div>
+  </section>
+
+  <section id="list">
+    <h2>Listで全ページを整理する</h2>
+    <p class="lead">編集画面左下のリストアイコンから開きます。</p>
+    <figure class="shot"><img src="./images/list-view.png" alt="リストビュー。ページの盤面とコメントがカード形式で並びます。"><figcaption>List。盤面とコメントを一覧にして、全体の流れを確認できます。</figcaption></figure>
+    <ol class="steps">
+      <li>カードを1回選ぶと、そのカードがアクティブになります。別カードでは、同じカードをもう一度選ぶとそのページのEditへ移動します。</li>
+      <li><strong>#ページ番号</strong>からも対象ページへ移動できます。サイドパネルでは画面を切り替えず、右側のEditだけが更新されます。</li>
+      <li>カードをドラッグするとページを並べ替えられます。ツリーモード中は並べ替えできません。</li>
+      <li>コメント欄はその場で編集できます。右上の置換ボタンで全ページの文字列を一括置換できます。</li>
+      <li><strong>上部の空白行を省略</strong>で盤面上部の空白を省略します。PNG/GIF出力にも反映されます。</li>
+      <li>上部メニューからミラー、読み込み、画像出力、共有、表示設定を実行します。</li>
+    </ol>
+  </section>
+
+  <section id="tree">
+    <h2>Treeで手順を分岐管理する</h2>
+    <ol class="steps">
+      <li>List上部のツリートグルをオンにする。</li>
+      <li>ツリーアイコンを選び、Treeへ切り替える。</li>
+      <li>起点にしたいノードを選び、色付きボタンで続きを作る。</li>
+    </ol>
+    <figure class="shot"><img src="./images/tree-view.png" alt="現行のツリービュー。各ノード右上に赤い削除アイコンがあります。"><figcaption>現行のTree。削除はノード右上の赤いアイコンから行い、ドラッグは緑・オレンジの移動先へ重ねる操作に使います。</figcaption></figure>
+
+    <h3>追加・移動・削除</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>操作</th><th>クリック</th><th>ノードをドラッグして重ねる</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot green"></span>緑の＋</td><td>選択ノードの続きとしてページを追加</td><td>そのノードの次へ移動</td></tr>
+          <tr><td><span class="dot orange"></span>オレンジの＋</td><td>選択ノードから新しい分岐を追加</td><td>分岐先へ移動</td></tr>
+          <tr><td><span class="dot blue"></span>青の複製</td><td>ノードや分岐を複製</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>右上の赤い削除</td><td>そのノードを削除。直後の通知からUndo可能</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>子ノードごと移動／削除：</strong>オンにすると、対象ノードより右側の子孫もまとめて移動・削除します。</li>
+      <li><strong>削除：</strong>各ノード右上の赤い削除アイコンを選びます。削除後に表示される通知の<strong>元に戻す</strong>で復元できます。最後の1ページは削除できません。</li>
+      <li><strong>ノード選択：</strong>カードを1回選ぶとアクティブになります。別ノードでは、同じカードをもう一度選ぶとそのページのEditへ移動します。</li>
+      <li><strong>ツリー解除：</strong>ツリー情報が削除されるため、確認ダイアログが表示されます。</li>
+      <li><strong>親ツリー追加：</strong>既存の枝につながらない独立したルートを作ります。別セットや別巡目を同じテト譜で管理するときに使います。</li>
+      <li><strong>ライン消去後にグレーアウト：</strong>新しいページを作るとき、消去後のブロックをグレーにします。</li>
+      <li><strong>アクティブノードまで：</strong>ルートから選択中ノードまでだけをPNGや共有URLとして出力します。</li>
+    </ul>
+    <div class="tip warn"><strong>重要：</strong>ツリー情報は1ページ目のコメントへ <code>#TREE=...</code> として保存されます。ツリー利用中はこの文字列を削除・書き換えないでください。他のテト譜ツールで開くと、この文字列が通常コメントとして見える場合があります。</div>
+  </section>
+
+  <section id="side-panel">
+    <h2>PCのサイドパネルを使う</h2>
+    <p class="lead">PCではEditを開いたまま、左側にListまたはTreeを表示できます。盤面を編集しながらページ全体や分岐を確認したいときに便利です。</p>
+    <figure class="shot"><img src="./images/editor-side-panel.png" alt="Editの左側にListサイドパネルを表示した画面。"><figcaption>Listサイドパネル。カードを選ぶと右側のEditが同じページへ切り替わります。</figcaption></figure>
+    <ol class="steps">
+      <li>画面最上部の <strong>サイドパネルを表示</strong> を選ぶ。Settingsの「リスト/ツリービュー」→「サイドパネルを表示（PC）」からも切り替えられます。</li>
+      <li><strong>リスト</strong>または<strong>ツリー</strong>タブを選ぶ。</li>
+      <li>カードやノードを選び、右側の盤面を編集する。コメントと現在ページも相互に同期します。</li>
+    </ol>
+    <ul>
+      <li><strong>Listタブ：</strong>ページ移動、コメント編集、ドラッグ並べ替えができます。ツリーモード中は並べ替えできません。</li>
+      <li><strong>Treeタブ：</strong>ツリーの有効化、ノード追加・分岐・複製・削除、ページ移動、ズームができます。</li>
+      <li><strong>幅の変更：</strong>パネル右端の区切り線をドラッグします。区切り線をダブルクリックすると自動幅へ戻ります。</li>
+      <li><strong>表示条件：</strong>PC用機能です。画面幅が1024px未満になると自動的に隠れ、幅を戻すと再表示されます。</li>
+    </ul>
+  </section>
+
+  <section id="ai">
+    <h2>Cold Clearで盤面を分析する</h2>
+    <ol class="steps">
+      <li>Edit、List、Treeにある青い <strong>AI</strong> ボタンを選ぶ。</li>
+      <li>Hold、Queue、B2B、Comboを現在の状況に合わせる。</li>
+      <li>探索条件を確認し、目的に合う探索を実行する。</li>
+    </ol>
+    <figure class="shot"><img src="./images/cold-clear.png" alt="Cold Clearメニュー。探索方法、キュー、Hold、思考時間などを設定できます。"><figcaption>Cold Clearメニュー。キューと探索条件を確認してから実行します。</figcaption></figure>
+
+    <h3>3つの探索</h3>
+    <div class="cards">
+      <div class="card"><h3>連続探索</h3><p>設定したキューの最後までAIの手順を追加します。まず結果を1本見たい場合に向いています。</p></div>
+      <div class="card"><h3>分岐探索</h3><p>各局面の上位候補をTreeへ追加します。複数の候補手を比較したい場合に使います。</p></div>
+      <div class="card"><h3>スコア取得</h3><p>盤面にSPAWN済みのミノを置いた状態で、その配置をAIに評価させます。自分の手の比較に使えます。</p></div>
+    </div>
+
+    <h3>キューの入力</h3>
+    <ul>
+      <li>Hold欄とQueue欄を選び、<strong>I O T L J S Z</strong> ボタンで入力できます。</li>
+      <li><strong>クリア</strong>は現在選択中のHoldまたはQueueを消します。</li>
+      <li><strong>+1bag</strong>はQueueへ7種1組を追加します。</li>
+      <li>コメントにキュー形式の文字列がある場合は、その情報を読み取ります。既存の通常コメントがあるときは内容を確認してから編集してください。</li>
+    </ul>
+
+    <h3>探索設定</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>設定</th><th>意味</th><th>目安</th></tr></thead>
+        <tbody>
+          <tr><td>Hold使用</td><td>探索中にHoldを許可する</td><td>実戦に合わせるならオン</td></tr>
+          <tr><td>NEXT制限</td><td>AIへ渡す既知NEXT数を0〜30に制限する</td><td>見えているNEXTだけで比較したいときに使用</td></tr>
+          <tr><td>思考時間</td><td>1手あたり200ms〜5s探索する</td><td>まず1s。速度優先なら短く、精度優先なら長く</td></tr>
+          <tr><td>重み Default</td><td>標準の評価戦略</td><td>通常はこちら</td></tr>
+          <tr><td>重み Fast</td><td>Tスピンより掘りやRENを選びやすい評価戦略</td><td>速度・掘りを重視する比較用</td></tr>
+          <tr><td>Speculate</td><td>既知キューより先のピースを推測して探索する</td><td>NEXTが短い状況で候補を広げる</td></tr>
+          <tr><td>上位候補数</td><td>分岐探索で残す候補数。1〜20</td><td>候補を増やすほど処理と結果量が増える</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tip warn"><strong>探索が長いとき：</strong>思考時間、上位候補数、キュー長を小さくしてください。特に分岐探索は設定の組み合わせで探索数が大きく増えます。</div>
+  </section>
+
+  <section id="share">
+    <h2>読み込み・保存・共有</h2>
+    <div class="cards">
+      <div class="card"><h3>INSERT</h3><p>現在位置の次、またはList/Treeでは末尾へ読み込み内容を追加します。今あるテト譜を残してつなげたい場合に使います。</p></div>
+      <div class="card"><h3>IMPORT</h3><p>現在の全ページを読み込み内容で置き換えます。置き換えてよいことを確認してから実行してください。</p></div>
+      <div class="card"><h3>FUMENをコピー</h3><p>全ページをfumen v115以降の文字列としてコピーします。他のテト譜ツールへの受け渡しに使います。</p></div>
+      <div class="card"><h3>共有URL</h3><p>現在のテト譜を含むURLを開く、またはコピーします。共有やブックマークに使います。</p></div>
+      <div class="card"><h3>PNG / GIF</h3><p>一覧を静止画またはアニメーションとして保存します。「上部の空白行を省略」などの表示設定も反映されます。</p></div>
+      <div class="card"><h3>外部サイト</h3><p>対応するテト譜サイトで現在の内容を開きます。サイトによって対応する情報が異なる場合があります。</p></div>
+    </div>
+
+    <h3>Import/Exportモーダル</h3>
+    <figure class="shot"><img src="./images/import-export.png" alt="現行のImport/Exportモーダル。取り込み、画像保存、共有、外部サイト、出力設定を一画面にまとめています。"><figcaption>Edit右上の上下矢印から開くImport/Export。ListとTreeの上部からも同じモーダルを開けます。</figcaption></figure>
+    <ul>
+      <li><strong>取り込み：</strong>IMPORTは全体を置き換え、INSERTは現在の内容へ追加します。</li>
+      <li><strong>画像を保存：</strong>PNGとGIFを選べます。GIFではフレーム間隔を設定できます。</li>
+      <li><strong>出力範囲：</strong>全ページ、または先頭からアクティブページ／ノードまでを選べます。</li>
+      <li><strong>共有：</strong>FUMEN、URLをコピーまたは開くほか、Fumen for mobileや連続テト譜エディタで開けます。</li>
+      <li><strong>URL短縮：</strong>TinyURLによる短縮を利用するか設定できます。</li>
+    </ul>
+
+    <h3>読み込める主な形式</h3>
+    <ul>
+      <li>Fumen Mobile Fork、fumen-for-mobile、PC版テト譜のURL</li>
+      <li>fumen v115以降の文字列</li>
+      <li>クリップボードにコピーした盤面画像</li>
+    </ul>
+    <div class="tip"><strong>画像読み込みのコツ：</strong>マス目に沿って盤面を範囲選択し、画像としてクリップボードへコピーしてからINSERTします。20×10の盤面全体が最も安定しますが、縦方向を省略した画像も読み込めます。</div>
+    <p class="note">共有URLにはページやツリー情報が含まれます。URLが長い場合は、インポート・エクスポートメニューの短縮URL設定を利用できます。</p>
+  </section>
+
+  <section id="settings">
+    <h2>Settingsを調整する</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>タブ</th><th>主な設定</th></tr></thead>
+        <tbody>
+          <tr><td>フィールド</td><td>ゴースト表示、ブロック表面、回転法則、色や盤面表示</td></tr>
+          <tr><td>リスト・ツリー</td><td>サムネイルサイズ、カード間隔、上部の空白行を省略、子ノードごと移動／削除、ライン消去後にグレーアウト、PCサイドパネルなど</td></tr>
+          <tr><td>ショートカット</td><td>パレット、編集操作、ピース操作のキー割り当て</td></tr>
+          <tr><td>その他</td><td>Readerのページループ、ショートカットラベル表示、言語など</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>ショートカットラベル表示：</strong>各ボタンの右下に割り当てキーを表示します。</li>
+      <li><strong>キーの変更：</strong>対象欄を選んでキーを押します。Backspaceで割り当てを解除できます。</li>
+      <li><strong>キックテーブル：</strong>「クラシック」「SRS」「SRS+」から回転法則を選びます。SRS+では180度回転も利用できます。</li>
+      <li><strong>サイドパネル：</strong>「サイドパネルを表示（PC）」でEdit左側のList/Treeパネルを有効にします。</li>
+      <li><strong>設定の保存：</strong>ブラウザ内に保存されます。ブラウザデータを削除すると初期化されます。</li>
+    </ul>
+  </section>
+
+  <section id="tips">
+    <h2>覚えておくと便利な操作</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>操作</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>前・次ページを長押し</td><td>最初・最後のページへ移動</td></tr>
+          <tr><td>Listアイコンを長押し</td><td>ツリーモードを有効にしてTreeへ移動</td></tr>
+          <tr><td>メニューを長押し</td><td>新しいテト譜を作成</td></tr>
+          <tr><td>PIECEを長押し</td><td>盤面上のSPAWNミノを削除</td></tr>
+          <tr><td>色を長押し</td><td>対応ミノをSPAWN</td></tr>
+          <tr><td>黒・灰・COMPを長押し</td><td>盤面全体へ対応する処理を実行</td></tr>
+          <tr><td>盤面を右クリック</td><td>黒ブロックを置く（PCのみ）</td></tr>
+          <tr><td>PIECEのキュー入替</td><td>NEXTからカレントを取り出す、またはHoldのようにキューを更新</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2>困ったとき</h2>
+    <div class="cards">
+      <div class="card"><h3>ページを並べ替えられない</h3><p>ツリーモード中はListのドラッグ並べ替えが無効です。ツリー構造を維持したままTreeでノードを移動するか、ツリーモードを解除してください。</p></div>
+      <div class="card"><h3>AIを実行できない</h3><p>Queueが空でないか確認してください。スコア取得ではSPAWNミノの配置が必要です。探索中は一部の設定を変更できません。</p></div>
+      <div class="card"><h3>画像を読み込めない</h3><p>画像がクリップボードにコピーされていること、盤面のマス目に沿っていることを確認します。余白や文字を減らして再度範囲選択してください。</p></div>
+      <div class="card"><h3>ツリーが消えた</h3><p>1ページ目コメントの <code>#TREE=...</code> が残っているか確認します。削除後に保存や共有を行った場合、元のツリー情報は復元できないことがあります。</p></div>
+      <div class="card"><h3>設定が戻った</h3><p>設定はブラウザ内に保存されます。キャッシュやサイトデータの削除、別ブラウザ・別端末では引き継がれません。</p></div>
+      <div class="card"><h3>共有相手と見え方が違う</h3><p>共有URLを開き直し、回転法則、「上部の空白行を省略」、ツリーモードなどが意図どおりか確認してください。</p></div>
+    </div>
+  </section>
+</main>
+<footer>
+  <p><a href="../index.html">アプリへ戻る</a> · <a href="../help.html">Helpへ戻る</a> · <a href="https://github.com/61bi-234469/fumen-for-mobile-ts">GitHub</a></p>
+  <p>このマニュアルは、実装と実画面を基に生成AIを利用して作成・メンテナンスしています。</p>
+  <p>画面や機能は更新により変わることがあります。</p>
+</footer>
+</body>
+</html>

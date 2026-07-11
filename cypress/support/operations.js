@@ -92,6 +92,14 @@ export const operations = {
 
                 body.trigger('mouseup', px(x), py(to));
             },
+            // 高速ポインタの再現: 開始セルと終了セルのイベントだけを発火する。
+            // 中間セルはアプリ側のストローク補間で埋まることを検証する用途。
+            dragSparse: ({ from, to }, y) => {
+                let body = cy.get('body');
+                body = body.trigger('mousedown', px(from), py(y));
+                body = body.trigger('mousemove', px(to), py(y));
+                body.trigger('mouseup', px(to), py(y));
+            },
         },
         fill: {
             open: ({ home = true } = {}) => {

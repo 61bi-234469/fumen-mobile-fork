@@ -55,6 +55,29 @@ describe('Drawing', () => {
         expectFumen('v115@qeA8UeA8QeA8ceg0Jeg0Jeg0Jeg0Jeg0RfAgHygQpQ?eQpQeQpEei4AgH');
     });
 
+    it('interpolates sparse drag strokes to match dense ones', () => {
+        // 高速ドラッグでセルイベントが間引かれても、密なドラッグと同じ結果になる
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.dragToRight({ from: 1, to: 8 }, 3);
+
+        operations.menu.copyToClipboard();
+        cy.get(datatest('copied-fumen-data')).invoke('attr', 'data').then((expected) => {
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', reload: true });
+
+            operations.mode.block.open();
+            operations.mode.block.Gray();
+            operations.mode.block.dragSparse({ from: 1, to: 8 }, 3);
+
+            operations.menu.copyToClipboard();
+            cy.get(datatest('copied-fumen-data')).should('have.attr', 'data', expected);
+        });
+    });
+
     it('Draw blocks 2', () => {
         visit({ mode: 'edit' });
 

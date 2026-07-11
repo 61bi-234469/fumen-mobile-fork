@@ -713,6 +713,27 @@ const removeTreeNodeById = (
 // Action Implementations
 // ============================================================================
 
+// Both tree navigation actions update the same state. Their user-visible
+// difference is intentionally owned by the view that decides whether to
+// reopen the editor or only jump to the linked page.
+const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState => {
+    const tree = getOrCreateTree(state);
+    const node = findNode(tree, nodeId);
+
+    if (!node || isVirtualNode(node)) return undefined;
+
+    return {
+        tree: {
+            ...state.tree,
+            activeNodeId: nodeId,
+        },
+        fumen: {
+            ...state.fumen,
+            currentIndex: node.pageIndex,
+        },
+    };
+};
+
 export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
      * Toggle tree mode on/off
@@ -877,42 +898,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     }),
 
     /** Select a tree node and synchronize the current editor page. */
-    activateTreeNode: ({ nodeId }) => (state): NextState => {
-        const tree = getOrCreateTree(state);
-        const node = findNode(tree, nodeId);
-
-        if (!node || isVirtualNode(node)) return undefined;
-
-        return {
-            tree: {
-                ...state.tree,
-                activeNodeId: nodeId,
-            },
-            fumen: {
-                ...state.fumen,
-                currentIndex: node.pageIndex,
-            },
-        };
-    },
+    activateTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
 
     /** Select a tree node and navigate to its page. */
-    selectTreeNode: ({ nodeId }) => (state): NextState => {
-        const tree = getOrCreateTree(state);
-        const node = findNode(tree, nodeId);
-
-        if (!node || isVirtualNode(node)) return undefined;
-
-        return {
-            tree: {
-                ...state.tree,
-                activeNodeId: nodeId,
-            },
-            fumen: {
-                ...state.fumen,
-                currentIndex: node.pageIndex,
-            },
-        };
-    },
+    selectTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
 
     /**
      * Add a branch from the current node

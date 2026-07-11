@@ -17,6 +17,7 @@ import { Field } from '../lib/fumen/field';
 import { State } from '../states';
 import { getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
+import { intermediateCellIndices } from '../lib/grid_line';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -36,6 +37,8 @@ export interface FieldEditorActions {
     ontouchStartSentLine(data: { index: number }): action;
 
     ontouchMoveSentLine(data: { index: number }): action;
+
+    resetFieldTouchTrail(): action;
 
     onrightStartField(data: { index: number }): action;
 
@@ -97,6 +100,68 @@ const runWithOverride = (
     return actionFn(patched);
 };
 
+const FIELD_GRID_WIDTH = 10;
+
+const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
+    switch (state.mode.touch) {
+    case TouchTypes.Drawing:
+        return drawBlockActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Piece:
+        return putPieceActions.ontouchMoveField({ index })(state);
+    case TouchTypes.MovePiece:
+        return movePieceActions.ontouchMoveField({ index })(state);
+    case TouchTypes.FillRow:
+        return fillRowActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Fill:
+        return fillActions.ontouchMoveField({ index })(state);
+    }
+    return undefined;
+};
+
+const dispatchTouchMoveSentLine = (index: number) => (state: State): NextState => {
+    switch (state.mode.touch) {
+    case TouchTypes.Drawing:
+        return drawBlockActions.ontouchMoveSentLine({ index })(state);
+    case TouchTypes.FillRow:
+        return fillRowActions.ontouchMoveSentLine({ index })(state);
+    case TouchTypes.Fill:
+        return fillActions.ontouchMoveSentLine({ index })(state);
+    }
+    return undefined;
+};
+
+// Stroke interpolation targets the block pen (Drawing with a selected piece,
+// including the right-click erase override) and row fill. Inference drawing
+// (4-cell set semantics), piece move, and flood fill keep per-cell events only.
+const shouldInterpolateStroke = (state: State): boolean => {
+    if (state.events.piece === undefined) {
+        return false;
+    }
+    switch (state.mode.touch) {
+    case TouchTypes.Drawing:
+        return state.mode.piece !== undefined;
+    case TouchTypes.FillRow:
+        return true;
+    }
+    return false;
+};
+
+const setTouchTrail = (
+    field: number | undefined,
+    sentLine: number | undefined,
+) => (state: State): NextState => {
+    if (state.events.lastTouchedIndex === field && state.events.lastTouchedSentIndex === sentLine) {
+        return undefined;
+    }
+    return {
+        events: {
+            ...state.events,
+            lastTouchedIndex: field,
+            lastTouchedSentIndex: sentLine,
+        },
+    };
+};
+
 export const fieldEditorActions: Readonly<FieldEditorActions> = {
     fixInferencePiece: () => (state): NextState => {
         switch (state.mode.touch) {
@@ -132,71 +197,111 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         ]);
     },
     ontouchStartField: ({ index }) => (state): NextState => {
-        switch (state.mode.touch) {
-        case TouchTypes.Drawing:
-            return drawBlockActions.ontouchStartField({ index })(state);
-        case TouchTypes.Piece:
-            return putPieceActions.ontouchStartField({ index })(state);
-        case TouchTypes.MovePiece:
-            return movePieceActions.ontouchStartField({ index })(state);
-        case TouchTypes.FillRow:
-            return fillRowActions.ontouchStartField({ index })(state);
-        case TouchTypes.Fill:
-            return fillActions.ontouchStartField({ index })(state);
+        const dispatch = (newState: State): NextState => {
+            switch (newState.mode.touch) {
+            case TouchTypes.Drawing:
+                return drawBlockActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Piece:
+                return putPieceActions.ontouchStartField({ index })(newState);
+            case TouchTypes.MovePiece:
+                return movePieceActions.ontouchStartField({ index })(newState);
+            case TouchTypes.FillRow:
+                return fillRowActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Fill:
+                return fillActions.ontouchStartField({ index })(newState);
+            }
+            return undefined;
+        };
+
+        // A stale trail (e.g. a lost touchend) must never bridge into a new stroke.
+        if (state.events.lastTouchedIndex === undefined && state.events.lastTouchedSentIndex === undefined) {
+            return dispatch(state);
         }
-        return undefined;
+        return sequence(state, [
+            setTouchTrail(undefined, undefined),
+            dispatch,
+        ]);
     },
     ontouchMoveField: ({ index }) => (state): NextState => {
-        switch (state.mode.touch) {
-        case TouchTypes.Drawing:
-            return drawBlockActions.ontouchMoveField({ index })(state);
-        case TouchTypes.Piece:
-            return putPieceActions.ontouchMoveField({ index })(state);
-        case TouchTypes.MovePiece:
-            return movePieceActions.ontouchMoveField({ index })(state);
-        case TouchTypes.FillRow:
-            return fillRowActions.ontouchMoveField({ index })(state);
-        case TouchTypes.Fill:
-            return fillActions.ontouchMoveField({ index })(state);
+        if (!shouldInterpolateStroke(state) || state.events.lastTouchedIndex === index) {
+            return dispatchTouchMoveField(index)(state);
         }
-        return undefined;
+
+        // Fast pointers skip cells between events; replay the same edit on the
+        // Bresenham line from the previous cell so strokes have no gaps.
+        const last = state.events.lastTouchedIndex;
+        const intermediates = last !== undefined
+            ? intermediateCellIndices(last, index, FIELD_GRID_WIDTH)
+            : [];
+        return sequence(state, [
+            ...intermediates.map(dispatchTouchMoveField),
+            dispatchTouchMoveField(index),
+            setTouchTrail(index, undefined),
+        ]);
     },
     ontouchEnd: () => (state): NextState => {
-        switch (state.mode.touch) {
-        case TouchTypes.Drawing:
-            return drawBlockActions.ontouchEnd()(state);
-        case TouchTypes.Piece:
-            return putPieceActions.ontouchEnd()(state);
-        case TouchTypes.MovePiece:
-            return movePieceActions.ontouchEnd()(state);
-        case TouchTypes.FillRow:
-            return fillRowActions.ontouchEnd()(state);
-        case TouchTypes.Fill:
-            return fillActions.ontouchEnd()(state);
+        const dispatch = (newState: State): NextState => {
+            switch (newState.mode.touch) {
+            case TouchTypes.Drawing:
+                return drawBlockActions.ontouchEnd()(newState);
+            case TouchTypes.Piece:
+                return putPieceActions.ontouchEnd()(newState);
+            case TouchTypes.MovePiece:
+                return movePieceActions.ontouchEnd()(newState);
+            case TouchTypes.FillRow:
+                return fillRowActions.ontouchEnd()(newState);
+            case TouchTypes.Fill:
+                return fillActions.ontouchEnd()(newState);
+            }
+            return undefined;
+        };
+
+        if (state.events.lastTouchedIndex === undefined && state.events.lastTouchedSentIndex === undefined) {
+            return dispatch(state);
         }
-        return undefined;
+        return sequence(state, [
+            dispatch,
+            setTouchTrail(undefined, undefined),
+        ]);
     },
     ontouchStartSentLine: ({ index }) => (state): NextState => {
-        switch (state.mode.touch) {
-        case TouchTypes.Drawing:
-            return drawBlockActions.ontouchStartSentLine({ index })(state);
-        case TouchTypes.FillRow:
-            return fillRowActions.ontouchStartSentLine({ index })(state);
-        case TouchTypes.Fill:
-            return fillActions.ontouchStartSentLine({ index })(state);
+        const dispatch = (newState: State): NextState => {
+            switch (newState.mode.touch) {
+            case TouchTypes.Drawing:
+                return drawBlockActions.ontouchStartSentLine({ index })(newState);
+            case TouchTypes.FillRow:
+                return fillRowActions.ontouchStartSentLine({ index })(newState);
+            case TouchTypes.Fill:
+                return fillActions.ontouchStartSentLine({ index })(newState);
+            }
+            return undefined;
+        };
+
+        if (state.events.lastTouchedIndex === undefined && state.events.lastTouchedSentIndex === undefined) {
+            return dispatch(state);
         }
-        return undefined;
+        return sequence(state, [
+            setTouchTrail(undefined, undefined),
+            dispatch,
+        ]);
     },
     ontouchMoveSentLine: ({ index }) => (state): NextState => {
-        switch (state.mode.touch) {
-        case TouchTypes.Drawing:
-            return drawBlockActions.ontouchMoveSentLine({ index })(state);
-        case TouchTypes.FillRow:
-            return fillRowActions.ontouchMoveSentLine({ index })(state);
-        case TouchTypes.Fill:
-            return fillActions.ontouchMoveSentLine({ index })(state);
+        if (!shouldInterpolateStroke(state) || state.events.lastTouchedSentIndex === index) {
+            return dispatchTouchMoveSentLine(index)(state);
         }
-        return undefined;
+
+        const last = state.events.lastTouchedSentIndex;
+        const intermediates = last !== undefined
+            ? intermediateCellIndices(last, index, FIELD_GRID_WIDTH)
+            : [];
+        return sequence(state, [
+            ...intermediates.map(dispatchTouchMoveSentLine),
+            dispatchTouchMoveSentLine(index),
+            setTouchTrail(undefined, index),
+        ]);
+    },
+    resetFieldTouchTrail: () => (state): NextState => {
+        return setTouchTrail(undefined, undefined)(state);
     },
     onrightStartField: ({ index }) => (state): NextState => {
         // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,

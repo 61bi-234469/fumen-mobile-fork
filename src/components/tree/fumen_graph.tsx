@@ -226,6 +226,7 @@ const renderNodeCard = (
     isDragSource: boolean,
     isDragging: boolean,
     trimTopBlank: boolean,
+    thumbnailRenderScale: number,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
     const isActive = node.id === activeNodeId;
@@ -236,7 +237,13 @@ const renderNodeCard = (
     let thumbnailSrc = '';
     try {
         if (page) {
-            thumbnailSrc = generateThumbnail(pages, node.pageIndex, guideLineColor, trimTopBlank);
+            thumbnailSrc = generateThumbnail(
+                pages,
+                node.pageIndex,
+                guideLineColor,
+                trimTopBlank,
+                thumbnailRenderScale,
+            );
         }
     } catch (e) {
         console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
@@ -689,6 +696,10 @@ export const FumenGraph: Component<Props> = ({
 
     // Calculate layout
     const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
+    const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+    // The thumbnail is rendered at TREE_THUMBNAIL_WIDTH * scale CSS pixels.
+    // Match the list view's DPR-aware rendering so zoomed tree cards stay crisp.
+    const thumbnailRenderScale = scale * devicePixelRatio;
     const isDragging = dragSourceNodeId !== null;
     const rootGhostRect = getRootGhostRect(treeViewLayout.contentHeight);
     const ghostNodeWidth = rootGhostRect.width;
@@ -808,6 +819,7 @@ export const FumenGraph: Component<Props> = ({
                 isDragSource,
                 isDragging,
                 trimTopBlank,
+                thumbnailRenderScale,
             ),
             controls: renderNodeControls(
                 node,
@@ -897,7 +909,13 @@ export const FumenGraph: Component<Props> = ({
         if (!isDragging || !sourceNode || isVirtualNode(sourceNode)) return null;
         let src = '';
         try {
-            src = generateThumbnail(pages, sourceNode.pageIndex, guideLineColor, trimTopBlank);
+            src = generateThumbnail(
+                pages,
+                sourceNode.pageIndex,
+                guideLineColor,
+                trimTopBlank,
+                thumbnailRenderScale,
+            );
         } catch (e) {
             return null;
         }

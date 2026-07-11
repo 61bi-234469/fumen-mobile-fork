@@ -151,6 +151,9 @@ export interface State {
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
+        // ストローク補間用: 現在のストロークで直前に触れたセル（field / sent line 別）
+        lastTouchedIndex?: number;
+        lastTouchedSentIndex?: number;
     };
     mode: {
         screen: Screens;
@@ -299,6 +302,8 @@ export const initState: Readonly<State> = {
         inferences: [],
         prevPage: undefined,
         updated: false,
+        lastTouchedIndex: undefined,
+        lastTouchedSentIndex: undefined,
     },
     mode: {
         screen: getInitialScreen(),

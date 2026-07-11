@@ -641,7 +641,9 @@ export const listViewActions: Readonly<ListViewActions> = {
         ]);
     },
     updatePageComment: ({ pageIndex, comment }) => (state): NextState => {
-        const pages = [...state.fumen.pages];
+        // Keep the pages array reference: comments are not part of thumbnails,
+        // and a new reference would drop the whole WeakMap-keyed cache per keystroke.
+        const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
         pagesObj.setComment(pageIndex, comment);
 

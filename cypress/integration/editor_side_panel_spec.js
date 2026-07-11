@@ -19,6 +19,26 @@ describe('Editor side panel', () => {
         });
     });
 
+    it('restores list thumbnails on undo', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhF0MJ9NJXDJ2OJzEJi/I' });
+        operations.editorPanel.enable();
+
+        cy.get(datatest('list-view-item-0')).find('img').invoke('attr', 'src').then((before) => {
+            operations.mode.piece.open();
+            operations.mode.piece.resetPiece();
+            cy.get(datatest('list-view-item-0')).find('img').should(($thumbnail) => {
+                expect($thumbnail.attr('src')).not.to.equal(before);
+            });
+
+            operations.mode.tools.undo();
+            cy.get(datatest('list-view-item-0')).find('img').should(($thumbnail) => {
+                expect($thumbnail.attr('src')).to.equal(before);
+            });
+        });
+    });
+
     it('resizes from the divider, persists the width, and resets to automatic width', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();

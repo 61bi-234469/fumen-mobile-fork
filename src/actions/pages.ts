@@ -32,7 +32,6 @@ import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
 import { parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
-import { clearThumbnailCache } from '../lib/thumbnail';
 
 declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
@@ -119,13 +118,6 @@ export const pageActions: Readonly<PageActions> = {
         return pageActions.openPage({ index: state.fumen.currentIndex })(state);
     },
     openPage: ({ index }) => (state): NextState => {
-        // Field edits mutate the current page before reopening it. The thumbnail
-        // cache is keyed by the pages array reference, so invalidate it here to
-        // make the list/tree preview reflect those in-place page updates.
-        if (index === state.fumen.currentIndex) {
-            clearThumbnailCache(state.fumen.pages);
-        }
-
         const pages = new Pages(state.fumen.pages);
 
         const comment = pages.getComment(index);

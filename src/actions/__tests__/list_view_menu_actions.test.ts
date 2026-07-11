@@ -157,6 +157,16 @@ describe('activatePageInListView', () => {
     });
 });
 
+describe('updatePageComment', () => {
+    test('keeps the pages array reference so the thumbnail cache survives', () => {
+        const state = createState();
+        const next = listViewActions.updatePageComment({ pageIndex: 1, comment: 'edited' })(state) as any;
+
+        expect(next.fumen.pages).toBe(state.fumen.pages);
+        expect(next.fumen.pages[1].comment.text).toBe('edited');
+    });
+});
+
 describe('reorderPage', () => {
     test('does not reorder pages while tree mode is enabled', () => {
         const state = createState({ treeEnabled: true });

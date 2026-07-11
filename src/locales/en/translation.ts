@@ -99,7 +99,7 @@
             DasMs: 'DAS (ms)',
             DasDescription: 'Long-press left/right moves to edge',
         },
-        EditorSidePanel: 'Show list/tree panel (PC)',
+        EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',
@@ -251,8 +251,8 @@
         },
     },
     Navigator: {
-        OpenInPC: 'Open in Hard Drop',
-        ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',
+        ShowSidePanel: 'Show side panel',
+        HideSidePanel: 'Hide side panel',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',

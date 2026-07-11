@@ -100,6 +100,34 @@ describe('Editor side panel', () => {
         cy.get(datatest('editor-side-panel')).should('not.exist');
     });
 
+    it('hides the top control on mobile', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+
+        visit({ mode: 'edit', mobile: true, lng: 'en' });
+        cy.get(datatest('navigator-side-panel-toggle')).should('not.exist');
+    });
+
+    it('toggles the side panel from the top control in the editor', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+
+        visit({ mode: 'edit', mobile: false, lng: 'en' });
+        cy.get(datatest('navigator-side-panel-toggle')).should('have.text', 'Show side panel').click();
+        cy.get(datatest('editor-side-panel')).should('be.visible');
+        cy.get(datatest('navigator-side-panel-toggle')).should('have.text', 'Hide side panel').click();
+        cy.get(datatest('editor-side-panel')).should('not.exist');
+    });
+
+    it('enters the editor with the side panel from the reader', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+
+        visit({ mobile: false, lng: 'en' });
+        cy.get(datatest('navigator-side-panel-toggle')).should('have.text', 'Show side panel').click();
+        cy.get(datatest('editor-side-panel')).should('be.visible');
+    });
+
     it('list tab: jumps to the clicked page, syncs comment edits, and reorders by drag & drop', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();

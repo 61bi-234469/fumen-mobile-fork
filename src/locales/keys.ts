@@ -250,11 +250,8 @@ export const i18n = {
         },
     },
     Navigator: {
-        OpenInPC: () => t('Navigator.OpenInPC'),
-        ExternalFumenURL: (data: string) => t('Navigator.ExternalFumenURL', {
-            data,
-            interpolation: { escapeValue: false },
-        }),
+        ShowSidePanel: () => t('Navigator.ShowSidePanel'),
+        HideSidePanel: () => t('Navigator.HideSidePanel'),
     },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),

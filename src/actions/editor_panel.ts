@@ -1,10 +1,12 @@
-import { action } from '../actions';
-import { NextState } from './commons';
+import { action, actions } from '../actions';
+import { NextState, sequence } from './commons';
 import { EditorSidePanelTab } from '../states';
 import { persistViewSettings } from './view_settings';
+import { Screens } from '../lib/enums';
 
 export interface EditorPanelActions {
     setEditorSidePanelEnabled: (data: { enabled: boolean }) => action;
+    toggleEditorSidePanel: () => action;
     setEditorSidePanelTab: (data: { tab: EditorSidePanelTab }) => action;
     setEditorSidePanelWidth: (data: { width: number | null; persist?: boolean }) => action;
 }
@@ -22,6 +24,15 @@ export const editorPanelActions: Readonly<EditorPanelActions> = {
                 enabled,
             },
         };
+    },
+    toggleEditorSidePanel: () => (state): NextState => {
+        const fromReader = state.mode.screen === Screens.Reader;
+        const enabled = fromReader ? true : !state.editorPanel.enabled;
+
+        return sequence(state, [
+            actions.setEditorSidePanelEnabled({ enabled }),
+            fromReader ? actions.changeToDrawerScreen({}) : undefined,
+        ]);
     },
     setEditorSidePanelTab: ({ tab }) => (state): NextState => {
         if (state.editorPanel.tab === tab) {

@@ -95,7 +95,7 @@ export const resources = {
             DasMs: 'DAS(ms)',
             DasDescription: '左右移動の長押しで端まで移動',
         },
-        EditorSidePanel: 'リスト/ツリーパネルを表示（PC）',
+        EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
@@ -226,8 +226,8 @@ export const resources = {
         },
     },
     Navigator: {
-        OpenInPC: 'PC版で開く',
-        ExternalFumenURL: 'https://fumen.zui.jp/?{{data}}',
+        ShowSidePanel: 'サイドパネルを表示',
+        HideSidePanel: 'サイドパネルを隠す',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',

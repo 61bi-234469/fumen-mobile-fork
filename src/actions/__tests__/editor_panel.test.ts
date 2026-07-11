@@ -4,8 +4,10 @@
 
 export {};
 
+const mockActions: { [name: string]: jest.Mock } = {};
+
 jest.mock('../../actions', () => ({
-    actions: {},
+    actions: mockActions,
     main: {},
 }));
 
@@ -22,6 +24,9 @@ jest.mock('../../states', () => ({}));
 const { editorPanelActions } = require('../editor_panel');
 
 const createState = (override: any = {}) => ({
+    mode: {
+        screen: 'Editor',
+    },
     listView: {
         trimTopBlank: false,
         shortenUrls: false,
@@ -103,6 +108,44 @@ describe('editorPanelActions', () => {
 
             expect(next).toBeUndefined();
             expect(saveViewSettingsMock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('toggleEditorSidePanel', () => {
+        beforeEach(() => {
+            mockActions.setEditorSidePanelEnabled = jest.fn(({ enabled }) => (state: any) => ({
+                editorPanel: {
+                    ...state.editorPanel,
+                    enabled,
+                },
+            }));
+            mockActions.changeToDrawerScreen = jest.fn(() => () => ({
+                mode: {
+                    screen: 'Editor',
+                },
+            }));
+        });
+
+        test('enables the panel and enters the editor from the reader', () => {
+            const state = createState({
+                mode: { screen: 'Reader' },
+                editorPanel: { enabled: false, tab: 'list', width: null },
+            });
+            const next = editorPanelActions.toggleEditorSidePanel()(state);
+
+            expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
+            expect(mockActions.changeToDrawerScreen).toHaveBeenCalledWith({});
+            expect(next.editorPanel.enabled).toBe(true);
+            expect(next.mode.screen).toBe('Editor');
+        });
+
+        test('toggles the panel in the editor without changing screens', () => {
+            const state = createState();
+            const next = editorPanelActions.toggleEditorSidePanel()(state);
+
+            expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
+            expect(mockActions.changeToDrawerScreen).not.toHaveBeenCalled();
+            expect(next.editorPanel.enabled).toBe(true);
         });
     });
 

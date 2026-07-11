@@ -506,8 +506,12 @@ export const view: View<State, Actions> = (state, actions) => {
 
         navigatorElement({
             palette,
-            actions,
             height: navigatorHeight,
+            enabled: state.editorPanel.enabled,
+            screen: Screens.Editor,
+            actions: {
+                toggleEditorSidePanel: actions.toggleEditorSidePanel,
+            },
         }),
 
         div({

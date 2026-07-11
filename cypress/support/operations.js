@@ -551,7 +551,7 @@ export const operations = {
         },
     },
     editorPanel: {
-        // ユーザー設定 View タブでリスト/ツリーパネル(PC)の表示を切り替える
+        // ユーザー設定 View タブでサイドパネル(PC)の表示を切り替える
         enable: () => {
             operations.menu.openUserSettings();
             operations.menu.selectUserSettingsTab('view');

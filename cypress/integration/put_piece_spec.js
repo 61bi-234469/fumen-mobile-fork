@@ -452,8 +452,7 @@ describe('Put pieces', () => {
     it('Spawn classic piece', () => {
         visit({ fumen: 'v115@vhAAAA', mode: 'edit' });
 
-        // Rotation system is a global user setting (not tied to the imported fumen's
-        // colorize flag), so classic spawn behavior must be selected explicitly.
+        // Rotation system is a global user setting, so classic behavior must be selected explicitly.
         operations.menu.setRotationSystem('classic');
 
         operations.mode.piece.open();

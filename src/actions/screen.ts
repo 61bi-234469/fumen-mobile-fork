@@ -7,6 +7,7 @@ import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSys
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
+import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
 
 export interface ScreenActions {
     changeToReaderScreen: () => action;
@@ -278,19 +279,31 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeRotationSystem: ({ rotationSystem }) => (state): NextState => {
-        if (state.mode.rotationSystem === rotationSystem) {
+        const guideLineColor = guideLineColorFromRotationSystem(rotationSystem);
+        const synchronized = synchronizeFirstPageColorize(state.fumen.pages, guideLineColor);
+        const { pages, changed: colorizeChanged } = synchronized;
+
+        if (state.mode.rotationSystem === rotationSystem
+            && state.fumen.guideLineColor === guideLineColor
+            && !colorizeChanged) {
             return undefined;
         }
-        return sequence(state, [
-            (state) => {
-                return {
-                    mode: {
-                        ...state.mode,
-                        rotationSystem,
-                    },
-                };
+
+        if (colorizeChanged) {
+            clearThumbnailCache(state.fumen.pages);
+        }
+
+        return {
+            mode: {
+                ...state.mode,
+                rotationSystem,
             },
-        ]);
+            fumen: {
+                ...state.fumen,
+                pages,
+                guideLineColor,
+            },
+        };
     },
     changePaletteShortcuts: ({ paletteShortcuts }) => (state): NextState => {
         return {

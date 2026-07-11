@@ -254,6 +254,8 @@ export const utilsActions: Readonly<UtilsActions> = {
             () => ({ tree: treeState }),
             actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
             screenUpdate,
+            // Imported Fumen data may carry a palette that differs from the selected rotation system.
+            actions.changeRotationSystem({ rotationSystem: state.mode.rotationSystem }),
         ]);
     },
     commitAppendFumenData: ({ position }) => (state): NextState => {

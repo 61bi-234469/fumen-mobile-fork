@@ -1,7 +1,10 @@
 import { block, ClassicColor, Color, rightTap, visit } from '../support/common';
+import { operations } from '../support/operations';
 
 describe('Color', () => {
     it('Guide line color', () => {
+        cy.clearLocalStorage();
+
         visit({
             fumen: 'v115@9gQ4g0wwAtQpglB8AewhQ4g0wwAtQpglB8AewhQ4g0?wwAtQpglB8AewhQ4g0wwAtQpglB8AewhJeJDnvhAJjB',
         });
@@ -35,9 +38,13 @@ describe('Color', () => {
     });
 
     it('Classic color', () => {
+        cy.clearLocalStorage();
+
         visit({
             fumen: 'v115@9gQ4g0wwAtQpglB8AewhQ4g0wwAtQpglB8AewhQ4g0?wwAtQpglB8AewhQ4g0wwAtQpglB8AewhJeJjfvhAJjB',
         });
+
+        operations.menu.setRotationSystem('classic');
 
         // Lockなし
         {
@@ -65,5 +72,23 @@ describe('Color', () => {
             cy.get(block(8, 1)).should('have.attr', 'color', ClassicColor.I.Highlight2);
             cy.get(block(9, 1)).should('have.attr', 'color', ClassicColor.I.Highlight1);
         }
+    });
+
+    it('Rotation system keeps the palette in sync', () => {
+        cy.clearLocalStorage();
+
+        visit({
+            mode: 'edit',
+            fumen: 'v115@9gQ4g0wwAtQpglB8AewhQ4g0wwAtQpglB8AewhQ4g0?wwAtQpglB8AewhQ4g0wwAtQpglB8AewhJeJDnvhAJjB',
+        });
+
+        operations.menu.setRotationSystem('classic');
+        cy.get(block(9, 0)).should('have.attr', 'color', ClassicColor.I.Normal);
+
+        operations.menu.setRotationSystem('srs');
+        cy.get(block(9, 0)).should('have.attr', 'color', Color.I.Normal);
+
+        operations.menu.setRotationSystem('srsPlus');
+        cy.get(block(9, 0)).should('have.attr', 'color', Color.I.Normal);
     });
 });

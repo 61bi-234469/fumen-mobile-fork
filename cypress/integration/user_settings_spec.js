@@ -130,6 +130,12 @@ describe('User settings', () => {
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
 
+        // エディタの共有ボタンからImport/Exportモーダルを直接開く
+        cy.get(datatest('btn-editor-share')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('not.exist');
+
         // リストビューの右上から開く(リスト/ツリービュータブが初期表示)
         cy.get(datatest('btn-list-view')).click();
         cy.get(datatest('btn-list-view-user-settings')).click();

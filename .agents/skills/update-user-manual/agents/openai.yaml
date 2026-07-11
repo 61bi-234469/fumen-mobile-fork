@@ -1,0 +1,4 @@
+interface:
+  display_name: "ユーザーマニュアル更新"
+  short_description: "実画面と実装に合わせてHTMLユーザーマニュアルを更新する"
+  default_prompt: "Use $update-user-manual to update the HTML user manual from the current app behavior."

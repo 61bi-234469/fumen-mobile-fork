@@ -1,5 +1,10 @@
 # fumen-mobile-fork
 
+スマートフォンとPCで使える、テトリスのテト譜エディタです。
+
+- [ユーザーマニュアル](https://61bi-234469.github.io/fumen-for-mobile-ts/manual/)
+- アプリ内では右下のメニューから **Help** を選んで開けます。
+
 ## Third-Party Source Availability
 
 For Cold Clear wasm artifacts included in `src/lib/cold_clear_wasm/`, corresponding

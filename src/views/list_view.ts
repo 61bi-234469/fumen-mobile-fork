@@ -9,9 +9,10 @@ import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeOperationScopeSelector } from '../components/tree/tree_operation_scope_selector';
+import { ViewSettingsPopover } from '../components/view_settings_popover';
 import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
 import { updateTreeAutoScrollPointer } from '../components/tree/tree_auto_scroll';
-import { TreeViewMode } from '../lib/fumen/tree_types';
+import { TreeViewMode, LIST_VIEW_SCALE_RANGE, TREE_VIEW_SCALE_RANGE } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 import { isVirtualNode } from '../lib/fumen/tree_utils';
 import { displayShortcut } from '../lib/shortcuts';
@@ -547,115 +548,10 @@ export const view: View<State, Actions> = (state, actions) => {
         zIndex: 100,
     });
 
-    const treeButtonToggleLabelStyle = style({
-        fontSize: px(12),
-        fontWeight: 600,
-        color: '#334155',
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.01em',
-    });
-
-    const treeButtonToggleSwitchStyle = (isOn: boolean) => style({
-        position: 'relative',
-        width: px(42),
-        height: px(24),
-        backgroundColor: isOn ? '#2563EB' : '#CBD5E1',
-        borderRadius: px(12),
-        transition: 'background-color 0.25s ease',
-        flex: 'none',
-        boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.12)',
-    });
-
-    const treeButtonToggleKnobStyle = (isOn: boolean) => style({
-        position: 'absolute',
-        top: px(2),
-        left: isOn ? px(20) : px(2),
-        width: px(20),
-        height: px(20),
-        backgroundColor: '#fff',
-        borderRadius: '50%',
-        transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 1px 3px rgba(15,23,42,0.35)',
-    });
-
-    const cornerIconButtonStyle = (enabled: boolean, size: number) => style({
-        width: px(size),
-        height: px(size),
-        border: 'none',
-        borderRadius: '50%',
-        backgroundColor: 'transparent',
-        color: enabled ? '#334155' : '#CBD5E1',
-        cursor: enabled ? 'pointer' : 'default',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 0,
-    });
-
-    const zoomResetButtonStyle = style({
-        minWidth: px(52),
-        height: px(36),
-        border: 'none',
-        borderRadius: px(18),
-        backgroundColor: 'transparent',
-        color: '#334155',
-        fontSize: px(13),
-        fontWeight: 600,
-        cursor: 'pointer',
-        padding: '0 6px',
-        fontVariantNumeric: 'tabular-nums',
-    });
-
-    const renderTreeZoomControls = () => div({
-        key: 'tree-zoom-controls',
-        className: 'corner-glass',
-        style: style({
-            position: 'fixed',
-            bottom: px(TOOLS_HEIGHT + cornerOffset),
-            left: px(cornerOffset),
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: px(2),
-            padding: px(4),
-            borderRadius: px(22),
-            zIndex: 100,
-        }),
-    }, [
-        h('button', {
-            key: 'btn-tree-zoom-out',
-            datatest: 'btn-tree-zoom-out',
-            title: i18n.TreeView.ZoomOut(),
-            className: 'corner-btn',
-            style: cornerIconButtonStyle(true, 36),
-            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale / 1.2 }),
-        }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'remove'),
-        ]),
-        h('button', {
-            key: 'btn-tree-zoom-reset',
-            datatest: 'btn-tree-zoom-reset',
-            title: i18n.TreeView.ZoomReset(),
-            className: 'corner-btn',
-            style: zoomResetButtonStyle,
-            onclick: () => actions.setTreeViewScale({ scale: 1.0 }),
-        }, `${Math.round(state.tree.scale * 100)}%`),
-        h('button', {
-            key: 'btn-tree-zoom-in',
-            datatest: 'btn-tree-zoom-in',
-            title: i18n.TreeView.ZoomIn(),
-            className: 'corner-btn',
-            style: cornerIconButtonStyle(true, 36),
-            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale * 1.2 }),
-        }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'add'),
-        ]),
-    ]);
-
     const renderTreeScopeSelector = () => TreeOperationScopeSelector({
         scope: state.tree.operationScope,
         opened: state.tree.operationScopePopoverOpened,
-        floatingBottom: TOOLS_HEIGHT + cornerOffset + 44 + 8,
+        floatingBottom: TOOLS_HEIGHT + cornerOffset,
         onToggle: () => actions.setTreeState({
             operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
         }),
@@ -665,79 +561,6 @@ export const view: View<State, Actions> = (state, actions) => {
             operationScopePopoverOpened: false,
         }),
     });
-
-    const settingsRowStyle = style({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: px(16),
-        padding: '10px 16px',
-        cursor: 'pointer',
-    });
-
-    const settingsDividerStyle = style({
-        height: px(1),
-        margin: '0 12px',
-        backgroundColor: 'rgba(148,163,184,0.25)',
-        flex: 'none',
-    });
-
-    const renderSettingsRow = (
-        key: string,
-        label: string,
-        isOn: boolean,
-        onClick: () => void,
-    ) => div({
-        key,
-        style: settingsRowStyle,
-        onclick: onClick,
-    }, [
-        h('span', { style: treeButtonToggleLabelStyle }, label),
-        h('div', {
-            style: treeButtonToggleSwitchStyle(isOn),
-        }, [
-            h('div', { style: treeButtonToggleKnobStyle(isOn) }),
-        ]),
-    ]);
-
-    const renderSettingsPopover = () => div({
-        key: 'view-settings-popover',
-        className: 'corner-glass',
-        style: style({
-            position: 'fixed',
-            right: px(cornerOffset),
-            bottom: px(TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 10),
-            minWidth: px(230),
-            borderRadius: px(16),
-            padding: '6px 0',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: 120,
-        }),
-    }, isTreeView ? [
-        renderSettingsRow(
-            'settings-trim-top',
-            i18n.ListView.TrimTopBlank(),
-            trimTopBlank,
-            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-        ),
-        div({ key: 'settings-divider-1', style: settingsDividerStyle }),
-        renderSettingsRow(
-            'settings-gray-clear',
-            i18n.TreeView.GrayAfterLineClear(),
-            grayAfterLineClear,
-            () => actions.setTreeState({
-                grayAfterLineClear: !grayAfterLineClear,
-            }),
-        ),
-    ] : [
-        renderSettingsRow(
-            'settings-trim-top',
-            i18n.ListView.TrimTopBlank(),
-            trimTopBlank,
-            () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
-        ),
-    ]);
 
     return div({
         key: 'list-view',
@@ -780,6 +603,16 @@ export const view: View<State, Actions> = (state, actions) => {
                 width: '100%',
                 flex: 1,
             }),
+            onwheel: (e: WheelEvent) => {
+                if (!e.ctrlKey) return;
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+                if (isTreeView) {
+                    actions.setTreeViewScale({ scale: state.tree.scale * factor });
+                } else {
+                    actions.setListViewScale({ scale: state.listView.scale * factor });
+                }
+            },
             ontouchstart: (e: TouchEvent) => {
                 if (e.touches.length === 2) {
                     cleanupTreeTouchEndListeners();
@@ -1059,8 +892,8 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Zoom controls (tree view only)
-        ...(isTreeView ? [renderTreeScopeSelector(), renderTreeZoomControls()] : []),
+        // Scope selector (tree view only)
+        ...(isTreeView ? [renderTreeScopeSelector()] : []),
 
         // View settings button (bottom right)
         h('button', {
@@ -1103,7 +936,42 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
                 onclick: () => actions.setListViewSettingsOpened({ opened: false }),
             }),
-            renderSettingsPopover(),
+            ViewSettingsPopover({
+                isTreeView,
+                trimTopBlank,
+                grayAfterLineClear,
+                positioning: {
+                    type: 'fixed',
+                    right: cornerOffset,
+                    bottom: TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 10,
+                },
+                zoom: {
+                    percent: Math.round((isTreeView ? state.tree.scale : state.listView.scale) * 100),
+                    min: (isTreeView ? TREE_VIEW_SCALE_RANGE.min : LIST_VIEW_SCALE_RANGE.min) * 100,
+                    max: 300,
+                },
+                actions: {
+                    onTrimTopBlankToggle: () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+                    onGrayAfterLineClearToggle: () => actions.setTreeState({
+                        grayAfterLineClear: !grayAfterLineClear,
+                    }),
+                    onZoomChange: (percent: number) => {
+                        const scale = percent / 100;
+                        if (isTreeView) {
+                            actions.setTreeViewScale({ scale });
+                        } else {
+                            actions.setListViewScale({ scale });
+                        }
+                    },
+                    onZoomReset: () => {
+                        if (isTreeView) {
+                            actions.setTreeViewScale({ scale: 1.0 });
+                        } else {
+                            actions.setListViewScale({ scale: 1.0 });
+                        }
+                    },
+                },
+            }),
         ] : []),
 
         // Add top-level page button (tree view only)

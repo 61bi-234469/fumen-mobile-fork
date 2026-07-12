@@ -184,6 +184,7 @@ export const resources = {
     ListView: {
         TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
+        Zoom: 'ズーム',
     },
     ListViewReplace: {
         Title: 'コメント置換',

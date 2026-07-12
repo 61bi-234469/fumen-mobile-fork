@@ -209,6 +209,7 @@
     ListView: {
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
+        Zoom: 'Zoom',
     },
     ListViewReplace: {
         Title: 'Replace comments',

@@ -12,16 +12,19 @@ import {
     sentBlock,
     visit,
 } from '../support/common';
+import { operations } from '../support/operations';
 
 // テト譜を開く
 describe('Sent line', () => {
     it('Highlight pieces', () => {
         const page = pages(23);
 
+        cy.clearLocalStorage();
         visit({
             fumen: 'v115@vhMSwQaAFLDmClcJSAVDEHBEooRBMoAVBqHDMCzOBA?AWyBUoBTpBXmBJnBVhBpeQaAFLDmClcJSAVDEHBEooRBJoA?VBvHUxCqCBAAzdB0XBPTBOfB6WBlhA8AeH8AoFvhDliBtnB?elBFdFlhC8Q4g0wwAtQpglwhAAAvhDA4BAAeAAAAAA',
             sleepInMill: 1000,
         });
+        operations.menu.setRotationSystem('classic');
 
         {
             // ページ番号の確認
@@ -79,9 +82,11 @@ describe('Sent line', () => {
     it('Sent line', () => {
         const page = pages(23);
 
+        cy.clearLocalStorage();
         visit({
             fumen: 'v115@vhMSwQaAFLDmClcJSAVDEHBEooRBMoAVBqHDMCzOBA?AWyBUoBTpBXmBJnBVhBpeQaAFLDmClcJSAVDEHBEooRBJoA?VBvHUxCqCBAAzdB0XBPTBOfB6WBlhA8AeH8AoFvhDliBtnB?elBFdFlhC8Q4g0wwAtQpglwhAAAvhDA4BAAeAAAAAA',
         });
+        operations.menu.setRotationSystem('classic');
 
         {
             // ページ番号の確認
@@ -208,9 +213,11 @@ describe('Sent line', () => {
     it('Sent line / Reverse', () => {
         const page = pages(23);
 
+        cy.clearLocalStorage();
         visit({
             fumen: 'v115@vhMSwQaAFLDmClcJSAVDEHBEooRBMoAVBqHDMCzOBA?AWyBUoBTpBXmBJnBVhBpeQaAFLDmClcJSAVDEHBEooRBJoA?VBvHUxCqCBAAzdB0XBPTBOfB6WBlhA8AeH8AoFvhDliBtnB?elBFdFlhC8Q4g0wwAtQpglwhAAAvhDA4BAAeAAAAAA',
         });
+        operations.menu.setRotationSystem('classic');
 
         {
             // ページ番号の確認
@@ -338,9 +345,11 @@ describe('Sent line', () => {
     });
 
     it('Sent line / v110', () => {
+        cy.clearLocalStorage();
         visit({
             fumen: 'v110@7eMSWPaAFLDmClcJSAVDEHBEooRBMoAVBqHDMCzOBA?AWoBUeBTfBXcBJdBVXBpEPaAFLDmClcJSAVDEHBEooRBJoA?VBvHUxCqCBAAzTB0NBPJBOVB6MBxeA3gbH3A6SUAFLDmClc?JSAVDEHBEooRBUoAVB7eDlIPUAFLDmClcJSAVDEHBEooRBU?oAVBtdBebBF/ExeC3kzIwssQp0lYi8eAAAteEYsbAuB7eCA?gbAAAAAA',
         });
+        operations.menu.setRotationSystem('classic');
 
         expectFumen('v115@vhMSwQaAFLDmClcJSAVDEHBEooRBMoAVBqHDMCzOBA?AWyBUoBTpBXmBJnBVhBpeQaAFLDmClcJSAVDEHBEooRBJoA?VBvHUxCqCBAAzdB0XBPTBOfB6WBlhA8AeH8AoUUAFLDmClc?JSAVDEHBEooRBUoAVBvhDliQUAFLDmClcJSAVDEHBEooRBU?oAVBtnBelBFdFlhC8Q4g0wwAtQpglwhAAAhhQaMeA4BvhCA?AeAAAAAA')
     });

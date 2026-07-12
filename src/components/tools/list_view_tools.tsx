@@ -36,7 +36,7 @@ export const ListViewTools: Component<Props> = (
         margin: 0,
         padding: 0,
         position: 'fixed',
-        top: 0,
+        bottom: 0,
         left: 0,
         zIndex: 100,
     });
@@ -64,8 +64,8 @@ export const ListViewTools: Component<Props> = (
                     height={height - 10}
                     key="btn-back-to-editor"
                     fontSize={30}
-                    marginLeft={3}
-                    marginRight={4}
+                    stickyLeft={true}
+                    stickyOffset={3}
                     colors={palette}
                     shortcutLabel={homeShortcutLabel}
                     actions={{
@@ -73,18 +73,20 @@ export const ListViewTools: Component<Props> = (
                     }}
                 />
 
-                {/* Tree mode controls */}
-                <TreeViewToggle
-                    treeEnabled={treeEnabled}
-                    currentViewMode={treeViewMode}
-                    height={height - 10}
-                    listShortcutLabel={listShortcutLabel}
-                    treeShortcutLabel={treeShortcutLabel}
-                    actions={{
-                        onTreeToggle: actions.toggleTreeMode,
-                        onViewModeChange: actions.setTreeViewMode,
-                    }}
-                />
+                {/* Tree mode controls (marginLeft reserves space vacated by the sticky-left back button) */}
+                <div style={style({ marginLeft: px(46), display: 'flex', alignItems: 'center' })}>
+                    <TreeViewToggle
+                        treeEnabled={treeEnabled}
+                        currentViewMode={treeViewMode}
+                        height={height - 10}
+                        listShortcutLabel={listShortcutLabel}
+                        treeShortcutLabel={treeShortcutLabel}
+                        actions={{
+                            onTreeToggle: actions.toggleTreeMode,
+                            onViewModeChange: actions.setTreeViewMode,
+                        }}
+                    />
+                </div>
 
                 <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(1) })}>
                     <ToolButton
@@ -120,6 +122,7 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}
+                        marginRight={41}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewMenuModal(),
@@ -133,7 +136,8 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-user-settings"
                         fontSize={24}
-                        marginRight={3}
+                        sticky={true}
+                        stickyOffset={3}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openUserSettingsModal(),

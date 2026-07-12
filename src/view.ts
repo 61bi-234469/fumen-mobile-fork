@@ -103,7 +103,6 @@ export const view: View<State, Actions> = (state, actions) => {
             rotationSystem: state.temporary.userSettings.rotationSystem,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
-            buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,
             currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,

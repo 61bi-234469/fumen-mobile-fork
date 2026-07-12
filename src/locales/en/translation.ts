@@ -173,16 +173,20 @@
         },
     },
     TreeView: {
-        MoveWithChildren: 'Move/delete with children',
+        OperationScope: {
+            Label: 'Target',
+            Node: 'Node only',
+            Subtree: 'Node & descendants',
+            Descendants: 'Descendants only',
+        },
         GrayAfterLineClear: 'Gray out cleared lines',
-        ZoomIn: 'Zoom in',
-        ZoomOut: 'Zoom out',
         ZoomReset: 'Reset zoom',
         DeleteNode: 'Delete page',
         DragHandle: 'Drag to move',
         DeleteToast: {
             DeletedOne: '1 page deleted',
-            DeletedMany: '{{count}} pages deleted',
+            DeletedMany: '{{count}} pages ({{scope}}) deleted',
+            DragGhostPages: '{{count}} pages',
             Undo: 'Undo',
         },
         ToggleTooltip: {
@@ -203,6 +207,7 @@
     ListView: {
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
+        Zoom: 'Zoom',
     },
     ListViewReplace: {
         Title: 'Replace comments',

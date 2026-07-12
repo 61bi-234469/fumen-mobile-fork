@@ -550,6 +550,12 @@ export const operations = {
             cy.get(datatest('btn-save')).click();
         },
     },
+    tree: {
+        setScope: (scope) => {
+            cy.get(datatest('btn-tree-scope-chip')).click();
+            cy.get(datatest(`tree-scope-option-${scope}`)).click();
+        },
+    },
     editorPanel: {
         // ユーザー設定 View タブでサイドパネル(PC)の表示を切り替える
         enable: () => {

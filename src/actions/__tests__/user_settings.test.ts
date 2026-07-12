@@ -35,7 +35,6 @@ const baseUserSettings = {
     rotationSystem: 'srs',
     grayAfterLineClear: false,
     trimTopBlank: false,
-    buttonDropMovesSubtree: false,
     editorSidePanel: false,
 };
 
@@ -54,7 +53,7 @@ const createState = (override: any = {}) => ({
     },
     tree: {
         grayAfterLineClear: true,
-        buttonDropMovesSubtree: true,
+        operationScope: 'subtree',
     },
     listView: {
         trimTopBlank: true,
@@ -79,13 +78,12 @@ describe('userSettingsActions', () => {
     });
 
     describe('copyUserSettingsToTemporary', () => {
-        test('copies view settings (gray/trim/subtree) into temporary', () => {
+        test('copies view settings (gray/trim) into temporary', () => {
             const state = createState();
             const next = userSettingsActions.copyUserSettingsToTemporary()(state);
 
             expect(next.temporary.userSettings.grayAfterLineClear).toBe(true);
             expect(next.temporary.userSettings.trimTopBlank).toBe(true);
-            expect(next.temporary.userSettings.buttonDropMovesSubtree).toBe(true);
             expect(next.temporary.userSettings.editorSidePanel).toBe(true);
         });
     });
@@ -106,22 +104,19 @@ describe('userSettingsActions', () => {
         });
     });
 
-    describe('keepTrimTopBlank / keepButtonDropMovesSubtree', () => {
+    describe('keepTrimTopBlank', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
 
             const trimNext = userSettingsActions.keepTrimTopBlank({ enable: true })(state);
             expect(trimNext.temporary.userSettings.trimTopBlank).toBe(true);
 
-            const subtreeNext = userSettingsActions.keepButtonDropMovesSubtree({ enable: true })(state);
-            expect(subtreeNext.temporary.userSettings.buttonDropMovesSubtree).toBe(true);
         });
 
         test('does nothing when the modal is closed', () => {
             const state = createState({ modal: { userSettings: false } });
 
             expect(userSettingsActions.keepTrimTopBlank({ enable: true })(state)).toBeUndefined();
-            expect(userSettingsActions.keepButtonDropMovesSubtree({ enable: true })(state)).toBeUndefined();
         });
     });
 
@@ -175,7 +170,6 @@ describe('userSettingsActions', () => {
                 ...baseUserSettings,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
-                buttonDropMovesSubtree: false,
                 editorSidePanel: true,
             };
 
@@ -183,7 +177,6 @@ describe('userSettingsActions', () => {
 
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
-                buttonDropMovesSubtree: false,
             });
             expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
             expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });

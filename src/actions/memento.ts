@@ -149,7 +149,7 @@ export const mementoActions: Readonly<MementoActions> = {
             return {
                 ...initialTreeState,
                 grayAfterLineClear: state.tree.grayAfterLineClear,
-                buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                operationScope: state.tree.operationScope,
                 scale: state.tree.scale,
                 viewMode: treeViewMode ?? initialTreeState.viewMode,
             };

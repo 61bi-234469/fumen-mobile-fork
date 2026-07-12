@@ -546,6 +546,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         // Keep current index (do not reset to 0) - tree mode may have set a specific page
         return sequence(state, [
             actions.reopenCurrentPage(),
+            actions.setListViewSettingsOpened({ opened: false }),
         ]);
     },
     setListViewDragState: ({ draggingIndex, dropTargetIndex }) => (state): NextState => {
@@ -711,6 +712,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 },
             }),
             actions.reopenCurrentPage(),
+            actions.setListViewSettingsOpened({ opened: false }),
         ]);
     },
     exportListViewAsImage: () => (state): NextState => {

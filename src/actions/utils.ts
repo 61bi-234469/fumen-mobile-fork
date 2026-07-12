@@ -188,7 +188,7 @@ export const utilsActions: Readonly<UtilsActions> = {
 
         // Set up tree state
         const preservedTreeSettings = {
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            operationScope: state.tree.operationScope,
             grayAfterLineClear: state.tree.grayAfterLineClear,
         };
         let treeState = normalizedTree ? {

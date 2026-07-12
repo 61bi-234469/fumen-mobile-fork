@@ -113,7 +113,7 @@ const createState = () => ({
         activeNodeId: null,
         viewMode: 0,
         grayAfterLineClear: false,
-        buttonDropMovesSubtree: false,
+        operationScope: 'node',
         scale: 1.0,
     },
     history: {

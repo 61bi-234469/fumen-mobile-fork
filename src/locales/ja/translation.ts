@@ -148,16 +148,20 @@ export const resources = {
         },
     },
     TreeView: {
-        MoveWithChildren: '子ノードごと移動／削除',
+        OperationScope: {
+            Label: '操作対象',
+            Node: 'ノードのみ',
+            Subtree: 'ノードと配下',
+            Descendants: '配下のみ',
+        },
         GrayAfterLineClear: 'ライン消去後にグレーアウト',
-        ZoomIn: '拡大',
-        ZoomOut: '縮小',
         ZoomReset: 'ズームをリセット',
         DeleteNode: 'ページを削除',
         DragHandle: 'ドラッグして移動',
         DeleteToast: {
             DeletedOne: '1ページを削除しました',
-            DeletedMany: '{{count}}ページを削除しました',
+            DeletedMany: '{{count}}ページ({{scope}})を削除しました',
+            DragGhostPages: '{{count}}ページ',
             Undo: '元に戻す',
         },
         ToggleTooltip: {
@@ -178,6 +182,7 @@ export const resources = {
     ListView: {
         TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
+        Zoom: 'ズーム',
     },
     ListViewReplace: {
         Title: 'コメント置換',

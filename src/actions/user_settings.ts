@@ -20,7 +20,6 @@ export interface UserSettingsActions {
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
-    keepButtonDropMovesSubtree: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
@@ -43,7 +42,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     rotationSystem: state.mode.rotationSystem,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
-                    buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
                     editorSidePanel: state.editorPanel.enabled,
                 },
             },
@@ -76,7 +74,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
             actions.setTreeState({
                 grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
-                buttonDropMovesSubtree: state.temporary.userSettings.buttonDropMovesSubtree,
             }),
             actions.setListViewTrimTopBlank({
                 enabled: state.temporary.userSettings.trimTopBlank,
@@ -351,21 +348,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     trimTopBlank: enable,
-                },
-            },
-        };
-    },
-    keepButtonDropMovesSubtree: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    buttonDropMovesSubtree: enable,
                 },
             },
         };

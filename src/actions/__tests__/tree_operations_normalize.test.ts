@@ -1,4 +1,6 @@
 import { decode } from '../../lib/fumen/fumen';
+import { Piece } from '../../lib/enums';
+import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
 import { SerializedTree, TreeNodeId } from '../../lib/fumen/tree_types';
 import {
@@ -9,6 +11,7 @@ import {
     isVirtualNode,
     moveNodeToInsertPosition,
     moveNodeToParent,
+    moveDescendantsToParent,
     moveSubtreeToInsertPosition,
     moveSubtreeToParent,
 } from '../../lib/fumen/tree_utils';
@@ -175,5 +178,46 @@ describe('normalizeTreeAndPages', () => {
 
         expect(normalized.changed).toBe(true);
         expectSnapshotPreserved(before, normalized.tree, normalized.pages);
+    });
+
+    test('isolates a moved descendant from pages newly inserted into its reference span', () => {
+        const emptyField = new Field({});
+        const flags = {
+            lock: false,
+            mirror: false,
+            colorize: true,
+            rise: false,
+            quiz: false,
+        };
+        const pages: Page[] = [
+            { index: 0, field: { obj: emptyField }, comment: { text: 'source' }, flags: { ...flags } },
+            { index: 1, field: { ref: 0 }, comment: { ref: 0 }, flags: { ...flags } },
+            { index: 2, field: { obj: emptyField.copy() }, comment: { text: 'target' }, flags: { ...flags } },
+        ];
+        const tree: SerializedTree = {
+            rootId: 'virtual-root',
+            version: 1,
+            nodes: [
+                { id: 'virtual-root', parentId: null, pageIndex: -1, childrenIds: ['source', 'target'] },
+                { id: 'source', parentId: 'virtual-root', pageIndex: 0, childrenIds: ['child'] },
+                { id: 'child', parentId: 'source', pageIndex: 1, childrenIds: [] },
+                { id: 'target', parentId: 'virtual-root', pageIndex: 2, childrenIds: [] },
+            ],
+        };
+        const movedTree = moveDescendantsToParent(tree, 'source', 'target');
+
+        const normalized = normalizeTreeAndPages(movedTree, pages, 0, 'source');
+        const child = findNode(normalized.tree, 'child')!;
+        const target = findNode(normalized.tree, 'target')!;
+        normalized.pages[target.pageIndex].commands = {
+            pre: {
+                'block-0': { type: 'block', x: 0, y: 0, piece: Piece.Gray },
+            },
+        };
+
+        const fields = new Pages(normalized.pages);
+        expect(fields.getField(target.pageIndex, PageFieldOperation.Command).get(0, 0)).toBe(Piece.Gray);
+        expect(fields.getField(child.pageIndex, PageFieldOperation.Command).get(0, 0)).toBe(Piece.Empty);
+        expect(normalized.pages[child.pageIndex].field.obj).toBeDefined();
     });
 });

@@ -1,4 +1,5 @@
 import { datatest, visit } from '../support/common';
+import { operations } from '../support/operations';
 
 const enterTreeGraphView = () => {
     cy.get(datatest('btn-list-view')).click();
@@ -11,12 +12,6 @@ const buildThreeNodeChain = () => {
     cy.get('[datatest^="tree-node-"]').should('have.length', 2);
     cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
     cy.get('[datatest^="tree-node-"]').should('have.length', 3);
-};
-
-const toggleMoveWithChildren = () => {
-    cy.get(datatest('btn-view-settings')).click();
-    cy.contains('Move/delete with children').click();
-    cy.get(datatest('btn-view-settings')).click();
 };
 
 const createTouchDispatcher = (win, target) => (type, point) => {
@@ -116,14 +111,41 @@ describe('Tree mode in list view', () => {
         // No legacy drag-delete UI (red badge / red parent button) is rendered
         cy.get('svg circle[fill="#F87171"]').should('not.exist');
 
-        // Move with children ON: deleting the middle node removes its subtree
-        toggleMoveWithChildren();
+        // Subtree scope: deleting the middle node removes its subtree
+        operations.tree.setScope('subtree');
         cy.get('[datatest^="btn-tree-node-delete-"]').eq(1).click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
 
         // Deleting the last remaining page is rejected (button disabled)
         cy.get('[datatest^="btn-tree-node-delete-"]').first().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
+    });
+
+    it('applies descendants scope to deletion and disables it for leaves', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildThreeNodeChain();
+        operations.tree.setScope('descendants');
+        cy.get(datatest('btn-tree-scope-chip'))
+            .should('have.text', 'Descendants only ▼')
+            .and('not.contain', 'Target:');
+        cy.get(datatest('btn-tree-scope-chip')).click();
+        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Target');
+        cy.get(datatest('tree-scope-option-descendants')).click();
+
+        // The middle node remains while its child is removed.
+        cy.get('[datatest^="btn-tree-node-delete-"]').eq(1).click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get('[datatest="btn-tree-delete-undo"]').click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        // A leaf has no descendants to target, so both delete and drag are disabled.
+        cy.get('[datatest^="btn-tree-node-delete-"]').last()
+            .find('circle').eq(1).should('have.attr', 'fill', '#94A3B8');
+        cy.get('[datatest^="tree-handle-"]').last()
+            .find('rect[width="32"][height="10"]')
+            .should('have.attr', 'fill', '#94A3B8');
     });
 
     it('activates a card first and navigates from a second card click', () => {
@@ -331,5 +353,25 @@ describe('Tree mode in list view', () => {
             expect($container[0].scrollLeft).to.be.greaterThan(0);
         });
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('toggles back and forth between editor and list view from the same corner button', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('tools')).should('exist');
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('btn-back-to-editor')).click();
+        cy.get(datatest('tools')).should('exist');
+    });
+
+    it('allows undo immediately after switching to list view, with no post-transition lock', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-insert-page')).click();
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-undo')).click();
+        cy.get(datatest('btn-back-to-editor')).click();
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 1');
     });
 });

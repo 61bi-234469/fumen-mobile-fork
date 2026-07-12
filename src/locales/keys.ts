@@ -172,16 +172,20 @@ export const i18n = {
         },
     },
     TreeView: {
-        MoveWithChildren: () => t('TreeView.MoveWithChildren'),
+        OperationScope: {
+            Label: () => t('TreeView.OperationScope.Label'),
+            Node: () => t('TreeView.OperationScope.Node'),
+            Subtree: () => t('TreeView.OperationScope.Subtree'),
+            Descendants: () => t('TreeView.OperationScope.Descendants'),
+        },
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
-        ZoomIn: () => t('TreeView.ZoomIn'),
-        ZoomOut: () => t('TreeView.ZoomOut'),
         ZoomReset: () => t('TreeView.ZoomReset'),
         DeleteNode: () => t('TreeView.DeleteNode'),
         DragHandle: () => t('TreeView.DragHandle'),
         DeleteToast: {
             DeletedOne: () => t('TreeView.DeleteToast.DeletedOne'),
-            DeletedMany: (count: number) => t('TreeView.DeleteToast.DeletedMany', { count }),
+            DeletedMany: (count: number, scope: string) => t('TreeView.DeleteToast.DeletedMany', { count, scope }),
+            DragGhostPages: (count: number) => t('TreeView.DeleteToast.DragGhostPages', { count }),
             Undo: () => t('TreeView.DeleteToast.Undo'),
         },
         ToggleTooltip: {
@@ -202,6 +206,7 @@ export const i18n = {
     ListView: {
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
+        Zoom: () => t('ListView.Zoom'),
     },
     ListViewReplace: {
         Title: () => t('ListViewReplace.Title'),

@@ -6,7 +6,10 @@ import { i18n } from '../../locales/keys';
 import { px, style } from '../../lib/types';
 import { ListViewGrid } from '../../components/list_view/list_view_grid';
 import { FumenGraph } from '../../components/tree/fumen_graph';
-import { TreeNodeId } from '../../lib/fumen/tree_types';
+import { TreeOperationScopeSelector } from '../../components/tree/tree_operation_scope_selector';
+import { UndoRedoPill } from '../../components/tools/undo_redo_pill';
+import { ViewSettingsPopover } from '../../components/view_settings_popover';
+import { LIST_VIEW_SCALE_RANGE, TREE_VIEW_SCALE_RANGE, TreeNodeId } from '../../lib/fumen/tree_types';
 import { calculateTreeViewLayout } from '../../lib/fumen/tree_view_layout';
 import {
     beginPendingMouseDrag,
@@ -20,8 +23,12 @@ import { getSidePanelWidthBounds, SIDE_PANEL_TAB_BAR_HEIGHT } from './side_panel
 // フル画面と同時表示されないため、FumenGraph 内の datatest をそのまま共有する
 const PANEL_TREE_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
 
-const ZOOM_CONTROLS_HEIGHT = 36;
 const RESIZE_HANDLE_HIT_WIDTH = 12;
+const PANEL_FAB_SIZE = 40;
+const PANEL_FAB_OFFSET = 8;
+// Keep floating controls outside the panel's scrollbars.
+const PANEL_FLOATING_RIGHT_OFFSET = PANEL_FAB_OFFSET + 10;
+const PANEL_FLOATING_BOTTOM_OFFSET = PANEL_FAB_OFFSET + 10;
 
 let resizeCleanup: (() => void) | null = null;
 
@@ -61,74 +68,6 @@ const tabButton = (
         }),
         onclick: () => actions.setEditorSidePanelTab({ tab }),
     }, label);
-};
-
-const renderZoomControls = (state: State, actions: Actions) => {
-    const zoomButtonStyle = style({
-        width: px(30),
-        height: px(28),
-        border: 'none',
-        borderRadius: px(14),
-        backgroundColor: 'transparent',
-        color: '#334155',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 0,
-    });
-
-    return div({
-        key: 'editor-panel-zoom-controls',
-        style: style({
-            height: px(ZOOM_CONTROLS_HEIGHT),
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: px(2),
-            flex: 'none',
-            borderBottom: 'solid 1px #E2E8F0',
-        }),
-    }, [
-        h('button', {
-            key: 'btn-tree-zoom-out',
-            datatest: 'btn-tree-zoom-out',
-            title: i18n.TreeView.ZoomOut(),
-            style: zoomButtonStyle,
-            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale / 1.2 }),
-        }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(18) }) }, 'remove'),
-        ]),
-        h('button', {
-            key: 'btn-tree-zoom-reset',
-            datatest: 'btn-tree-zoom-reset',
-            title: i18n.TreeView.ZoomReset(),
-            style: style({
-                minWidth: px(48),
-                height: px(28),
-                border: 'none',
-                borderRadius: px(14),
-                backgroundColor: 'transparent',
-                color: '#334155',
-                fontSize: px(12),
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '0 6px',
-                fontVariantNumeric: 'tabular-nums',
-            }),
-            onclick: () => actions.setTreeViewScale({ scale: 1.0 }),
-        }, `${Math.round(state.tree.scale * 100)}%`),
-        h('button', {
-            key: 'btn-tree-zoom-in',
-            datatest: 'btn-tree-zoom-in',
-            title: i18n.TreeView.ZoomIn(),
-            style: zoomButtonStyle,
-            onclick: () => actions.setTreeViewScale({ scale: state.tree.scale * 1.2 }),
-        }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(18) }) }, 'add'),
-        ]),
-    ]);
 };
 
 const renderListTab = (state: State, actions: Actions, size: PanelSize) => {
@@ -257,11 +196,9 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
         return [renderTreeDisabled(actions)];
     }
 
-    const graphHeight = size.height - SIDE_PANEL_TAB_BAR_HEIGHT - ZOOM_CONTROLS_HEIGHT;
+    const graphHeight = size.height - SIDE_PANEL_TAB_BAR_HEIGHT;
 
     return [
-        renderZoomControls(state, actions),
-
         FumenGraph({
             trimTopBlank: state.listView.trimTopBlank,
             tree: {
@@ -278,7 +215,8 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
             dragSourceNodeId: state.tree.dragState.sourceNodeId,
             dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
             dragTargetButtonType: state.tree.dragState.targetButtonType,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            operationScope: state.tree.operationScope,
+            dragOperationScope: state.tree.dragState.operationScope,
             autoFocusPending: state.tree.autoFocusPending,
             actions: {
                 onNodeActivate: (nodeId: TreeNodeId) => {
@@ -355,6 +293,179 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
             },
         }),
     ];
+};
+
+const panelFabStyle = (bottom: number, active: boolean, isAi: boolean, isRunning: boolean) => style({
+    position: 'absolute',
+    right: px(PANEL_FLOATING_RIGHT_OFFSET),
+    bottom: px(bottom),
+    width: px(PANEL_FAB_SIZE),
+    height: px(PANEL_FAB_SIZE),
+    borderRadius: isAi ? px(14) : '50%',
+    border: 'none',
+    background: isAi
+        ? (isRunning
+            ? 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)'
+            : 'linear-gradient(135deg, #3B82F6 0%, #4F46E5 100%)')
+        : (active ? '#2563EB' : '#fff'),
+    color: isAi ? '#fff' : (active ? '#fff' : '#334155'),
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    boxShadow: '0 4px 14px rgba(15,23,42,0.14)',
+    zIndex: 25,
+});
+
+const renderPanelContent = (
+    state: State,
+    actions: Actions,
+    size: PanelSize,
+    currentTab: EditorSidePanelTab,
+) => {
+    const isTreeTabActive = currentTab === 'tree' && state.tree.enabled;
+    const settingsOpened = state.listView.settingsOpened;
+    const content = currentTab === 'tree'
+        ? renderTreeTab(state, actions, size)
+        : [renderListTab(state, actions, size)];
+
+    const scale = isTreeTabActive ? state.tree.scale : state.listView.scale;
+
+    return div({
+        key: 'editor-panel-content',
+        style: style({
+            position: 'relative',
+            flex: '1 1 auto',
+            overflow: 'hidden',
+            display: 'flex',
+        }),
+        onwheel: (e: WheelEvent) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            if (isTreeTabActive) {
+                actions.setTreeViewScale({ scale: state.tree.scale * factor });
+            } else {
+                actions.setListViewScale({ scale: state.listView.scale * factor });
+            }
+        },
+    }, [
+        ...content,
+
+        // Undo/redo pill (bottom left), same floating style as the full-screen list/tree view
+        UndoRedoPill({
+            undoEnabled: 0 < state.history.undoCount,
+            redoEnabled: 0 < state.history.redoCount,
+            compact: true,
+            floating: { type: 'absolute', left: PANEL_FAB_OFFSET, bottom: PANEL_FLOATING_BOTTOM_OFFSET },
+            undoDatatest: 'btn-panel-undo',
+            redoDatatest: 'btn-panel-redo',
+            onUndo: () => actions.undo(),
+            onRedo: () => actions.redo(),
+        }),
+
+        // Scope selector (tree tab only, stacked above the undo/redo pill)
+        ...(isTreeTabActive ? [TreeOperationScopeSelector({
+            scope: state.tree.operationScope,
+            opened: state.tree.operationScopePopoverOpened,
+            compact: true,
+            floating: {
+                type: 'absolute',
+                left: PANEL_FAB_OFFSET,
+                bottom: PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+            },
+            onToggle: () => actions.setTreeState({
+                operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
+            }),
+            onClose: () => actions.setTreeState({ operationScopePopoverOpened: false }),
+            onSelect: operationScope => actions.setTreeState({
+                operationScope,
+                operationScopePopoverOpened: false,
+            }),
+        })] : []),
+
+        h('button', {
+            key: 'btn-view-settings',
+            datatest: 'btn-view-settings',
+            title: i18n.ListView.ViewSettings(),
+            style: panelFabStyle(PANEL_FLOATING_BOTTOM_OFFSET, settingsOpened, false, false),
+            onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'tune'),
+        ]),
+
+        ...(settingsOpened ? [
+            div({
+                key: 'editor-panel-settings-scrim',
+                style: style({
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 20,
+                }),
+                onclick: () => actions.setListViewSettingsOpened({ opened: false }),
+            }),
+            ViewSettingsPopover({
+                isTreeView: isTreeTabActive,
+                trimTopBlank: state.listView.trimTopBlank,
+                grayAfterLineClear: state.tree.grayAfterLineClear,
+                positioning: {
+                    type: 'absolute',
+                    right: PANEL_FLOATING_RIGHT_OFFSET,
+                    bottom: PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+                },
+                zoom: {
+                    percent: Math.round(scale * 100),
+                    min: (isTreeTabActive ? TREE_VIEW_SCALE_RANGE.min : LIST_VIEW_SCALE_RANGE.min) * 100,
+                    max: 300,
+                },
+                actions: {
+                    onTrimTopBlankToggle: () => actions.setListViewTrimTopBlank({
+                        enabled: !state.listView.trimTopBlank,
+                    }),
+                    onGrayAfterLineClearToggle: () => actions.setTreeState({
+                        grayAfterLineClear: !state.tree.grayAfterLineClear,
+                    }),
+                    onZoomChange: (percent: number) => {
+                        const newScale = percent / 100;
+                        if (isTreeTabActive) {
+                            actions.setTreeViewScale({ scale: newScale });
+                        } else {
+                            actions.setListViewScale({ scale: newScale });
+                        }
+                    },
+                    onZoomReset: () => {
+                        if (isTreeTabActive) {
+                            actions.setTreeViewScale({ scale: 1.0 });
+                        } else {
+                            actions.setListViewScale({ scale: 1.0 });
+                        }
+                    },
+                },
+            }),
+        ] : []),
+
+        ...(isTreeTabActive && !settingsOpened ? [h('button', {
+            key: 'btn-tree-ai-menu',
+            datatest: 'btn-tree-ai-menu',
+            title: i18n.EditorPanel.TreeTab(),
+            style: panelFabStyle(
+                PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+                false,
+                true,
+                state.coldClear.isRunning,
+            ),
+            onclick: () => actions.openColdClearMenuModal(),
+        }, [
+            h('i', {
+                className: 'material-icons',
+                style: style({ fontSize: px(20) }),
+            }, state.coldClear.isRunning ? 'stop' : 'auto_fix_high'),
+        ])] : []),
+    ]);
 };
 
 export const sidePanel = (state: State, actions: Actions, size: PanelSize) => {
@@ -464,9 +575,7 @@ export const sidePanel = (state: State, actions: Actions, size: PanelSize) => {
             tabButton(actions, 'tree', currentTab, i18n.EditorPanel.TreeTab()),
         ]),
 
-        ...(currentTab === 'tree'
-            ? renderTreeTab(state, actions, size)
-            : [renderListTab(state, actions, size)]),
+        renderPanelContent(state, actions, size, currentTab),
 
         div({
             key: 'editor-side-panel-resize-handle',

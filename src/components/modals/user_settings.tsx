@@ -22,7 +22,6 @@ interface UserSettingsModalProps {
     rotationSystem: RotationSystem;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
-    buttonDropMovesSubtree: boolean;
     editorSidePanel: boolean;
     currentTab: UserSettingsTab;
     actions: {
@@ -41,7 +40,6 @@ interface UserSettingsModalProps {
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
-        keepButtonDropMovesSubtree: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
         setUserSettingsTab: (data: { tab: UserSettingsTab }) => void;
     };
@@ -114,7 +112,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         rotationSystem,
         grayAfterLineClear,
         trimTopBlank,
-        buttonDropMovesSubtree,
         editorSidePanel,
         currentTab,
         actions,
@@ -414,16 +411,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepTrimTopBlank({ enable: checked }),
-                            })}
-
-                            {renderSwitch({
-                                key: 'switch-row-move-with-children',
-                                datatest: 'switch-move-with-children',
-                                title: i18n.TreeView.MoveWithChildren(),
-                                checked: buttonDropMovesSubtree,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
-                                onChange: checked => actions.keepButtonDropMovesSubtree({ enable: checked }),
                             })}
 
                             {renderSwitch({

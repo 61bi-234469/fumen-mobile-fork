@@ -48,7 +48,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
         height: px(height),
         lineHeight: px(height),
         width: px(width),
-        marginLeft: sticky ? 'auto' : marginLeft,
+        marginLeft: sticky ? 'auto' : (marginLeft !== undefined ? px(marginLeft) : undefined),
         position: hasAbsolutePosition ? 'absolute' : (shortcutLabel ? 'relative' : undefined),
         right: sticky ? px(stickyOffset) : undefined,
         left: stickyLeft ? px(stickyOffset) : undefined,

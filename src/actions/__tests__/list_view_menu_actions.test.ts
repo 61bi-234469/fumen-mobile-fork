@@ -8,8 +8,12 @@ import { Page } from '../../lib/fumen/types';
 jest.mock('../../actions', () => ({
     actions: {
         reopenCurrentPage: () => () => undefined,
+        closeListViewMenuModal: () => () => undefined,
     },
-    main: {},
+    main: {
+        loadPages: jest.fn(),
+        addPagesFromClipboard: jest.fn(),
+    },
 }));
 
 jest.mock('../../memento', () => ({
@@ -346,5 +350,74 @@ describe('copyListViewUrlToClipboard toast', () => {
             expect.objectContaining({ html: 'Copied share URL' }),
         );
         selectionSpy.mockRestore();
+    });
+});
+
+describe('copyTetgramRawToClipboard', () => {
+    test('copies parseable RawData and exposes it for UI verification', async () => {
+        const selectAllChildren = jest.fn();
+        const selectionSpy = jest.spyOn(document, 'getSelection').mockReturnValue({ selectAllChildren } as any);
+        document.execCommand = jest.fn(() => true);
+
+        listViewActions.copyTetgramRawToClipboard()(createState({ treeEnabled: false }));
+        await flushPromises();
+
+        expect(document.execCommand).toHaveBeenCalledWith('copy');
+        expect(document.body.getAttribute('datatest')).toBe('copied-tetgram-raw');
+        expect(JSON.parse(document.body.getAttribute('data')!)).toMatchObject({
+            pages: expect.any(Array),
+            comments: expect.any(Array),
+            actions: expect.any(Array),
+            listLayout: { perPage: {}, cols: 5 },
+        });
+        selectionSpy.mockRestore();
+    });
+});
+
+describe('openListViewInTetgram', () => {
+    test('opens a URLSearchParams-encoded v115 URL', async () => {
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        encodeMock.mockResolvedValue('A+/@');
+
+        listViewActions.openListViewInTetgram()(createState({ treeEnabled: false }));
+        await flushPromises();
+
+        expect(openSpy).toHaveBeenCalledWith(
+            'https://tetristemplate.info/tetgram/?d=v115%40A%2B%2F%40',
+            '_blank',
+        );
+        openSpy.mockRestore();
+    });
+});
+
+describe('importPagesFromClipboard with tetgram RawData', () => {
+    test('routes RawData through the existing replace flow', async () => {
+        const actionsModule = require('../../actions');
+        const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+        const rawData = JSON.stringify({
+            pages: [[[8]]],
+            comments: ['imported'],
+            actions: [null],
+            listLayout: { perPage: {}, cols: 5 },
+        });
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { readText: jest.fn().mockResolvedValue(rawData) },
+        });
+
+        listViewActions.importPagesFromClipboard({ mode: 'import' })(createState());
+        await flushPromises();
+        await flushPromises();
+
+        expect(actionsModule.main.loadPages).toHaveBeenCalledWith(expect.objectContaining({
+            loadedFumen: 'v115@ENC',
+            pages: expect.any(Array),
+        }));
+
+        if (originalClipboard) {
+            Object.defineProperty(navigator, 'clipboard', originalClipboard);
+        } else {
+            delete (navigator as any).clipboard;
+        }
     });
 });

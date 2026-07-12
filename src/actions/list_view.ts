@@ -18,6 +18,12 @@ import { decode, encode } from '../lib/fumen/fumen';
 import { LIST_VIEW_SCALE_RANGE, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { persistViewSettings } from './view_settings';
 import {
+    generateTetgramRawData,
+    getTetgramRawDataWarnings,
+    looksLikeTetgramRawData,
+    parseTetgramRawData,
+} from '../lib/tetgram';
+import {
     createTreeFromPages,
     embedTreeInPages,
     ensureVirtualRoot,
@@ -236,12 +242,14 @@ export interface ListViewActions {
     exportListViewAsUrl: () => action;
     exportLeftSegmentAsUrl: () => action;
     copyListViewUrlToClipboard: () => action;
+    copyTetgramRawToClipboard: () => action;
     exportLeftSegmentAsImage: () => action;
     exportLeftSegmentAsGif: () => action;
     setExportScope: (data: { scope: 'all' | 'left' }) => action;
     openListViewInFumenZui: () => action;
     openListViewInFumenForMobile: () => action;
     openListViewInExternalSite: () => action;
+    openListViewInTetgram: () => action;
     copyLeftSegmentToClipboard: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
     importPagesFromClipboard: (data: { mode: ClipboardImportMode }) => action;
@@ -263,7 +271,16 @@ const createTimestampedImageFileName = (prefix: string, extension: 'png' | 'gif'
     return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.${extension}`;
 };
 
-const copyTextToClipboard = (text: string): boolean => {
+const copyTextToClipboard = async (text: string): Promise<boolean> => {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch {
+            // Fall back to the legacy selection API below.
+        }
+    }
+
     const element = document.createElement('pre');
     element.style.position = 'fixed';
     element.style.left = '-100%';
@@ -271,8 +288,10 @@ const copyTextToClipboard = (text: string): boolean => {
     document.body.appendChild(element);
 
     try {
-        const selection = document.getSelection();
-        if (!selection) {
+        const selection = typeof document.getSelection === 'function'
+            ? document.getSelection()
+            : window.getSelection();
+        if (!selection || typeof document.execCommand !== 'function') {
             return false;
         }
         selection.selectAllChildren(element);
@@ -311,6 +330,19 @@ const resolvePagesToEncode = (state: Readonly<State>): { pages: Page[] } | { err
         return extractRootToActiveSegmentPages(state);
     }
     return { pages: embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled) };
+};
+
+const resolveTetgramExport = (
+    state: Readonly<State>,
+): { pages: Page[]; tree: SerializedTree | null } | { error: string } => {
+    if (state.tree.enabled && state.listView.exportScope === 'left') {
+        const segment = extractRootToActiveSegmentPages(state);
+        if ('error' in segment) {
+            return segment;
+        }
+        return { pages: segment.pages, tree: null };
+    }
+    return { pages: state.fumen.pages, tree: getExportTree(state) };
 };
 
 const buildShareParams = (
@@ -827,7 +859,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const url = `${base}#?${params.toString()}`;
                 if (state.listView.shortenUrls) {
                     openGeneratedUrl(url, true);
-                } else if (copyTextToClipboard(url)) {
+                } else if (await copyTextToClipboard(url)) {
                     showToast('Copied share URL', 1000);
                 } else {
                     showToast('Failed to copy');
@@ -835,6 +867,34 @@ export const listViewActions: Readonly<ListViewActions> = {
             } catch (error) {
                 console.error(error);
                 showToast(`Failed to copy URL: ${error}`);
+            }
+        })();
+
+        return undefined;
+    },
+    copyTetgramRawToClipboard: () => (state): NextState => {
+        const resolved = resolveTetgramExport(state);
+        if ('error' in resolved) {
+            showToast(resolved.error);
+            return undefined;
+        }
+
+        (async () => {
+            try {
+                const rawData = generateTetgramRawData(resolved.pages, resolved.tree);
+                if (!(await copyTextToClipboard(rawData))) {
+                    showToast('Failed to copy');
+                    return;
+                }
+
+                document.body.setAttribute('datatest', 'copied-tetgram-raw');
+                document.body.setAttribute('data', rawData);
+                const warnings = getTetgramRawDataWarnings(resolved.pages, resolved.tree);
+                const warningSuffix = warnings.length > 0 ? ` (${warnings.join('; ')})` : '';
+                showToast(`Copied tetgram raw data${warningSuffix}`, warnings.length > 0 ? 3000 : 1000);
+            } catch (error) {
+                console.error(error);
+                showToast(`Failed to copy: ${error}`);
             }
         })();
 
@@ -943,6 +1003,27 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         return undefined;
     },
+    openListViewInTetgram: () => (state): NextState => {
+        (async () => {
+            try {
+                const resolved = resolveTetgramExport(state);
+                if ('error' in resolved) {
+                    showToast(resolved.error);
+                    return;
+                }
+
+                const encoded = await encode(resolved.pages);
+                const url = new URL('https://tetristemplate.info/tetgram/');
+                url.searchParams.set('d', `v115@${encoded}`);
+                openGeneratedUrl(url.toString(), state.listView.shortenUrls);
+            } catch (error) {
+                console.error(error);
+                showToast(`Failed to open: ${error}`);
+            }
+        })();
+
+        return undefined;
+    },
     openListViewInExternalSite: () => (state): NextState => {
         (async () => {
             try {
@@ -976,7 +1057,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const encoded = await encode(segment.pages);
                 const url = `v115@${encoded}`;
 
-                if (copyTextToClipboard(url)) {
+                if (await copyTextToClipboard(url)) {
                     showToast(`Copied ${segment.pages.length} pages`, 1000);
                 } else {
                     showToast('Failed to copy');
@@ -1111,20 +1192,36 @@ export const listViewActions: Readonly<ListViewActions> = {
                 // Read text from clipboard
                 const text = await navigator.clipboard.readText();
 
-                const parsedInput = parseClipboardInput(text);
-                if (!parsedInput) {
-                    showToast('No fumen data in clipboard');
-                    return;
+                let parsedInput: ParsedClipboardInput | null = null;
+                let fumenData: string;
+                let decodedPages: Page[];
+                if (looksLikeTetgramRawData(text)) {
+                    const parsedTetgram = parseTetgramRawData(text);
+                    if ('error' in parsedTetgram) {
+                        showToast(`Failed to import: ${parsedTetgram.error}`);
+                        return;
+                    }
+                    decodedPages = parsedTetgram.pages;
+                    const encoded = await encode(decodedPages);
+                    fumenData = `v115@${encoded}`;
+                } else {
+                    parsedInput = parseClipboardInput(text);
+                    if (!parsedInput) {
+                        showToast('No fumen / tetgram data in clipboard');
+                        return;
+                    }
+
+                    fumenData = parsedInput.fumen;
+                    // Decode (decode function supports v/d/D/V/m/M formats)
+                    decodedPages = await decode(fumenData);
                 }
 
-                const fumenData = parsedInput.fumen;
-
-                // Decode (decode function supports v/d/D/V/m/M formats)
-                const decodedPages = await decode(fumenData);
                 const { tree: importedTree } = extractTreeFromPages(decodedPages);
                 const hasImportedTree = importedTree !== null && importedTree.nodes.length > 0;
-                const treeEnabledParam = !state.tree.enabled && hasImportedTree ? true : parsedInput.treeParam;
-                const treeViewModeParam = parsedInput.treeViewMode;
+                const treeEnabledParam = !state.tree.enabled && hasImportedTree
+                    ? true
+                    : parsedInput?.treeParam;
+                const treeViewModeParam = parsedInput?.treeViewMode;
 
                 if (mode === 'import') {
                     // Replace all pages

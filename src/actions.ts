@@ -38,6 +38,8 @@ import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
+import { rectSelectActions, RectSelectActions } from './actions/rect_select';
+import { partsActions, PartsActions } from './actions/parts';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -55,7 +57,9 @@ export type Actions = AnimationActions
     & ListViewActions
     & EditorPanelActions
     & TreeOperationActions
-    & ColdClearActions;
+    & ColdClearActions
+    & RectSelectActions
+    & PartsActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -73,6 +77,8 @@ export const actions: Readonly<Actions> = {
     ...editorPanelActions,
     ...treeOperationActions,
     ...coldClearActions,
+    ...rectSelectActions,
+    ...partsActions,
 };
 
 // Current state getter for shortcut handlers
@@ -199,6 +205,7 @@ window.addEventListener('load', () => {
     setupI18n(urlQuery);
     loadFumen(urlQuery);
     loadUserSettings();
+    main.loadParts({ items: localStorageWrapper.loadParts() });
 });
 
 const setupI18n = (urlQuery: Query) => {
@@ -411,6 +418,15 @@ const loadUserSettings = () => {
     }
     if (viewSettings.coldClearThinkMs !== undefined) {
         main.setColdClearThinkMs({ thinkMs: viewSettings.coldClearThinkMs });
+    }
+    if (viewSettings.blackTransparentPaste !== undefined && viewSettings.blackTransparentPaste) {
+        main.toggleBlackTransparentPaste({ persist: false });
+    }
+    if (viewSettings.rectFloatingMenuPosition !== undefined) {
+        main.setFloatingMenuPosition({ position: viewSettings.rectFloatingMenuPosition, persist: false });
+    }
+    if (viewSettings.rectFloatingMenuScale !== undefined) {
+        main.setFloatingMenuScale({ scale: viewSettings.rectFloatingMenuScale, persist: false });
     }
 
     const treeViewSettings: Partial<State['tree']> = {};

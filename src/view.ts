@@ -104,6 +104,7 @@ export const view: View<State, Actions> = (state, actions) => {
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,
+            blackTransparentPaste: state.temporary.userSettings.blackTransparentPaste,
             currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 

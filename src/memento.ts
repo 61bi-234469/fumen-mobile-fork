@@ -4,6 +4,8 @@ import { Page } from './lib/fumen/types';
 import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, RotationSystem } from './states';
+import { Part } from './lib/parts';
+import { Piece } from './lib/enums';
 import lodash from 'lodash';
 
 interface SaverProp {
@@ -185,6 +187,9 @@ interface ViewSettings {
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    blackTransparentPaste: boolean;
+    rectFloatingMenuPosition: { x: number, y: number } | null;
+    rectFloatingMenuScale: number;
 }
 
 const safer = {
@@ -211,6 +216,10 @@ const safer = {
     },
     treeOperationScope: (value: any): TreeOperationScope | undefined => {
         return value === 'node' || value === 'subtree' || value === 'descendants' ? value : undefined;
+    },
+    point: (value: any): { x: number, y: number } | undefined => {
+        if (!value || safer.number(value.x) === undefined || safer.number(value.y) === undefined) return undefined;
+        return { x: value.x, y: value.y };
     },
 };
 
@@ -281,6 +290,35 @@ export const localStorageWrapper = {
                 : safer.number(obj.coldClearNextLimit),
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
+            blackTransparentPaste: safer.boolean(obj.blackTransparentPaste),
+            rectFloatingMenuPosition: obj.rectFloatingMenuPosition === null
+                ? null : safer.point(obj.rectFloatingMenuPosition),
+            rectFloatingMenuScale: safer.number(obj.rectFloatingMenuScale),
         };
+    },
+    saveParts: (items: Part[]) => {
+        localStorage.setItem('parts@1', JSON.stringify({
+            version: 1,
+            items: items.map(item => ({ ...item, cells: item.cells.map(Number) })),
+        }));
+    },
+    loadParts: (): Part[] => {
+        const data = localStorage.getItem('parts@1');
+        if (!data) return [];
+        try {
+            const parsed = JSON.parse(data);
+            if (parsed.version !== 1 || !Array.isArray(parsed.items)) return [];
+            return parsed.items.filter((item: any) => {
+                return typeof item.id === 'string'
+                    && Number.isInteger(item.width) && 1 <= item.width && item.width <= 10
+                    && Number.isInteger(item.height) && 1 <= item.height && item.height <= 23
+                    && Array.isArray(item.cells) && item.cells.length === item.width * item.height
+                    && item.cells.every((piece: any) => Number.isInteger(piece)
+                        && Piece.Empty <= piece && piece <= Piece.Gray)
+                    && typeof item.pinned === 'boolean' && typeof item.createdAt === 'number';
+            }).map((item: any) => ({ ...item, cells: item.cells as Piece[] }));
+        } catch {
+            return [];
+        }
     },
 };

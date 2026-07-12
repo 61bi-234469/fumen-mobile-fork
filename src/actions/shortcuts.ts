@@ -381,6 +381,30 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 入力フォーカス中は無効
     if (isInputFocused()) return;
 
+    if (state.mode.type === ModeTypes.Select) {
+        const modifier = event.ctrlKey || event.metaKey;
+        let handled = true;
+        if (event.code === 'Escape') {
+            if (state.rectSelect.phase === 'none') actions.exitRectSelectMode();
+            else actions.cancelRectSelect();
+        } else if (modifier && event.code === 'KeyC' && state.rectSelect.phase !== 'none') {
+            actions.copySelectionToParts();
+        } else if (modifier && event.code === 'KeyX' && state.rectSelect.phase !== 'none') {
+            actions.cutSelectionToParts();
+        } else if (modifier && event.code === 'KeyV' && 0 < state.parts.items.length) {
+            actions.pastePart();
+        } else if ((event.code === 'Delete' || event.code === 'Backspace')
+            && state.rectSelect.phase !== 'none') {
+            actions.deleteSelection();
+        } else {
+            handled = false;
+        }
+        if (handled) {
+            event.preventDefault();
+            return;
+        }
+    }
+
     // 修飾キー自体は無視
     if (isModifierKey(event.code)) return;
 

@@ -14,6 +14,7 @@ import { getBlockPositions, getBlocks, getPieces } from '../lib/piece';
 import { State } from '../states';
 import { Field } from '../lib/fumen/field';
 import { Move } from '../lib/fumen/types';
+import { mirrorPiece } from '../lib/parts';
 
 export interface ConvertActions {
     shiftToLeft: () => action;
@@ -318,20 +319,6 @@ const convertToGoalField = (callback: (field: Field) => Field) => (state: State)
         }),
         actions.reopenCurrentPage(),
     ]);
-};
-
-const mirrorPiece = (piece: Piece): Piece => {
-    switch (piece) {
-    case Piece.J:
-        return Piece.L;
-    case Piece.L:
-        return Piece.J;
-    case Piece.S:
-        return Piece.Z;
-    case Piece.Z:
-        return Piece.S;
-    }
-    return piece;
 };
 
 const mirrorRotation = (rotation: Rotation): Rotation => {

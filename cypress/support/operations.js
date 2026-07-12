@@ -550,6 +550,32 @@ export const operations = {
             cy.get(datatest('btn-save')).click();
         },
     },
+    rectSelect: {
+        open: () => {
+            cy.get(datatest('btn-rect-select')).click();
+            cy.get(datatest('rect-floating-menu')).should('be.visible');
+        },
+        start: () => {
+            operations.rectSelect.open();
+            cy.get(datatest('btn-rect-select-action')).click();
+        },
+        drag: (from, to) => {
+            cy.get('#canvas-container .konvajs-content').then(($canvas) => {
+                const canvas = cy.wrap($canvas);
+                canvas.trigger('mousedown', {
+                    button: 0, clientX: px(from.x), clientY: py(from.y), force: true,
+                });
+                canvas.trigger('mousemove', {
+                    button: 0, clientX: px(to.x), clientY: py(to.y), force: true,
+                });
+                canvas.trigger('mouseup', {
+                    button: 0, clientX: px(to.x), clientY: py(to.y), force: true,
+                });
+            });
+        },
+        commit: () => cy.get(datatest('btn-rect-commit')).click(),
+        cancel: () => cy.get(datatest('btn-rect-cancel')).click(),
+    },
     tree: {
         setScope: (scope) => {
             cy.get(datatest('btn-tree-scope-chip')).click();

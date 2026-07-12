@@ -59,6 +59,7 @@ export const toolMode = ({
         cutAllPages: () => void;
         replaceAllFromClipboard: () => void;
         openColdClearMenuModal: () => void;
+        toggleRectSelectMenu: () => void;
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
@@ -232,6 +233,21 @@ export const toolMode = ({
             description: 'piece',
             iconSize: 20,
             iconName: 'extension',
+        })),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: 'white',
+            textColor: '#333',
+            borderColor: '#333',
+            datatest: 'btn-rect-select',
+            key: 'btn-rect-select',
+            onclick: actions.toggleRectSelectMenu,
+        }, iconContents({
+            description: i18n.RectSelect.Title(),
+            iconSize: 20,
+            iconName: 'crop_free',
         })),
         toolButton({
             borderWidth: 1,

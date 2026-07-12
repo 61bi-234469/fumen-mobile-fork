@@ -23,6 +23,7 @@ interface UserSettingsModalProps {
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
+    blackTransparentPaste: boolean;
     currentTab: UserSettingsTab;
     actions: {
         closeUserSettingsModal: () => void;
@@ -41,6 +42,7 @@ interface UserSettingsModalProps {
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
+        keepBlackTransparentPaste: (data: { enable: boolean }) => void;
         setUserSettingsTab: (data: { tab: UserSettingsTab }) => void;
     };
 }
@@ -113,6 +115,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
+        blackTransparentPaste,
         currentTab,
         actions,
     },
@@ -584,6 +587,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                         <div key="panel-user-settings-misc" datatest="panel-user-settings-misc"
                              style={panelStyle('misc')}>
+                            {renderSwitch({
+                                key: 'switch-row-black-transparent',
+                                datatest: 'switch-black-transparent',
+                                title: i18n.RectSelect.BlackTransparent(),
+                                checked: blackTransparentPaste,
+                                offLabel: i18n.UserSettings.Switch.Off(),
+                                onLabel: i18n.UserSettings.Switch.On(),
+                                onChange: checked => actions.keepBlackTransparentPaste({ enable: checked }),
+                            })}
+
                             {renderSwitch({
                                 key: 'switch-row-loop',
                                 datatest: 'switch-loop',

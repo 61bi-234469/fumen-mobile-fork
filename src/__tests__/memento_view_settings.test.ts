@@ -42,10 +42,16 @@ describe('view settings tree operation scope migration', () => {
             coldClearNextLimit: null,
             coldClearWeightsPreset: 0,
             coldClearThinkMs: 1000,
+            blackTransparentPaste: false,
+            rectFloatingMenuPosition: null,
+            rectFloatingMenuScale: 1,
         });
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
         expect(saved.treeOperationScope).toBe('descendants');
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
+        expect(saved.blackTransparentPaste).toBe(false);
+        expect(saved.rectFloatingMenuPosition).toBeNull();
+        expect(saved.rectFloatingMenuScale).toBe(1);
     });
 });

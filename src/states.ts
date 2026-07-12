@@ -63,6 +63,7 @@ import konva from 'konva';
 import { Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
+import { Part, RectSelectState } from './lib/parts';
 
 const VERSION = PageEnv.Version;
 
@@ -138,6 +139,7 @@ export interface State {
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             editorSidePanel: boolean;
+            blackTransparentPaste: boolean;
         };
         userSettingsTab: UserSettingsTab;
     };
@@ -172,10 +174,22 @@ export interface State {
         pieceShortcutDasMs: number;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
+        blackTransparentPaste: boolean;
     };
     history: {
         undoCount: number;
         redoCount: number;
+    };
+    rectSelect: RectSelectState;
+    parts: {
+        items: Part[];
+        selectedId: string | null;
+    };
+    floatingMenu: {
+        enabled: boolean;
+        position: { x: number, y: number } | null;
+        scale: number;
+        spawnAsParts: boolean;
     };
     listView: {
         dragState: {
@@ -288,6 +302,7 @@ export const initState: Readonly<State> = {
             grayAfterLineClear: false,
             trimTopBlank: false,
             editorSidePanel: false,
+            blackTransparentPaste: false,
         },
         userSettingsTab: 'field',
     },
@@ -319,10 +334,28 @@ export const initState: Readonly<State> = {
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
+        blackTransparentPaste: false,
     },
     history: {
         undoCount: 0,
         redoCount: 0,
+    },
+    rectSelect: {
+        phase: 'none',
+        dragAnchor: null,
+        rect: null,
+        floating: null,
+        moveAnchor: null,
+    },
+    parts: {
+        items: [],
+        selectedId: null,
+    },
+    floatingMenu: {
+        enabled: false,
+        position: null,
+        scale: 1,
+        spawnAsParts: false,
     },
     listView: {
         dragState: {
@@ -390,6 +423,7 @@ function createKonvaObjects() {
         event: {} as konva.Rect,
         background: {} as konva.Rect,
         fieldMarginLine: {} as konva.Line,
+        selectionFrame: {} as konva.Rect,
         fieldBlocks: [] as konva.Rect[],
         sentBlocks: [] as konva.Rect[],
         hold: {} as Box,
@@ -402,6 +436,19 @@ function createKonvaObjects() {
         },
     };
     const layers = obj.layers;
+
+    {
+        const rect = new konva.Rect({
+            fill: 'rgba(255,255,255,0.15)',
+            stroke: '#fff',
+            strokeWidth: 2,
+            dash: [6, 4],
+            listening: false,
+            visible: false,
+        });
+        obj.selectionFrame = rect;
+        layers.overlay.add(rect);
+    }
 
     // 背景
     {

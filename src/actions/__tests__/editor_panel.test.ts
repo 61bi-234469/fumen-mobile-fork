@@ -77,6 +77,9 @@ describe('editorPanelActions', () => {
                 coldClearNextLimit: null,
                 coldClearWeightsPreset: 0,
                 coldClearThinkMs: 1000,
+                blackTransparentPaste: false,
+                rectFloatingMenuPosition: null,
+                rectFloatingMenuScale: 1,
             });
         });
 

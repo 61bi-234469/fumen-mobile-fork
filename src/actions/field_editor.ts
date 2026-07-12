@@ -18,6 +18,7 @@ import { State } from '../states';
 import { getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 import { intermediateCellIndices } from '../lib/grid_line';
+import { rectSelectActions } from './rect_select';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -114,6 +115,8 @@ const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
         return fillRowActions.ontouchMoveField({ index })(state);
     case TouchTypes.Fill:
         return fillActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Select:
+        return rectSelectActions.rectSelectTouchMove({ index })(state);
     }
     return undefined;
 };
@@ -194,6 +197,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.fixInferencePiece(),
             fieldEditorActions.resetInferencePiece(),
+            rectSelectActions.cancelRectSelect(),
         ]);
     },
     ontouchStartField: ({ index }) => (state): NextState => {
@@ -209,6 +213,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchStartField({ index })(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Select:
+                return rectSelectActions.rectSelectTouchStart({ index })(newState);
             }
             return undefined;
         };
@@ -252,6 +258,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchEnd()(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchEnd()(newState);
+            case TouchTypes.Select:
+                return rectSelectActions.rectSelectTouchEnd()(newState);
             }
             return undefined;
         };
@@ -304,6 +312,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return setTouchTrail(undefined, undefined)(state);
     },
     onrightStartField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) return rectSelectActions.cancelRectSelect()(state);
         // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
         // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
         // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
@@ -323,11 +332,13 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         });
     },
     onrightMoveField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) return undefined;
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchMoveField({ index })(patchedState);
         });
     },
     onrightEnd: () => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) return undefined;
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchEnd()(patchedState);
         });

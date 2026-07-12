@@ -58,6 +58,7 @@ export enum ModeTypes {
     Slide = 'Slide',
     FillRow = 'FillRow',
     SelectPiece = 'SelectPiece',
+    Select = 'Select',
     Comment = 'Comment',
 }
 
@@ -68,6 +69,7 @@ export enum TouchTypes {
     Fill = 'Fill',
     MovePiece = 'MovePiece',
     FillRow = 'FillRow',
+    Select = 'Select',
 }
 
 export enum CommentType {

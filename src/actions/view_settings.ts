@@ -16,6 +16,9 @@ type ViewSettingsOverrides = Partial<{
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    blackTransparentPaste: boolean;
+    rectFloatingMenuPosition: { x: number, y: number } | null;
+    rectFloatingMenuScale: number;
 }>;
 
 export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
@@ -36,5 +39,9 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
             ? overrides.coldClearNextLimit : state.coldClear.nextLimit,
         coldClearWeightsPreset: overrides.coldClearWeightsPreset ?? state.coldClear.weightsPreset,
         coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
+        blackTransparentPaste: overrides.blackTransparentPaste ?? state.mode.blackTransparentPaste ?? false,
+        rectFloatingMenuPosition: overrides.rectFloatingMenuPosition !== undefined
+            ? overrides.rectFloatingMenuPosition : state.floatingMenu?.position ?? null,
+        rectFloatingMenuScale: overrides.rectFloatingMenuScale ?? state.floatingMenu?.scale ?? 1,
     });
 };

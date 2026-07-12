@@ -8,7 +8,7 @@ import { Actions } from '../../actions';
 import { Field } from '../../components/field';
 import { KonvaCanvas } from '../../components/konva_canvas';
 import { DrawingEventCanvas } from '../../components/event/drawing_event_canvas';
-import { div } from '@hyperapp/html';
+import { button, div } from '@hyperapp/html';
 import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
@@ -25,6 +25,10 @@ import { commentMode } from './comment_mode';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 import { getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
+import { composeDisplayField } from '../../lib/parts';
+import { SelectionFrame } from '../../components/selection_frame';
+import { selectMode } from './select_mode';
+import { FloatingMenu } from '../../components/floating_menu/floating_menu';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -119,7 +123,7 @@ const getLayout = (
     const pieceButtonsSize = {
         width: Math.min((canvasSize.width - fieldSize.width) * 0.6, 80),
         height: Math.min(
-            fieldSize.height / (1.25 * 18 + 0.25),
+            fieldSize.height / (1.25 * 19 + 0.25),
             30,
         ),
     };
@@ -309,6 +313,9 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
+            case ModeTypes.Select: {
+                return selectMode({ layout, actions });
+            }
             default: {
                 // ModeTypes.Drawing等�E未対応モード�EtoolModeにフォールバック
                 return toolMode({
@@ -328,6 +335,27 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             }
         };
 
+        const displayField = composeDisplayField(
+            state.field, state.rectSelect, state.mode.blackTransparentPaste,
+        );
+        const selectionControls = state.rectSelect.phase === 'selected' || state.rectSelect.phase === 'floating'
+            ? div({
+                key: 'rect-selection-controls',
+                style: {
+                    position: 'absolute', zIndex: 15, left: 'calc(50% - 58px)', top: '8px',
+                    display: 'flex', gap: '8px',
+                },
+            }, [
+                button({
+                    datatest: 'btn-rect-commit', onclick: actions.commitRectSelect,
+                    style: { width: '48px', height: '44px', borderRadius: '22px', fontSize: '22px' },
+                }, '✓'),
+                button({
+                    datatest: 'btn-rect-cancel', onclick: actions.cancelRectSelect,
+                    style: { width: '48px', height: '44px', borderRadius: '22px', fontSize: '22px' },
+                }, '×'),
+            ]) : undefined as any;
+
         return [   // canvas:Field とのマッピング用仮想DOM
             KonvaCanvas({  // canvas空間�Eみ
                 actions,
@@ -340,12 +368,22 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 fieldMarginWidth: layout.field.bottomBorderWidth,
                 topLeft: layout.field.topLeft,
                 blockSize: layout.field.blockSize,
-                field: state.field,
+                field: displayField,
                 sentLine: state.sentLine,
                 guideLineColor: state.fumen.guideLineColor,
             }),
 
+            SelectionFrame({
+                rect: state.rectSelect.rect,
+                floating: state.rectSelect.phase === 'floating',
+                topLeft: layout.field.topLeft,
+                blockSize: layout.field.blockSize,
+                frame: resources.konva.selectionFrame,
+            }),
+
             getMode(),
+            selectionControls,
+            FloatingMenu({ state, actions, layout }),
         ];
     };
 
@@ -375,6 +413,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             outline: 'none', // フォーカス時�E枠線を消す
             flex: '1 1 auto',
             minWidth: '0',
+            position: 'relative',
         }),
         onclick: handleFieldClick,
     }, getChildren());

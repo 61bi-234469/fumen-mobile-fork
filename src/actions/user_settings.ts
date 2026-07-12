@@ -21,6 +21,7 @@ export interface UserSettingsActions {
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
+    keepBlackTransparentPaste: (data: { enable: boolean }) => action;
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
@@ -43,6 +44,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     editorSidePanel: state.editorPanel.enabled,
+                    blackTransparentPaste: state.mode.blackTransparentPaste,
                 },
             },
         };
@@ -81,6 +83,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.setEditorSidePanelEnabled({
                 enabled: state.temporary.userSettings.editorSidePanel,
             }),
+            state.mode.blackTransparentPaste !== state.temporary.userSettings.blackTransparentPaste
+                ? actions.toggleBlackTransparentPaste() : undefined,
             saveToLocalStorage,
             actions.reopenCurrentPage(),
         ]);
@@ -115,6 +119,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepBlackTransparentPaste: ({ enable }) => (state): NextState => ({
+        temporary: {
+            ...state.temporary,
+            userSettings: { ...state.temporary.userSettings, blackTransparentPaste: enable },
+        },
+    }),
     keepShortcutLabelVisible: ({ visible }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;

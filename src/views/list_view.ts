@@ -523,15 +523,18 @@ export const view: View<State, Actions> = (state, actions) => {
     }
 
     const cornerOffset = 8;
+    // Keep floating controls outside the scrollbars of the tree/list viewport.
+    const floatingRightOffset = cornerOffset + 10;
+    const floatingBottomOffset = cornerOffset + 10;
     const undoRedoPillHeight = 56;
     const settingsButtonSize = 48;
     const settingsOpened = state.listView.settingsOpened;
-    const treeAiButtonBottom = TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 12;
+    const treeAiButtonBottom = TOOLS_HEIGHT + floatingBottomOffset + settingsButtonSize + 12;
 
     const treeAiButtonStyle = style({
         position: 'fixed',
         bottom: px(treeAiButtonBottom),
-        right: px(cornerOffset),
+        right: px(floatingRightOffset),
         width: px(48),
         height: px(48),
         borderRadius: px(16),
@@ -556,7 +559,7 @@ export const view: View<State, Actions> = (state, actions) => {
         floating: {
             type: 'fixed',
             left: cornerOffset,
-            bottom: TOOLS_HEIGHT + cornerOffset + undoRedoPillHeight + 10,
+            bottom: TOOLS_HEIGHT + floatingBottomOffset + undoRedoPillHeight + 10,
         },
         onToggle: () => actions.setTreeState({
             operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
@@ -898,7 +901,7 @@ export const view: View<State, Actions> = (state, actions) => {
         UndoRedoPill({
             undoEnabled: 0 < state.history.undoCount,
             redoEnabled: 0 < state.history.redoCount,
-            floating: { type: 'fixed', left: cornerOffset, bottom: TOOLS_HEIGHT + cornerOffset },
+            floating: { type: 'fixed', left: cornerOffset, bottom: TOOLS_HEIGHT + floatingBottomOffset },
             onUndo: () => actions.undo(),
             onRedo: () => actions.redo(),
         }),
@@ -914,8 +917,8 @@ export const view: View<State, Actions> = (state, actions) => {
             className: 'corner-glass corner-press',
             style: style({
                 position: 'fixed',
-                right: px(cornerOffset),
-                bottom: px(TOOLS_HEIGHT + cornerOffset),
+                right: px(floatingRightOffset),
+                bottom: px(TOOLS_HEIGHT + floatingBottomOffset),
                 width: px(settingsButtonSize),
                 height: px(settingsButtonSize),
                 borderRadius: '50%',
@@ -953,8 +956,8 @@ export const view: View<State, Actions> = (state, actions) => {
                 grayAfterLineClear,
                 positioning: {
                     type: 'fixed',
-                    right: cornerOffset,
-                    bottom: TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 10,
+                    right: floatingRightOffset,
+                    bottom: TOOLS_HEIGHT + floatingBottomOffset + settingsButtonSize + 10,
                 },
                 zoom: {
                     percent: Math.round((isTreeView ? state.tree.scale : state.listView.scale) * 100),

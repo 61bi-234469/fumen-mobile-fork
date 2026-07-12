@@ -40,7 +40,6 @@ export const TreeOperationScopeSelector: Component<Props> = ({
         zIndex: 125,
     });
     const chipStyle = style({
-        minWidth: px(compact ? 112 : 188),
         height: px(compact ? 30 : 36),
         border: 'none',
         borderRadius: px(compact ? 15 : 18),
@@ -63,6 +62,13 @@ export const TreeOperationScopeSelector: Component<Props> = ({
         backgroundColor: '#fff',
         boxShadow: '0 10px 30px rgba(15,23,42,0.2)',
         border: '1px solid rgba(148,163,184,0.25)',
+    });
+    const popoverTitleStyle = style({
+        padding: '8px 14px 6px',
+        color: '#64748B',
+        fontSize: px(12),
+        fontWeight: 600,
+        lineHeight: 1.2,
     });
     const optionStyle = (selected: boolean) => style({
         width: '100%',
@@ -101,27 +107,34 @@ export const TreeOperationScopeSelector: Component<Props> = ({
             key: 'btn-tree-scope-chip',
             datatest: 'btn-tree-scope-chip',
             type: 'button',
-            title: `${i18n.TreeView.OperationScope.Label()}: ${labelFor(scope)}`,
+            title: labelFor(scope),
             style: chipStyle,
             onclick: onToggle,
-        }, `${compact ? '' : `${i18n.TreeView.OperationScope.Label()}: `}${labelFor(scope)} ▼`),
+        }, `${labelFor(scope)} ▼`),
         ...(opened ? [h('div', {
             key: 'tree-scope-popover',
             datatest: 'tree-scope-popover',
             className: 'corner-glass',
             style: popoverStyle,
-        }, scopeOptions.map(option => h('button', {
-            key: `tree-scope-option-${option.scope}`,
-            datatest: `tree-scope-option-${option.scope}`,
-            type: 'button',
-            style: optionStyle(option.scope === scope),
-            onclick: () => onSelect(option.scope),
         }, [
-            h('i', {
-                className: 'material-icons',
-                style: style({ fontSize: px(18), width: px(18) }),
-            }, option.scope === scope ? 'radio_button_checked' : 'radio_button_unchecked'),
-            option.label(),
-        ])))] : []),
+            h('div', {
+                key: 'tree-scope-popover-title',
+                datatest: 'tree-scope-popover-title',
+                style: popoverTitleStyle,
+            }, i18n.TreeView.OperationScope.Label()),
+            ...scopeOptions.map(option => h('button', {
+                key: `tree-scope-option-${option.scope}`,
+                datatest: `tree-scope-option-${option.scope}`,
+                type: 'button',
+                style: optionStyle(option.scope === scope),
+                onclick: () => onSelect(option.scope),
+            }, [
+                h('i', {
+                    className: 'material-icons',
+                    style: style({ fontSize: px(18), width: px(18) }),
+                }, option.scope === scope ? 'radio_button_checked' : 'radio_button_unchecked'),
+                option.label(),
+            ])),
+        ])] : []),
     ]);
 };

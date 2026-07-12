@@ -26,6 +26,9 @@ const PANEL_TREE_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
 const RESIZE_HANDLE_HIT_WIDTH = 12;
 const PANEL_FAB_SIZE = 40;
 const PANEL_FAB_OFFSET = 8;
+// Keep floating controls outside the panel's scrollbars.
+const PANEL_FLOATING_RIGHT_OFFSET = PANEL_FAB_OFFSET + 10;
+const PANEL_FLOATING_BOTTOM_OFFSET = PANEL_FAB_OFFSET + 10;
 
 let resizeCleanup: (() => void) | null = null;
 
@@ -294,7 +297,7 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
 
 const panelFabStyle = (bottom: number, active: boolean, isAi: boolean, isRunning: boolean) => style({
     position: 'absolute',
-    right: px(PANEL_FAB_OFFSET),
+    right: px(PANEL_FLOATING_RIGHT_OFFSET),
     bottom: px(bottom),
     width: px(PANEL_FAB_SIZE),
     height: px(PANEL_FAB_SIZE),
@@ -355,7 +358,7 @@ const renderPanelContent = (
             undoEnabled: 0 < state.history.undoCount,
             redoEnabled: 0 < state.history.redoCount,
             compact: true,
-            floating: { type: 'absolute', left: PANEL_FAB_OFFSET, bottom: PANEL_FAB_OFFSET },
+            floating: { type: 'absolute', left: PANEL_FAB_OFFSET, bottom: PANEL_FLOATING_BOTTOM_OFFSET },
             undoDatatest: 'btn-panel-undo',
             redoDatatest: 'btn-panel-redo',
             onUndo: () => actions.undo(),
@@ -370,7 +373,7 @@ const renderPanelContent = (
             floating: {
                 type: 'absolute',
                 left: PANEL_FAB_OFFSET,
-                bottom: PANEL_FAB_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+                bottom: PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
             },
             onToggle: () => actions.setTreeState({
                 operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
@@ -386,7 +389,7 @@ const renderPanelContent = (
             key: 'btn-view-settings',
             datatest: 'btn-view-settings',
             title: i18n.ListView.ViewSettings(),
-            style: panelFabStyle(PANEL_FAB_OFFSET, settingsOpened, false, false),
+            style: panelFabStyle(PANEL_FLOATING_BOTTOM_OFFSET, settingsOpened, false, false),
             onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
         }, [
             h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'tune'),
@@ -411,8 +414,8 @@ const renderPanelContent = (
                 grayAfterLineClear: state.tree.grayAfterLineClear,
                 positioning: {
                     type: 'absolute',
-                    right: PANEL_FAB_OFFSET,
-                    bottom: PANEL_FAB_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+                    right: PANEL_FLOATING_RIGHT_OFFSET,
+                    bottom: PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
                 },
                 zoom: {
                     percent: Math.round(scale * 100),
@@ -450,7 +453,7 @@ const renderPanelContent = (
             datatest: 'btn-tree-ai-menu',
             title: i18n.EditorPanel.TreeTab(),
             style: panelFabStyle(
-                PANEL_FAB_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+                PANEL_FLOATING_BOTTOM_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
                 false,
                 true,
                 state.coldClear.isRunning,

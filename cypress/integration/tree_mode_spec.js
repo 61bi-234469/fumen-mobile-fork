@@ -127,7 +127,12 @@ describe('Tree mode in list view', () => {
         enterTreeGraphView();
         buildThreeNodeChain();
         operations.tree.setScope('descendants');
-        cy.get(datatest('btn-tree-scope-chip')).should('contain', 'Descendants only');
+        cy.get(datatest('btn-tree-scope-chip'))
+            .should('have.text', 'Descendants only ▼')
+            .and('not.contain', 'Target:');
+        cy.get(datatest('btn-tree-scope-chip')).click();
+        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Target');
+        cy.get(datatest('tree-scope-option-descendants')).click();
 
         // The middle node remains while its child is removed.
         cy.get('[datatest^="btn-tree-node-delete-"]').eq(1).click({ force: true });

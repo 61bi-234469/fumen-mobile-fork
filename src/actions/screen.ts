@@ -47,6 +47,7 @@ export const modeActions: Readonly<ScreenActions> = {
             done();
         });
         return sequence(state, [
+            actions.setListViewSettingsOpened({ opened: false }),
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
         ]);
@@ -57,6 +58,7 @@ export const modeActions: Readonly<ScreenActions> = {
             done();
         });
         return sequence(state, [
+            actions.setListViewSettingsOpened({ opened: false }),
             animationActions.pauseAnimation(),
             refresh ? actions.changeToDrawingToolMode() : undefined,
         ]);
@@ -72,6 +74,7 @@ export const modeActions: Readonly<ScreenActions> = {
             };
         };
         return sequence(state, [
+            actions.setListViewSettingsOpened({ opened: false }),
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
             animationActions.pauseAnimation(),

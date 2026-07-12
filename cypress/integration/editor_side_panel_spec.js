@@ -128,6 +128,33 @@ describe('Editor side panel', () => {
         cy.get(datatest('editor-side-panel')).should('be.visible');
     });
 
+    it('closes view settings when switching between the editor and full-screen list', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, lng: 'en' });
+        operations.editorPanel.enable();
+
+        cy.get(datatest('btn-view-settings')).click();
+        cy.get(datatest('btn-view-zoom-reset')).should('be.visible');
+        cy.get('body')
+            .trigger('keydown', { code: 'Tab', key: 'Tab' })
+            .trigger('keyup', { code: 'Tab', key: 'Tab' });
+
+        cy.get(datatest('list-view-tools')).should('be.visible');
+        cy.get(datatest('btn-view-zoom-reset')).should('not.exist');
+
+        cy.get(datatest('btn-view-settings')).click();
+        cy.get(datatest('btn-view-zoom-reset')).should('be.visible');
+        cy.get('body')
+            .trigger('keydown', { code: 'KeyH', key: 'h' })
+            .trigger('keyup', { code: 'KeyH', key: 'h' });
+
+        cy.get(datatest('editor-side-panel')).should('be.visible');
+        cy.get(datatest('btn-view-zoom-reset')).should('not.exist');
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-reset-piece')).should('be.visible');
+    });
+
     it('list tab: jumps to the clicked page, syncs comment edits, and reorders by drag & drop', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();
@@ -189,6 +216,13 @@ describe('Editor side panel', () => {
         // ツリーモード無効時は有効化ボタンが表示される
         cy.get(datatest('editor-panel-enable-tree')).click();
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
+
+        cy.get(datatest('btn-tree-scope-chip'))
+            .should('have.text', 'Node only ▼')
+            .and('not.contain', 'Target:')
+            .click();
+        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Target');
+        cy.get(datatest('tree-scope-option-node')).click();
 
         // INSERT ボタンでノードを 2 つ追加
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });

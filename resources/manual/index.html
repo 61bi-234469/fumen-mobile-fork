@@ -206,11 +206,10 @@
       <div class="card"><h3>INSERT</h3><p>現在位置の次、またはList/Treeでは末尾へ読み込み内容を追加します。今あるテト譜を残してつなげたい場合に使います。</p></div>
       <div class="card"><h3>IMPORT</h3><p>現在の全ページを読み込み内容で置き換えます。置き換えてよいことを確認してから実行してください。</p></div>
       <div class="card"><h3>FUMENをコピー</h3><p>全ページをfumen v115以降の文字列としてコピーします。他のテト譜ツールへの受け渡しに使います。</p></div>
-      <div class="card"><h3>tetgram用rawデータをコピー</h3><p>tetgram互換のRawData JSONをコピーします。ツリー構造のリスト配置も含めて受け渡せます。</p></div>
       <div class="card"><h3>共有URL</h3><p>現在のテト譜を含むURLを開く、またはコピーします。共有やブックマークに使います。</p></div>
       <div class="card"><h3>PNG / GIF</h3><p>一覧を静止画またはアニメーションとして保存します。「上部の空白行を省略」などの表示設定も反映されます。</p></div>
       <div class="card"><h3>外部サイト</h3><p>対応するテト譜サイトで現在の内容を開きます。サイトによって対応する情報が異なる場合があります。</p></div>
-      <div class="card"><h3>tetgramで開く</h3><p>ページをfumen v115 URLとしてtetgramで開きます。ツリーのリスト配置を保持する場合はrawデータを使います。</p></div>
+      <div class="card"><h3>tetgram連携</h3><p>tetgram用rawデータをコピーでツリー構造ごと渡し、tetgramで開くで盤面を読み込み済みの状態で開けます。</p></div>
     </div>
 
     <h3>Import/Exportモーダル</h3>
@@ -219,8 +218,8 @@
       <li><strong>取り込み：</strong>IMPORTは全体を置き換え、INSERTは現在の内容へ追加します。クリップボード上のtetgram RawData JSONも自動判定します。</li>
       <li><strong>画像を保存：</strong>PNGとGIFを選べます。GIFではフレーム間隔を設定できます。</li>
       <li><strong>出力範囲：</strong>全ページ、または先頭からアクティブページ／ノードまでを選べます。</li>
-      <li><strong>共有：</strong>FUMEN、URL、tetgram用rawデータをコピーできます。RawDataはツリー構造（リスト配置）ごと渡せます。</li>
-      <li><strong>tetgramで開く：</strong>tetgramを盤面読み込み済みで開きます。ツリー構造はURLに含まれないため、ツリーごと渡すときはtetgram用rawデータをコピーを使います。</li>
+      <li><strong>共有：</strong>FUMENとURLをコピーまたは開けます。</li>
+      <li><strong>tetgram連携：</strong>tetgram用rawデータをコピーはツリー構造（リスト配置）ごと渡せます。tetgramで開くは盤面を読み込み済みで開きますが、ツリーのリスト配置はURLに含まれません。</li>
       <li><strong>URL短縮：</strong>TinyURLによる短縮を利用するか設定できます。</li>
     </ul>
 

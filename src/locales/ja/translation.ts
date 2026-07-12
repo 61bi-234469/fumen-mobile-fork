@@ -202,6 +202,7 @@ export const resources = {
             Image: '画像を保存',
             Export: '共有（テト譜データ / URL）',
             External: '外部サイトで開く',
+            Tetgram: 'tetgram連携',
             Settings: '設定',
         },
         Scope: {

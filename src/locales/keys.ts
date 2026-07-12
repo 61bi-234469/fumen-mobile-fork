@@ -226,6 +226,7 @@ export const i18n = {
             Image: () => t('ListViewMenu.Sections.Image'),
             Export: () => t('ListViewMenu.Sections.Export'),
             External: () => t('ListViewMenu.Sections.External'),
+            Tetgram: () => t('ListViewMenu.Sections.Tetgram'),
             Settings: () => t('ListViewMenu.Sections.Settings'),
         },
         Scope: {

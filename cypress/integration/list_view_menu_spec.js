@@ -152,10 +152,20 @@ describe('Unified import/export menu', () => {
             cy.get(datatest(button)).should('not.have.class', 'btn');
         });
         cy.get(datatest('btn-copy-url')).should('have.class', 'btn');
+        cy.get(datatest('section-tetgram')).scrollIntoView().should('contain.text', 'tetgram連携');
         cy.get(datatest('hint-tetgram-url')).scrollIntoView().should('be.visible');
         cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
         cy.contains('短縮URL').scrollIntoView().should('be.visible');
         cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
+
+        cy.get(datatest('mdl-list-view-menu')).then(($modal) => {
+            const ids = Array.from($modal[0].querySelectorAll('[datatest]'))
+                .map(element => element.getAttribute('datatest'));
+            expect(ids.indexOf('btn-export-tetgram-url'))
+                .to.be.greaterThan(ids.indexOf('btn-export-fumen-for-mobile'));
+            expect(ids.indexOf('btn-export-tetgram'))
+                .to.be.greaterThan(ids.indexOf('section-tetgram'));
+        });
     });
 
     it('imports tetgram RawData through the existing clipboard button', () => {

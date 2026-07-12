@@ -227,6 +227,7 @@
             Image: 'Save image',
             Export: 'Share (fumen / URL)',
             External: 'Open in external site',
+            Tetgram: 'tetgram',
             Settings: 'Settings',
         },
         Scope: {

@@ -151,6 +151,7 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}
+                        marginRight={41}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewMenuModal(),

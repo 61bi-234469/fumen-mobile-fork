@@ -349,4 +349,24 @@ describe('Tree mode in list view', () => {
         });
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
     });
+
+    it('toggles back and forth between editor and list view from the same corner button', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('tools')).should('exist');
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('btn-back-to-editor')).click();
+        cy.get(datatest('tools')).should('exist');
+    });
+
+    it('allows undo immediately after switching to list view, with no post-transition lock', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-insert-page')).click();
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-undo')).click();
+        cy.get(datatest('btn-back-to-editor')).click();
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 1');
+    });
 });

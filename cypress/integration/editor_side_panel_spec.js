@@ -217,12 +217,18 @@ describe('Editor side panel', () => {
         cy.get('[datatest="btn-tree-delete-undo"]').click();
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
 
-        // ズームコントロールが表示され、スケール表示が変わる
-        cy.get(datatest('btn-tree-zoom-reset')).should('have.text', '100%');
-        cy.get(datatest('btn-tree-zoom-in')).click();
-        cy.get(datatest('btn-tree-zoom-reset')).should('have.text', '120%');
-        cy.get(datatest('btn-tree-zoom-reset')).click();
-        cy.get(datatest('btn-tree-zoom-reset')).should('have.text', '100%');
+        // 表示設定ポップオーバーのズームスライダーで拡縮でき、100%付近でスナップする
+        cy.get(datatest('btn-view-settings')).click();
+        cy.get(datatest('btn-view-zoom-reset')).should('have.text', '100%');
+        cy.get(datatest('range-view-zoom'))
+            .invoke('val', 150).trigger('input');
+        cy.get(datatest('btn-view-zoom-reset')).should('have.text', '150%');
+        cy.get(datatest('range-view-zoom'))
+            .invoke('val', 105).trigger('input');
+        cy.get(datatest('btn-view-zoom-reset')).should('have.text', '100%');
+        cy.get(datatest('btn-view-zoom-reset')).click();
+        cy.get(datatest('btn-view-zoom-reset')).should('have.text', '100%');
+        cy.get(datatest('btn-view-settings')).click();
 
         // リストタブへ戻ると、ツリーモード中は並べ替え不可のままリストが表示される
         operations.editorPanel.selectTab('list');

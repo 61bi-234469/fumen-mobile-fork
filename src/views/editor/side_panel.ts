@@ -7,6 +7,7 @@ import { px, style } from '../../lib/types';
 import { ListViewGrid } from '../../components/list_view/list_view_grid';
 import { FumenGraph } from '../../components/tree/fumen_graph';
 import { TreeOperationScopeSelector } from '../../components/tree/tree_operation_scope_selector';
+import { UndoRedoPill } from '../../components/tools/undo_redo_pill';
 import { ViewSettingsPopover } from '../../components/view_settings_popover';
 import { LIST_VIEW_SCALE_RANGE, TREE_VIEW_SCALE_RANGE, TreeNodeId } from '../../lib/fumen/tree_types';
 import { calculateTreeViewLayout } from '../../lib/fumen/tree_view_layout';
@@ -349,11 +350,28 @@ const renderPanelContent = (
     }, [
         ...content,
 
+        // Undo/redo pill (bottom left), same floating style as the full-screen list/tree view
+        UndoRedoPill({
+            undoEnabled: 0 < state.history.undoCount,
+            redoEnabled: 0 < state.history.redoCount,
+            compact: true,
+            floating: { type: 'absolute', left: PANEL_FAB_OFFSET, bottom: PANEL_FAB_OFFSET },
+            undoDatatest: 'btn-panel-undo',
+            redoDatatest: 'btn-panel-redo',
+            onUndo: () => actions.undo(),
+            onRedo: () => actions.redo(),
+        }),
+
+        // Scope selector (tree tab only, stacked above the undo/redo pill)
         ...(isTreeTabActive ? [TreeOperationScopeSelector({
             scope: state.tree.operationScope,
             opened: state.tree.operationScopePopoverOpened,
             compact: true,
-            floating: { type: 'absolute', left: PANEL_FAB_OFFSET, bottom: PANEL_FAB_OFFSET },
+            floating: {
+                type: 'absolute',
+                left: PANEL_FAB_OFFSET,
+                bottom: PANEL_FAB_OFFSET + PANEL_FAB_SIZE + PANEL_FAB_OFFSET,
+            },
             onToggle: () => actions.setTreeState({
                 operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
             }),

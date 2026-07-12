@@ -9,6 +9,7 @@ import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeOperationScopeSelector } from '../components/tree/tree_operation_scope_selector';
+import { UndoRedoPill } from '../components/tools/undo_redo_pill';
 import { ViewSettingsPopover } from '../components/view_settings_popover';
 import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
 import { updateTreeAutoScrollPointer } from '../components/tree/tree_auto_scroll';
@@ -522,6 +523,7 @@ export const view: View<State, Actions> = (state, actions) => {
     }
 
     const cornerOffset = 8;
+    const undoRedoPillHeight = 56;
     const settingsButtonSize = 48;
     const settingsOpened = state.listView.settingsOpened;
     const treeAiButtonBottom = TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 12;
@@ -551,7 +553,11 @@ export const view: View<State, Actions> = (state, actions) => {
     const renderTreeScopeSelector = () => TreeOperationScopeSelector({
         scope: state.tree.operationScope,
         opened: state.tree.operationScopePopoverOpened,
-        floating: { type: 'fixed', left: cornerOffset, bottom: TOOLS_HEIGHT + cornerOffset },
+        floating: {
+            type: 'fixed',
+            left: cornerOffset,
+            bottom: TOOLS_HEIGHT + cornerOffset + undoRedoPillHeight + 10,
+        },
         onToggle: () => actions.setTreeState({
             operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
         }),
@@ -570,8 +576,6 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
-            undoCount: state.history.undoCount,
-            redoCount: state.history.redoCount,
             listShortcutLabel: showShortcutLabel && state.mode.editShortcuts.ListView
                 ? displayShortcut(state.mode.editShortcuts.ListView)
                 : undefined,
@@ -591,8 +595,6 @@ export const view: View<State, Actions> = (state, actions) => {
                     ? actions.openTreeDisableConfirmModal()
                     : actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
-                undo: () => actions.undo(),
-                redo: () => actions.redo(),
             },
             height: TOOLS_HEIGHT,
         }),
@@ -892,7 +894,16 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Scope selector (tree view only)
+        // Undo/redo pill (bottom left, floating above the bottom toolbar)
+        UndoRedoPill({
+            undoEnabled: 0 < state.history.undoCount,
+            redoEnabled: 0 < state.history.redoCount,
+            floating: { type: 'fixed', left: cornerOffset, bottom: TOOLS_HEIGHT + cornerOffset },
+            onUndo: () => actions.undo(),
+            onRedo: () => actions.redo(),
+        }),
+
+        // Scope selector (tree view only, stacked above the undo/redo pill)
         ...(isTreeView ? [renderTreeScopeSelector()] : []),
 
         // View settings button (bottom right)

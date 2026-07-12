@@ -10,8 +10,6 @@ interface Props {
     palette: ColorPalette;
     treeEnabled: boolean;
     treeViewMode: TreeViewMode;
-    undoCount: number;
-    redoCount: number;
     listShortcutLabel?: string;
     treeShortcutLabel?: string;
     homeShortcutLabel?: string;
@@ -23,14 +21,12 @@ interface Props {
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
-        undo: () => void;
-        redo: () => void;
     };
 }
 
 export const ListViewTools: Component<Props> = (
     {
-        height, palette, treeEnabled, treeViewMode, undoCount, redoCount,
+        height, palette, treeEnabled, treeViewMode,
         listShortcutLabel, treeShortcutLabel, homeShortcutLabel, actions,
     },
 ) => {
@@ -77,45 +73,20 @@ export const ListViewTools: Component<Props> = (
                     }}
                 />
 
-                <ToolButton
-                    iconName="undo"
-                    datatest="btn-undo"
-                    width={35}
-                    height={height - 10}
-                    key="btn-undo"
-                    fontSize={33.75}
-                    marginLeft={46}
-                    marginRight={2}
-                    colors={palette}
-                    actions={{ onclick: () => actions.undo() }}
-                    enable={0 < undoCount}
-                />
-
-                <ToolButton
-                    iconName="redo"
-                    datatest="btn-redo"
-                    width={35}
-                    height={height - 10}
-                    key="btn-redo"
-                    fontSize={33.75}
-                    marginRight={4}
-                    colors={palette}
-                    actions={{ onclick: () => actions.redo() }}
-                    enable={0 < redoCount}
-                />
-
-                {/* Tree mode controls */}
-                <TreeViewToggle
-                    treeEnabled={treeEnabled}
-                    currentViewMode={treeViewMode}
-                    height={height - 10}
-                    listShortcutLabel={listShortcutLabel}
-                    treeShortcutLabel={treeShortcutLabel}
-                    actions={{
-                        onTreeToggle: actions.toggleTreeMode,
-                        onViewModeChange: actions.setTreeViewMode,
-                    }}
-                />
+                {/* Tree mode controls (marginLeft reserves space vacated by the sticky-left back button) */}
+                <div style={style({ marginLeft: px(46), display: 'flex', alignItems: 'center' })}>
+                    <TreeViewToggle
+                        treeEnabled={treeEnabled}
+                        currentViewMode={treeViewMode}
+                        height={height - 10}
+                        listShortcutLabel={listShortcutLabel}
+                        treeShortcutLabel={treeShortcutLabel}
+                        actions={{
+                            onTreeToggle: actions.toggleTreeMode,
+                            onViewModeChange: actions.setTreeViewMode,
+                        }}
+                    />
+                </div>
 
                 <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(1) })}>
                     <ToolButton

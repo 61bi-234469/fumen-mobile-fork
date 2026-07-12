@@ -1,10 +1,11 @@
 import { EditorSidePanelTab, State } from '../states';
 import { localStorageWrapper } from '../memento';
+import { TreeOperationScope } from '../lib/fumen/tree_types';
 
 type ViewSettingsOverrides = Partial<{
     trimTopBlank: boolean;
     shortenUrls: boolean;
-    buttonDropMovesSubtree: boolean;
+    treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
     editorSidePanelTab: EditorSidePanelTab;
@@ -22,7 +23,7 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
     localStorageWrapper.saveViewSettings({
         trimTopBlank: overrides.trimTopBlank ?? state.listView.trimTopBlank,
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
-        buttonDropMovesSubtree: overrides.buttonDropMovesSubtree ?? state.tree.buttonDropMovesSubtree,
+        treeOperationScope: overrides.treeOperationScope ?? state.tree.operationScope ?? 'node',
         grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,
         editorSidePanel: overrides.editorSidePanel ?? state.editorPanel.enabled,
         editorSidePanelTab: overrides.editorSidePanelTab ?? state.editorPanel.tab,

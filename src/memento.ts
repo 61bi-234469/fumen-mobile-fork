@@ -1,7 +1,7 @@
 import { HistoryTask, isOperationTask, toDecoratorOperationTask } from './history_task';
 import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
-import { TreeViewMode } from './lib/fumen/tree_types';
+import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, RotationSystem } from './states';
 import lodash from 'lodash';
@@ -174,7 +174,7 @@ interface UserSettings {
 interface ViewSettings {
     trimTopBlank: boolean;
     shortenUrls: boolean;
-    buttonDropMovesSubtree: boolean;
+    treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
     editorSidePanelTab: EditorSidePanelTab;
@@ -208,6 +208,9 @@ const safer = {
     },
     editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
         return value === 'list' || value === 'tree' ? value : undefined;
+    },
+    treeOperationScope: (value: any): TreeOperationScope | undefined => {
+        return value === 'node' || value === 'subtree' || value === 'descendants' ? value : undefined;
     },
 };
 
@@ -258,10 +261,12 @@ export const localStorageWrapper = {
             return {};
         }
 
+        const legacyScope = safer.boolean(obj.buttonDropMovesSubtree);
         return {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
             shortenUrls: safer.boolean(obj.shortenUrls),
-            buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
+            treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
+                ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
             editorSidePanel: safer.boolean(obj.editorSidePanel),
             editorSidePanelTab: safer.editorSidePanelTab(obj.editorSidePanelTab),

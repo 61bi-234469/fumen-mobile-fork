@@ -32,7 +32,7 @@ const createState = (override: any = {}) => ({
         shortenUrls: false,
     },
     tree: {
-        buttonDropMovesSubtree: false,
+        operationScope: 'node',
         grayAfterLineClear: false,
     },
     coldClear: {
@@ -66,7 +66,7 @@ describe('editorPanelActions', () => {
             expect(saveViewSettingsMock).toHaveBeenCalledWith({
                 trimTopBlank: false,
                 shortenUrls: false,
-                buttonDropMovesSubtree: false,
+                treeOperationScope: 'node',
                 grayAfterLineClear: false,
                 editorSidePanel: true,
                 editorSidePanelTab: 'list',

@@ -1,5 +1,12 @@
 import { SerializedTree } from '../tree_types';
-import { findNode, moveNodeToParent, moveSubtreeToParent } from '../tree_utils';
+import {
+    canMoveScope,
+    findNode,
+    moveDescendantsToInsertPosition,
+    moveDescendantsToParent,
+    moveNodeToParent,
+    moveSubtreeToParent,
+} from '../tree_utils';
 
 const buildTree = (): SerializedTree => ({
     nodes: [
@@ -11,6 +18,16 @@ const buildTree = (): SerializedTree => ({
     ],
     rootId: 'virtual-root',
     version: 2,
+});
+
+const buildBranchingTree = (): SerializedTree => ({
+    ...buildTree(),
+    nodes: [
+        ...buildTree().nodes,
+        { id: 'e', parentId: 'b', pageIndex: 4, childrenIds: [] },
+    ].map(node => node.id === 'b'
+        ? { ...node, childrenIds: ['c', 'e'] }
+        : node),
 });
 
 describe('tree_utils root ghost movement', () => {
@@ -32,5 +49,53 @@ describe('tree_utils root ghost movement', () => {
         expect(findNode(moved, 'b')?.parentId).toBe('virtual-root');
         expect(findNode(moved, 'b')?.childrenIds).toEqual(['c']);
         expect(findNode(moved, 'c')?.parentId).toBe('b');
+    });
+});
+
+describe('tree operation scopes', () => {
+    test('moves descendant subtrees to a branch in their original order', () => {
+        const tree = buildBranchingTree();
+
+        const moved = moveDescendantsToParent(tree, 'b', 'virtual-root');
+
+        expect(findNode(moved, 'virtual-root')?.childrenIds).toEqual(['a', 'd', 'c', 'e']);
+        expect(findNode(moved, 'b')?.childrenIds).toEqual([]);
+        expect(findNode(moved, 'c')?.parentId).toBe('virtual-root');
+        expect(findNode(moved, 'e')?.parentId).toBe('virtual-root');
+    });
+
+    test('moves the only descendant subtree to an insert position', () => {
+        const moved = moveDescendantsToInsertPosition(buildTree(), 'b', 'd');
+
+        expect(findNode(moved, 'b')?.childrenIds).toEqual([]);
+        expect(findNode(moved, 'd')?.childrenIds).toEqual(['c']);
+        expect(findNode(moved, 'c')?.parentId).toBe('d');
+    });
+
+    test('moves multiple descendant subtrees to a leaf insert position', () => {
+        const moved = moveDescendantsToInsertPosition(buildBranchingTree(), 'b', 'd');
+
+        expect(findNode(moved, 'b')?.childrenIds).toEqual([]);
+        expect(findNode(moved, 'd')?.childrenIds).toEqual(['c', 'e']);
+        expect(findNode(moved, 'c')?.parentId).toBe('d');
+        expect(findNode(moved, 'e')?.parentId).toBe('d');
+    });
+
+    test('leaves a leaf unchanged for descendant-only movement', () => {
+        const tree = buildTree();
+
+        expect(moveDescendantsToParent(tree, 'c', 'virtual-root')).toBe(tree);
+        expect(moveDescendantsToInsertPosition(tree, 'c', 'd')).toBe(tree);
+    });
+
+    test('applies scope-specific drop constraints', () => {
+        expect(canMoveScope(buildTree(), 'b', 'd', 'node', 'branch')).toBe(true);
+        expect(canMoveScope(buildTree(), 'b', 'c', 'subtree', 'branch')).toBe(false);
+        expect(canMoveScope(buildTree(), 'b', 'a', 'descendants', 'insert')).toBe(false);
+        expect(canMoveScope(buildTree(), 'b', 'c', 'descendants', 'branch')).toBe(false);
+        expect(canMoveScope(buildTree(), 'b', 'd', 'descendants', 'insert')).toBe(true);
+        expect(canMoveScope(buildBranchingTree(), 'b', 'd', 'descendants', 'insert')).toBe(true);
+        expect(canMoveScope(buildBranchingTree(), 'b', 'a', 'descendants', 'insert')).toBe(false);
+        expect(canMoveScope(buildTree(), 'c', 'd', 'descendants', 'branch')).toBe(false);
     });
 });

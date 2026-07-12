@@ -1,6 +1,6 @@
 import { Page } from './types';
-import { SerializedTree, TreeLayout, TreeNodeId } from './tree_types';
-import { calculateTreeLayout, canMoveNode, findNode, isVirtualNode } from './tree_utils';
+import { SerializedTree, TreeLayout, TreeNodeId, TreeOperationScope } from './tree_types';
+import { calculateTreeLayout, canMoveScope, findNode, isVirtualNode } from './tree_utils';
 import { getThumbnailHeight, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../thumbnail';
 
 export const TREE_THUMBNAIL_WIDTH = THUMBNAIL_WIDTH;
@@ -193,13 +193,10 @@ export const findTreeButtonDropTarget = (
     svgX: number,
     svgY: number,
     sourceNodeId: TreeNodeId,
-    buttonDropMovesSubtree: boolean,
+    scope: TreeOperationScope,
 ): { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null => {
     const sourceNode = findNode(tree, sourceNodeId);
     const sourceParentId = sourceNode?.parentId ?? null;
-    const allowDescendant = !buttonDropMovesSubtree;
-    const isRootDragSource = buttonDropMovesSubtree
-        && tree.rootId !== null && sourceNodeId === tree.rootId;
 
     // Top-level ghost frame acts as a branch drop onto the virtual root.
     const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
@@ -207,7 +204,7 @@ export const findTreeButtonDropTarget = (
         && sourceNodeId !== tree.rootId
         && rootNode !== undefined
         && isVirtualNode(rootNode)
-        && canMoveNode(tree, sourceNodeId, tree.rootId, { allowDescendant });
+        && canMoveScope(tree, sourceNodeId, tree.rootId, scope, 'branch');
     if (canDropOnRootGhost && tree.rootId !== null) {
         const ghostRect = getRootGhostRect(treeViewLayout.contentHeight);
         if (svgX >= ghostRect.x && svgX <= ghostRect.x + ghostRect.width
@@ -220,15 +217,14 @@ export const findTreeButtonDropTarget = (
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
         if (!nodeLayout) continue;
 
-        const isValidTarget = node.id !== sourceNodeId
-            && !isRootDragSource
-            && canMoveNode(tree, sourceNodeId, node.id, { allowDescendant });
+        const isValidTarget = canMoveScope(tree, sourceNodeId, node.id, scope, 'insert')
+            || canMoveScope(tree, sourceNodeId, node.id, scope, 'branch');
         if (!isValidTarget) continue;
 
         const hasBranchButton = node.childrenIds.length > 0;
 
         // Insert is invalid on the source's own parent (formerly the drag-delete drop).
-        if (sourceParentId !== node.id) {
+        if (canMoveScope(tree, sourceNodeId, node.id, scope, 'insert')) {
             const insertOffset = getInsertButtonOffset(nodeLayout.height);
             const distToInsert = Math.hypot(
                 svgX - (nodeLayout.x + insertOffset.x),
@@ -239,8 +235,9 @@ export const findTreeButtonDropTarget = (
             }
         }
 
-        const hideBranchButton = sourceParentId === node.id && node.childrenIds.length <= 1;
-        if (hasBranchButton && !hideBranchButton) {
+        const hideBranchButton = sourceParentId === node.id && node.childrenIds.length <= 1
+            && scope !== 'descendants';
+        if (hasBranchButton && !hideBranchButton && canMoveScope(tree, sourceNodeId, node.id, scope, 'branch')) {
             const branchOffset = getBranchButtonOffset(nodeLayout.height);
             const distToBranch = Math.hypot(
                 svgX - (nodeLayout.x + branchOffset.x),

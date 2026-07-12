@@ -1,7 +1,7 @@
 import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
-import { AddMode, TreeViewMode, initialTreeDragState } from '../../lib/fumen/tree_types';
-import { createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
+import { AddMode, TreeOperationScope, TreeViewMode, initialTreeDragState } from '../../lib/fumen/tree_types';
+import { addBranchNode, createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -86,9 +86,8 @@ const createBaseState = () => {
             addMode: AddMode.Branch,
             viewMode: TreeViewMode.Tree,
             dragState: initialTreeDragState,
-            buttonDropMovesSubtree: false,
+            operationScope: 'node',
             grayAfterLineClear: false,
-            treeViewNavLockUntil: 0,
             scale: 1.0,
             autoFocusPending: false,
         },
@@ -210,9 +209,8 @@ describe('removeCurrentTreeNode', () => {
                 addMode: AddMode.Branch,
                 viewMode: TreeViewMode.Tree,
                 dragState: initialTreeDragState,
-                buttonDropMovesSubtree: false,
+                operationScope: 'node',
                 grayAfterLineClear: false,
-                treeViewNavLockUntil: 0,
                 scale: 1.0,
                 autoFocusPending: false,
             },
@@ -225,7 +223,7 @@ describe('removeCurrentTreeNode', () => {
     });
 });
 
-const createThreeChainState = (buttonDropMovesSubtree: boolean) => {
+const createThreeChainState = (operationScope: TreeOperationScope) => {
     const pages: Page[] = [
         ...createChainPages(),
         {
@@ -246,7 +244,7 @@ const createThreeChainState = (buttonDropMovesSubtree: boolean) => {
             guideLineColor: true,
         },
         tree: {
-            buttonDropMovesSubtree,
+            operationScope,
             enabled: true,
             nodes: tree.nodes,
             rootId: tree.rootId,
@@ -255,7 +253,6 @@ const createThreeChainState = (buttonDropMovesSubtree: boolean) => {
             viewMode: TreeViewMode.Tree,
             dragState: initialTreeDragState,
             grayAfterLineClear: false,
-            treeViewNavLockUntil: 0,
             scale: 1.0,
             autoFocusPending: false,
         },
@@ -263,8 +260,8 @@ const createThreeChainState = (buttonDropMovesSubtree: boolean) => {
 };
 
 describe('removeTreeNode', () => {
-    test('removes only the leaf node even when buttonDropMovesSubtree is on', () => {
-        const state = createThreeChainState(true);
+    test('removes only the leaf node in subtree scope', () => {
+        const state = createThreeChainState('subtree');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const leafNode = findNodeByPageIndex(tree, 2);
 
@@ -276,7 +273,7 @@ describe('removeTreeNode', () => {
     });
 
     test('removes only the node and promotes children when the setting is off', () => {
-        const state = createThreeChainState(false);
+        const state = createThreeChainState('node');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const p0Node = findNodeByPageIndex(tree, 0);
         const p1Node = findNodeByPageIndex(tree, 1);
@@ -296,7 +293,7 @@ describe('removeTreeNode', () => {
     });
 
     test('removes the whole subtree when the setting is on', () => {
-        const state = createThreeChainState(true);
+        const state = createThreeChainState('subtree');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const p0Node = findNodeByPageIndex(tree, 0);
         const p1Node = findNodeByPageIndex(tree, 1);
@@ -309,7 +306,7 @@ describe('removeTreeNode', () => {
     });
 
     test('rejects a removal that would delete every page', () => {
-        const state = createThreeChainState(true);
+        const state = createThreeChainState('subtree');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const p0Node = findNodeByPageIndex(tree, 0);
 
@@ -317,11 +314,33 @@ describe('removeTreeNode', () => {
 
         expect(next).toBeUndefined();
     });
+
+    test('removes descendants while keeping the selected node', () => {
+        const state = createThreeChainState('descendants');
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const p1Node = findNodeByPageIndex(tree, 1)!;
+        const extraPage = {
+            ...state.fumen.pages[2],
+            index: 3,
+        };
+        const branched = addBranchNode(tree, p1Node.id, 3).tree;
+        state.fumen.pages = [...state.fumen.pages, extraPage];
+        state.fumen.maxPage = state.fumen.pages.length;
+        state.tree.nodes = branched.nodes;
+
+        const next = treeOperationActions.removeTreeNode({ nodeId: p1Node.id })(state) as any;
+        const nextTree = { nodes: next.tree.nodes, rootId: next.tree.rootId, version: 1 as const };
+
+        expect(next.fumen.pages).toHaveLength(2);
+        expect(findNode(nextTree, p1Node.id)).toBeDefined();
+        expect(next.tree.activeNodeId).toBe(p1Node.id);
+        expect(findNodeByPageIndex(nextTree, 2)).toBeUndefined();
+    });
 });
 
 describe('executeTreeDrop onto own parent insert button', () => {
     test('is a no-op that only clears the drag state (no delete)', () => {
-        const state = createThreeChainState(false);
+        const state = createThreeChainState('node');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const p1Node = findNodeByPageIndex(tree, 1);
         const p2Node = findNodeByPageIndex(tree, 2);
@@ -340,5 +359,75 @@ describe('executeTreeDrop onto own parent insert button', () => {
         expect(next.fumen).toBeUndefined();
         expect(next.tree.dragState.sourceNodeId).toBeNull();
         expect(next.tree.nodes).toBe(state.tree.nodes);
+    });
+});
+
+describe('executeTreeDrop with descendants scope', () => {
+    test('moves multiple child subtrees to a branch in order', () => {
+        const state = createThreeChainState('descendants');
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const sourceNode = findNodeByPageIndex(tree, 1)!;
+        const targetNode = findNodeByPageIndex(tree, 0)!;
+        const extraPage = {
+            ...state.fumen.pages[2],
+            index: 3,
+        };
+        state.fumen.pages = [...state.fumen.pages, extraPage];
+        state.fumen.maxPage = state.fumen.pages.length;
+        state.tree.nodes = addBranchNode(tree, sourceNode.id, 3).tree.nodes;
+        state.tree.dragState = {
+            ...initialTreeDragState,
+            sourceNodeId: sourceNode.id,
+            targetButtonParentId: targetNode.id,
+            targetButtonType: 'branch',
+            operationScope: 'descendants',
+        };
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+        const nextTree = { nodes: next.tree.nodes, rootId: next.tree.rootId, version: 1 as const };
+        const nextSource = findNode(nextTree, sourceNode.id)!;
+        const nextTarget = findNode(nextTree, targetNode.id)!;
+
+        expect(nextSource.childrenIds).toEqual([]);
+        expect(nextTarget.childrenIds).toEqual([
+            sourceNode.id,
+            findNodeByPageIndex(nextTree, 2)!.id,
+            findNodeByPageIndex(nextTree, 3)!.id,
+        ]);
+        expect(next.fumen.pages).toHaveLength(4);
+    });
+
+    test('allows multiple descendants onto a leaf Insert target', () => {
+        const state = createThreeChainState('descendants');
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const sourceNode = findNodeByPageIndex(tree, 1)!;
+        state.fumen.pages = [
+            ...state.fumen.pages,
+            { ...state.fumen.pages[2], index: 3 },
+            { ...state.fumen.pages[2], index: 4 },
+        ];
+        state.fumen.maxPage = state.fumen.pages.length;
+        const branched = addBranchNode(tree, sourceNode.id, 3).tree;
+        const withLeafTargetResult = addBranchNode(branched, tree.rootId!, 4);
+        const targetNode = withLeafTargetResult.newNodeId;
+        const withLeafTarget = withLeafTargetResult.tree;
+        state.tree.nodes = withLeafTarget.nodes;
+        state.tree.dragState = {
+            ...initialTreeDragState,
+            sourceNodeId: sourceNode.id,
+            targetButtonParentId: targetNode,
+            targetButtonType: 'insert',
+            operationScope: 'descendants',
+        };
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+        const nextTree = { nodes: next.tree.nodes, rootId: next.tree.rootId, version: 1 as const };
+
+        expect(findNode(nextTree, sourceNode.id)?.childrenIds).toEqual([]);
+        expect(findNode(nextTree, targetNode)?.childrenIds).toEqual([
+            findNodeByPageIndex(nextTree, 3)!.id,
+            findNodeByPageIndex(nextTree, 4)!.id,
+        ]);
+        expect(next.fumen.pages).toHaveLength(5);
     });
 });

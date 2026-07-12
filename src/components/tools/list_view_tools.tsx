@@ -10,6 +10,8 @@ interface Props {
     palette: ColorPalette;
     treeEnabled: boolean;
     treeViewMode: TreeViewMode;
+    undoCount: number;
+    redoCount: number;
     listShortcutLabel?: string;
     treeShortcutLabel?: string;
     homeShortcutLabel?: string;
@@ -21,12 +23,14 @@ interface Props {
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
+        undo: () => void;
+        redo: () => void;
     };
 }
 
 export const ListViewTools: Component<Props> = (
     {
-        height, palette, treeEnabled, treeViewMode,
+        height, palette, treeEnabled, treeViewMode, undoCount, redoCount,
         listShortcutLabel, treeShortcutLabel, homeShortcutLabel, actions,
     },
 ) => {
@@ -36,7 +40,7 @@ export const ListViewTools: Component<Props> = (
         margin: 0,
         padding: 0,
         position: 'fixed',
-        top: 0,
+        bottom: 0,
         left: 0,
         zIndex: 100,
     });
@@ -64,13 +68,40 @@ export const ListViewTools: Component<Props> = (
                     height={height - 10}
                     key="btn-back-to-editor"
                     fontSize={30}
-                    marginLeft={3}
-                    marginRight={4}
+                    stickyLeft={true}
+                    stickyOffset={3}
                     colors={palette}
                     shortcutLabel={homeShortcutLabel}
                     actions={{
                         onclick: () => actions.changeToEditorFromListView(),
                     }}
+                />
+
+                <ToolButton
+                    iconName="undo"
+                    datatest="btn-undo"
+                    width={35}
+                    height={height - 10}
+                    key="btn-undo"
+                    fontSize={33.75}
+                    marginLeft={46}
+                    marginRight={2}
+                    colors={palette}
+                    actions={{ onclick: () => actions.undo() }}
+                    enable={0 < undoCount}
+                />
+
+                <ToolButton
+                    iconName="redo"
+                    datatest="btn-redo"
+                    width={35}
+                    height={height - 10}
+                    key="btn-redo"
+                    fontSize={33.75}
+                    marginRight={4}
+                    colors={palette}
+                    actions={{ onclick: () => actions.redo() }}
+                    enable={0 < redoCount}
                 />
 
                 {/* Tree mode controls */}
@@ -133,7 +164,8 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-user-settings"
                         fontSize={24}
-                        marginRight={3}
+                        sticky={true}
+                        stickyOffset={3}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openUserSettingsModal(),

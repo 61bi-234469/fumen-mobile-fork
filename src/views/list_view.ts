@@ -8,6 +8,7 @@ import { i18n } from '../locales/keys';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
+import { TreeOperationScopeSelector } from '../components/tree/tree_operation_scope_selector';
 import { getTreeTouchStartPosition, setTreeTouchStartPosition } from '../components/tree/tree_touch_state';
 import { updateTreeAutoScrollPointer } from '../components/tree/tree_auto_scroll';
 import { TreeViewMode } from '../lib/fumen/tree_types';
@@ -147,13 +148,7 @@ export const view: View<State, Actions> = (state, actions) => {
     });
 
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
-    const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
     const grayAfterLineClear = state.tree.grayAfterLineClear;
-    // Lock undo/redo buttons for 500ms after transitioning to list/tree view
-    // This prevents accidental button presses from screen transition touch events
-    const listViewNavLocked = Date.now() < state.tree.treeViewNavLockUntil;
-    const undoEnabled = state.history.undoCount > 0 && !listViewNavLocked;
-    const redoEnabled = state.history.redoCount > 0 && !listViewNavLocked;
     const trimTopBlank = state.listView.trimTopBlank;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
     const showShortcutLabel = state.mode.shortcutLabelVisible;
@@ -526,10 +521,9 @@ export const view: View<State, Actions> = (state, actions) => {
     }
 
     const cornerOffset = 8;
-    const undoRedoPillHeight = 56;
     const settingsButtonSize = 48;
     const settingsOpened = state.listView.settingsOpened;
-    const treeAiButtonBottom = cornerOffset + settingsButtonSize + 12;
+    const treeAiButtonBottom = TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 12;
 
     const treeAiButtonStyle = style({
         position: 'fixed',
@@ -612,19 +606,12 @@ export const view: View<State, Actions> = (state, actions) => {
         fontVariantNumeric: 'tabular-nums',
     });
 
-    const cornerDividerStyle = style({
-        width: px(1),
-        height: px(22),
-        backgroundColor: 'rgba(148,163,184,0.4)',
-        flex: 'none',
-    });
-
     const renderTreeZoomControls = () => div({
         key: 'tree-zoom-controls',
         className: 'corner-glass',
         style: style({
             position: 'fixed',
-            bottom: px(cornerOffset + undoRedoPillHeight + 10),
+            bottom: px(TOOLS_HEIGHT + cornerOffset),
             left: px(cornerOffset),
             display: 'flex',
             flexDirection: 'row',
@@ -664,6 +651,20 @@ export const view: View<State, Actions> = (state, actions) => {
             h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'add'),
         ]),
     ]);
+
+    const renderTreeScopeSelector = () => TreeOperationScopeSelector({
+        scope: state.tree.operationScope,
+        opened: state.tree.operationScopePopoverOpened,
+        floatingBottom: TOOLS_HEIGHT + cornerOffset + 44 + 8,
+        onToggle: () => actions.setTreeState({
+            operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
+        }),
+        onClose: () => actions.setTreeState({ operationScopePopoverOpened: false }),
+        onSelect: operationScope => actions.setTreeState({
+            operationScope,
+            operationScopePopoverOpened: false,
+        }),
+    });
 
     const settingsRowStyle = style({
         display: 'flex',
@@ -705,7 +706,7 @@ export const view: View<State, Actions> = (state, actions) => {
         style: style({
             position: 'fixed',
             right: px(cornerOffset),
-            bottom: px(cornerOffset + settingsButtonSize + 10),
+            bottom: px(TOOLS_HEIGHT + cornerOffset + settingsButtonSize + 10),
             minWidth: px(230),
             borderRadius: px(16),
             padding: '6px 0',
@@ -721,15 +722,6 @@ export const view: View<State, Actions> = (state, actions) => {
             () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
         ),
         div({ key: 'settings-divider-1', style: settingsDividerStyle }),
-        renderSettingsRow(
-            'settings-move-children',
-            i18n.TreeView.MoveWithChildren(),
-            buttonDropMovesSubtree,
-            () => actions.setTreeState({
-                buttonDropMovesSubtree: !buttonDropMovesSubtree,
-            }),
-        ),
-        div({ key: 'settings-divider-2', style: settingsDividerStyle }),
         renderSettingsRow(
             'settings-gray-clear',
             i18n.TreeView.GrayAfterLineClear(),
@@ -755,6 +747,8 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
+            undoCount: state.history.undoCount,
+            redoCount: state.history.redoCount,
             listShortcutLabel: showShortcutLabel && state.mode.editShortcuts.ListView
                 ? displayShortcut(state.mode.editShortcuts.ListView)
                 : undefined,
@@ -774,6 +768,8 @@ export const view: View<State, Actions> = (state, actions) => {
                     ? actions.openTreeDisableConfirmModal()
                     : actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
+                undo: () => actions.undo(),
+                redo: () => actions.redo(),
             },
             height: TOOLS_HEIGHT,
         }),
@@ -781,7 +777,6 @@ export const view: View<State, Actions> = (state, actions) => {
         div({
             key: 'list-view-content',
             style: style({
-                marginTop: px(TOOLS_HEIGHT),
                 width: '100%',
                 flex: 1,
             }),
@@ -886,7 +881,8 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragSourceNodeId: state.tree.dragState.sourceNodeId,
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
-                    buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                    operationScope: state.tree.operationScope,
+                    dragOperationScope: state.tree.dragState.operationScope,
                     autoFocusPending: state.tree.autoFocusPending,
                     actions: {
                         onNodeActivate: (nodeId) => {
@@ -1063,54 +1059,8 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Undo/Redo pill at bottom left
-        div({
-            key: 'undo-redo-buttons',
-            className: 'corner-glass',
-            style: style({
-                position: 'fixed',
-                bottom: px(cornerOffset),
-                left: px(cornerOffset),
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: px(4),
-                padding: px(5),
-                borderRadius: px(28),
-                zIndex: 100,
-            }),
-        }, [
-            h('button', {
-                key: 'btn-undo',
-                className: 'corner-btn',
-                style: cornerIconButtonStyle(undoEnabled, 44),
-                onclick: () => {
-                    if (undoEnabled) {
-                        actions.undo();
-                    }
-                },
-                disabled: !undoEnabled,
-            }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'undo'),
-            ]),
-            h('div', { key: 'undo-redo-divider', style: cornerDividerStyle }),
-            h('button', {
-                key: 'btn-redo',
-                className: 'corner-btn',
-                style: cornerIconButtonStyle(redoEnabled, 44),
-                onclick: () => {
-                    if (redoEnabled) {
-                        actions.redo();
-                    }
-                },
-                disabled: !redoEnabled,
-            }, [
-                h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'redo'),
-            ]),
-        ]),
-
-        // Zoom controls (above undo/redo, tree view only)
-        ...(isTreeView ? [renderTreeZoomControls()] : []),
+        // Zoom controls (tree view only)
+        ...(isTreeView ? [renderTreeScopeSelector(), renderTreeZoomControls()] : []),
 
         // View settings button (bottom right)
         h('button', {
@@ -1121,7 +1071,7 @@ export const view: View<State, Actions> = (state, actions) => {
             style: style({
                 position: 'fixed',
                 right: px(cornerOffset),
-                bottom: px(cornerOffset),
+                bottom: px(TOOLS_HEIGHT + cornerOffset),
                 width: px(settingsButtonSize),
                 height: px(settingsButtonSize),
                 borderRadius: '50%',

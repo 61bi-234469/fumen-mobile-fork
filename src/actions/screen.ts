@@ -12,8 +12,8 @@ import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '
 export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
-    changeToListViewScreen: (data?: { lockNav?: boolean }) => action;
-    changeToTreeViewScreen: (data?: { lockNav?: boolean }) => action;
+    changeToListViewScreen: () => action;
+    changeToTreeViewScreen: () => action;
     changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
     changeToFlagsMode: () => action;
@@ -61,24 +61,12 @@ export const modeActions: Readonly<ScreenActions> = {
             refresh ? actions.changeToDrawingToolMode() : undefined,
         ]);
     },
-    changeToListViewScreen: data => (state): NextState => {
-        // Lock undo/redo buttons for 500ms only when transitioning from
-        // the bottom-left button in READ/EDIT view, to prevent accidental
-        // presses from screen transition touch events (buttons are at same coordinates)
-        const lockListViewNav = () => {
-            const shouldLock = data?.lockNav === true;
-            const lockUntil = shouldLock ? Date.now() + 500 : state.tree.treeViewNavLockUntil;
-            if (shouldLock) {
-                setTimeout(() => {
-                    main.refresh();
-                }, 500);
-            }
-            // Set autoFocusPending when entering tree view mode
+    changeToListViewScreen: () => (state): NextState => {
+        const setTreeAutoFocus = () => {
             const shouldAutoFocus = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
             return {
                 tree: {
                     ...state.tree,
-                    treeViewNavLockUntil: lockUntil,
                     autoFocusPending: shouldAutoFocus,
                 },
             };
@@ -91,7 +79,7 @@ export const modeActions: Readonly<ScreenActions> = {
                 clearThumbnailCache(currentState.fumen.pages);
                 return undefined;
             },
-            lockListViewNav,
+            setTreeAutoFocus,
             () => ({
                 mode: {
                     ...state.mode,
@@ -100,7 +88,7 @@ export const modeActions: Readonly<ScreenActions> = {
             }),
         ]);
     },
-    changeToTreeViewScreen: data => (state): NextState => {
+    changeToTreeViewScreen: () => (state): NextState => {
         const ensureTreeEnabled = state.tree.enabled ? undefined : actions.toggleTreeMode();
         const rebuildTree = state.tree.enabled && (state.tree.nodes.length === 0 || state.tree.rootId === null)
             ? (currentState: State): NextState => {
@@ -125,7 +113,7 @@ export const modeActions: Readonly<ScreenActions> = {
             ensureTreeEnabled,
             rebuildTree,
             ensureTreeViewMode,
-            actions.changeToListViewScreen({ lockNav: data?.lockNav }),
+            actions.changeToListViewScreen(),
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {

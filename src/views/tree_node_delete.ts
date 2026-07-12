@@ -1,8 +1,8 @@
 import { Actions } from '../actions';
 import { State } from '../states';
 import { i18n } from '../locales/keys';
-import { TreeNodeId } from '../lib/fumen/tree_types';
-import { canDeleteNode, findNode, getDescendants, isVirtualNode } from '../lib/fumen/tree_utils';
+import { TreeNodeId, TreeOperationScope } from '../lib/fumen/tree_types';
+import { canDeleteNode, findNode, getTreeOperationNodeIds, isVirtualNode } from '../lib/fumen/tree_utils';
 
 declare const M: any;
 
@@ -10,10 +10,21 @@ declare const M: any;
  * Show the post-delete toast with an Undo action. The Undo listener is attached
  * to the created toast element and detached on click / when the toast finishes.
  */
-export const showDeleteUndoToast = (actions: Actions, removedPageCount: number) => {
+export const showDeleteUndoToast = (
+    actions: Actions,
+    removedPageCount: number,
+    scope: TreeOperationScope,
+) => {
     const message = removedPageCount === 1
         ? i18n.TreeView.DeleteToast.DeletedOne()
-        : i18n.TreeView.DeleteToast.DeletedMany(removedPageCount);
+        : i18n.TreeView.DeleteToast.DeletedMany(
+            removedPageCount,
+            scope === 'node'
+                ? i18n.TreeView.OperationScope.Node()
+                : scope === 'subtree'
+                    ? i18n.TreeView.OperationScope.Subtree()
+                    : i18n.TreeView.OperationScope.Descendants(),
+        );
 
     const toast = M.toast({
         html: '<span class="tree-delete-toast-message"></span>'
@@ -43,18 +54,18 @@ export const showDeleteUndoToast = (actions: Actions, removedPageCount: number) 
 };
 
 // Delete a node from its permanent delete button, then offer Undo via toast.
-// Scope mirrors the removeTreeNode action: leaf = node only, with children =
-// follow the buttonDropMovesSubtree setting.
+// Scope mirrors the removeTreeNode action so the permanent delete button and
+// the action use the same target set.
 export const handleTreeNodeDelete = (state: Readonly<State>, actions: Actions, nodeId: TreeNodeId) => {
     const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
     const node = findNode(tree, nodeId);
     if (!node || isVirtualNode(node)) return;
 
-    const removeDescendants = node.childrenIds.length > 0 && state.tree.buttonDropMovesSubtree;
-    if (!canDeleteNode(tree, nodeId, removeDescendants, state.fumen.pages.length)) return;
+    const scope = state.tree.operationScope ?? 'node';
+    if (!canDeleteNode(tree, nodeId, scope, state.fumen.pages.length)) return;
 
     const removedPageIndices = new Set<number>();
-    const nodeIdsToRemove = removeDescendants ? getDescendants(tree, nodeId) : [nodeId];
+    const nodeIdsToRemove = getTreeOperationNodeIds(tree, nodeId, scope);
     nodeIdsToRemove.forEach((id) => {
         const target = findNode(tree, id);
         if (target && target.pageIndex >= 0) {
@@ -63,5 +74,5 @@ export const handleTreeNodeDelete = (state: Readonly<State>, actions: Actions, n
     });
 
     actions.removeTreeNode({ nodeId });
-    showDeleteUndoToast(actions, removedPageIndices.size);
+    showDeleteUndoToast(actions, removedPageIndices.size, scope);
 };

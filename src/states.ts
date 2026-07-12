@@ -137,7 +137,6 @@ export interface State {
             rotationSystem: RotationSystem;
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
-            buttonDropMovesSubtree: boolean;
             editorSidePanel: boolean;
         };
         userSettingsTab: UserSettingsTab;
@@ -288,7 +287,6 @@ export const initState: Readonly<State> = {
             rotationSystem: 'srs',
             grayAfterLineClear: false,
             trimTopBlank: false,
-            buttonDropMovesSubtree: false,
             editorSidePanel: false,
         },
         userSettingsTab: 'field',

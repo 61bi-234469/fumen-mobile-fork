@@ -6,6 +6,7 @@ import { i18n } from '../../locales/keys';
 import { px, style } from '../../lib/types';
 import { ListViewGrid } from '../../components/list_view/list_view_grid';
 import { FumenGraph } from '../../components/tree/fumen_graph';
+import { TreeOperationScopeSelector } from '../../components/tree/tree_operation_scope_selector';
 import { TreeNodeId } from '../../lib/fumen/tree_types';
 import { calculateTreeViewLayout } from '../../lib/fumen/tree_view_layout';
 import {
@@ -21,6 +22,7 @@ import { getSidePanelWidthBounds, SIDE_PANEL_TAB_BAR_HEIGHT } from './side_panel
 const PANEL_TREE_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
 
 const ZOOM_CONTROLS_HEIGHT = 36;
+const SCOPE_SELECTOR_HEIGHT = 40;
 const RESIZE_HANDLE_HIT_WIDTH = 12;
 
 let resizeCleanup: (() => void) | null = null;
@@ -130,6 +132,32 @@ const renderZoomControls = (state: State, actions: Actions) => {
         ]),
     ]);
 };
+
+const renderScopeSelector = (state: State, actions: Actions) => div({
+    key: 'editor-panel-scope-selector',
+    style: style({
+        height: px(SCOPE_SELECTOR_HEIGHT),
+        display: 'flex',
+        alignItems: 'center',
+        paddingLeft: px(8),
+        flex: 'none',
+        borderBottom: 'solid 1px #E2E8F0',
+    }),
+}, [
+    TreeOperationScopeSelector({
+        scope: state.tree.operationScope,
+        opened: state.tree.operationScopePopoverOpened,
+        compact: true,
+        onToggle: () => actions.setTreeState({
+            operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
+        }),
+        onClose: () => actions.setTreeState({ operationScopePopoverOpened: false }),
+        onSelect: operationScope => actions.setTreeState({
+            operationScope,
+            operationScopePopoverOpened: false,
+        }),
+    }),
+]);
 
 const renderListTab = (state: State, actions: Actions, size: PanelSize) => {
     return ListViewGrid({
@@ -257,9 +285,10 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
         return [renderTreeDisabled(actions)];
     }
 
-    const graphHeight = size.height - SIDE_PANEL_TAB_BAR_HEIGHT - ZOOM_CONTROLS_HEIGHT;
+    const graphHeight = size.height - SIDE_PANEL_TAB_BAR_HEIGHT - ZOOM_CONTROLS_HEIGHT - SCOPE_SELECTOR_HEIGHT;
 
     return [
+        renderScopeSelector(state, actions),
         renderZoomControls(state, actions),
 
         FumenGraph({
@@ -278,7 +307,8 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
             dragSourceNodeId: state.tree.dragState.sourceNodeId,
             dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
             dragTargetButtonType: state.tree.dragState.targetButtonType,
-            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            operationScope: state.tree.operationScope,
+            dragOperationScope: state.tree.dragState.operationScope,
             autoFocusPending: state.tree.autoFocusPending,
             actions: {
                 onNodeActivate: (nodeId: TreeNodeId) => {

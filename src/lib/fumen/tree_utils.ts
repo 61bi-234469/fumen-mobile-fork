@@ -12,6 +12,7 @@ import {
     NodePosition,
     NodeConnection,
     VIRTUAL_PAGE_INDEX,
+    TreeOperationScope,
 } from './tree_types';
 
 // ============================================================================
@@ -815,6 +816,18 @@ export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetI
     return descendants.includes(targetId);
 };
 
+/** Return the node IDs affected by a move/delete operation. */
+export const getTreeOperationNodeIds = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    scope: TreeOperationScope,
+): TreeNodeId[] => {
+    const descendants = getDescendants(tree, nodeId);
+    if (scope === 'node') return [nodeId];
+    if (scope === 'subtree') return descendants;
+    return descendants.filter(id => id !== nodeId);
+};
+
 /**
  * Check if a node (and optionally its descendants) can be deleted.
  * Returns true if deletion would not remove all pages.
@@ -822,10 +835,13 @@ export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetI
 export const canDeleteNode = (
     tree: SerializedTree,
     nodeId: TreeNodeId,
-    moveSubtree: boolean,
+    scope: TreeOperationScope,
     totalPages: number,
 ): boolean => {
-    const nodeIds = moveSubtree ? getDescendants(tree, nodeId) : [nodeId];
+    const node = findNode(tree, nodeId);
+    if (!node || (scope === 'descendants' && node.childrenIds.length === 0)) return false;
+
+    const nodeIds = getTreeOperationNodeIds(tree, nodeId, scope);
     const pageIndices = new Set<number>();
     for (const id of nodeIds) {
         const node = findNode(tree, id);
@@ -852,6 +868,38 @@ export const canMoveNode = (
 ): boolean => {
     if (sourceId === targetId) return false;
     if (!options.allowDescendant && sourceId !== tree.rootId && isDescendant(tree, sourceId, targetId)) return false;
+    return true;
+};
+
+/** Check whether a drag-to-button operation is valid for a scope. */
+export const canMoveScope = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+    scope: TreeOperationScope,
+    buttonType: 'insert' | 'branch',
+): boolean => {
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode || sourceId === targetId) return false;
+
+    if (scope === 'descendants') {
+        if (sourceNode.childrenIds.length === 0 || isDescendant(tree, sourceId, targetId)) return false;
+        // Insert normally represents one linear continuation. A leaf target
+        // is the exception: all direct child subtrees can become its branches.
+        if (buttonType === 'insert'
+            && sourceNode.childrenIds.length !== 1
+            && targetNode.childrenIds.length !== 0) return false;
+    } else if (!canMoveNode(tree, sourceId, targetId, {
+        allowDescendant: scope === 'node',
+    })) {
+        return false;
+    }
+
+    if (scope === 'subtree' && sourceId === tree.rootId) return false;
+
+    // The source parent's Insert button is reserved as an invalid drop target.
+    if (buttonType === 'insert' && sourceNode.parentId === targetId) return false;
     return true;
 };
 
@@ -1187,6 +1235,37 @@ export const moveSubtreeToParent = (
         ...tree,
         nodes: updatedNodes,
     };
+};
+
+/** Move all direct child subtrees to the target branch in their original order. */
+export const moveDescendantsToParent = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    if (!sourceNode || sourceNode.childrenIds.length === 0) return tree;
+
+    return sourceNode.childrenIds.reduce(
+        (currentTree, childId) => moveSubtreeToParent(currentTree, childId, targetId),
+        tree,
+    );
+};
+
+/** Move the only direct child subtree to the target's Insert position. */
+export const moveDescendantsToInsertPosition = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode || sourceNode.childrenIds.length === 0) return tree;
+    if (sourceNode.childrenIds.length > 1 && targetNode.childrenIds.length > 0) return tree;
+    if (sourceNode.childrenIds.length > 1) {
+        return moveDescendantsToParent(tree, sourceId, targetId);
+    }
+    return moveSubtreeToInsertPosition(tree, sourceNode.childrenIds[0], targetId);
 };
 
 // ============================================================================

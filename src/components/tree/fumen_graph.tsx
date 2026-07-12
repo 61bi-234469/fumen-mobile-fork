@@ -5,11 +5,17 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
-import { TreeNode, TreeNodeId, SerializedTree } from '../../lib/fumen/tree_types';
+import {
+    TreeNode,
+    TreeNodeId,
+    SerializedTree,
+    TreeOperationScope,
+} from '../../lib/fumen/tree_types';
 import {
     canDeleteNode,
     findNode,
-    canMoveNode,
+    canMoveScope,
+    getTreeOperationNodeIds,
     isDescendant,
     isVirtualNode,
 } from '../../lib/fumen/tree_utils';
@@ -137,7 +143,8 @@ interface Props {
     dragSourceNodeId: TreeNodeId | null;
     dragTargetButtonParentId: TreeNodeId | null;
     dragTargetButtonType: 'insert' | 'branch' | null;
-    buttonDropMovesSubtree: boolean;
+    operationScope: TreeOperationScope;
+    dragOperationScope?: TreeOperationScope;
     trimTopBlank: boolean;
     autoFocusPending?: boolean;
     actions: {
@@ -223,7 +230,7 @@ const renderNodeCard = (
     guideLineColor: boolean,
     activeNodeId: TreeNodeId | null,
     actions: Props['actions'],
-    isDragSource: boolean,
+    isDragAffected: boolean,
     isDragging: boolean,
     trimTopBlank: boolean,
     thumbnailRenderScale: number,
@@ -265,7 +272,7 @@ const renderNodeCard = (
                 }
             }}
         >
-            <g opacity={isDragSource ? 0.5 : 1}>
+            <g opacity={isDragAffected ? 0.5 : 1}>
                 {isActive && (
                     <rect
                         x={-3}
@@ -310,7 +317,7 @@ const renderNodeControls = (
     activeNodeId: TreeNodeId | null,
     actions: Props['actions'],
     pageNumber: number,
-    isDragSource: boolean,
+    isDragAffected: boolean,
     isDragging: boolean,
     isInsertButtonHighlighted: boolean,
     isBranchButtonHighlighted: boolean,
@@ -321,6 +328,7 @@ const renderNodeControls = (
     hideBranchButton: boolean,
     canDelete: boolean,
     canCopy: boolean,
+    canStartDrag: boolean,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
 
@@ -337,7 +345,7 @@ const renderNodeControls = (
     const insertButtonSize = isInsertDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
     const branchButtonSize = isBranchDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
 
-    const dragOpacity = isDragSource ? 0.5 : 1;
+    const dragOpacity = isDragAffected ? 0.5 : 1;
     const handleButtonTouchStart = (e: TouchEvent) => {
         if (e.cancelable) {
             e.preventDefault();
@@ -488,9 +496,9 @@ const renderNodeControls = (
             <g
                 datatest={`tree-handle-${node.id}`}
                 transform={`translate(${dragHandleOffset.x}, ${dragHandleOffset.y})`}
-                style={style({ cursor: 'grab' })}
+                style={style({ cursor: canStartDrag ? 'grab' : 'not-allowed' })}
                 onmousedown={(e: MouseEvent) => {
-                    if (e.button === 0) {
+                    if (canStartDrag && e.button === 0) {
                         e.stopPropagation();
                         e.preventDefault();
                         actions.onHandleMouseDown(node.id, e);
@@ -504,7 +512,9 @@ const renderNodeControls = (
                     if (e.cancelable) {
                         e.preventDefault();
                     }
-                    actions.onHandleTouchStart(node.id, e);
+                    if (canStartDrag) {
+                        actions.onHandleTouchStart(node.id, e);
+                    }
                 }}
             >
                 <title>{i18n.TreeView.DragHandle()}</title>
@@ -522,7 +532,7 @@ const renderNodeControls = (
                     height={TREE_DRAG_HANDLE_HEIGHT}
                     rx={TREE_DRAG_HANDLE_HEIGHT / 2}
                     ry={TREE_DRAG_HANDLE_HEIGHT / 2}
-                    fill="#E2E8F0"
+                    fill={canStartDrag ? '#E2E8F0' : TREE_COLORS.disabled}
                     stroke="#CBD5E1"
                     stroke-width={1}
                 />
@@ -661,7 +671,8 @@ export const FumenGraph: Component<Props> = ({
     dragSourceNodeId,
     dragTargetButtonParentId,
     dragTargetButtonType,
-    buttonDropMovesSubtree,
+    operationScope,
+    dragOperationScope,
     trimTopBlank,
     autoFocusPending,
     actions,
@@ -701,6 +712,7 @@ export const FumenGraph: Component<Props> = ({
     // Match the list view's DPR-aware rendering so zoomed tree cards stay crisp.
     const thumbnailRenderScale = scale * devicePixelRatio;
     const isDragging = dragSourceNodeId !== null;
+    const dragScope = isDragging ? (dragOperationScope ?? operationScope) : operationScope;
     const rootGhostRect = getRootGhostRect(treeViewLayout.contentHeight);
     const ghostNodeWidth = rootGhostRect.width;
     const ghostNodeHeight = rootGhostRect.height;
@@ -714,9 +726,7 @@ export const FumenGraph: Component<Props> = ({
         && dragSourceNodeId !== tree.rootId
         && rootNode !== undefined
         && isVirtualNode(rootNode)
-        && canMoveNode(tree, dragSourceNodeId, tree.rootId, {
-            allowDescendant: !buttonDropMovesSubtree,
-        });
+        && canMoveScope(tree, dragSourceNodeId, tree.rootId, dragScope, 'branch');
     const isRootGhostHighlighted = canDropOnRootGhost
         && dragTargetButtonParentId === tree.rootId
         && dragTargetButtonType === 'branch';
@@ -763,27 +773,41 @@ export const FumenGraph: Component<Props> = ({
     const nodeLayers = renderableNodes.map((node) => {
         const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
-        const hideDescendantButtons = isDragging
-            && buttonDropMovesSubtree
+        const isDescendantOfDragSource = isDragging
             && dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && isDescendant(tree, dragSourceNodeId, node.id);
+        const isDragAffected = isDragging && (
+            dragScope === 'descendants' ? isDescendantOfDragSource : isDragSource || isDescendantOfDragSource
+        );
+        const hideDescendantButtons = isDragging
+            && dragScope !== 'node'
+            && isDescendantOfDragSource;
         const isSourceParent = isDragging && sourceParentId === node.id;
         const hideSourceParentButtons = isSourceParent
-            && node.childrenIds.length <= 1;
+            && node.childrenIds.length <= 1
+            && dragScope !== 'descendants';
         const hideButtons = hideDescendantButtons || hideSourceParentButtons;
-        const hideInsertButton = isSourceParent;
+        const hideInsertButton = isSourceParent
+            || (isDragging
+                && dragScope === 'descendants'
+                && sourceNode?.childrenIds.length !== 1
+                && node.childrenIds.length > 0);
         const hideBranchButton = hideSourceParentButtons;
-        const allowDescendant = !buttonDropMovesSubtree;
-        const isRootDragSource = isDragging && buttonDropMovesSubtree
+        const isRootDragSource = isDragging && dragScope === 'subtree'
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
-        const isValidDropParent = isDragging
+        const canDropAsInsert = isDragging
             && dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && !isRootDragSource
-            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
-        const isInsertDropTarget = isValidDropParent && sourceParentId !== node.id;
-        const isBranchDropTarget = isValidDropParent
+            && canMoveScope(tree, dragSourceNodeId, node.id, dragScope, 'insert');
+        const canDropAsBranch = isDragging
+            && dragSourceNodeId !== null
+            && node.id !== dragSourceNodeId
+            && !isRootDragSource
+            && canMoveScope(tree, dragSourceNodeId, node.id, dragScope, 'branch');
+        const isInsertDropTarget = canDropAsInsert;
+        const isBranchDropTarget = canDropAsBranch
             && node.childrenIds.length > 0
             && !hideBranchButton;
 
@@ -795,10 +819,8 @@ export const FumenGraph: Component<Props> = ({
             && dragTargetButtonParentId === node.id
             && dragTargetButtonType === 'branch';
 
-        // Delete scope follows the removeTreeNode action: leaf nodes remove only
-        // themselves, nodes with children follow the buttonDropMovesSubtree setting.
-        const removeDescendants = node.childrenIds.length > 0 && buttonDropMovesSubtree;
-        const canDelete = canDeleteNode(tree, node.id, removeDescendants, pages.length);
+        const canDelete = canDeleteNode(tree, node.id, operationScope, pages.length);
+        const canStartDrag = operationScope !== 'descendants' || node.childrenIds.length > 0;
 
         // Copy button is available for all renderable nodes, including top-level roots.
         const canCopy = !isVirtualNode(node);
@@ -816,7 +838,7 @@ export const FumenGraph: Component<Props> = ({
                 guideLineColor,
                 activeNodeId,
                 actions,
-                isDragSource,
+                isDragAffected,
                 isDragging,
                 trimTopBlank,
                 thumbnailRenderScale,
@@ -827,7 +849,7 @@ export const FumenGraph: Component<Props> = ({
                 activeNodeId,
                 actions,
                 pageNumber,
-                isDragSource,
+                isDragAffected,
                 isDragging,
                 isInsertButtonHighlighted,
                 isBranchButtonHighlighted,
@@ -838,6 +860,7 @@ export const FumenGraph: Component<Props> = ({
                 hideBranchButton,
                 canDelete,
                 canCopy,
+                canStartDrag,
             ),
         };
     });
@@ -920,6 +943,10 @@ export const FumenGraph: Component<Props> = ({
             return null;
         }
         if (!src) return null;
+        const ghostPageCount = getTreeOperationNodeIds(tree, sourceNode.id, dragScope)
+            .map(id => findNode(tree, id))
+            .filter((node): node is TreeNode => node !== undefined && node.pageIndex >= 0)
+            .length;
         const sourceLayout = treeViewLayout.nodeLayouts.get(sourceNode.id);
         const ghostScale = 0.55;
         const width = TREE_THUMBNAIL_WIDTH * ghostScale;
@@ -943,6 +970,31 @@ export const FumenGraph: Component<Props> = ({
                     stroke-width={1.5}
                 />
                 <image width={width} height={height} href={src} />
+                {dragScope !== 'node' && ghostPageCount > 0 && (
+                    <g transform={`translate(${width - 2}, ${height + 2})`}>
+                        <rect
+                            x={-34}
+                            y={-10}
+                            width={38}
+                            height={18}
+                            rx={9}
+                            fill={TREE_COLORS.accent}
+                            stroke="#fff"
+                            stroke-width={1}
+                        />
+                        <text
+                            x={-15}
+                            y={-1}
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            font-size="8"
+                            font-weight="bold"
+                            fill="#fff"
+                        >
+                            {i18n.TreeView.DeleteToast.DragGhostPages(ghostPageCount)}
+                        </text>
+                    </g>
+                )}
             </g>
         );
     })();
@@ -1197,7 +1249,7 @@ export const FumenGraph: Component<Props> = ({
             mouseX,
             mouseY,
             dragSourceNodeId,
-            buttonDropMovesSubtree,
+            dragScope,
         );
 
         if (foundButton !== null) {

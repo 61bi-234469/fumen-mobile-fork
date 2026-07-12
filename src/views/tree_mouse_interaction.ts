@@ -80,7 +80,7 @@ export const evaluateTreeDropTargetAt = (clientX: number, clientY: number) => {
         svgX,
         svgY,
         sourceNodeId,
-        state.tree.buttonDropMovesSubtree,
+        state.tree.dragState.operationScope ?? state.tree.operationScope,
     );
 
     if (foundButton !== null) {

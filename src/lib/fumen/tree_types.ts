@@ -5,6 +5,9 @@
 /** Unique identifier for tree nodes */
 export type TreeNodeId = string;
 
+/** Scope of a tree move/delete operation. */
+export type TreeOperationScope = 'node' | 'subtree' | 'descendants';
+
 /** Page index for virtual root nodes (not mapped to pages array) */
 export const VIRTUAL_PAGE_INDEX = -1;
 
@@ -97,6 +100,8 @@ export interface TreeDragState {
     targetButtonParentId: TreeNodeId | null;
     /** Type of button being hovered: 'insert' (green) or 'branch' (orange) */
     targetButtonType: 'insert' | 'branch' | null;
+    /** Operation scope captured when the drag started */
+    operationScope: TreeOperationScope;
 }
 
 /** Tree state for application state management */
@@ -115,12 +120,12 @@ export interface TreeState {
     viewMode: TreeViewMode;
     /** Drag state for tree operations */
     dragState: TreeDragState;
-    /** Move subtree when dropping onto tree buttons */
-    buttonDropMovesSubtree: boolean;
+    /** Scope applied to node moves and permanent deletes */
+    operationScope: TreeOperationScope;
+    /** Whether the operation-scope popover is open */
+    operationScopePopoverOpened: boolean;
     /** Convert cleared lines to gray when creating new nodes */
     grayAfterLineClear: boolean;
-    /** Disable undo/redo briefly after switching to tree view */
-    treeViewNavLockUntil: number;
     /** Zoom scale for tree view (1.0 = 100%) */
     scale: number;
     /** Pending auto-focus request for tree view */
@@ -135,6 +140,7 @@ export const initialTreeDragState: TreeDragState = {
     dropSlotIndex: null,
     targetButtonParentId: null,
     targetButtonType: null,
+    operationScope: 'node',
 };
 
 /** Initial tree state */
@@ -146,9 +152,9 @@ export const initialTreeState: TreeState = {
     addMode: AddMode.Branch,
     viewMode: TreeViewMode.List,
     dragState: initialTreeDragState,
-    buttonDropMovesSubtree: false,
+    operationScope: 'node',
+    operationScopePopoverOpened: false,
     grayAfterLineClear: false,
-    treeViewNavLockUntil: 0,
     scale: 1.0,
     autoFocusPending: false,
 };

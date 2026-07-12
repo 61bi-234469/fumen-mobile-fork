@@ -551,7 +551,7 @@ export const view: View<State, Actions> = (state, actions) => {
     const renderTreeScopeSelector = () => TreeOperationScopeSelector({
         scope: state.tree.operationScope,
         opened: state.tree.operationScopePopoverOpened,
-        floatingBottom: TOOLS_HEIGHT + cornerOffset,
+        floating: { type: 'fixed', left: cornerOffset, bottom: TOOLS_HEIGHT + cornerOffset },
         onToggle: () => actions.setTreeState({
             operationScopePopoverOpened: !state.tree.operationScopePopoverOpened,
         }),

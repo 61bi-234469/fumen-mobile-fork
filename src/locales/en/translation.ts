@@ -180,8 +180,6 @@
             Descendants: 'Descendants only',
         },
         GrayAfterLineClear: 'Gray out cleared lines',
-        ZoomIn: 'Zoom in',
-        ZoomOut: 'Zoom out',
         ZoomReset: 'Reset zoom',
         DeleteNode: 'Delete page',
         DragHandle: 'Drag to move',

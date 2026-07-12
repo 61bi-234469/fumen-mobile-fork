@@ -179,8 +179,6 @@ export const i18n = {
             Descendants: () => t('TreeView.OperationScope.Descendants'),
         },
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
-        ZoomIn: () => t('TreeView.ZoomIn'),
-        ZoomOut: () => t('TreeView.ZoomOut'),
         ZoomReset: () => t('TreeView.ZoomReset'),
         DeleteNode: () => t('TreeView.DeleteNode'),
         DragHandle: () => t('TreeView.DragHandle'),

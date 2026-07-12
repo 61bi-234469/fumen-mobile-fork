@@ -7,7 +7,7 @@ interface Props {
     scope: TreeOperationScope;
     opened: boolean;
     compact?: boolean;
-    floatingBottom?: number;
+    floating?: { type: 'fixed' | 'absolute'; left: number; bottom: number };
     onToggle: () => void;
     onClose: () => void;
     onSelect: (scope: TreeOperationScope) => void;
@@ -26,16 +26,16 @@ export const TreeOperationScopeSelector: Component<Props> = ({
     scope,
     opened,
     compact = false,
-    floatingBottom,
+    floating,
     onToggle,
     onClose,
     onSelect,
 }) => {
     const rootStyle = style({
-        position: floatingBottom === undefined ? 'relative' : 'fixed',
-        ...(floatingBottom === undefined ? {} : {
-            bottom: px(floatingBottom),
-            left: px(8),
+        position: floating === undefined ? 'relative' : floating.type,
+        ...(floating === undefined ? {} : {
+            bottom: px(floating.bottom),
+            left: px(floating.left),
         }),
         zIndex: 125,
     });

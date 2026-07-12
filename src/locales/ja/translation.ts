@@ -155,8 +155,6 @@ export const resources = {
             Descendants: '配下のみ',
         },
         GrayAfterLineClear: 'ライン消去後にグレーアウト',
-        ZoomIn: '拡大',
-        ZoomOut: '縮小',
         ZoomReset: 'ズームをリセット',
         DeleteNode: 'ページを削除',
         DragHandle: 'ドラッグして移動',

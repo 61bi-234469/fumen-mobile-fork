@@ -8,6 +8,11 @@ import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import {
+    createPageFromClipboardField,
+    parseClipboard,
+    resolveTextClipboardContent,
+} from '../lib/clipboard_parser';
+import {
     downloadBlob,
     downloadImage,
     generateListViewExportImage,
@@ -1206,14 +1211,22 @@ export const listViewActions: Readonly<ListViewActions> = {
                     fumenData = `v115@${encoded}`;
                 } else {
                     parsedInput = parseClipboardInput(text);
-                    if (!parsedInput) {
-                        showToast('No fumen / tetgram data in clipboard');
-                        return;
-                    }
+                    if (parsedInput) {
+                        fumenData = parsedInput.fumen;
+                        // Decode (decode function supports v/d/D/V/m/M formats)
+                        decodedPages = await decode(fumenData);
+                    } else {
+                        const textContent = resolveTextClipboardContent(text);
+                        const content = textContent ?? await parseClipboard();
+                        if ((content.type !== 'fieldText' && content.type !== 'fieldImage') || !content.field) {
+                            showToast('No fumen / tetgram / field data in clipboard');
+                            return;
+                        }
 
-                    fumenData = parsedInput.fumen;
-                    // Decode (decode function supports v/d/D/V/m/M formats)
-                    decodedPages = await decode(fumenData);
+                        decodedPages = [createPageFromClipboardField(content.field)];
+                        const encoded = await encode(decodedPages);
+                        fumenData = `v115@${encoded}`;
+                    }
                 }
 
                 const { tree: importedTree } = extractTreeFromPages(decodedPages);

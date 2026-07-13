@@ -192,6 +192,34 @@ describe('Unified import/export menu', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
 
+    it('uses the modal tetgram RawData flows for short and long Ctrl+V', () => {
+        const emptyPage = () => Array.from({ length: 22 }, () => Array(10).fill(0));
+        const rawData = JSON.stringify({
+            pages: [emptyPage()],
+            comments: ['imported by shortcut'],
+            actions: [null],
+            listLayout: { perPage: {}, cols: 5 },
+        });
+
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.window().then((win) => {
+            Object.defineProperty(win.navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: () => Promise.resolve(rawData) },
+            });
+        });
+
+        cy.get('body')
+            .trigger('keydown', { code: 'KeyV', ctrlKey: true, key: 'v' })
+            .trigger('keyup', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.get(datatest('text-pages')).should('have.text', '2 / 2');
+
+        cy.get('body').trigger('keydown', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.wait(550);
+        cy.get('body').trigger('keyup', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.get(datatest('text-pages')).should('have.text', '1 / 1');
+    });
+
     it('keeps the editor usable when a tetgram URL contains out-of-range field diffs', () => {
         const tetgramUrl = 'https://tetristemplate.info/tetgram/?d=v115%40A8uhAglA8uhAgl';
 

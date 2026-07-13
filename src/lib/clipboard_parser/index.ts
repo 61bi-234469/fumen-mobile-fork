@@ -1,4 +1,5 @@
 import { Field } from '../fumen/field';
+import { Page } from '../fumen/types';
 import { ClipboardParseOutcome, ClipboardParseResult, ClipboardParseError } from './types';
 import { parseFieldText, looksLikeFieldText } from './text_parser';
 import { parseFieldImage } from './image_parser';
@@ -50,7 +51,7 @@ const extractFumenFromText = (text: string): string | null => {
  * Try interpreting text as a fumen string, then as a 20x10 field.
  * Returns null when neither matches so callers can decide the fallback.
  */
-const resolveTextClipboardContent = (text: string): ClipboardContent | null => {
+export const resolveTextClipboardContent = (text: string): ClipboardContent | null => {
     const fumen = extractFumenFromText(text);
     if (fumen) {
         return { fumen, type: 'fumen' };
@@ -69,6 +70,19 @@ const resolveTextClipboardContent = (text: string): ClipboardContent | null => {
 
     return null;
 };
+
+export const createPageFromClipboardField = (field: Field): Page => ({
+    index: 0,
+    field: { obj: field.copy() },
+    comment: { text: '' },
+    flags: {
+        lock: true,
+        mirror: false,
+        colorize: true,
+        rise: false,
+        quiz: false,
+    },
+});
 
 /**
  * Parse clipboard contents with detection order:

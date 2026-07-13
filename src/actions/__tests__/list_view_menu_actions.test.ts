@@ -420,4 +420,28 @@ describe('importPagesFromClipboard with tetgram RawData', () => {
             delete (navigator as any).clipboard;
         }
     });
+
+    test('keeps field text support when using the shared add flow', async () => {
+        const actionsModule = require('../../actions');
+        const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+        const fieldText = Array(20).fill('..........').join('\n');
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { readText: jest.fn().mockResolvedValue(fieldText) },
+        });
+
+        listViewActions.importPagesFromClipboard({ mode: 'add' })(createState());
+        await flushPromises();
+        await flushPromises();
+
+        expect(actionsModule.main.addPagesFromClipboard).toHaveBeenCalledWith(expect.objectContaining({
+            pages: [expect.objectContaining({ field: { obj: expect.any(Field) } })],
+        }));
+
+        if (originalClipboard) {
+            Object.defineProperty(navigator, 'clipboard', originalClipboard);
+        } else {
+            delete (navigator as any).clipboard;
+        }
+    });
 });

@@ -26,6 +26,14 @@ export class Field {
         }
     }
 
+    addRaw(x: number, y: number, value: number): void {
+        if (0 <= y) {
+            this.playField.addRaw(x, y, value);
+        } else {
+            this.sentLine.addRaw(x, -(y + 1), value);
+        }
+    }
+
     put(action: { type: Piece, rotation: Rotation, coordinate: { x: number, y: number } }): void {
         this.playField.put(action);
     }
@@ -84,6 +92,13 @@ export class Field {
 
     copy(): Field {
         return new Field({ field: this.playField.copy(), sentLine: this.sentLine.copy() });
+    }
+
+    sanitizedCopy(): Field {
+        return new Field({
+            field: this.playField.sanitizedCopy(),
+            sentLine: this.sentLine.sanitizedCopy(),
+        });
     }
 
     toPlayFieldPieces(): Piece[] {
@@ -167,6 +182,10 @@ export class PlayField {
     add(x: number, y: number, value: number) {
         const index = x + y * FieldConstants.Width;
         this.pieces[index] = Math.max(this.pieces[index] + value, 0);
+    }
+
+    addRaw(x: number, y: number, value: number) {
+        this.pieces[x + y * FieldConstants.Width] += value;
     }
 
     set(x: number, y: number, piece: Piece) {
@@ -261,6 +280,15 @@ export class PlayField {
 
     copy(): PlayField {
         return new PlayField({ pieces: this.pieces.concat(), length: this.length });
+    }
+
+    sanitizedCopy(): PlayField {
+        return new PlayField({
+            pieces: this.pieces.map(piece => (
+                Piece.Empty <= piece && piece <= Piece.Gray ? piece : Piece.Empty
+            )),
+            length: this.length,
+        });
     }
 
     toShallowArray() {

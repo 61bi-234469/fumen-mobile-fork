@@ -377,6 +377,21 @@ describe('fumen', () => {
         await expect(decode('v115@vhAyO')).rejects.toBeInstanceOf(FumenError);
     });
 
+    test('sanitizes out-of-range field diffs without corrupting the next frame', async () => {
+        const pages = await decode('v115@A8uhAglA8uhAgl');
+
+        expect(pages).toHaveLength(2);
+        expect(pages[0].field.obj!.get(0, 22)).toBe(Piece.Gray);
+        expect(pages[1].field.obj!.get(0, 22)).toBe(Piece.Empty);
+        for (const page of pages) {
+            const pieces = [
+                ...page.field.obj!.toPlayFieldPieces(),
+                ...page.field.obj!.toSentLintPieces(),
+            ];
+            expect(pieces.every(piece => Piece.Empty <= piece && piece <= Piece.Gray)).toBe(true);
+        }
+    });
+
     test('long data', async () => {
         const data = 'v115@' +
             'vh/xOY7cFLDmClcJSAVDEHBEooRBJoAVBzuHgCsn9VCq+ytCan/wCauTWCqSFgC0HUWCKtrgCpOmFDzyCMCKdFgCsXmPCJH' +

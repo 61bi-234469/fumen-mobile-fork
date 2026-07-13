@@ -191,4 +191,27 @@ describe('Unified import/export menu', () => {
         cy.get('[title="Disable tree mode"]').should('be.visible');
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
+
+    it('keeps the editor usable when a tetgram URL contains out-of-range field diffs', () => {
+        const tetgramUrl = 'https://tetristemplate.info/tetgram/?d=v115%40A8uhAglA8uhAgl';
+
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.window().then((win) => {
+            Object.defineProperty(win.navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: () => Promise.resolve(tetgramUrl) },
+            });
+        });
+
+        operations.menu.importExport();
+        cy.get(datatest('btn-import')).click();
+        cy.get(datatest('text-pages')).should('have.text', '1 / 2');
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('text-pages')).should('have.text', '2 / 2');
+
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-list-view-menu')).should('be.visible');
+    });
 });

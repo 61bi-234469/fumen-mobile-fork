@@ -92,6 +92,38 @@ describe('Unified import/export menu', () => {
         });
     });
 
+    it('opens tetgram with a percent-encoded v115 payload', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.wait(300);
+
+        cy.window().then((win) => {
+            cy.stub(win, 'open').as('windowOpen');
+        });
+
+        operations.menu.importExport();
+        cy.get(datatest('btn-export-tetgram-url')).click();
+
+        cy.get('@windowOpen').then((windowOpen) => {
+            const url = windowOpen.getCall(0).args[0];
+            expect(url).to.include('https://tetristemplate.info/tetgram/?d=v115%40');
+        });
+    });
+
+    it('copies tetgram RawData with the page shape and layout fields', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.wait(300);
+
+        operations.menu.importExport();
+        cy.get(datatest('btn-export-tetgram')).click();
+        cy.get(datatest('copied-tetgram-raw')).should('have.attr', 'data').then((data) => {
+            const raw = JSON.parse(data);
+            expect(raw.pages).to.have.length(1);
+            expect(raw.pages[0]).to.have.length(22);
+            expect(raw.pages[0][0]).to.have.length(10);
+            expect(raw.listLayout).to.deep.equal({ perPage: {}, cols: 5 });
+        });
+    });
+
     it('uses clipboard labels and icons for import/export options', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
         cy.wait(300);
@@ -104,21 +136,110 @@ describe('Unified import/export menu', () => {
             ['btn-export-gif', 'GIF', 'gif'],
             ['btn-export-fumen', 'テト譜データをコピー', 'content_copy'],
             ['btn-copy-url', '共有URLをコピー', 'content_copy'],
+            ['btn-export-tetgram', 'tetgram用rawデータをコピー', 'content_copy'],
             ['btn-export-url', '共有URLを開く', 'link'],
             ['btn-export-fumen-zui', '連続テト譜エディタで開く', 'open_in_new'],
+            ['btn-export-tetgram-url', 'tetgramで開く', 'open_in_new'],
             ['btn-export-fumen-for-mobile', 'Fumen for mobileで開く', 'open_in_new'],
             ['btn-export-external-site', '連続テト譜エディタ(LIST)で開く', 'open_in_new'],
         ].forEach(([button, label, icon]) => {
             cy.get(datatest(button)).should('contain.text', label);
             cy.get(datatest(button)).find('.material-icons').should('contain.text', icon);
         });
-        ['btn-export-url', 'btn-export-fumen-zui', 'btn-export-fumen-for-mobile', 'btn-export-external-site']
+        ['btn-export-url', 'btn-export-fumen-zui', 'btn-export-tetgram-url', 'btn-export-fumen-for-mobile',
+            'btn-export-external-site']
             .forEach(button => {
             cy.get(datatest(button)).should('not.have.class', 'btn');
         });
         cy.get(datatest('btn-copy-url')).should('have.class', 'btn');
+        cy.get(datatest('section-tetgram')).scrollIntoView().should('contain.text', 'tetgram連携');
+        cy.get(datatest('hint-tetgram-url')).scrollIntoView().should('be.visible');
         cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
         cy.contains('短縮URL').scrollIntoView().should('be.visible');
         cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
+
+        cy.get(datatest('mdl-list-view-menu')).then(($modal) => {
+            const ids = Array.from($modal[0].querySelectorAll('[datatest]'))
+                .map(element => element.getAttribute('datatest'));
+            expect(ids.indexOf('btn-export-tetgram-url'))
+                .to.be.greaterThan(ids.indexOf('btn-export-fumen-for-mobile'));
+            expect(ids.indexOf('btn-export-tetgram'))
+                .to.be.greaterThan(ids.indexOf('section-tetgram'));
+        });
+    });
+
+    it('imports tetgram RawData through the existing clipboard button', () => {
+        const emptyPage = () => Array.from({ length: 22 }, () => Array(10).fill(0));
+        const rawData = JSON.stringify({
+            pages: [emptyPage()],
+            comments: ['imported from tetgram'],
+            actions: [null],
+            listLayout: { perPage: { 0: { row: 'A', col: '1' } }, cols: 1 },
+        });
+
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.wait(300);
+        cy.window().then((win) => {
+            Object.defineProperty(win.navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: () => Promise.resolve(rawData) },
+            });
+        });
+
+        operations.menu.importExport();
+        cy.get(datatest('btn-import')).click();
+        cy.get('[title="Disable tree mode"]').should('be.visible');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 1);
+    });
+
+    it('uses the modal tetgram RawData flows for short and long Ctrl+V', () => {
+        const emptyPage = () => Array.from({ length: 22 }, () => Array(10).fill(0));
+        const rawData = JSON.stringify({
+            pages: [emptyPage()],
+            comments: ['imported by shortcut'],
+            actions: [null],
+            listLayout: { perPage: {}, cols: 5 },
+        });
+
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.window().then((win) => {
+            Object.defineProperty(win.navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: () => Promise.resolve(rawData) },
+            });
+        });
+
+        cy.get('body')
+            .trigger('keydown', { code: 'KeyV', ctrlKey: true, key: 'v' })
+            .trigger('keyup', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.get(datatest('text-pages')).should('have.text', '2 / 2');
+
+        cy.get('body').trigger('keydown', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.wait(550);
+        cy.get('body').trigger('keyup', { code: 'KeyV', ctrlKey: true, key: 'v' });
+        cy.get(datatest('text-pages')).should('have.text', '1 / 1');
+    });
+
+    it('keeps the editor usable when a tetgram URL contains out-of-range field diffs', () => {
+        const tetgramUrl = 'https://tetristemplate.info/tetgram/?d=v115%40A8uhAglA8uhAgl';
+
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.window().then((win) => {
+            Object.defineProperty(win.navigator, 'clipboard', {
+                configurable: true,
+                value: { readText: () => Promise.resolve(tetgramUrl) },
+            });
+        });
+
+        operations.menu.importExport();
+        cy.get(datatest('btn-import')).click();
+        cy.get(datatest('text-pages')).should('have.text', '1 / 2');
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('text-pages')).should('have.text', '2 / 2');
+
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-list-view-menu')).should('be.visible');
     });
 });

@@ -30,7 +30,7 @@ import {
 import { SerializedTree } from '../lib/fumen/tree_types';
 import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
-import { parseClipboard } from '../lib/clipboard_parser';
+import { createPageFromClipboardField, parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
 
 declare const M: any;
@@ -64,19 +64,6 @@ const parseFumenFromClipboard = (text: string): string | null => {
     const fumenMatch = decodedText.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
     return fumenMatch ? fumenMatch[0] : null;
 };
-
-const createPageFromField = (field: Field): Page => ({
-    index: 0,
-    field: { obj: field.copy() },
-    comment: { text: '' },
-    flags: {
-        lock: true,
-        mirror: false,
-        colorize: true,
-        rise: false,
-        quiz: false,
-    },
-});
 
 export interface PageActions {
     reopenCurrentPage: () => action;
@@ -665,7 +652,7 @@ export const pageActions: Readonly<PageActions> = {
                 }
                 case 'fieldText':
                 case 'fieldImage': {
-                    const page = createPageFromField(content.field!);
+                    const page = createPageFromClipboardField(content.field!);
                     main.appendPages({ pages: [page], pageIndex: currentIndex + 1 });
                     let msg = i18n.Clipboard.Messages.InsertedField();
                     if (content.warning) {
@@ -797,7 +784,7 @@ export const pageActions: Readonly<PageActions> = {
                 }
                 case 'fieldText':
                 case 'fieldImage': {
-                    const page = createPageFromField(content.field!);
+                    const page = createPageFromClipboardField(content.field!);
                     const encoded = await encode([page]);
                     main.loadFumen({ fumen: `v115@${encoded}` });
                     let msg = i18n.Clipboard.Messages.ReplacedWithField();

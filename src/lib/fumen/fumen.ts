@@ -112,7 +112,7 @@ export async function innerDecode(
             for (let block = 0; block < numOfBlocks + 1; block += 1) {
                 const x = index % FIELD_WIDTH;
                 const y = fieldTop - Math.floor(index / FIELD_WIDTH) - 1;
-                result.field.add(x, y, diff - 8);
+                result.field.addRaw(x, y, diff - 8);
                 index += 1;
             }
         }
@@ -250,7 +250,7 @@ export async function innerDecode(
         if (currentFieldObj.changed || pageIndex === 0) {
             // フィールドに変化があったとき
             // フィールドに変化がなかったが、先頭のページだったとき
-            field = { obj: currentFieldObj.field.copy() };
+            field = { obj: currentFieldObj.field.sanitizedCopy() };
             store.refIndex.field = pageIndex;
         } else {
             // フィールドに変化がないとき
@@ -273,7 +273,7 @@ export async function innerDecode(
         pages.push(page);
 
         callback(
-            currentFieldObj.field.copy()
+            currentFieldObj.field.sanitizedCopy()
             , currentPiece
             , store.quiz !== undefined ? store.quiz.format().toString() : store.lastCommentText,
         );

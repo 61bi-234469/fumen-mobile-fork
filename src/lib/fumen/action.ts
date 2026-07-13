@@ -74,7 +74,7 @@ function decodeRotation(n: number) {
     throw new FumenError('Unexpected rotation');
 }
 
-function decodeCoordinate(n: number, piece: Piece, rotation: Rotation, fieldTop: number) {
+export function decodeCoordinate(n: number, piece: Piece, rotation: Rotation, fieldTop: number) {
     let x = n % FieldConstants.Width;
     const originY = Math.floor(n / 10);
     let y = fieldTop - originY - 1;
@@ -133,7 +133,7 @@ function encodeBool(flag: boolean): number {
     return flag ? 1 : 0;
 }
 
-function encodePosition(
+export function encodePosition(
     { coordinate, type, rotation }: { coordinate: { x: number, y: number }, type: Piece, rotation: Rotation },
 ): number {
     let { x, y } = coordinate;

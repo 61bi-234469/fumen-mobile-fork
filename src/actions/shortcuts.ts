@@ -267,13 +267,7 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
         actions.insertNewPage({ index: state.fumen.currentIndex + 1 });
         break;
     case 'Insert':
-        // TreeView では独立ツリーとして追加（右上INSERTボタンと同じ動作）
-        if (screen === Screens.ListView && state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree) {
-            actions.importPagesFromClipboard({ mode: 'add' });
-        } else {
-            // Reader/Editor/ListView(List表示) では現在ページの後に挿入
-            actions.insertPageFromClipboard();
-        }
+        actions.importPagesFromClipboard({ mode: 'add' });
         break;
     case 'Copy':
         actions.copyCurrentPageToClipboard();
@@ -298,7 +292,7 @@ const executeEditLongPress = (key: EditShortcutKey, state: State, actions: Actio
         actions.changeToTreeViewScreen();
         break;
     case 'Insert':
-        actions.replaceAllFromClipboard();
+        actions.importPagesFromClipboard({ mode: 'import' });
         break;
     case 'Copy':
         actions.copyAllPagesToClipboard();

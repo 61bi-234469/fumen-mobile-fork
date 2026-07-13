@@ -23,12 +23,14 @@ interface ListViewMenuModalProps {
         exportListViewAsUrl: () => void;
         exportLeftSegmentAsUrl: () => void;
         copyListViewUrlToClipboard: () => void;
+        copyTetgramRawToClipboard: () => void;
         setExportScope: (data: { scope: 'all' | 'left' }) => void;
         setListViewShortenUrls: (data: { enabled: boolean }) => void;
         changeGifFrameDelay: (data: { delayMs: number }) => void;
         openListViewInFumenZui: () => void;
         openListViewInFumenForMobile: () => void;
         openListViewInExternalSite: () => void;
+        openListViewInTetgram: () => void;
     };
 }
 
@@ -293,6 +295,32 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                 open_in_new
                             </Icon>
                             {i18n.ListViewMenu.Buttons.FumenForMobile()}
+                        </a>
+
+                        <div key="section-tetgram" datatest="section-tetgram" style={sectionHeadingStyle}>
+                            {i18n.ListViewMenu.Sections.Tetgram()}
+                        </div>
+
+                        <a href="#" key="btn-export-tetgram" datatest="btn-export-tetgram"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red"
+                           onclick={runAndClose(() => actions.copyTetgramRawToClipboard())}>
+                            <Icon key="btn-export-tetgram-icon" classNames={['left']} iconSize={18}>content_copy</Icon>
+                            {i18n.ListViewMenu.Buttons.TetgramRaw()}
+                            <span style={hintStyle}>{i18n.ListViewMenu.Buttons.TetgramRawHint()}</span>
+                        </a>
+
+                        <a href="#" key="btn-export-tetgram-url" datatest="btn-export-tetgram-url"
+                           style={externalLinkStyle}
+                           className="waves-effect waves-teal"
+                           onclick={runAndClose(() => actions.openListViewInTetgram())}>
+                            <Icon key="btn-export-tetgram-url-icon" classNames={['left']} iconSize={18}>
+                                open_in_new
+                            </Icon>
+                            {i18n.ListViewMenu.Buttons.TetgramUrl()}
+                            <span datatest="hint-tetgram-url" style={hintStyle}>
+                                {i18n.ListViewMenu.Buttons.TetgramUrlHint()}
+                            </span>
                         </a>
 
                         <div key="section-settings" style={sectionHeadingStyle}>

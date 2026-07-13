@@ -31,6 +31,30 @@ describe('rectangle selection actions', () => {
         expect(ended.fumen.pages).toBe(initial.fumen.pages);
     });
 
+    test('dragging outside a floating selection commits it and immediately starts a new selection', () => {
+        const initial = state();
+        const floatingState = {
+            ...initial,
+            mode: { blackTransparentPaste: false },
+            rectSelect: {
+                phase: 'floating' as const,
+                dragAnchor: null,
+                rect: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+                floating: {
+                    width: 2, height: 2, cells: [0, 0, 0, 0],
+                    x: 0, y: 0, sourceRect: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+                },
+                moveAnchor: null,
+            },
+        };
+
+        const next = rectSelectActions.rectSelectTouchStart({ index: 55 })(floatingState)!;
+
+        expect(next.rectSelect!.phase).toBe('selecting');
+        expect(next.rectSelect!.floating).toBeNull();
+        expect(next.rectSelect!.rect).toEqual({ minX: 5, minY: 5, maxX: 5, maxY: 5 });
+    });
+
     test('cancels a preview without changing pages', () => {
         const initial = state();
         const selecting = {

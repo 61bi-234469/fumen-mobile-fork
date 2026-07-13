@@ -153,7 +153,17 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         const floating = state.rectSelect.floating;
         if (floating) {
             const rect = rectFromFloating(floating);
-            if (!containsPoint(rect, point.x, point.y)) return rectSelectActions.commitRectSelect()(state);
+            if (!containsPoint(rect, point.x, point.y)) {
+                return sequence(state, [
+                    rectSelectActions.commitRectSelect(),
+                    (): NextState => ({
+                        rectSelect: {
+                            phase: 'selecting', dragAnchor: point, rect: normalizeRect(point, point),
+                            floating: null, moveAnchor: null,
+                        },
+                    }),
+                ]);
+            }
             return {
                 rectSelect: {
                     ...state.rectSelect,

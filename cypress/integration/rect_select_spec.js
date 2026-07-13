@@ -82,4 +82,14 @@ describe('Rectangle selection and parts', () => {
         cy.get(block(1, 1)).should('have.attr', 'color', Color.I.Normal);
         cy.get(block(3, 3)).should('have.attr', 'color', Color.Empty.Normal);
     });
+
+    it('commits a floating selection and starts a new one when dragged outside in one motion', () => {
+        operations.rectSelect.start();
+        operations.rectSelect.drag({ x: 1, y: 1 }, { x: 3, y: 3 });
+        operations.rectSelect.drag({ x: 2, y: 2 }, { x: 2, y: 2 });
+        cy.get(datatest('btn-rect-commit')).should('be.visible');
+
+        operations.rectSelect.drag({ x: 6, y: 6 }, { x: 8, y: 8 });
+        cy.get(datatest('btn-rect-commit')).should('be.visible');
+    });
 });

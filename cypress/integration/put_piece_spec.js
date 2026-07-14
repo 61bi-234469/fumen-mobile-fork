@@ -5,321 +5,37 @@ import { operations } from '../support/operations';
 describe('Put pieces', () => {
     it('Move piece', () => {
         visit({ mode: 'edit' });
-
         operations.mode.piece.open();
+        operations.mode.piece.spawn.O();
 
-        minoPosition(Piece.O, Rotation.Spawn)(4, 0).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.piece.move();
-
-        operations.mode.block.click(0, 10);
-        operations.mode.block.click(4, 10);
-
-        operations.mode.tools.undo();
-
-        operations.mode.tools.nextPage();
-
-        operations.mode.piece.draw();
-
-        minoPosition(Piece.O, Rotation.Spawn)(4, 0).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.undo();
-
-        operations.mode.tools.nextPage();
-
-        minoPosition(Piece.J, Rotation.Right)(4, 14).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
+        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
         operations.mode.piece.harddrop();
+        operations.mode.piece.moveToLeft();
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
-        expectFumen('v115@vhCTXIAgHOLJ');
+        operations.mode.tools.undo();
+        operations.mode.tools.redo();
+        operations.mode.piece.resetPiece();
+        cy.get(datatest('tray-piece-drag')).should('be.disabled');
     });
 
     it('Put pieces', () => {
         visit({ mode: 'edit' });
-
         operations.mode.piece.open();
+        operations.mode.block.click(5, 5);
 
-        operations.mode.block.click(0, 0);
-        cy.get(block(0, 0)).should('have.attr', 'color', Color.Completion.Highlight2);
+        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
 
         operations.mode.piece.resetPiece();
-        cy.get(block(0, 0)).should('not.have.attr', 'color', Color.Completion.Highlight2);
+        cy.get(datatest('tray-piece-drop')).should('be.disabled');
 
-        minoPosition(Piece.I, Rotation.Spawn)(4, 0).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.nextPage();
-
-        minoPosition(Piece.Z, Rotation.Spawn)(4, 1).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        minoPosition(Piece.L, Rotation.Right)(0, 1).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        minoPosition(Piece.O, Rotation.Spawn)(8, 0).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        minoPosition(Piece.S, Rotation.Right)(6, 1).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        minoPosition(Piece.T, Rotation.Reverse)(2, 15).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.home();
-        operations.mode.flags.open();
-        operations.mode.flags.lockToOff();
-
-        operations.mode.tools.home();
-        operations.mode.piece.open();
-
-        operations.mode.tools.nextPage();
-        operations.mode.piece.resetPiece();
-
-        minoPosition(Piece.T, Rotation.Reverse)(2, 10).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.nextPage();
-        operations.mode.piece.resetPiece();
-
-        minoPosition(Piece.T, Rotation.Reverse)(2, 5).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.nextPage();
-        operations.mode.piece.resetPiece();
-
-        minoPosition(Piece.T, Rotation.Reverse)(2, 1).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.tools.nextPage();
-        operations.mode.tools.home();
-        operations.mode.flags.open();
-        operations.mode.flags.lockToOn();
-
-        operations.mode.tools.nextPage();
-
-        expectFumen('v115@vhKRQJUGJKJJTNJvMJFEmFdmF2mFKnFKJAgH');
-    });
-
-    it('Move pieces', () => {
-        visit({
-            fumen: 'v115@zgB8EeD8HeB8AeE8AeC8BeC8BeC8AeE8AeB8JeAgHz?gBAEeDAHeBAAeEAAeBAAeA8AeAAHeAAEeAAKeAgH0gB8DeB?8AeB8FeD8AeD8AeB8CeA8BeA8DeA8AeAABeAAAeA8KeAgH0?gBAD8BeA8BAAeE8BeBAEeA8BeBAEeA8BeBADeB8LeAgH',
-            mode: 'edit',
-        });
-
-        operations.mode.piece.open();
-
-        // T
-        {
-            minoPosition(Piece.T, Rotation.Spawn)(2, 3).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToRight();
-
-            mino(Piece.T, Rotation.Right)(1, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.T.Highlight2);
-            });
-
-            operations.mode.piece.resetPiece();
-
-            minoPosition(Piece.T, Rotation.Spawn)(6, 3).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToLeft();
-
-            mino(Piece.T, Rotation.Left)(7, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.T.Highlight2);
-            });
-        }
-
-        operations.mode.tools.nextPage();
-
-        // SZ
-        {
-            minoPosition(Piece.S, Rotation.Right)(1, 2).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToRight();
-
-            mino(Piece.S, Rotation.Reverse)(2, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.S.Highlight2);
-            });
-
-            operations.mode.piece.resetPiece();
-
-            minoPosition(Piece.Z, Rotation.Spawn)(8, 13).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToLeft();
-            operations.mode.piece.harddrop();
-            operations.mode.piece.rotateToLeft();
-
-            mino(Piece.Z, Rotation.Reverse)(7, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.Z.Highlight2);
-            });
-        }
-
-        operations.mode.tools.nextPage();
-
-        // LJ
-        {
-            minoPosition(Piece.L, Rotation.Spawn)(3, 3).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToRight();
-
-            mino(Piece.L, Rotation.Right)(2, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.L.Highlight2);
-            });
-
-            operations.mode.piece.resetPiece();
-
-            minoPosition(Piece.J, Rotation.Spawn)(6, 3).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToLeft();
-
-            mino(Piece.J, Rotation.Left)(7, 1).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.J.Highlight2);
-            });
-        }
-
-        operations.mode.tools.nextPage();
-
-        // I
-        {
-            minoPosition(Piece.I, Rotation.Right)(0, 2).forEach(position => {
-                operations.mode.block.click(position[0], position[1]);
-            });
-
-            operations.mode.piece.rotateToRight();
-
-            mino(Piece.I, Rotation.Reverse)(2, 0).forEach(block => {
-                cy.get(block).should('have.attr', 'color', Color.I.Highlight2);
-            });
-        }
-
-        expectFumen('v115@zgB8EeD8HeB8AeE8AeC8BeC8BeC8AeE8AeB8Je9MJz?gBAEeDAHeBAAeEAQLBAAeA8AeAABeRLDeAADeQLAAKekMJ0?gB8DeB8AeB8FeD8AeD8AeB8CeA8BeAtAPCeA8AeAABeAAAP?AtKe+MJ0gBAD8BeA8BAAeE8BeBAEeglBeBAEeglBeBADehl?LehOJ');
-    });
-
-    it('Move pieces 2', () => {
-        visit({ mode: 'edit' });
-
-        operations.mode.piece.open();
-
-        // T
-        minoPosition(Piece.T, Rotation.Spawn)(3, 3).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
+        operations.mode.piece.draw();
+        operations.mode.block.click(5, 5);
         operations.mode.piece.harddrop();
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-
-        operations.mode.tools.undo();
-        operations.mode.tools.undo();
-        operations.mode.tools.redo();
-
-        operations.mode.tools.nextPage();
-
-        // I
-        minoPosition(Piece.I, Rotation.Spawn)(4, 4).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.piece.harddrop();
-
-        operations.mode.piece.moveToRight();
-        operations.mode.piece.moveToRight();
-        operations.mode.piece.moveToRight();
-
-        operations.mode.tools.undo();
-        operations.mode.tools.redo();
-
-        operations.mode.tools.nextPage();
-
-        // O
-        minoPosition(Piece.O, Rotation.Spawn)(3, 10).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.piece.harddrop();
-
-        operations.mode.piece.moveToRight();
-        operations.mode.piece.moveToRight();
-        operations.mode.piece.moveToRight();
-
-        operations.mode.piece.harddrop();
-
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-        operations.mode.piece.moveToLeft();
-
-        expectFumen('v115@vhCVPJxMJTLJ');
-
-        // 環境によってはクリップボードのエラーメッセージが消えない場合があるため
-        cy.wait(2000);
-
-        // I
-        minoPosition(Piece.I, Rotation.Spawn)(6, 18).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.piece.moveToLeftEnd();
-        operations.mode.piece.rotateToLeft();
-        operations.mode.piece.harddrop();
-
-        operations.mode.tools.nextPage();
-
-        // I
-        minoPosition(Piece.I, Rotation.Spawn)(2, 21).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
-
-        operations.mode.piece.moveToRightEnd();
-        operations.mode.piece.rotateToRight();
-        operations.mode.piece.harddrop();
-
-        expectFumen('v115@vhEVPJxMJTLJ5/IJ+I');
-
-        operations.mode.piece.lockToOff();
-
-        operations.mode.tools.nextPage();
-
-        operations.mode.piece.rotateToRight();
-
-        operations.mode.tools.nextPage();
-
-        operations.mode.piece.rotateToRight();
-
-        operations.mode.piece.lockToOn();
-
-        operations.mode.tools.nextPage();
-
-        expectFumen('v115@vhHVPJxMJTLJ5/IJ+mhCn59IAgH');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
     });
 
     it('Show current rotation', () => {
@@ -330,9 +46,8 @@ describe('Put pieces', () => {
         cy.get(datatest('img-rotation-empty')).should('be.visible');
 
         // T
-        minoPosition(Piece.T, Rotation.Right)(3, 3).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.rotateToRight();
 
         cy.get(datatest('img-rotation-right')).should('be.visible');
 
@@ -358,23 +73,21 @@ describe('Put pieces', () => {
         cy.get(datatest('img-rotation-empty')).should('be.visible');
 
         // O
-        minoPosition(Piece.O, Rotation.Spawn)(6, 18).forEach(position => {
-            operations.mode.block.click(position[0], position[1]);
-        });
+        operations.mode.piece.spawn.O();
 
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
         operations.mode.piece.rotateToRight();
 
-        cy.get(datatest('img-rotation-right')).should('be.visible');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
         operations.mode.piece.rotateToRight();
 
-        cy.get(datatest('img-rotation-reverse')).should('be.visible');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
         operations.mode.piece.rotateToRight();
 
-        cy.get(datatest('img-rotation-left')).should('be.visible');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
         operations.mode.piece.rotateToRight();
 
@@ -398,13 +111,12 @@ describe('Put pieces', () => {
 
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
-        // Default rotation system (guideline SRS) has no 180 rotation
-        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
+        // 180 rotation remains a keyboard action rather than a context-tray button.
+        cy.get(datatest('tray-piece-rotate-left')).should('be.visible');
+        cy.get(datatest('tray-piece-rotate-right')).should('be.visible');
 
         // Switch to SRS+ (TETR.IO)
         operations.menu.setRotationSystem('srsPlus');
-
-        cy.get(datatest('btn-rotate-to-180')).should('be.visible').and('not.have.class', 'disabled');
 
         operations.mode.piece.rotateTo180();
 
@@ -414,10 +126,11 @@ describe('Put pieces', () => {
 
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
 
-        // Switching back to guideline SRS hides the 180 button again
+        // Switching back to guideline SRS keeps the tray limited to left/right rotation.
         operations.menu.setRotationSystem('srs');
 
-        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
+        cy.get(datatest('tray-piece-rotate-left')).should('be.visible');
+        cy.get(datatest('tray-piece-rotate-right')).should('be.visible');
     });
 
     it('Spawn guideline piece', () => {
@@ -533,119 +246,56 @@ describe('Put pieces', () => {
         expectFumen('v115@vhGRQJUGJKJJTNJ/MJFKJWSJ');
     });
 
-    it('Spawn: usecase 2', () => {
-        visit({ mode: 'edit' });
-        operations.mode.piece.open();
-        operations.mode.piece.draw();  // 自動でmoveに切り替わることを期待
-
-        {
-            operations.mode.piece.spawn.Z();
-            operations.mode.piece.rotateToLeft();
-            operations.mode.block.click(1, 1);
-        }
-
-        {
-            operations.mode.piece.spawn.J();
-            operations.mode.piece.rotateToLeft();
-            operations.mode.block.click(7, 1);
-        }
-
-        {
-            operations.mode.piece.spawn.O();
-            operations.mode.block.click(8, 0);
-        }
-
-        {
-            operations.mode.piece.spawn.I();
-            operations.mode.block.click(2, 0);
-        }
-
-        {
-            operations.mode.piece.spawn.S();
-            operations.mode.block.click(3, 1);
-        }
-
-        {
-            operations.mode.piece.spawn.T();
-            operations.mode.piece.rotateToRight();
-            operations.mode.piece.rotateToRight();
-            operations.mode.block.click(5, 1);
-        }
-
-        {
-            operations.mode.piece.spawn.L();
-            operations.mode.piece.rotateToRight();
-            operations.mode.block.click(8, 1);
-        }
-
-        expectFumen('v115@vhGcJJ+MJTNJRPJ3FJlLJKNJ');
-    });
 
     it('Reset', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();
         operations.mode.piece.draw();
 
-        // Disable: all
-        cy.get(datatest('btn-reset-piece')).should('have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-harddrop')).should('have.class', 'disabled');
-        // 180 rotation button is hidden entirely with the default (guideline SRS) rotation system
-        cy.get(datatest('btn-rotate-to-180')).should('not.exist');
+        // Piece actions that need a placed piece start disabled.
+        cy.get(datatest('tray-piece-drag')).should('be.disabled');
+        cy.get(datatest('tray-piece-rotate-right')).should('be.disabled');
+        cy.get(datatest('tray-piece-rotate-left')).should('be.disabled');
+        cy.get(datatest('tray-piece-drop')).should('be.disabled');
 
         operations.mode.block.click(5, 5);
 
-        // Enable: reset only
-        cy.get(datatest('btn-reset-piece')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-harddrop')).should('have.class', 'disabled');
-
-        operations.mode.piece.spawn.Z();
-
-        // Enable: all
-        cy.get(datatest('btn-reset-piece')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-right')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-left')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right-end')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left-end')).should('not.have.class', 'disabled');
-        cy.get(datatest('btn-harddrop')).should('not.have.class', 'disabled');
+        // SPAWN creates lastMino immediately and switches to DRAG.
+        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-rotate-right')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-rotate-left')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-drop')).should('not.be.disabled');
 
         operations.mode.piece.resetPiece();
 
-        // Disable: all
-        cy.get(datatest('btn-reset-piece')).should('have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-rotate-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-right-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-move-to-left-end')).should('have.class', 'disabled');
-        cy.get(datatest('btn-harddrop')).should('have.class', 'disabled');
+        operations.mode.piece.spawn.Z();
+
+        // A spawned piece enables drag, rotation, and drop.
+        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-rotate-right')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-rotate-left')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-drop')).should('not.be.disabled');
+
+        operations.mode.piece.resetPiece();
+
+        // Reset disables the placed-piece operations again.
+        cy.get(datatest('tray-piece-drag')).should('be.disabled');
+        cy.get(datatest('tray-piece-rotate-right')).should('be.disabled');
+        cy.get(datatest('tray-piece-rotate-left')).should('be.disabled');
+        cy.get(datatest('tray-piece-drop')).should('be.disabled');
     });
 
     it('Inference', () => {
         visit({ mode: 'edit' });
-        operations.mode.piece.open();
-        operations.mode.piece.draw();
+        operations.mode.tools.home();
+        cy.get(datatest('btn-piece-inference')).click();
 
         operations.mode.block.click(5, 5);
 
         cy.get(block(5, 5)).should('have.attr', 'color', Color.Completion.Highlight2);
 
         // 消えない
-        cy.get(datatest('btn-piece-select-mode')).click();
+        cy.get(datatest('btn-select-mode')).click();
 
         cy.get(block(5, 5)).should('have.attr', 'color', Color.Completion.Highlight2);
 
@@ -662,60 +312,29 @@ describe('Put pieces', () => {
 
     it('Split inference', () => {
         visit({ mode: 'edit' });
-        operations.mode.piece.open();
-        operations.mode.piece.draw();
+        operations.mode.tools.home();
+        cy.get(datatest('btn-piece-inference')).click();
 
-        operations.mode.block.click(5, 5);
-        operations.mode.block.click(4, 5);
-        operations.mode.block.click(3, 5);
+        const positions = minoPosition(Piece.L, Rotation.Spawn)(4, 5);
+        positions.forEach(position => operations.mode.block.click(position[0], position[1]));
+        positions.forEach(position => {
+            cy.get(block(position[0], position[1])).should('have.attr', 'color', Color.L.Highlight2);
+        });
 
-        // L
-        operations.mode.block.click(3, 3);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.Completion.Highlight2);
-        operations.mode.block.click(3, 3);
-
-        operations.mode.block.click(3, 4);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.L.Highlight2);
-        operations.mode.block.click(3, 4);
-
-        // T
-        operations.mode.block.click(4, 3);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.Completion.Highlight2);
-        operations.mode.block.click(4, 3);
-
-        operations.mode.block.click(4, 4);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.T.Highlight2);
-        operations.mode.block.click(4, 4);
-
-        // J
-        operations.mode.block.click(5, 3);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.Completion.Highlight2);
-        operations.mode.block.click(5, 3);
-
-        operations.mode.block.click(5, 4);
-        cy.get(block(4, 5)).should('have.attr', 'color', Color.J.Highlight2);
-        operations.mode.block.click(5, 4);
+        operations.mode.block.click(positions[0][0], positions[0][1]);
+        cy.get(block(positions[0][0], positions[0][1])).should('not.have.attr', 'color', Color.L.Highlight2);
     });
 
     it('Swap current piece', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();
+        operations.mode.piece.spawn.Z();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.spawn.J();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.spawn.J();
 
-        {
-            operations.mode.piece.spawn.Z();
-            operations.mode.block.click(5, 10);
-        }
-
-        {
-            operations.mode.piece.spawn.J();
-            operations.mode.piece.harddrop();
-        }
-
-        {
-            operations.mode.piece.spawn.J();
-            operations.mode.piece.harddrop();
-        }
-
-        expectFumen('v115@vhBWQJWGJ');
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
     });
 });

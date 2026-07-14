@@ -38,6 +38,8 @@ import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
+import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
+import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -55,7 +57,9 @@ export type Actions = AnimationActions
     & ListViewActions
     & EditorPanelActions
     & TreeOperationActions
-    & ColdClearActions;
+    & ColdClearActions
+    & EditorInteractionActions
+    & RectSelectActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -73,6 +77,8 @@ export const actions: Readonly<Actions> = {
     ...editorPanelActions,
     ...treeOperationActions,
     ...coldClearActions,
+    ...editorInteractionActions,
+    ...rectSelectActions,
 };
 
 // Current state getter for shortcut handlers

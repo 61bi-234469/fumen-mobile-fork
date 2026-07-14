@@ -114,6 +114,8 @@ const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
         return fillRowActions.ontouchMoveField({ index })(state);
     case TouchTypes.Fill:
         return fillActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Select:
+        return actions.moveRectSelection({ index })(state);
     }
     return undefined;
 };
@@ -194,6 +196,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.fixInferencePiece(),
             fieldEditorActions.resetInferencePiece(),
+            actions.cancelRectSelectionPreview(),
         ]);
     },
     ontouchStartField: ({ index }) => (state): NextState => {
@@ -202,6 +205,15 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             case TouchTypes.Drawing:
                 return drawBlockActions.ontouchStartField({ index })(newState);
             case TouchTypes.Piece:
+                if (newState.editorUi.pieceAction === 'spawn') {
+                    return sequence(newState, [
+                        actions.spawnPiece({
+                            piece: newState.editorUi.lastMino,
+                            srs: newState.mode.rotationSystem !== 'classic',
+                        }),
+                        actions.changePieceAction({ pieceAction: 'drag' }),
+                    ]);
+                }
                 return putPieceActions.ontouchStartField({ index })(newState);
             case TouchTypes.MovePiece:
                 return movePieceActions.ontouchStartField({ index })(newState);
@@ -209,6 +221,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchStartField({ index })(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Select:
+                return actions.startRectSelection({ index })(newState);
             }
             return undefined;
         };
@@ -252,6 +266,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchEnd()(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchEnd()(newState);
+            case TouchTypes.Select:
+                return actions.endRectSelection()(newState);
             }
             return undefined;
         };
@@ -304,6 +320,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return setTouchTrail(undefined, undefined)(state);
     },
     onrightStartField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return actions.cancelRectSelectionPreview()(state);
+        }
         // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
         // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
         // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
@@ -323,11 +342,17 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         });
     },
     onrightMoveField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchMoveField({ index })(patchedState);
         });
     },
     onrightEnd: () => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchEnd()(patchedState);
         });

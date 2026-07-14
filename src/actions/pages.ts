@@ -137,6 +137,8 @@ export const pageActions: Readonly<PageActions> = {
             state.play.status === AnimationState.Play ? actions.startAnimation() : undefined,
             state.fumen.currentIndex !== index ? actions.fixInferencePiece() : undefined,
             state.fumen.currentIndex !== index ? actions.clearInferencePiece() : undefined,
+            state.fumen.currentIndex !== index && actions.clearRectSelection !== undefined
+                ? actions.clearRectSelection() : undefined,
             state.fumen.currentIndex !== index ? actions.commitCommentText() : undefined,
             actions.setComment({ comment: text }),
             actions.setField({
@@ -284,7 +286,10 @@ export const pageActions: Readonly<PageActions> = {
         ]);
     },
     removeUnsettledItems: () => (state): NextState => {
-        return actions.removeUnsettledItemsInField()(state);
+        return sequence(state, [
+            actions.removeUnsettledItemsInField(),
+            actions.cancelRectSelectionPreview(),
+        ]);
     },
     backLoopPage: () => (state): NextState => {
         const index = (state.fumen.currentIndex - 1 + state.fumen.maxPage) % state.fumen.maxPage;

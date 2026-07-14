@@ -42,10 +42,10 @@ describe('Drawing Tools', () => {
 
         operations.mode.tools.home();
         operations.mode.piece.open();
-
-        minoPosition(Piece.T, Rotation.Spawn)(8, 1).forEach((block) => {
-            operations.mode.block.click(block[0], block[1]);
-        });
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.rotateTo180();
+        operations.mode.piece.moveToRightEnd();
+        operations.mode.piece.harddrop();
 
         operations.mode.tools.home();
         operations.mode.tools.duplicatePage();
@@ -362,6 +362,7 @@ describe('Drawing Tools', () => {
 
         operations.mode.flags.riseToOn();
         operations.mode.flags.mirrorToOn();
+        operations.mode.flags.close();
 
         operations.mode.tools.nextPage();
 
@@ -385,20 +386,25 @@ describe('Drawing Tools', () => {
         operations.mode.flags.lockToOff();
         operations.mode.flags.riseToOff();
         operations.mode.flags.mirrorToOff();
+        operations.mode.flags.close();
 
         operations.mode.tools.nextPage();
 
         // 3ページ目
+        operations.mode.flags.open();
         operations.mode.flags.lockToOn();
         operations.mode.flags.mirrorToOn();
+        operations.mode.flags.close();
         operations.mode.tools.nextPage();
 
         expectFumen('v115@RhA8IeB8HewhglQpAtwwg0Q4A8BeAINbhxwHewwIeA?glvhBAQLAgH');
 
         // 3ページ目
+        operations.mode.flags.open();
         operations.mode.flags.lockToOff();
         operations.mode.flags.mirrorToOn();
         operations.mode.flags.riseToOn();
+        operations.mode.flags.close();
 
         operations.mode.tools.undo();
         operations.mode.tools.undo();
@@ -432,6 +438,7 @@ describe('Drawing Tools', () => {
         operations.mode.flags.lockToOff();
         operations.mode.flags.riseToOn();
         operations.mode.flags.mirrorToOn();
+        operations.mode.flags.close();
 
         for (let i = 0; i < 10; i++) {
             operations.mode.tools.nextPage();
@@ -480,6 +487,7 @@ describe('Drawing Tools', () => {
         operations.mode.tools.backPage();
         operations.mode.tools.home();
         operations.mode.tools.toRef();
+        operations.mode.flags.close();
 
         operations.mode.tools.backPage();
 

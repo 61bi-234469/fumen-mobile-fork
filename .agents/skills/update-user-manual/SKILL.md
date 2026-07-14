@@ -1,9 +1,11 @@
 ---
 name: update-user-manual
-description: Maintain and audit the Fumen Mobile Fork HTML user manual and real-app screenshots. Use when app behavior, controls, localized labels, screen layout, List/Tree workflows, the PC side panel, Cold Clear, Import/Export, Help routing, or any user-facing documentation changes.
+description: Maintain and audit the Fumen Mobile Fork HTML user manual and real-app screenshots when the user explicitly requests a manual update. Do not use for ordinary implementation or UI changes unless the user separately asks to update the manual.
 ---
 
 # Update the user manual
+
+Use this skill only when the user explicitly requests creating, updating, auditing, or otherwise changing the user manual or its screenshots. Changes to application behavior, controls, localized labels, screen layout, List/Tree workflows, the PC side panel, Cold Clear, Import/Export, Help routing, or other user-facing behavior do not by themselves authorize a manual update.
 
 Maintain `resources/manual/index.html` as a concise, task-oriented description of the current app.
 

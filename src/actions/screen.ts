@@ -120,73 +120,62 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Drawing }),
-        ]);
+        return actions.changePaintTool({ tool: 'pen' })(state);
     },
     changeToDrawingToolMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.DrawingTool }),
-        ]);
+        return actions.changePaintTool({ tool: 'pen' })(state);
     },
     changeToFlagsMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Flags }),
-        ]);
+        return actions.openEditorInspector({ inspector: 'flags' })(state);
     },
     changeToUtilsMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Utils }),
-        ]);
+        return actions.openEditorInspector({ inspector: 'utils' })(state);
     },
     changeToShiftMode: () => (state): NextState => {
         return sequence(state, [
+            actions.clearRectSelection(),
             changeTouchType({ type: TouchTypes.Drawing, clear: true }),
             changeModeType({ type: ModeTypes.Slide }),
+            newState => ({ editorUi: {
+                ...newState.editorUi,
+                primaryTool: 'paint',
+                inspector: 'none',
+                compactPanel: 'tray',
+            } }),
         ]);
     },
     changeToFillRowMode: () => (state): NextState => {
         return sequence(state, [
-            changeTouchType({ type: TouchTypes.FillRow }),
-            changeModeType({ type: ModeTypes.FillRow }),
-            newState => ({
-                mode: {
-                    ...newState.mode,
-                    piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
-                },
-            }),
+            actions.changePaintTool({ tool: 'fillRow' }),
+            newState => ({ mode: {
+                ...newState.mode,
+                piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
+            } }),
         ]);
     },
     changeToPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePrimaryTool({ tool: 'piece' })(state);
     },
     changeToFillMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Fill }),
-            changeModeType({ type: ModeTypes.Fill }),
-        ]);
+        return actions.changePaintTool({ tool: 'fill' })(state);
     },
     changeToCommentMode: () => (state): NextState => {
         return sequence(state, [
+            changeTouchType({ type: TouchTypes.Drawing, clear: true }),
             changeModeType({ type: ModeTypes.Comment }),
+            newState => ({ editorUi: {
+                ...newState.editorUi,
+                primaryTool: 'paint',
+                inspector: 'none',
+                compactPanel: 'tray',
+            } }),
         ]);
     },
     changeToDrawPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Piece }),
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePieceAction({ pieceAction: 'spawn' })(state);
     },
     changeToMovePieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.MovePiece }),
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePieceAction({ pieceAction: 'drag' })(state);
     },
     changeToSelectPieceMode: () => (state): NextState => {
         return sequence(state, [

@@ -50,6 +50,54 @@ export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
 
 export type EditorSidePanelTab = 'list' | 'tree';
 
+export type PrimaryTool = 'paint' | 'piece' | 'select';
+export type PaintTool = 'pen' | 'fill' | 'fillRow';
+export type PieceAction = 'spawn' | 'drag';
+export type EditorInspector = 'none' | 'utils' | 'flags';
+export type PaletteSelection = Piece | 'comp';
+
+export interface SelectionRect {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+}
+
+export interface FloatingSelection {
+    cells: Piece[];
+    width: number;
+    height: number;
+    sourceRect: SelectionRect | null;
+    targetX: number;
+    targetY: number;
+    pointerOffsetX: number;
+    pointerOffsetY: number;
+    kind: 'move' | 'stamp';
+}
+
+export interface RectSelectState {
+    status: 'none' | 'selecting' | 'selected' | 'floating';
+    rect: SelectionRect | null;
+    anchorIndex: number | null;
+    floating: FloatingSelection | null;
+}
+
+export interface EditorPart {
+    id: string;
+    width: number;
+    height: number;
+    cells: Piece[];
+    pinned: boolean;
+    createdAt: number;
+}
+
+export interface PartsState {
+    items: EditorPart[];
+    selectedId: string | null;
+    continuous: boolean;
+    blackTransparent: boolean;
+}
+
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
@@ -63,6 +111,7 @@ import konva from 'konva';
 import { Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
+import { loadBlackTransparentPaste, loadParts } from './lib/parts';
 
 const VERSION = PageEnv.Version;
 
@@ -193,6 +242,17 @@ export interface State {
         tab: EditorSidePanelTab;
         width: number | null;
     };
+    editorUi: {
+        primaryTool: PrimaryTool;
+        paintTool: PaintTool;
+        pieceAction: PieceAction;
+        inspector: EditorInspector;
+        paletteSelection: PaletteSelection;
+        lastMino: Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S;
+        compactPanel: 'comment' | 'tray';
+    };
+    rectSelect: RectSelectState;
+    parts: PartsState;
     tree: TreeState;
     coldClear: {
         isRunning: boolean;
@@ -340,6 +400,27 @@ export const initState: Readonly<State> = {
         tab: 'list',
         width: null,
     },
+    editorUi: {
+        primaryTool: 'paint',
+        paintTool: 'pen',
+        pieceAction: 'spawn',
+        inspector: 'none',
+        paletteSelection: 'comp',
+        lastMino: Piece.T,
+        compactPanel: 'comment',
+    },
+    rectSelect: {
+        status: 'none',
+        rect: null,
+        anchorIndex: null,
+        floating: null,
+    },
+    parts: {
+        items: loadParts(),
+        selectedId: null,
+        continuous: false,
+        blackTransparent: loadBlackTransparentPaste(),
+    },
     tree: initialTreeState,
     coldClear: {
         isRunning: false,
@@ -390,6 +471,7 @@ function createKonvaObjects() {
         event: {} as konva.Rect,
         background: {} as konva.Rect,
         fieldMarginLine: {} as konva.Line,
+        selectionFrame: {} as konva.Rect,
         fieldBlocks: [] as konva.Rect[],
         sentBlocks: [] as konva.Rect[],
         hold: {} as Box,
@@ -511,6 +593,17 @@ function createKonvaObjects() {
     // Overlay
     // Event Layer
     {
+        const selectionFrame = new konva.Rect({
+            fillEnabled: false,
+            stroke: '#f44336',
+            strokeWidth: 2,
+            dash: [6, 4],
+            listening: false,
+            visible: false,
+        });
+        obj.selectionFrame = selectionFrame;
+        layers.overlay.add(selectionFrame);
+
         const rect = new konva.Rect({
             fill: '#333',
             opacity: 0.0,  // 0 ほど透過

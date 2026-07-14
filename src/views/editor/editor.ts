@@ -1,4 +1,4 @@
-import { CommentType, GradientPattern, ModeTypes, Piece, Screens } from '../../lib/enums';
+import { CommentType, GradientPattern, Piece, Platforms, Screens } from '../../lib/enums';
 import { Coordinate, getNavigatorHeight, Size } from '../commons';
 import { View } from 'hyperapp';
 import { resources, State } from '../../states';
@@ -8,23 +8,24 @@ import { Actions } from '../../actions';
 import { Field } from '../../components/field';
 import { KonvaCanvas } from '../../components/konva_canvas';
 import { DrawingEventCanvas } from '../../components/event/drawing_event_canvas';
-import { div } from '@hyperapp/html';
+import { button, div } from '@hyperapp/html';
 import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
-import { toolMode } from './tool_mode';
-import { pieceMode } from './piece_mode';
-import { fillMode } from './fill_mode';
-import { flagsMode } from './flags_mode';
-import { utilsMode } from './utils_mode';
-import { slideMode } from './slide_mode';
-import { fillRowMode } from './fill_row_mode';
-import { pieceSelectMode } from './piece_select_mode';
 import { navigatorElement } from '../navigator';
-import { commentMode } from './comment_mode';
-import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 import { getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
+import { editorRail } from './editor_rail';
+import { editorOverlay } from './editor_overlay';
+import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
+import { BlockIcon } from '../../components/atomics/icons';
+import { composeSelectionField } from '../../lib/rect_selection';
+import { SelectionOverlay } from '../../components/selection_overlay';
+import { i18n } from '../../locales/keys';
+import {
+    DESKTOP_CONTEXT_WIDTH,
+    desktopContextInspector,
+} from './desktop_context_inspector';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -92,18 +93,18 @@ export const getFieldLayout = (
 };
 
 const getLayout = (
-    { topLeftY, width, height, sidePanelWidth }: {
+    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, bottomContentHeight }: {
         topLeftY: number, width: number, height: number, sidePanelWidth: number,
+        rightInspectorWidth: number, bottomContentHeight: number,
     },
 ): EditorLayout => {
-    const commentHeight = 35;
     const toolsHeight = 50;
     const borderWidthBottomField = 2.4;
 
     // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
     const canvasSize = {
-        width: width - sidePanelWidth,
-        height: height - (toolsHeight + commentHeight + topLeftY),
+        width: width - sidePanelWidth - rightInspectorWidth,
+        height: height - (toolsHeight + bottomContentHeight + topLeftY),
     };
 
     const blockSize = Math.min(
@@ -153,11 +154,11 @@ const getLayout = (
         comment: {
             topLeft: {
                 x: 0,
-                y: height - commentHeight - toolsHeight,
+                y: height - bottomContentHeight - toolsHeight,
             },
             size: {
                 width,
-                height: commentHeight,
+                height: 35,
             },
         },
         tools: {
@@ -191,15 +192,6 @@ export const toolStyle = (layout: EditorLayout) => {
 };
 
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
-    const pages = state.fumen.pages;
-    const page = pages[state.fumen.currentIndex];
-    const keyPage = page === undefined || page.field.obj !== undefined;
-
-    // テト譜の仕様により、最初のページのフラグが全体に反映される
-    const globalFlags = state.fumen.pages[0]?.flags;
-    const guideLineColor = globalFlags?.colorize ?? true;
-    const srsFlag = state.mode.rotationSystem !== 'classic';
-
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {
             return GradientPattern.None;
@@ -213,121 +205,6 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     };
 
     const getChildren = () => {
-        const getMode = () => {
-            switch (state.mode.type) {
-            case ModeTypes.DrawingTool: {
-                return toolMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    modePiece: state.mode.piece,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    editShortcuts: state.mode.editShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    coldClear: state.coldClear,
-                });
-            }
-            case ModeTypes.Piece: {
-                const page = state.fumen.pages[state.fumen.currentIndex];
-                return pieceMode({
-                    layout,
-                    actions,
-                    move: page !== undefined ? page.piece : undefined,
-                    existInferences: 0 < state.events.inferences.length,
-                    rotationSystem: state.mode.rotationSystem,
-                    pages: state.fumen.pages,
-                    flags: page.flags,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    pieceShortcuts: state.mode.pieceShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
-                    coldClear: state.coldClear,
-                    canSwapCurrentPieceWithHoldQueue: canSwapCurrentPieceWithHoldQueue(state),
-                });
-            }
-            case ModeTypes.Flags: {
-                return flagsMode({
-                    layout,
-                    actions,
-                    keyPage,
-                    flags: page.flags,
-                    currentIndex: state.fumen.currentIndex,
-                });
-            }
-            case ModeTypes.Utils: {
-                return utilsMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                });
-            }
-            case ModeTypes.Comment: {
-                return commentMode({
-                    layout,
-                    actions,
-                    currentIndex: state.fumen.currentIndex,
-                });
-            }
-            case ModeTypes.Slide: {
-                return slideMode({
-                    layout,
-                    actions,
-                });
-            }
-            case ModeTypes.Fill: {
-                return fillMode({
-                    layout,
-                    actions,
-                    colorize: guideLineColor,
-                    modePiece: state.mode.piece,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            case ModeTypes.FillRow: {
-                return fillRowMode({
-                    layout,
-                    actions,
-                    colorize: guideLineColor,
-                    modePiece: state.mode.piece,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            case ModeTypes.SelectPiece: {
-                return pieceSelectMode({
-                    layout,
-                    actions,
-                    currentIndex: state.fumen.currentIndex,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            default: {
-                // ModeTypes.Drawing等�E未対応モード�EtoolModeにフォールバック
-                return toolMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    modePiece: state.mode.piece,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    editShortcuts: state.mode.editShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    coldClear: state.coldClear,
-                });
-            }
-            }
-        };
-
         return [   // canvas:Field とのマッピング用仮想DOM
             KonvaCanvas({  // canvas空間�Eみ
                 actions,
@@ -340,12 +217,21 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 fieldMarginWidth: layout.field.bottomBorderWidth,
                 topLeft: layout.field.topLeft,
                 blockSize: layout.field.blockSize,
-                field: state.field,
+                field: composeSelectionField(state),
                 sentLine: state.sentLine,
                 guideLineColor: state.fumen.guideLineColor,
             }),
 
-            getMode(),
+            SelectionOverlay({
+                rect: resources.konva.selectionFrame,
+                selection: state.rectSelect,
+                topLeft: layout.field.topLeft,
+                blockSize: layout.field.blockSize,
+            }),
+
+            editorRail(state, actions, layout),
+
+            editorOverlay(state, actions, layout) as any,
         ];
     };
 
@@ -375,6 +261,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             outline: 'none', // フォーカス時�E枠線を消す
             flex: '1 1 auto',
             minWidth: '0',
+            position: 'relative',
         }),
         onclick: handleFieldClick,
     }, getChildren());
@@ -487,9 +374,22 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
 export const view: View<State, Actions> = (state, actions) => {
     const navigatorHeight = getNavigatorHeight(state.platform);
     const sidePanelWidth = getSidePanelWidth(state);
+    const rightInspectorWidth = state.platform === Platforms.PC
+        && 1400 <= state.display.width - sidePanelWidth ? DESKTOP_CONTEXT_WIDTH : 0;
+
+    const baseAvailableEditorHeight = state.display.height - navigatorHeight - 50 - 35;
+    const compact = baseAvailableEditorHeight < 560;
+    const pageSliderVisible = state.mode.comment === CommentType.PageSlider;
+    const trayVisible = rightInspectorWidth === 0
+        && !pageSliderVisible
+        && (!compact || state.editorUi.compactPanel === 'tray');
+    const commentVisible = pageSliderVisible || !compact || !trayVisible;
+    const bottomContentHeight = (trayVisible ? CONTEXT_TRAY_HEIGHT : 0) + (commentVisible ? 35 : 0);
 
     // 初期匁E
     const layout = getLayout({
+        bottomContentHeight,
+        rightInspectorWidth,
         sidePanelWidth,
         ...state.display,
         topLeftY: navigatorHeight,
@@ -528,12 +428,41 @@ export const view: View<State, Actions> = (state, actions) => {
             })] : []),
 
             ScreenField(state, actions, layout),
+
+            ...(0 < rightInspectorWidth ? [desktopContextInspector(state, actions, layout.canvas.size.height)] : []),
         ]),
 
         div({
             key: 'menu-top',
         }, [
-            getComment(state, actions, layout),
+            ...(trayVisible ? [contextTray(state, actions)] : []),
+
+            ...(commentVisible ? [getComment(state, actions, layout)] : []),
+
+            ...(compact && !pageSliderVisible ? [button({
+                key: 'btn-comment-tray-handle',
+                datatest: 'btn-comment-tray-handle',
+                type: 'button',
+                'aria-label': trayVisible ? i18n.Menu.Buttons.ShowComment() : i18n.EditorUi.TrayHandle(),
+                onclick: trayVisible ? actions.showCommentPanel : actions.showContextTray,
+                style: style({
+                    alignItems: 'center',
+                    background: '#f44336',
+                    border: '1px solid #d32f2f',
+                    borderRadius: '0 4px 4px 0',
+                    bottom: px(50),
+                    color: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    height: px(40),
+                    justifyContent: 'center',
+                    left: '0',
+                    padding: '0',
+                    position: 'absolute',
+                    width: px(22),
+                    zIndex: 12,
+                }),
+            }, [BlockIcon({ key: 'handle-icon', iconSize: 17 }, trayVisible ? 'comment' : 'tune')])] : []),
 
             Tools(state, actions, layout.tools.size.height, palette),
         ]),

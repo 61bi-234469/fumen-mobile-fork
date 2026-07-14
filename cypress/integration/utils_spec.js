@@ -12,6 +12,7 @@ describe('Utils', () => {
 
         expectFumen('v115@vhGBRJvNJTHJGDJcLJiBJ9KJ')
 
+        operations.mode.utils.close();
         operations.mode.tools.mirror({ home: true });
 
         expectFumen('v115@vhGBPJcJJTFJi/IvLJGBJNMJ')

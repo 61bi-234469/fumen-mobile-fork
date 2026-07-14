@@ -113,6 +113,37 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
     });
 
+    it('drags inspectors by their heading and shows flag checkboxes', () => {
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-utils-mode')).click();
+        let beforeLeft;
+        cy.get(datatest('overlay-utils')).then($overlay => {
+            beforeLeft = $overlay[0].getBoundingClientRect().left;
+            cy.get(datatest('overlay-heading')).then($heading => {
+                const rect = $heading[0].getBoundingClientRect();
+                const startX = rect.left + 20;
+                const startY = rect.top + rect.height / 2;
+                cy.get(datatest('overlay-heading')).trigger('pointerdown', {
+                    button: 0, clientX: startX, clientY: startY, pointerId: 1, pointerType: 'mouse',
+                });
+                cy.document().trigger('pointermove', {
+                    clientX: startX - 40, clientY: startY + 20, pointerId: 1, pointerType: 'mouse',
+                });
+                cy.document().trigger('pointerup', { clientX: startX - 40, clientY: startY + 20, pointerId: 1 });
+            });
+        });
+        cy.get(datatest('overlay-utils')).then($overlay => {
+            expect($overlay[0].getBoundingClientRect().left).to.be.lessThan(beforeLeft);
+        });
+
+        cy.get(datatest('overlay-utils')).find(datatest('btn-inspector-close')).click();
+        cy.get(datatest('btn-flags-mode')).click();
+        cy.get(datatest('overlay-flags')).find('button').not(datatest('btn-inspector-close')).each($button => {
+            cy.wrap($button).find('[datatest$="-checkbox"]').should('have.length', 1);
+        });
+    });
+
     it('toggles the context tray by pressing the active mode button again', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });

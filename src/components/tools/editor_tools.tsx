@@ -2,7 +2,6 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { ToolButton } from './tool_button';
 import { ToolText } from './tool_text';
-import { ModeTypes } from '../../lib/enums';
 import { ColorPalette } from '../../lib/colors';
 import { EditShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
@@ -13,7 +12,6 @@ interface Props {
     currentPage: number;
     maxPage: number;
     palette: ColorPalette;
-    modeType: ModeTypes;
     undoCount: number;
     redoCount: number;
     inferenceCount: number;
@@ -33,7 +31,6 @@ interface Props {
         lastPage: () => void;
         duplicatePageOnly: (data: { index: number }) => void;
         duplicatePageToGray: (data: { index: number }) => void;
-        changeToDrawingToolMode: () => void;
         undo: () => void;
         redo: () => void;
     };
@@ -46,7 +43,6 @@ export const EditorTools: Component<Props> = (
         height,
         width,
         palette,
-        modeType,
         undoCount,
         redoCount,
         inferenceCount,
@@ -59,7 +55,6 @@ export const EditorTools: Component<Props> = (
     const buttonHeight = height - (compact ? 8 : 10);
     const edgeWidth = compact ? 34 : 40;
     const navigationWidth = compact ? 28 : 35;
-    const actionWidth = compact ? 30 : 40;
     const addWidth = compact ? 30 : 35;
     const pageWidth = compact ? 52 : 75;
     const iconSize = compact ? 27 : 33.75;
@@ -147,12 +142,6 @@ export const EditorTools: Component<Props> = (
                                 onlongpress: () => actions.lastPage(),
                             }}
                             enable={currentPage < maxPage}/>
-
-                <ToolButton iconName="home" datatest="btn-drawing-tool" width={actionWidth} height={buttonHeight}
-                            key="btn-drawing-tool" fontSize={edgeIconSize} marginRight={compact ? 1 : 4} colors={colors}
-                            shortcutLabel={getLabel('EditHome')}
-                            actions={{ onclick: () => actions.changeToDrawingToolMode() }}
-                            enable={modeType !== ModeTypes.DrawingTool}/>
 
                 <ToolButton iconName="add" datatest="btn-insert-page" width={addWidth} height={buttonHeight}
                             key="btn-insert-page" fontSize={edgeIconSize} marginRight={itemGap} colors={colors}

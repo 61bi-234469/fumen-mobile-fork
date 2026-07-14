@@ -343,7 +343,24 @@ const commentTray = (state: State, actions: Actions): VNode<{}>[] => [
     }),
 ];
 
-export const contextTray = (state: State, actions: Actions, height: number = CONTEXT_TRAY_HEIGHT) => {
+const handleTrayWheel = (event: WheelEvent) => {
+    const tray = event.currentTarget as HTMLElement;
+    if (tray.scrollWidth <= tray.clientWidth) {
+        return;
+    }
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta === 0) {
+        return;
+    }
+    tray.scrollLeft += delta;
+    event.preventDefault();
+};
+
+export const contextTray = (
+    state: State,
+    actions: Actions,
+    height: number = CONTEXT_TRAY_HEIGHT,
+) => {
     let contents: VNode<{}>[];
     if (state.mode.type === ModeTypes.Slide) {
         contents = slideTray(actions);
@@ -365,8 +382,10 @@ export const contextTray = (state: State, actions: Actions, height: number = CON
     return div({
         key: 'tray-context',
         datatest: 'tray-context',
+        className: `editor-context-tray${height < 24 ? ' editor-context-tray--compact' : ''}`,
         role: 'toolbar',
         'aria-label': i18n.EditorUi.ContextTools(),
+        onwheel: handleTrayWheel,
         style: style({
             background: '#fff',
             borderBottom: '1px solid #333',

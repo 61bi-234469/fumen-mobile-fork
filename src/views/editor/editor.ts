@@ -224,7 +224,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const sentLineVisible = !bottomTrayVisible;
     const bandTop = layout.field.topLeft.y + (layout.field.blockSize + 1) * 22.5 + 1
         + layout.field.bottomBorderWidth;
-    const bandHeight = layout.field.blockSize;
+    const bandHeight = layout.field.bottomBorderWidth + layout.field.blockSize;
 
     const fieldColumn = div({
         key: 'field-column',
@@ -274,6 +274,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
 
         ...(bottomTrayVisible ? [div({
             key: 'field-bottom-tray',
+            datatest: 'field-bottom-tray',
             style: style({
                 height: px(bandHeight),
                 left: '0',
@@ -362,13 +363,11 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             lastPage: actions.lastPage,
             duplicatePageOnly: actions.duplicatePageOnly,
             duplicatePageToGray: actions.duplicatePageToGray,
-            changeToDrawingToolMode: actions.changeToDrawingToolMode,
             undo: actions.undo,
             redo: actions.redo,
         },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
-        modeType: state.mode.type,
         undoCount: state.history.undoCount,
         redoCount: state.history.redoCount,
         inferenceCount: state.events.inferences.length,

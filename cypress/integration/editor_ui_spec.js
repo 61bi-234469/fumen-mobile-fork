@@ -39,6 +39,9 @@ describe('Editor UI final concept', () => {
                 expect(Math.abs(field.bottom - rail.bottom)).to.be.lessThan(1);
             });
             assertRailOrder();
+            if (width === 390 && height === 844) {
+                cy.get(datatest('tray-context')).should('not.have.class', 'editor-context-tray--compact');
+            }
             ['btn-paint-mode', 'btn-piece-mode', 'btn-select-mode'].forEach(selector => {
                 cy.get(datatest(selector)).should('have.attr', 'aria-label').and('not.be.empty');
             });
@@ -82,6 +85,16 @@ describe('Editor UI final concept', () => {
             .and('have.css', 'color', 'rgb(51, 51, 51)');
     });
 
+    it('removes the bottom-bar home button while keeping the paint entry point', () => {
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-drawing-tool')).should('not.exist');
+        cy.get(datatest('btn-paint-mode')).should('be.visible');
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('tray-paint-pen')).should('be.visible');
+    });
+
     it('preserves the active tool while opening and closing inspectors', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-mode')).click().should('have.attr', 'aria-pressed', 'true');
@@ -107,7 +120,15 @@ describe('Editor UI final concept', () => {
         // Default: paint mode active, context tray occupies the bottom band, comment stays visible.
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
+        cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray--compact');
         cy.get(datatest('text-comment')).should('exist');
+        cy.get(datatest('field-bottom-tray')).then(tray => {
+            const trayRect = tray[0].getBoundingClientRect();
+            cy.get(datatest('editor-field-frame')).then(field => {
+                const fieldRect = field[0].getBoundingClientRect();
+                expect(Math.abs(fieldRect.bottom - trayRect.bottom)).to.be.at.most(3);
+            });
+        });
 
         // Pressing the already-active mode button again hides the tray (rising row shown instead).
         cy.get(datatest('btn-paint-mode')).click();
@@ -184,5 +205,14 @@ describe('Editor UI final concept', () => {
         cy.reload();
         cy.get(datatest('editor-context-inspector')).should('be.visible');
         cy.get(datatest('tray-context')).should('be.visible');
+        cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray');
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('tray-context')).then(tray => {
+            expect(tray[0].scrollWidth).to.be.greaterThan(tray[0].clientWidth);
+        });
+        cy.get(datatest('tray-context')).trigger('wheel', { deltaY: 160 });
+        cy.get(datatest('tray-context')).then(tray => {
+            expect(tray[0].scrollLeft).to.be.greaterThan(0);
+        });
     });
 });

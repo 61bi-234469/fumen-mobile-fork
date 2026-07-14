@@ -113,6 +113,37 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        .editor-context-tray {
+            scrollbar-color: rgba(100, 116, 139, 0.58) transparent;
+            scrollbar-width: thin;
+        }
+
+        .editor-context-tray::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .editor-context-tray::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .editor-context-tray::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.58);
+            border-radius: 999px;
+        }
+
+        .editor-context-tray:hover::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.76);
+        }
+
+        .editor-context-tray--compact {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .editor-context-tray--compact::-webkit-scrollbar {
+            display: none;
+        }
+
         .editor-control:active:not(:disabled) {
             background: #eceff1 !important;
         }

@@ -6,6 +6,7 @@ import { BlockIcon } from '../../components/atomics/icons';
 import { EditorLayout } from './editor';
 import { i18n } from '../../locales/keys';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
+import { Screens } from '../../lib/enums';
 
 const overlayButton = ({
     key, datatest, label, iconName, active = false, danger = false, checkbox = false, onclick,
@@ -142,7 +143,7 @@ const startOverlayDrag = (event: PointerEvent) => {
     event.stopPropagation();
 };
 
-export const editorOverlay = (state: State, actions: Actions, layout: EditorLayout) => {
+export const editorOverlay = (state: State, actions: Actions, layout?: EditorLayout) => {
     const inspector = state.editorUi.inspector;
     if (inspector === 'none') {
         return undefined;
@@ -155,6 +156,7 @@ export const editorOverlay = (state: State, actions: Actions, layout: EditorLayo
         actions.closeEditorInspector();
         run();
     };
+    const isEditorView = state.mode.screen === Screens.Editor;
     const utilities = [
         overlayButton({
             key: 'btn-all-mirror', datatest: 'btn-all-mirror', label: i18n.EditorUi.AllMirror(), iconName: 'compare_arrows',
@@ -173,13 +175,20 @@ export const editorOverlay = (state: State, actions: Actions, layout: EditorLayo
             danger: true,
             onclick: actions.clearField,
         }),
+        ...(isEditorView ? [
+            overlayButton({
+                key: 'btn-slide-mode', datatest: 'btn-slide-mode', label: i18n.EditorUi.Slide(), iconName: 'swap_vert',
+                onclick: () => closeAndRun(actions.changeToShiftMode),
+            }),
+            overlayButton({
+                key: 'btn-comment-mode', datatest: 'btn-comment-mode',
+                label: i18n.EditorUi.Comment(), iconName: 'title',
+                onclick: () => closeAndRun(actions.changeToCommentMode),
+            }),
+        ] : []),
         overlayButton({
-            key: 'btn-slide-mode', datatest: 'btn-slide-mode', label: i18n.EditorUi.Slide(), iconName: 'swap_vert',
-            onclick: () => closeAndRun(actions.changeToShiftMode),
-        }),
-        overlayButton({
-            key: 'btn-comment-mode', datatest: 'btn-comment-mode', label: i18n.EditorUi.Comment(), iconName: 'title',
-            onclick: () => closeAndRun(actions.changeToCommentMode),
+            key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
+            onclick: () => closeAndRun(actions.openListViewReplaceModal),
         }),
     ];
     const keyPage = page.field.obj !== undefined;
@@ -251,12 +260,12 @@ export const editorOverlay = (state: State, actions: Actions, layout: EditorLayo
                 boxSizing: 'border-box',
                 display: 'grid',
                 gap: px(5),
-                marginRight: px(layout.buttons.size.width + 4),
+                marginRight: px((layout?.buttons.size.width ?? 0) + 4),
                 maxHeight: `calc(100% - ${px(16)})`,
                 overflowY: 'auto',
                 padding: px(8),
                 transform: 'translate(0px, 0px)',
-                width: px(Math.min(220, Math.max(150, layout.field.size.width * .8))),
+                width: px(Math.min(220, Math.max(150, (layout?.field.size.width ?? state.display.width) * .8))),
             }),
         }, [
             div({

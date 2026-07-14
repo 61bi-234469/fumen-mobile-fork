@@ -37,6 +37,7 @@ import {
     stopTreeDragFeedback,
 } from './tree_mouse_interaction';
 import { handleTreeNodeDelete } from './tree_node_delete';
+import { editorOverlay } from './editor/editor_overlay';
 
 const TOOLS_HEIGHT = 50;
 
@@ -147,6 +148,7 @@ export const view: View<State, Actions> = (state, actions) => {
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#f5f5f5',
+        position: 'relative',
     });
 
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
@@ -590,8 +592,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
-                convertAllToMirror: () => actions.convertAllToMirror(),
-                openListViewReplaceModal: () => actions.openListViewReplaceModal(),
+                openUtils: () => actions.openEditorInspector({ inspector: 'utils' }),
                 openListViewMenuModal: () => actions.openListViewMenuModal(),
                 openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
                 toggleTreeMode: () => state.tree.enabled
@@ -601,6 +602,8 @@ export const view: View<State, Actions> = (state, actions) => {
             },
             height: TOOLS_HEIGHT,
         }),
+
+        state.editorUi.inspector === 'utils' ? editorOverlay(state, actions) : undefined as any,
 
         div({
             key: 'list-view-content',

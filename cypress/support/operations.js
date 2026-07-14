@@ -4,6 +4,8 @@ const fieldPoint = (canvasElement, x, y) => {
     const rect = canvasElement.getBoundingClientRect();
     const pitch = (rect.width - 1) / 10;
     const blockSize = pitch - 1;
+    // 盤面サイズは develop 時点の計算式と完全に一致（トレイ/せり上がり部は
+    // 盤面下部の枠に重ねて表示するだけで、盤面自体の縦位置には影響しない）。
     const fieldHeight = pitch * 23.5 + 4.4;
     const fieldTop = (rect.height - fieldHeight) / 2;
     const yField = 22 - y;
@@ -12,6 +14,15 @@ const fieldPoint = (canvasElement, x, y) => {
         x: x * pitch + 1 + blockSize / 2,
         y: blockTop + (yField === 0 ? blockSize / 4 : blockSize / 2),
     };
+};
+// せり上がり部(y<0)を操作する前に、下部枠がトレイ表示ならせり上がり部へ切り替える。
+// せり上がり部⇔トレイは排他表示のため、トレイが出ているとせり上がり部を操作できない。
+const ensureSentLineVisible = () => {
+    cy.get('body').then(($body) => {
+        if ($body.find('[datatest="tray-context"]').length > 0) {
+            cy.get(datatest('btn-toggle-bottom-slot')).click();
+        }
+    });
 };
 const pressPieceShortcut = (code) => {
     cy.get('body').trigger('keydown', { code });
@@ -98,12 +109,18 @@ export const operations = {
                 cy.wait(100);
             },
             click: (x, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
                 cy.get('#canvas-container').then(canvas => {
                     const point = fieldPoint(canvas[0], x, y);
                     cy.get('#canvas-container .konvajs-content').click(point.x, point.y);
                 });
             },
             drag: ({ x: fromX, y: fromY }, { x: toX, y: toY }) => {
+                if (fromY < 0 || toY < 0) {
+                    ensureSentLineVisible();
+                }
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], fromX, fromY);
                     const end = fieldPoint(canvas[0], toX, toY);
@@ -119,6 +136,9 @@ export const operations = {
                 });
             },
             dragToRight: ({ from, to }, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], from, y);
                     const end = fieldPoint(canvas[0], to, y);
@@ -132,6 +152,9 @@ export const operations = {
                 });
             },
             dragToUp: (x, { from, to }) => {
+                if (from < 0 || to < 0) {
+                    ensureSentLineVisible();
+                }
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], x, from);
                     const end = fieldPoint(canvas[0], x, to);
@@ -147,6 +170,9 @@ export const operations = {
             // 高速ポインタの再現: 開始セルと終了セルのイベントだけを発火する。
             // 中間セルはアプリ側のストローク補間で埋まることを検証する用途。
             dragSparse: ({ from, to }, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], from, y);
                     const end = fieldPoint(canvas[0], to, y);

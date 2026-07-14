@@ -352,7 +352,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         }
         return {
             parts: { ...state.parts, selectedId },
-            editorUi: { ...state.editorUi, primaryTool: 'select', compactPanel: 'tray' },
+            editorUi: { ...state.editorUi, primaryTool: 'select', bottomSlot: 'tray' },
         };
     },
     deactivateStamp: () => (state): NextState => ({

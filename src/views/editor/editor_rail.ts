@@ -16,8 +16,9 @@ import { EditorLayout } from './editor';
 const MIN_CELL_HEIGHT = 18;
 const MAX_CELL_HEIGHT = 30;
 const GROUP_GAP = 4;
-const RAIL_ROWS = 19;
-const RAIL_CHROME_HEIGHT = GROUP_GAP * 4 + 8;
+// 20行 = システム1 + ページ4 + 補助2 + モード2 + パレット10 + 下部枠切替1
+const RAIL_ROWS = 20;
+const RAIL_CHROME_HEIGHT = GROUP_GAP * 5 + 8;
 const LONG_PRESS_DURATION = 500;
 
 const pressState: {
@@ -151,7 +152,7 @@ const toolGroup = (key: string, rows: VNode<{}>[]) => div({
     style: style({
         background: '#333',
         border: '1px solid #333',
-        borderRadius: '4px',
+        borderRadius: '0',
         boxSizing: 'border-box',
         display: 'grid',
         gap: '1px',
@@ -171,20 +172,19 @@ const row = (key: string, columns: VNode<{}>[]) => div({
 
 const icon = (name: string, size: number) => BlockIcon({ key: `icon-${name}`, iconSize: size }, name);
 
-const paletteDot = (selection: PaletteSelection, height: number) => {
+const paletteDot = (selection: PaletteSelection, height: number, guideLineColor: boolean) => {
     const piece = selection === 'comp' ? undefined : selection;
     const label = selection === 'comp' ? 'C'
         : selection === Piece.Empty ? 'E'
             : selection === Piece.Gray ? 'G' : parsePieceName(selection) ?? '';
     const background = selection === 'comp' ? '#111'
         : selection === Piece.Empty ? '#fff'
-            : decidePieceColor(piece!, HighlightType.Normal, true);
+            : decidePieceColor(piece!, HighlightType.Normal, guideLineColor);
     return div({
         style: style({
             background,
             alignItems: 'center',
-            border: selection === Piece.Empty ? '1px solid #777' : '1px solid rgba(0, 0, 0, .35)',
-            borderRadius: '50%',
+            borderRadius: '0',
             color: selection === Piece.Empty ? '#333' : '#fff',
             display: 'flex',
             fontSize: px(Math.max(8, height * 0.36)),
@@ -207,7 +207,7 @@ const paletteContent = (selection: PaletteSelection, state: State, height: numbe
             style: style({ display: 'block', height: px(Math.max(12, height - 6)), margin: 'auto' }),
         });
     }
-    return paletteDot(selection, height);
+    return paletteDot(selection, height, state.fumen.guideLineColor);
 };
 
 const getPaletteShortcut = (state: State, selection: PaletteSelection): string | undefined => {
@@ -376,6 +376,24 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         });
     }));
 
+    // せり上がり部⇔トレイの切替（下部枠を使う配置のときだけ表示）
+    const showingTray = state.editorUi.bottomSlot === 'tray';
+    const bottomSlotGroup = layout.trayInBottom ? toolGroup('rail-bottom-slot', [
+        toolCell({
+            key: 'btn-toggle-bottom-slot',
+            datatest: 'btn-toggle-bottom-slot',
+            label: showingTray ? i18n.EditorUi.ShowSentLine() : i18n.EditorUi.ShowTools(),
+            height: cellHeight,
+            selected: showingTray,
+            onpress: actions.toggleBottomSlot,
+            children: [
+                icon('swap_vert', iconSize),
+                ...(compact ? [] : [span({ key: 'label', style: style({ marginLeft: '3px' }) },
+                    showingTray ? 'ROW' : 'TOOL')]),
+            ],
+        }),
+    ]) : undefined;
+
     return div({
         key: 'editor-rail',
         datatest: 'editor-rail',
@@ -389,5 +407,6 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             minWidth: px(layout.buttons.size.width),
             width: px(layout.buttons.size.width),
         }),
-    }, [systemGroup, pageGroup, auxiliaryGroup, modeGroup, paletteGroup]);
+    }, [systemGroup, pageGroup, auxiliaryGroup, modeGroup, paletteGroup,
+        ...(bottomSlotGroup ? [bottomSlotGroup] : [])]);
 };

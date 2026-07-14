@@ -140,7 +140,7 @@ export const modeActions: Readonly<ScreenActions> = {
                 ...newState.editorUi,
                 primaryTool: 'paint',
                 inspector: 'none',
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             } }),
         ]);
     },
@@ -167,7 +167,7 @@ export const modeActions: Readonly<ScreenActions> = {
                 ...newState.editorUi,
                 primaryTool: 'paint',
                 inspector: 'none',
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             } }),
         ]);
     },

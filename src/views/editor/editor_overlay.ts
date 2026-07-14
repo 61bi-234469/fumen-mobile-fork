@@ -30,7 +30,7 @@ const overlayButton = ({
         alignItems: 'center',
         background: active ? '#f44336' : '#fff',
         border: '1px solid #333',
-        borderRadius: '4px',
+        borderRadius: '0',
         boxShadow: active ? 'inset 0 0 0 2px #fff' : 'none',
         color: active ? '#fff' : '#333',
         cursor: 'pointer',
@@ -161,7 +161,7 @@ export const editorOverlay = (state: State, actions: Actions, layout: EditorLayo
             style: style({
                 background: '#fafafa',
                 border: '1px solid #333',
-                borderRadius: '6px',
+                borderRadius: '0',
                 boxShadow: '0 6px 20px rgba(0, 0, 0, .22)',
                 boxSizing: 'border-box',
                 display: 'grid',

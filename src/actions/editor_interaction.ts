@@ -20,7 +20,8 @@ export interface EditorInteractionActions {
     selectEditorPalette(data: { selection: PaletteSelection }): action;
     executeEditorPaletteShortcut(data: { selection: PaletteSelection }): action;
     showContextTray(): action;
-    showCommentPanel(): action;
+    showSentLine(): action;
+    toggleBottomSlot(): action;
 }
 
 const focusInspectorTrigger = (inspector: EditorInspector) => {
@@ -51,7 +52,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     ...state.editorUi,
                     primaryTool: tool,
                     inspector: 'none',
-                    compactPanel: 'tray',
+                    bottomSlot: 'tray',
                 },
             };
         }
@@ -62,7 +63,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 ...state.editorUi,
                 primaryTool: tool,
                 inspector: 'none',
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             };
             editorUi.pieceAction = pieceAction;
             return {
@@ -80,7 +81,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 ...state.editorUi,
                 primaryTool: tool,
                 inspector: 'none',
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             },
         };
     }),
@@ -93,7 +94,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 primaryTool: 'paint',
                 paintTool: tool,
                 inspector: 'none',
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             },
         };
     }),
@@ -102,7 +103,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             ...state.editorUi,
             primaryTool: 'piece',
             inspector: 'none',
-            compactPanel: 'tray',
+            bottomSlot: 'tray',
         };
         editorUi.pieceAction = pieceAction;
         return {
@@ -146,7 +147,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 primaryTool: 'paint',
                 inspector: 'none',
                 paletteSelection: selection,
-                compactPanel: 'tray',
+                bottomSlot: 'tray',
             },
         };
     }),
@@ -177,15 +178,18 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     pieceAction: 'drag',
                     inspector: 'none',
                     lastMino: selection,
-                    compactPanel: 'tray',
+                    bottomSlot: 'tray',
                 },
             }),
         ]);
     },
     showContextTray: () => (state): NextState => ({
-        editorUi: { ...state.editorUi, compactPanel: 'tray' },
+        editorUi: { ...state.editorUi, bottomSlot: 'tray' },
     }),
-    showCommentPanel: () => (state): NextState => ({
-        editorUi: { ...state.editorUi, compactPanel: 'comment' },
+    showSentLine: () => (state): NextState => ({
+        editorUi: { ...state.editorUi, bottomSlot: 'sentLine' },
+    }),
+    toggleBottomSlot: () => (state): NextState => ({
+        editorUi: { ...state.editorUi, bottomSlot: state.editorUi.bottomSlot === 'tray' ? 'sentLine' : 'tray' },
     }),
 };

@@ -29,7 +29,7 @@ const createState = (): State => ({
         inspector: 'none',
         paletteSelection: 'comp',
         lastMino: Piece.T,
-        compactPanel: 'comment',
+        bottomSlot: 'tray',
     },
     fumen: {
         currentIndex: 0,

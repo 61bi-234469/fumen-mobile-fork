@@ -249,7 +249,7 @@ export interface State {
         inspector: EditorInspector;
         paletteSelection: PaletteSelection;
         lastMino: Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S;
-        compactPanel: 'comment' | 'tray';
+        bottomSlot: 'sentLine' | 'tray';
     };
     rectSelect: RectSelectState;
     parts: PartsState;
@@ -407,7 +407,7 @@ export const initState: Readonly<State> = {
         inspector: 'none',
         paletteSelection: 'comp',
         lastMino: Piece.T,
-        compactPanel: 'comment',
+        bottomSlot: 'tray',
     },
     rectSelect: {
         status: 'none',

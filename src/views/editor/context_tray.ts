@@ -64,7 +64,7 @@ const trayButton = ({
     }, label),
 ]);
 
-const partThumbnail = (part: EditorPart) => div({
+const partThumbnail = (part: EditorPart, guideLineColor: boolean) => div({
     style: style({
         display: 'grid',
         gap: '1px',
@@ -74,13 +74,13 @@ const partThumbnail = (part: EditorPart) => div({
 }, part.cells.map((piece, index) => div({
     key: `${part.id}-cell-${index}`,
     style: style({
-        background: piece === Piece.Empty ? '#111' : decidePieceColor(piece, HighlightType.Normal, true),
+        background: piece === Piece.Empty ? '#111' : decidePieceColor(piece, HighlightType.Normal, guideLineColor),
         height: px(4),
         width: px(4),
     }),
 })));
 
-const partTrayButton = (part: EditorPart, active: boolean, actions: Actions) => button({
+const partTrayButton = (part: EditorPart, active: boolean, actions: Actions, guideLineColor: boolean) => button({
     key: `tray-part-${part.id}`,
     datatest: `tray-part-${part.id}`,
     type: 'button',
@@ -102,7 +102,10 @@ const partTrayButton = (part: EditorPart, active: boolean, actions: Actions) => 
         minWidth: px(56),
         padding: '2px',
     }),
-}, [partThumbnail(part), span({ key: 'size' }, `${part.width}×${part.height}${part.pinned ? ' •' : ''}`)]);
+}, [
+    partThumbnail(part, guideLineColor),
+    span({ key: 'size' }, `${part.width}×${part.height}${part.pinned ? ' •' : ''}`),
+]);
 
 const selectionSummary = (state: State): VNode<{}>[] => {
     const rect = state.rectSelect.rect;
@@ -288,7 +291,7 @@ const selectTray = (state: State, actions: Actions): VNode<{}>[] => {
         }),
     ];
     return selectionSummary(state).concat(operations).concat(state.parts.items.map(part => (
-        partTrayButton(part, false, actions)
+        partTrayButton(part, false, actions, state.fumen.guideLineColor)
     )));
 };
 
@@ -340,7 +343,7 @@ const commentTray = (state: State, actions: Actions): VNode<{}>[] => [
     }),
 ];
 
-export const contextTray = (state: State, actions: Actions) => {
+export const contextTray = (state: State, actions: Actions, height: number = CONTEXT_TRAY_HEIGHT) => {
     let contents: VNode<{}>[];
     if (state.mode.type === ModeTypes.Slide) {
         contents = slideTray(actions);
@@ -370,8 +373,8 @@ export const contextTray = (state: State, actions: Actions) => {
             borderTop: '1px solid #333',
             boxSizing: 'border-box',
             display: 'flex',
-            height: px(CONTEXT_TRAY_HEIGHT),
-            minHeight: px(CONTEXT_TRAY_HEIGHT),
+            height: px(height),
+            minHeight: px(height),
             overflowX: 'auto',
             overflowY: 'hidden',
             width: '100%',

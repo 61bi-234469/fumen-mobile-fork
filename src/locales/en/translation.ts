@@ -122,6 +122,7 @@
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',
         Blank: 'Blank', Inherit: 'Inherit', NoSelection: 'No selection', Palette: 'Palette', Parts: 'Parts',
         Pinned: 'Pinned', TrayHandle: 'Show context tools',
+        ShowSentLine: 'Show rising row', ShowTools: 'Show context tools',
         BlackTransparent: 'Empty cells pass through', Pin: 'Pin', Unpin: 'Unpin', Delete: 'Delete',
         Blocks: '{{count}} blocks',
     },

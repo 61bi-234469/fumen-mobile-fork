@@ -221,6 +221,7 @@ const ScreenField = (state: State, actions: Actions, layout: any) => {
                 blockSize: layout.field.blockSize,
                 field: state.field,
                 sentLine: state.sentLine,
+                sentLineVisible: true,
                 guideLineColor: state.fumen.guideLineColor,
             }),
 

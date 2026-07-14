@@ -8,7 +8,7 @@ import { Actions } from '../../actions';
 import { Field } from '../../components/field';
 import { KonvaCanvas } from '../../components/konva_canvas';
 import { DrawingEventCanvas } from '../../components/event/drawing_event_canvas';
-import { button, div } from '@hyperapp/html';
+import { div } from '@hyperapp/html';
 import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
@@ -17,11 +17,9 @@ import { getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
 import { editorRail } from './editor_rail';
 import { editorOverlay } from './editor_overlay';
-import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
-import { BlockIcon } from '../../components/atomics/icons';
+import { contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
-import { i18n } from '../../locales/keys';
 import {
     DESKTOP_CONTEXT_WIDTH,
     desktopContextInspector,
@@ -33,6 +31,8 @@ interface FieldLayout {
 }
 
 export interface EditorLayout {
+    // トレイを盤面下部の枠（せり上がり部と排他）に置けるか（右インスペクタ表示中などは不可）
+    trayInBottom: boolean;
     canvas: {
         topLeft: Coordinate;
         size: Size;
@@ -92,16 +92,26 @@ export const getFieldLayout = (
     };
 };
 
+interface LayoutParams {
+    topLeftY: number;
+    width: number;
+    height: number;
+    sidePanelWidth: number;
+    rightInspectorWidth: number;
+    bottomContentHeight: number;
+    trayInBottom: boolean;
+}
+
 const getLayout = (
-    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, bottomContentHeight }: {
-        topLeftY: number, width: number, height: number, sidePanelWidth: number,
-        rightInspectorWidth: number, bottomContentHeight: number,
-    },
+    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, bottomContentHeight,
+      trayInBottom }: LayoutParams,
 ): EditorLayout => {
     const toolsHeight = 50;
     const borderWidthBottomField = 2.4;
 
     // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
+    // 盤面サイズは develop 時点の計算式と完全に一致させる（トレイは盤面下部に
+    // 「せり上がり部と同じ枠」を重ねて表示するだけで、盤面の大きさには影響しない）。
     const canvasSize = {
         width: width - sidePanelWidth - rightInspectorWidth,
         height: height - (toolsHeight + bottomContentHeight + topLeftY),
@@ -126,6 +136,7 @@ const getLayout = (
     };
 
     return {
+        trayInBottom,
         canvas: {
             topLeft: {
                 x: 0,
@@ -204,30 +215,63 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         return GradientPattern.None;
     };
 
+    // せり上がり部と同じ「枠」にトレイを重ねる（盤面(develop と同じサイズ)はズレない）。
+    // 枠の位置・高さは、Field コンポーネントがせり上がり行を描く座標と厳密に一致させる。
+    const bottomTrayVisible = layout.trayInBottom && state.editorUi.bottomSlot === 'tray';
+    const sentLineVisible = !bottomTrayVisible;
+    const bandTop = layout.field.topLeft.y + (layout.field.blockSize + 1) * 22.5 + 1
+        + layout.field.bottomBorderWidth;
+    const bandHeight = layout.field.blockSize;
+
+    const fieldColumn = div({
+        key: 'field-column',
+        style: style({
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            width: px(layout.field.size.width),
+        }),
+    }, [
+        KonvaCanvas({  // canvas空間�Eみ
+            actions,
+            canvas: layout.canvas.size,
+            hyperStage: resources.konva.stage,
+        }),
+
+        Field({
+            sentLineVisible,
+            getGradientPattern,
+            fieldMarginWidth: layout.field.bottomBorderWidth,
+            topLeft: layout.field.topLeft,
+            blockSize: layout.field.blockSize,
+            field: composeSelectionField(state),
+            sentLine: state.sentLine,
+            guideLineColor: state.fumen.guideLineColor,
+        }),
+
+        SelectionOverlay({
+            rect: resources.konva.selectionFrame,
+            selection: state.rectSelect,
+            topLeft: layout.field.topLeft,
+            blockSize: layout.field.blockSize,
+        }),
+
+        ...(bottomTrayVisible ? [div({
+            key: 'field-bottom-tray',
+            style: style({
+                height: px(bandHeight),
+                left: '0',
+                position: 'absolute',
+                right: '0',
+                top: px(bandTop),
+                zIndex: 5,
+            }),
+        }, [contextTray(state, actions, bandHeight)])] : []),
+    ]);
+
     const getChildren = () => {
         return [   // canvas:Field とのマッピング用仮想DOM
-            KonvaCanvas({  // canvas空間�Eみ
-                actions,
-                canvas: layout.canvas.size,
-                hyperStage: resources.konva.stage,
-            }),
-
-            Field({
-                getGradientPattern,
-                fieldMarginWidth: layout.field.bottomBorderWidth,
-                topLeft: layout.field.topLeft,
-                blockSize: layout.field.blockSize,
-                field: composeSelectionField(state),
-                sentLine: state.sentLine,
-                guideLineColor: state.fumen.guideLineColor,
-            }),
-
-            SelectionOverlay({
-                rect: resources.konva.selectionFrame,
-                selection: state.rectSelect,
-                topLeft: layout.field.topLeft,
-                blockSize: layout.field.blockSize,
-            }),
+            fieldColumn,
 
             editorRail(state, actions, layout),
 
@@ -377,20 +421,20 @@ export const view: View<State, Actions> = (state, actions) => {
     const rightInspectorWidth = state.platform === Platforms.PC
         && 1400 <= state.display.width - sidePanelWidth ? DESKTOP_CONTEXT_WIDTH : 0;
 
-    const baseAvailableEditorHeight = state.display.height - navigatorHeight - 50 - 35;
-    const compact = baseAvailableEditorHeight < 560;
     const pageSliderVisible = state.mode.comment === CommentType.PageSlider;
-    const trayVisible = rightInspectorWidth === 0
-        && !pageSliderVisible
-        && (!compact || state.editorUi.compactPanel === 'tray');
-    const commentVisible = pageSliderVisible || !compact || !trayVisible;
-    const bottomContentHeight = (trayVisible ? CONTEXT_TRAY_HEIGHT : 0) + (commentVisible ? 35 : 0);
+    // トレイを盤面下部（せり上がり部と同じ枠）に置くかどうか。
+    // 右インスペクタ表示中はトレイをそちらに出すため下部枠は使わない。
+    const trayInBottom = rightInspectorWidth === 0 && !pageSliderVisible;
+    // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
+    // （盤面サイズは develop 時点の計算式と完全に一致させる）。
+    const bottomContentHeight = 35;
 
     // 初期匁E
     const layout = getLayout({
         bottomContentHeight,
         rightInspectorWidth,
         sidePanelWidth,
+        trayInBottom,
         ...state.display,
         topLeftY: navigatorHeight,
     });
@@ -435,34 +479,7 @@ export const view: View<State, Actions> = (state, actions) => {
         div({
             key: 'menu-top',
         }, [
-            ...(trayVisible ? [contextTray(state, actions)] : []),
-
-            ...(commentVisible ? [getComment(state, actions, layout)] : []),
-
-            ...(compact && !pageSliderVisible ? [button({
-                key: 'btn-comment-tray-handle',
-                datatest: 'btn-comment-tray-handle',
-                type: 'button',
-                'aria-label': trayVisible ? i18n.Menu.Buttons.ShowComment() : i18n.EditorUi.TrayHandle(),
-                onclick: trayVisible ? actions.showCommentPanel : actions.showContextTray,
-                style: style({
-                    alignItems: 'center',
-                    background: '#f44336',
-                    border: '1px solid #d32f2f',
-                    borderRadius: '0 4px 4px 0',
-                    bottom: px(50),
-                    color: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    height: px(40),
-                    justifyContent: 'center',
-                    left: '0',
-                    padding: '0',
-                    position: 'absolute',
-                    width: px(22),
-                    zIndex: 12,
-                }),
-            }, [BlockIcon({ key: 'handle-icon', iconSize: 17 }, trayVisible ? 'comment' : 'tune')])] : []),
+            getComment(state, actions, layout),
 
             Tools(state, actions, layout.tools.size.height, palette),
         ]),

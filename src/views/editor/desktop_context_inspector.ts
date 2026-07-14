@@ -63,7 +63,7 @@ export const desktopContextInspector = (state: State, actions: Actions, height: 
                     style: style({
                         background: part.id === state.parts.selectedId ? '#ffebee' : '#fff',
                         border: '1px solid #ddd',
-                        borderRadius: '4px',
+                        borderRadius: '0',
                         fontSize: px(10),
                         padding: '5px 7px',
                     }),

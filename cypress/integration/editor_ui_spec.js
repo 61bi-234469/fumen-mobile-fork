@@ -57,15 +57,25 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
     });
 
-    it('uses the dedicated compact handle for the comment and context tray', () => {
+    it('toggles the rising row and the context tray from the rail with the comment always shown', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
-        cy.get(datatest('btn-comment-tray-handle')).should('be.visible').click();
+        // Default: context tray occupies the bottom band, comment stays visible.
         cy.get(datatest('tray-context')).should('be.visible');
+        cy.get(datatest('text-comment')).should('exist');
+
+        // Toggle to the rising row: tray hidden, comment still present.
+        cy.get(datatest('btn-toggle-bottom-slot')).should('be.visible').click();
+        cy.get(datatest('tray-context')).should('not.exist');
+        cy.get(datatest('text-comment')).should('exist');
+
+        // Selecting a tool brings the tray back.
         cy.get(datatest('btn-paint-mode')).click();
         cy.get(datatest('tray-context')).should('be.visible');
-        cy.get(datatest('btn-comment-tray-handle')).click();
+
+        // Toggle back to the rising row again.
+        cy.get(datatest('btn-toggle-bottom-slot')).click();
         cy.get(datatest('tray-context')).should('not.exist');
     });
 

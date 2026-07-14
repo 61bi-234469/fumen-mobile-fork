@@ -102,4 +102,38 @@ describe('editorInteractionActions', () => {
         expect(drag.editorUi.pieceAction).toBe('drag');
         expect(drag.mode.touch).toBe(TouchTypes.MovePiece);
     });
+
+    test('pressing the active tool button again toggles the tray closed, then open', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'piece';
+        state.editorUi.bottomSlot = 'tray';
+
+        const closed = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        expect(closed.editorUi.primaryTool).toBe('piece');
+        expect(closed.editorUi.bottomSlot).toBe('sentLine');
+
+        const reopened = apply(closed, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        expect(reopened.editorUi.bottomSlot).toBe('tray');
+    });
+
+    test('switching to a different tool always shows the tray, even if it was hidden', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'piece';
+        state.editorUi.bottomSlot = 'sentLine';
+
+        const next = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'select' }));
+        expect(next.editorUi.primaryTool).toBe('select');
+        expect(next.editorUi.bottomSlot).toBe('tray');
+    });
+
+    test('pressing PAINT while in Slide/Comment mode returns to the paint tray instead of toggling it closed', () => {
+        const state = createState();
+        state.mode.type = ModeTypes.Slide;
+        state.editorUi.primaryTool = 'paint';
+        state.editorUi.bottomSlot = 'tray';
+
+        const next = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'paint' }));
+        expect(next.editorUi.bottomSlot).toBe('tray');
+        expect(next.mode.type).not.toBe(ModeTypes.Slide);
+    });
 });

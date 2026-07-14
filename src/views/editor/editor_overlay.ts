@@ -5,49 +5,57 @@ import { px, style } from '../../lib/types';
 import { BlockIcon } from '../../components/atomics/icons';
 import { EditorLayout } from './editor';
 import { i18n } from '../../locales/keys';
+import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
 const overlayButton = ({
-    key, datatest, label, iconName, active = false, onclick,
+    key, datatest, label, iconName, active = false, danger = false, onclick,
 }: {
     key: string;
     datatest: string;
     label: string;
     iconName: string;
     active?: boolean;
+    danger?: boolean;
     onclick: () => void;
-}) => button({
-    key,
-    datatest,
-    type: 'button',
-    'aria-label': label,
-    'aria-pressed': active ? 'true' : 'false',
-    onclick: (event: MouseEvent) => {
-        onclick();
-        event.preventDefault();
-        event.stopPropagation();
-    },
-    style: style({
-        alignItems: 'center',
-        background: active ? '#f44336' : '#fff',
-        border: '1px solid #333',
-        borderRadius: '0',
-        boxShadow: active ? 'inset 0 0 0 2px #fff' : 'none',
-        color: active ? '#fff' : '#333',
-        cursor: 'pointer',
-        display: 'flex',
-        fontFamily: 'inherit',
-        fontSize: px(11),
-        gap: px(5),
-        height: px(34),
-        justifyContent: 'flex-start',
-        padding: '0 8px',
-        textAlign: 'left',
-        width: '100%',
-    }),
-}, [
-    BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
-    span({ key: `${key}-label` }, label),
-]);
+}) => {
+    const controlState: EditorControlState = active ? 'active' : danger ? 'danger' : 'idle';
+    const stateStyle = editorControlStateStyle(controlState);
+    return button({
+        key,
+        datatest,
+        type: 'button',
+        className: 'editor-control',
+        'data-active': active ? 'true' : 'false',
+        'aria-label': label,
+        'aria-pressed': active ? 'true' : 'false',
+        onclick: (event: MouseEvent) => {
+            onclick();
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        style: style({
+            alignItems: 'center',
+            background: stateStyle.background,
+            border: '1px solid #333',
+            borderRadius: '0',
+            boxShadow: stateStyle.boxShadow,
+            color: stateStyle.color,
+            cursor: 'pointer',
+            display: 'flex',
+            fontFamily: 'inherit',
+            fontSize: px(11),
+            gap: px(5),
+            height: px(34),
+            justifyContent: 'flex-start',
+            padding: '0 8px',
+            textAlign: 'left',
+            width: '100%',
+        }),
+    }, [
+        BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
+        span({ key: `${key}-label` }, label),
+    ]);
+};
 
 export const editorOverlay = (state: State, actions: Actions, layout: EditorLayout) => {
     const inspector = state.editorUi.inspector;
@@ -77,6 +85,7 @@ export const editorOverlay = (state: State, actions: Actions, layout: EditorLayo
         }),
         overlayButton({
             key: 'btn-clear-field', datatest: 'btn-clear-field', label: i18n.EditorUi.Clear(), iconName: 'clear',
+            danger: true,
             onclick: actions.clearField,
         }),
         overlayButton({

@@ -146,8 +146,6 @@ export const i18n = {
         Unpin: () => t('EditorUi.Unpin'), Delete: () => t('EditorUi.Delete'),
         Blocks: (count: number) => t('EditorUi.Blocks', { count }),
         TrayHandle: () => t('EditorUi.TrayHandle'),
-        ShowSentLine: () => t('EditorUi.ShowSentLine'),
-        ShowTools: () => t('EditorUi.ShowTools'),
     },
     Clipboard: {
         Title: () => t('Clipboard.Title'),

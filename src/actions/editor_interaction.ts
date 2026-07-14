@@ -21,7 +21,6 @@ export interface EditorInteractionActions {
     executeEditorPaletteShortcut(data: { selection: PaletteSelection }): action;
     showContextTray(): action;
     showSentLine(): action;
-    toggleBottomSlot(): action;
 }
 
 const focusInspectorTrigger = (inspector: EditorInspector) => {
@@ -44,15 +43,21 @@ const cancelSelectionPreviewAndSet = (update: (state: State) => NextState) => (s
 
 export const editorInteractionActions: Readonly<EditorInteractionActions> = {
     changePrimaryTool: ({ tool }) => cancelSelectionPreviewAndSet((state) => {
+        // 同じボタンをもう一度押したときはトレイを閉じるトグル動作にする。
+        // ただし PAINT は Slide/Comment モード中も primaryTool:'paint' のままのため、
+        // それらのモードから戻る操作をトグルの「閉じる」と誤認しないよう除外する。
+        const alreadyShowingThisTray = state.editorUi.primaryTool === tool
+            && !(tool === 'paint' && (state.mode.type === ModeTypes.Slide || state.mode.type === ModeTypes.Comment));
+        const bottomSlot = alreadyShowingThisTray && state.editorUi.bottomSlot === 'tray' ? 'sentLine' : 'tray';
         if (tool === 'paint') {
             const legacy = legacyModeForPaintTool(state.editorUi.paintTool);
             return {
                 mode: { ...state.mode, ...legacy },
                 editorUi: {
                     ...state.editorUi,
+                    bottomSlot,
                     primaryTool: tool,
                     inspector: 'none',
-                    bottomSlot: 'tray',
                 },
             };
         }
@@ -61,9 +66,9 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             const pieceAction: PieceAction = page?.piece !== undefined ? 'drag' : 'spawn';
             const editorUi: State['editorUi'] = {
                 ...state.editorUi,
+                bottomSlot,
                 primaryTool: tool,
                 inspector: 'none',
-                bottomSlot: 'tray',
             };
             editorUi.pieceAction = pieceAction;
             return {
@@ -79,9 +84,9 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             mode: { ...state.mode, type: ModeTypes.Select, touch: TouchTypes.Select },
             editorUi: {
                 ...state.editorUi,
+                bottomSlot,
                 primaryTool: tool,
                 inspector: 'none',
-                bottomSlot: 'tray',
             },
         };
     }),
@@ -188,8 +193,5 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
     }),
     showSentLine: () => (state): NextState => ({
         editorUi: { ...state.editorUi, bottomSlot: 'sentLine' },
-    }),
-    toggleBottomSlot: () => (state): NextState => ({
-        editorUi: { ...state.editorUi, bottomSlot: state.editorUi.bottomSlot === 'tray' ? 'sentLine' : 'tray' },
     }),
 };

@@ -12,13 +12,9 @@ import { BlockIcon } from '../../components/atomics/icons';
 import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
+import { getResponsiveRailCellHeight } from './responsive_layout';
+import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
-const MIN_CELL_HEIGHT = 18;
-const MAX_CELL_HEIGHT = 30;
-const GROUP_GAP = 4;
-// 20行 = システム1 + ページ4 + 補助2 + モード2 + パレット10 + 下部枠切替1
-const RAIL_ROWS = 20;
-const RAIL_CHROME_HEIGHT = GROUP_GAP * 5 + 8;
 const LONG_PRESS_DURATION = 500;
 
 const pressState: {
@@ -40,6 +36,8 @@ interface CellOptions {
     label: string;
     height: number;
     selected?: boolean;
+    selectionKind?: 'active' | 'palette';
+    status?: boolean;
     disabled?: boolean;
     title?: string;
     onpress: () => void;
@@ -53,12 +51,16 @@ const toolCell = ({
     label,
     height,
     selected = false,
+    selectionKind = 'active',
+    status = false,
     disabled = false,
     title,
     onpress,
     onlongpress,
     children,
 }: CellOptions) => {
+    const controlState: EditorControlState = status ? 'status' : selected ? selectionKind : 'idle';
+    const stateStyle = editorControlStateStyle(controlState);
     const handlePointerDown = () => {
         if (disabled || onlongpress === undefined) {
             return;
@@ -114,16 +116,19 @@ const toolCell = ({
         disabled,
         type: 'button',
         title: title ?? label,
+        className: 'editor-control waves-effect',
+        'data-active': selected || status ? 'true' : 'false',
         'aria-label': label,
         'aria-pressed': selected ? 'true' : 'false',
+        'aria-busy': status ? 'true' : 'false',
         style: style({
             alignItems: 'center',
-            background: selected ? '#f44336' : '#fff',
+            background: stateStyle.background,
             border: '0',
             borderRadius: '0',
-            boxShadow: selected ? 'inset 0 0 0 2px #fff, inset 0 0 0 3px #d32f2f' : 'none',
+            boxShadow: stateStyle.boxShadow,
             boxSizing: 'border-box',
-            color: selected ? '#fff' : disabled ? '#9e9e9e' : '#333',
+            color: disabled ? '#9e9e9e' : stateStyle.color,
             cursor: disabled ? 'default' : 'pointer',
             display: 'flex',
             fontFamily: 'inherit',
@@ -172,29 +177,25 @@ const row = (key: string, columns: VNode<{}>[]) => div({
 
 const icon = (name: string, size: number) => BlockIcon({ key: `icon-${name}`, iconSize: size }, name);
 
-const paletteDot = (selection: PaletteSelection, height: number, guideLineColor: boolean) => {
-    const piece = selection === 'comp' ? undefined : selection;
-    const label = selection === 'comp' ? 'C'
-        : selection === Piece.Empty ? 'E'
-            : selection === Piece.Gray ? 'G' : parsePieceName(selection) ?? '';
-    const background = selection === 'comp' ? '#111'
-        : selection === Piece.Empty ? '#fff'
-            : decidePieceColor(piece!, HighlightType.Normal, guideLineColor);
+const minoPaletteSwatch = (selection: Piece, height: number, guideLineColor: boolean) => {
+    const size = Math.max(18, Math.min(24, height - 4));
+    const background = decidePieceColor(selection, HighlightType.Highlight1, guideLineColor);
     return div({
+        'data-palette-swatch': 'mino',
         style: style({
             background,
             alignItems: 'center',
             borderRadius: '0',
-            color: selection === Piece.Empty ? '#333' : '#fff',
+            color: '#fff',
             display: 'flex',
-            fontSize: px(Math.max(8, height * 0.36)),
+            fontSize: px(Math.max(10, Math.min(13, size * .58))),
             fontWeight: '700',
-            height: px(Math.max(14, height - 7)),
+            height: px(size),
             justifyContent: 'center',
-            textShadow: selection === Piece.Empty ? 'none' : '0 1px 1px #000',
-            width: px(Math.max(14, height - 7)),
+            textShadow: 'none',
+            width: px(size),
         }),
-    }, label);
+    }, parsePieceName(selection) ?? '');
 };
 
 const paletteContent = (selection: PaletteSelection, state: State, height: number) => {
@@ -207,7 +208,38 @@ const paletteContent = (selection: PaletteSelection, state: State, height: numbe
             style: style({ display: 'block', height: px(Math.max(12, height - 6)), margin: 'auto' }),
         });
     }
-    return paletteDot(selection, height, state.fumen.guideLineColor);
+    const neutralSize = Math.max(12, Math.min(18, height - 10));
+    if (selection === Piece.Empty || selection === Piece.Gray) {
+        return div({
+            'aria-hidden': 'true',
+            'data-palette-swatch': selection === Piece.Empty ? 'empty' : 'gray',
+            style: style({
+                background: decidePieceColor(selection, HighlightType.Normal, state.fumen.guideLineColor),
+                height: px(neutralSize),
+                width: px(neutralSize),
+            }),
+        });
+    }
+    if (selection === 'comp') {
+        const compact = height < 24;
+        return div({
+            'data-palette-swatch': 'comp',
+            style: style({
+                alignItems: 'center',
+                color: '#333',
+                display: 'flex',
+                fontSize: px(compact ? 8 : 9),
+                gap: px(compact ? 1 : 2),
+                justifyContent: 'center',
+                lineHeight: '1',
+                whiteSpace: 'nowrap',
+            }),
+        }, [
+            BlockIcon({ key: 'comp-icon', iconSize: compact ? 12 : 15 }, 'image_aspect_ratio'),
+            span({ key: 'comp-label' }, 'COMP'),
+        ]);
+    }
+    return minoPaletteSwatch(selection, height, state.fumen.guideLineColor);
 };
 
 const getPaletteShortcut = (state: State, selection: PaletteSelection): string | undefined => {
@@ -221,18 +253,17 @@ const getPaletteShortcut = (state: State, selection: PaletteSelection): string |
     return code ? displayShortcut(code) : undefined;
 };
 
-export const getRailCellHeight = (layout: EditorLayout): number => Math.min(
-    MAX_CELL_HEIGHT,
-    Math.max(MIN_CELL_HEIGHT, Math.floor((layout.canvas.size.height - RAIL_CHROME_HEIGHT) / RAIL_ROWS)),
-);
+export const getRailCellHeight = (layout: EditorLayout): number =>
+    getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns);
 
 export const editorRail = (state: State, actions: Actions, layout: EditorLayout) => {
     const cellHeight = getRailCellHeight(layout);
-    const compact = layout.canvas.size.height < 560;
+    const twoColumns = layout.buttons.columns === 2;
+    const compact = twoColumns || layout.canvas.size.height < 560 || layout.buttons.size.width < 72;
     const text = (label: string) => compact ? '' : label;
     const iconSize = Math.max(14, Math.min(20, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {
-        if (!state.mode.shortcutLabelVisible) {
+        if (compact || !state.mode.shortcutLabelVisible) {
             return undefined;
         }
         const code = state.mode.editShortcuts[key];
@@ -281,7 +312,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         }),
     ])]);
 
-    const pageGroup = toolGroup('rail-pages', [
+    const pageCells = [
         pageCell('btn-insert-new-page', i18n.EditorUi.Add() || 'ADD', 'note_add', 'Add',
             () => actions.insertNewPage({ index: state.fumen.currentIndex + 1 })),
         pageCell('btn-insert-from-clipboard', i18n.EditorUi.Insert() || 'INSERT', 'content_paste', 'Insert',
@@ -290,7 +321,11 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             actions.copyCurrentPageToClipboard, actions.copyAllPagesToClipboard),
         pageCell('btn-cut-page', i18n.EditorUi.Cut() || 'CUT', 'content_cut', 'Cut',
             actions.cutCurrentPage, actions.cutAllPages),
-    ]);
+    ];
+    const pageGroup = toolGroup('rail-pages', twoColumns ? [
+        row('rail-pages-row-1', pageCells.slice(0, 2)),
+        row('rail-pages-row-2', pageCells.slice(2, 4)),
+    ] : pageCells);
 
     const auxiliaryGroup = toolGroup('rail-auxiliary', [
         row('rail-inspector-row', [
@@ -309,7 +344,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         ]),
         toolCell({
             key: 'btn-cold-clear', datatest: 'btn-cold-clear', label: i18n.ColdClear.MenuButtonLabel(),
-            height: cellHeight, selected: state.coldClear.isRunning,
+            height: cellHeight, status: state.coldClear.isRunning,
             onpress: actions.openColdClearMenuModal,
             children: [
                 icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
@@ -361,7 +396,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const selections: PaletteSelection[] = [
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
     ];
-    const paletteGroup = toolGroup('rail-palette', selections.map((selection) => {
+    const paletteCells = selections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
         const label = selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
         return toolCell({
@@ -370,43 +405,32 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             key: `btn-piece-${name}`,
             datatest: `btn-piece-${name}`,
             selected: state.editorUi.paletteSelection === selection,
+            selectionKind: 'palette',
             onpress: () => actions.selectEditorPalette({ selection }),
             onlongpress: () => actions.executeEditorPaletteShortcut({ selection }),
-            children: withShortcut(paletteContent(selection, state, cellHeight), getPaletteShortcut(state, selection)),
+            children: withShortcut(paletteContent(selection, state, cellHeight),
+                compact ? undefined : getPaletteShortcut(state, selection)),
         });
-    }));
-
-    // せり上がり部⇔トレイの切替（下部枠を使う配置のときだけ表示）
-    const showingTray = state.editorUi.bottomSlot === 'tray';
-    const bottomSlotGroup = layout.trayInBottom ? toolGroup('rail-bottom-slot', [
-        toolCell({
-            key: 'btn-toggle-bottom-slot',
-            datatest: 'btn-toggle-bottom-slot',
-            label: showingTray ? i18n.EditorUi.ShowSentLine() : i18n.EditorUi.ShowTools(),
-            height: cellHeight,
-            selected: showingTray,
-            onpress: actions.toggleBottomSlot,
-            children: [
-                icon('swap_vert', iconSize),
-                ...(compact ? [] : [span({ key: 'label', style: style({ marginLeft: '3px' }) },
-                    showingTray ? 'ROW' : 'TOOL')]),
-            ],
-        }),
-    ]) : undefined;
+    });
+    const paletteGroup = toolGroup('rail-palette', twoColumns
+        ? [0, 1, 2, 3, 4].map(index => row(`rail-palette-row-${index + 1}`,
+            paletteCells.slice(index * 2, index * 2 + 2)))
+        : paletteCells);
 
     return div({
         key: 'editor-rail',
         datatest: 'editor-rail',
+        'data-columns': String(layout.buttons.columns),
         style: style({
-            alignSelf: 'stretch',
+            alignSelf: 'center',
             display: 'flex',
             flexDirection: 'column',
-            gap: px(GROUP_GAP),
-            justifyContent: 'center',
+            height: px(layout.field.size.height),
+            justifyContent: 'space-between',
             marginLeft: '8px',
             minWidth: px(layout.buttons.size.width),
+            overflow: 'hidden',
             width: px(layout.buttons.size.width),
         }),
-    }, [systemGroup, pageGroup, auxiliaryGroup, modeGroup, paletteGroup,
-        ...(bottomSlotGroup ? [bottomSlotGroup] : [])]);
+    }, [systemGroup, pageGroup, auxiliaryGroup, modeGroup, paletteGroup]);
 };

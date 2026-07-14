@@ -17,12 +17,40 @@ const fieldPoint = (canvasElement, x, y) => {
 };
 // せり上がり部(y<0)を操作する前に、下部枠がトレイ表示ならせり上がり部へ切り替える。
 // せり上がり部⇔トレイは排他表示のため、トレイが出ているとせり上がり部を操作できない。
+// 専用の切替ボタンは廃止されたため、選択中のモードボタンをもう一度押すトグル動作で閉じる。
 const ensureSentLineVisible = () => {
     cy.get('body').then(($body) => {
         if ($body.find('[datatest="tray-context"]').length > 0) {
-            cy.get(datatest('btn-toggle-bottom-slot')).click();
+            cy.get('[datatest="btn-piece-mode"][aria-pressed="true"],'
+                + '[datatest="btn-select-mode"][aria-pressed="true"],'
+                + '[datatest="btn-paint-mode"][aria-pressed="true"]').click();
         }
     });
+};
+// モードボタンは「選択中に再度押すとトレイを閉じる」トグル動作になったため、事前に「既に選択中か」を
+// 判定して押下をスキップする方式は使わない（インスペクタ（utils/flags）がトレイの上に被さっている場合、
+// トレイの DOM 自体は残っているため誤って「表示中」と判定してしまう）。必ず一度押し、
+// その結果トレイが閉じてしまっていたら（インスペクタも必ず閉じているはずなので）もう一度押して開き直す。
+const ensureModeActive = (selector) => {
+    cy.get(datatest(selector)).click();
+    cy.get('body').then(($body) => {
+        const nowActive = $body.find(`[datatest="${selector}"][aria-pressed="true"]`).length > 0
+            && $body.find('[datatest="tray-context"]').length > 0;
+        if (!nowActive) {
+            cy.get(datatest(selector)).click();
+        }
+    });
+};
+// PAINT はスライド/コメントモードでも primaryTool:'paint' のまま aria-pressed が true になるため、
+// 汎用の ensureModeActive では区別できない。PAINT のペントレイが出ているかで直接判定する。
+const ensurePaintPenHome = () => {
+    cy.get(datatest('btn-paint-mode')).click();
+    cy.get('body').then(($body) => {
+        if ($body.find('[datatest="tray-paint-pen"]').length === 0) {
+            cy.get(datatest('btn-paint-mode')).click();
+        }
+    });
+    cy.get(datatest('tray-paint-pen')).click();
 };
 const pressPieceShortcut = (code) => {
     cy.get('body').trigger('keydown', { code });
@@ -281,7 +309,7 @@ export const operations = {
         },
         piece: {
             open: () => {
-                cy.get(datatest('btn-piece-mode')).click();
+                ensureModeActive('btn-piece-mode');
             },
             resetPiece: () => {
                 longPress('btn-piece-mode');
@@ -352,8 +380,7 @@ export const operations = {
         },
         tools: {
             open: () => {
-                cy.get(datatest('btn-paint-mode')).click();
-                cy.get(datatest('tray-paint-pen')).click();
+                ensurePaintPenHome();
             },
             duplicatePage: ({ home = true } = {}) => {
                 if (home) {
@@ -393,8 +420,7 @@ export const operations = {
                 cy.get(datatest('btn-redo')).click();
             },
             home: () => {
-                cy.get(datatest('btn-paint-mode')).click();
-                cy.get(datatest('tray-paint-pen')).click();
+                ensurePaintPenHome();
             },
             nextPage: () => {
                 // 新UXではページ送りボタン(btn-next-page)は末尾で新規ページを作らず、

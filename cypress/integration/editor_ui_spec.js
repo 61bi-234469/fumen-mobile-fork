@@ -20,15 +20,24 @@ describe('Editor UI final concept', () => {
     beforeEach(() => cy.clearLocalStorage());
 
     [
-        [320, 568],
-        [375, 667],
-        [390, 844],
-    ].forEach(([width, height]) => {
+        [320, 568, '1'],
+        [375, 667, '1'],
+        [390, 844, '1'],
+        [844, 390, '2'],
+    ].forEach(([width, height, railColumns]) => {
         it(`keeps the rail usable at ${width}x${height}`, () => {
             cy.viewport(width, height);
             visit({ mode: 'edit' });
 
-            cy.get(datatest('editor-rail')).should('be.visible');
+            cy.get(datatest('editor-rail'))
+                .should('be.visible')
+                .and('have.attr', 'data-columns', railColumns);
+            cy.get(`${datatest('editor-field-frame')},${datatest('editor-rail')}`).then(elements => {
+                const field = elements.filter(datatest('editor-field-frame'))[0].getBoundingClientRect();
+                const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
+                expect(Math.abs(field.top - rail.top)).to.be.lessThan(1);
+                expect(Math.abs(field.bottom - rail.bottom)).to.be.lessThan(1);
+            });
             assertRailOrder();
             ['btn-paint-mode', 'btn-piece-mode', 'btn-select-mode'].forEach(selector => {
                 cy.get(datatest(selector)).should('have.attr', 'aria-label').and('not.be.empty');
@@ -37,6 +46,40 @@ describe('Editor UI final concept', () => {
                 cy.get(datatest(`btn-piece-${piece}`)).should('be.visible');
             });
         });
+    });
+
+    it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-paint-mode'))
+            .should('have.css', 'background-color', 'rgb(232, 241, 251)')
+            .and('have.css', 'color', 'rgb(21, 101, 192)');
+        cy.get(datatest('btn-piece-i'))
+            .find('[data-palette-swatch="mino"]')
+            .should('have.text', 'I');
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+        cy.get(datatest('btn-piece-empty'))
+            .find('[data-palette-swatch="empty"]')
+            .should('have.text', '');
+        cy.get(datatest('btn-piece-gray'))
+            .find('[data-palette-swatch="gray"]')
+            .should('have.text', '');
+        cy.get(datatest('btn-piece-inference'))
+            .find('[data-palette-swatch="comp"]')
+            .should('contain', 'COMP');
+
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-i')).find('img').should('exist');
+
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+        cy.get(datatest('btn-piece-i'))
+            .find('[data-palette-swatch="mino"]')
+            .should('have.text', 'I');
+
+        cy.get(datatest('btn-piece-i')).click()
+            .should('have.css', 'background-color', 'rgb(244, 248, 253)')
+            .and('have.css', 'color', 'rgb(51, 51, 51)');
     });
 
     it('preserves the active tool while opening and closing inspectors', () => {
@@ -57,26 +100,31 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
     });
 
-    it('toggles the rising row and the context tray from the rail with the comment always shown', () => {
+    it('toggles the context tray by pressing the active mode button again', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
-        // Default: context tray occupies the bottom band, comment stays visible.
+        // Default: paint mode active, context tray occupies the bottom band, comment stays visible.
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('text-comment')).should('exist');
 
-        // Toggle to the rising row: tray hidden, comment still present.
-        cy.get(datatest('btn-toggle-bottom-slot')).should('be.visible').click();
-        cy.get(datatest('tray-context')).should('not.exist');
-        cy.get(datatest('text-comment')).should('exist');
-
-        // Selecting a tool brings the tray back.
+        // Pressing the already-active mode button again hides the tray (rising row shown instead).
         cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('tray-context')).should('not.exist');
+        cy.get(datatest('text-comment')).should('exist');
+
+        // Selecting a different tool brings the tray back.
+        cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('tray-context')).should('be.visible');
 
-        // Toggle back to the rising row again.
-        cy.get(datatest('btn-toggle-bottom-slot')).click();
+        // Pressing that same (now active) mode button again toggles the tray off.
+        cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('tray-context')).should('not.exist');
+
+        // Pressing it once more toggles the tray back on.
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('tray-context')).should('be.visible');
     });
 
     it('spawns lastMino from PIECE and keeps it through non-mino palette choices', () => {

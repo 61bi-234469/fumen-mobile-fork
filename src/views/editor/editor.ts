@@ -24,6 +24,7 @@ import {
     DESKTOP_CONTEXT_WIDTH,
     desktopContextInspector,
 } from './desktop_context_inspector';
+import { getEditorBottomMetrics, getEditorRailConfig } from './responsive_layout';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -45,6 +46,7 @@ export interface EditorLayout {
     };
     buttons: {
         size: Size;
+        columns: 1 | 2;
     };
     comment: {
         topLeft: Coordinate;
@@ -61,8 +63,7 @@ export const getFieldLayout = (
         topLeftY: number, width: number, height: number, sidePanelWidth: number,
     },
 ): FieldLayout => {
-    const commentHeight = 35;
-    const toolsHeight = 50;
+    const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
     const borderWidthBottomField = 2.4;
 
     const canvasSize = {
@@ -72,7 +73,7 @@ export const getFieldLayout = (
 
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - 90) / 10.5,  // 横のスペ�Eスが最低でめE0pxは残るようにする
+        (canvasSize.width - 90) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -98,15 +99,13 @@ interface LayoutParams {
     height: number;
     sidePanelWidth: number;
     rightInspectorWidth: number;
-    bottomContentHeight: number;
     trayInBottom: boolean;
 }
 
-const getLayout = (
-    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, bottomContentHeight,
-      trayInBottom }: LayoutParams,
+export const getLayout = (
+    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, trayInBottom }: LayoutParams,
 ): EditorLayout => {
-    const toolsHeight = 50;
+    const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
     const borderWidthBottomField = 2.4;
 
     // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
@@ -114,12 +113,14 @@ const getLayout = (
     // 「せり上がり部と同じ枠」を重ねて表示するだけで、盤面の大きさには影響しない）。
     const canvasSize = {
         width: width - sidePanelWidth - rightInspectorWidth,
-        height: height - (toolsHeight + bottomContentHeight + topLeftY),
+        height: height - (toolsHeight + commentHeight + topLeftY),
     };
+
+    const rail = getEditorRailConfig(canvasSize.height);
 
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - 90) / 10.5,  // 横のスペ�Eスが最低でめE0pxは残るようにする
+        (canvasSize.width - rail.reserve) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -128,7 +129,8 @@ const getLayout = (
     };
 
     const pieceButtonsSize = {
-        width: Math.min((canvasSize.width - fieldSize.width) * 0.6, 80),
+        width: Math.min(Math.max((canvasSize.width - fieldSize.width) * rail.widthRatio, rail.minWidth),
+            rail.maxWidth),
         height: Math.min(
             fieldSize.height / (1.25 * 18 + 0.25),
             30,
@@ -161,15 +163,16 @@ const getLayout = (
         },
         buttons: {
             size: pieceButtonsSize,
+            columns: rail.columns,
         },
         comment: {
             topLeft: {
                 x: 0,
-                y: height - bottomContentHeight - toolsHeight,
+                y: height - commentHeight - toolsHeight,
             },
             size: {
                 width,
-                height: 35,
+                height: commentHeight,
             },
         },
         tools: {
@@ -236,6 +239,19 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             actions,
             canvas: layout.canvas.size,
             hyperStage: resources.konva.stage,
+        }),
+
+        div({
+            key: 'editor-field-frame',
+            datatest: 'editor-field-frame',
+            style: style({
+                height: px(layout.field.size.height),
+                left: '0',
+                pointerEvents: 'none',
+                position: 'absolute',
+                top: px(layout.field.topLeft.y),
+                width: px(layout.field.size.width),
+            }),
         }),
 
         Field({
@@ -329,6 +345,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
     return EditorTools({
         height,
         palette,
+        width: state.display.width,
         editShortcuts: state.mode.editShortcuts,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         actions: {
@@ -427,11 +444,8 @@ export const view: View<State, Actions> = (state, actions) => {
     const trayInBottom = rightInspectorWidth === 0 && !pageSliderVisible;
     // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
     // （盤面サイズは develop 時点の計算式と完全に一致させる）。
-    const bottomContentHeight = 35;
-
     // 初期匁E
     const layout = getLayout({
-        bottomContentHeight,
         rightInspectorWidth,
         sidePanelWidth,
         trayInBottom,

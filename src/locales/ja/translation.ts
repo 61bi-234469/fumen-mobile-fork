@@ -118,7 +118,6 @@ export const resources = {
         UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',
         Blank: '空にする', Inherit: '引き継ぐ', NoSelection: '選択なし', Palette: 'パレット', Parts: 'パーツ',
         Pinned: '固定済み', TrayHandle: '操作ツールを表示',
-        ShowSentLine: 'せり上がり部を表示', ShowTools: '操作ツールを表示',
         BlackTransparent: '空セルを透過', Pin: '固定', Unpin: '固定解除', Delete: '削除',
         Blocks: '{{count}}ブロック',
     },

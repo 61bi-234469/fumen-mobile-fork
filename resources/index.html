@@ -109,6 +109,19 @@
             transform: scale(0.92);
         }
 
+        .editor-control {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .editor-control:active:not(:disabled) {
+            background: #eceff1 !important;
+        }
+
+        .editor-control:focus-visible {
+            outline: 2px solid #42a5f5;
+            outline-offset: -3px;
+        }
+
         @media (hover: hover) {
             .corner-fab:hover {
                 filter: brightness(1.08);

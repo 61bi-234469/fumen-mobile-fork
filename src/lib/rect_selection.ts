@@ -35,14 +35,34 @@ export const extractRectPieces = (field: Block[], rect: SelectionRect): Piece[] 
     return cells;
 };
 
-export const clampFloatingTarget = (floating: FloatingSelection, pointerIndex: number): { x: number; y: number } => {
+export const floatingTargetForPointer = (
+    floating: FloatingSelection,
+    pointerIndex: number,
+): { x: number; y: number } => {
     const pointerX = pointerIndex % FieldConstants.Width;
     const pointerY = Math.floor(pointerIndex / FieldConstants.Width);
     return {
-        x: Math.max(0, Math.min(FieldConstants.Width - floating.width, pointerX - floating.pointerOffsetX)),
-        y: Math.max(0, Math.min(FieldConstants.Height - floating.height, pointerY - floating.pointerOffsetY)),
+        // Keep the cursor attached to the pointer even when the selection
+        // extends beyond the field. Rendering and committing clip the
+        // overflow separately.
+        x: pointerX - floating.pointerOffsetX,
+        y: pointerY - floating.pointerOffsetY,
     };
 };
+
+export const floatingPartAtTop = (
+    cells: Piece[], width: number, height: number,
+): FloatingSelection => ({
+    cells,
+    width,
+    height,
+    sourceRect: null,
+    targetX: Math.floor((FieldConstants.Width - width) / 2),
+    targetY: FieldConstants.Height - height,
+    pointerOffsetX: 0,
+    pointerOffsetY: 0,
+    firstTapPending: true,
+});
 
 export const floatingRect = (floating: FloatingSelection): SelectionRect => ({
     minX: floating.targetX,
@@ -89,8 +109,23 @@ export const rotatePartCells = (
     return { cells: rotated, width: height, height: width };
 };
 
+export const rotatePartCellsLeft = (
+    cells: Piece[], width: number, height: number,
+): { cells: Piece[]; width: number; height: number } => {
+    const rotated = Array.from({ length: cells.length }).map(() => Piece.Empty);
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const nextX = y;
+            const nextY = width - 1 - x;
+            rotated[nextX + nextY * height] = cells[x + y * width];
+        }
+    }
+    return { cells: rotated, width: height, height: width };
+};
+
 export const composeSelectionField = (state: State): Block[] => {
     const field = state.field.map(block => ({ ...block }));
+    const originalField = state.field.map(block => ({ ...block }));
     const floating = state.rectSelect.floating;
     if (state.rectSelect.status !== 'floating' || floating === null) {
         return field;
@@ -98,17 +133,28 @@ export const composeSelectionField = (state: State): Block[] => {
     if (floating.sourceRect !== null) {
         for (let y = floating.sourceRect.minY; y <= floating.sourceRect.maxY; y += 1) {
             for (let x = floating.sourceRect.minX; x <= floating.sourceRect.maxX; x += 1) {
-                field[x + y * FieldConstants.Width] = { piece: Piece.Empty };
+                if (0 <= x && x < FieldConstants.Width && 0 <= y && y < FieldConstants.Height) {
+                    field[x + y * FieldConstants.Width] = { piece: Piece.Empty };
+                }
             }
         }
     }
     for (let y = 0; y < floating.height; y += 1) {
         for (let x = 0; x < floating.width; x += 1) {
-            const piece = floating.cells[x + y * floating.width];
-            if (floating.kind === 'stamp' && state.parts.blackTransparent && piece === Piece.Empty) {
+            const targetX = floating.targetX + x;
+            const targetY = floating.targetY + y;
+            if (targetX < 0 || FieldConstants.Width <= targetX
+                || targetY < 0 || FieldConstants.Height <= targetY) {
                 continue;
             }
-            const index = floating.targetX + x + (floating.targetY + y) * FieldConstants.Width;
+            const index = targetX + targetY * FieldConstants.Width;
+            const piece = floating.cells[x + y * floating.width];
+            if (state.parts.blackTransparent && floating.forceEmpty !== true && piece === Piece.Empty) {
+                if (floating.sourceRect !== null && isIndexInRect(index, floating.sourceRect)) {
+                    field[index] = originalField[index];
+                }
+                continue;
+            }
             field[index] = {
                 piece,
                 highlight: piece === Piece.Empty ? undefined : HighlightType.Lighter,

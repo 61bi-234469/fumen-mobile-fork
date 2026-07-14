@@ -3,17 +3,19 @@ import { action, actions } from '../actions';
 import { FieldConstants, Piece } from '../lib/enums';
 import { PageFieldOperation, Pages, parseToCommands } from '../lib/pages';
 import {
-    clampFloatingTarget,
+    floatingTargetForPointer,
     extractRectPieces,
+    floatingPartAtTop,
     floatingRect,
     isIndexInRect,
     mirrorPartCells,
+    rotatePartCellsLeft,
     rectFromIndices,
     rectHeight,
     rectWidth,
     rotatePartCells,
 } from '../lib/rect_selection';
-import { limitParts, saveBlackTransparentPaste, saveParts } from '../lib/parts';
+import { insertPart, repackParts, saveBlackTransparentPaste, saveParts } from '../lib/parts';
 import { generateKey } from '../lib/random';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
 import { EditorPart, FloatingSelection, SelectionRect, State } from '../states';
@@ -30,15 +32,11 @@ export interface RectSelectActions {
     beginMoveRectSelection(): action;
     copyRectSelection(): action;
     cutRectSelection(): action;
-    activateStamp(): action;
-    deactivateStamp(): action;
-    useSingleStamp(): action;
     selectPart(data: { id: string }): action;
-    rotateSelectedPart(): action;
+    togglePartPin(data: { slot: Piece }): action;
+    rotateSelectedPartLeft(): action;
+    rotateSelectedPartRight(): action;
     mirrorSelectedPart(): action;
-    removeSelectedPart(): action;
-    toggleSelectedPartPin(): action;
-    toggleContinuousStamp(): action;
     toggleBlackTransparentPaste(): action;
 }
 
@@ -47,17 +45,11 @@ const extractCurrentPieces = (state: State, rect: SelectionRect): Piece[] => {
     return extractRectPieces(field.toPlayFieldPieces().map(piece => ({ piece })), rect);
 };
 
-const createPart = (state: State, rect: SelectionRect): EditorPart => ({
-    id: generateKey(),
-    width: rectWidth(rect),
-    height: rectHeight(rect),
-    cells: extractCurrentPieces(state, rect),
-    pinned: false,
-    createdAt: Date.now(),
-});
-
-const addPart = (part: EditorPart) => (state: State): NextState => {
-    const items = limitParts([part].concat(state.parts.items));
+const savePartToSlot = (part: EditorPart) => (state: State): NextState => {
+    const items = insertPart(state.parts.items, part);
+    if (items === undefined) {
+        return undefined;
+    }
     saveParts(items);
     return {
         parts: {
@@ -67,35 +59,21 @@ const addPart = (part: EditorPart) => (state: State): NextState => {
     };
 };
 
-const updateSelectedPart = (
-    update: (part: EditorPart) => EditorPart,
-) => (state: State): NextState => {
-    if (state.parts.selectedId === null) {
-        return undefined;
+const floatingMatchesSource = (state: State, floating: FloatingSelection): boolean => {
+    if (floating.sourceRect === null
+        || floating.targetX !== floating.sourceRect.minX
+        || floating.targetY !== floating.sourceRect.minY
+        || floating.width !== rectWidth(floating.sourceRect)
+        || floating.height !== rectHeight(floating.sourceRect)) {
+        return false;
     }
-    let changed = false;
-    const items = state.parts.items.map((part) => {
-        if (part.id !== state.parts.selectedId) {
-            return part;
-        }
-        changed = true;
-        return update(part);
-    });
-    if (!changed) {
-        return undefined;
-    }
-    saveParts(items);
-    return {
-        parts: {
-            ...state.parts,
-            items,
-        },
-    };
+    const original = extractCurrentPieces(state, floating.sourceRect);
+    return original.length === floating.cells.length
+        && original.every((piece, index) => piece === floating.cells[index]);
 };
 
 const commitFloating = (floating: FloatingSelection) => (state: State): NextState => {
-    if (floating.kind === 'move' && floating.sourceRect !== null
-        && floating.targetX === floating.sourceRect.minX && floating.targetY === floating.sourceRect.minY) {
+    if (floatingMatchesSource(state, floating)) {
         return {
             rectSelect: {
                 status: 'selected', rect: floating.sourceRect, anchorIndex: null, floating: null,
@@ -110,28 +88,40 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
     }
     const pagesObj = new Pages(pages);
     const primitivePage = toPrimitivePage(page);
+    const originalField = pagesObj.getField(currentIndex, PageFieldOperation.Command);
     const goalField = pagesObj.getField(currentIndex, PageFieldOperation.Command);
     if (floating.sourceRect !== null) {
         for (let y = floating.sourceRect.minY; y <= floating.sourceRect.maxY; y += 1) {
             for (let x = floating.sourceRect.minX; x <= floating.sourceRect.maxX; x += 1) {
-                goalField.setToPlayField(x + y * FieldConstants.Width, Piece.Empty);
+                if (0 <= x && x < FieldConstants.Width && 0 <= y && y < FieldConstants.Height) {
+                    goalField.setToPlayField(x + y * FieldConstants.Width, Piece.Empty);
+                }
             }
         }
     }
     for (let y = 0; y < floating.height; y += 1) {
         for (let x = 0; x < floating.width; x += 1) {
-            const piece = floating.cells[x + y * floating.width];
-            if (floating.kind === 'stamp' && state.parts.blackTransparent && piece === Piece.Empty) {
+            const targetX = floating.targetX + x;
+            const targetY = floating.targetY + y;
+            if (targetX < 0 || FieldConstants.Width <= targetX
+                || targetY < 0 || FieldConstants.Height <= targetY) {
                 continue;
             }
-            const index = floating.targetX + x + (floating.targetY + y) * FieldConstants.Width;
+            const index = targetX + targetY * FieldConstants.Width;
+            const piece = floating.cells[x + y * floating.width];
+            if (state.parts.blackTransparent && floating.forceEmpty !== true && piece === Piece.Empty) {
+                if (floating.sourceRect !== null && isIndexInRect(index, floating.sourceRect)) {
+                    goalField.setToPlayField(index, originalField.getAtIndex(index, true));
+                }
+                continue;
+            }
             goalField.setToPlayField(index, piece);
         }
     }
     const prevField = pagesObj.getField(currentIndex, PageFieldOperation.None);
     page.commands = parseToCommands(prevField, goalField);
     const rect = floatingRect(floating);
-    const selectedId = floating.kind === 'stamp' && !state.parts.continuous ? null : state.parts.selectedId;
+    const selectedId = state.parts.selectedId;
 
     return sequence(state, [
         actions.registerHistoryTask({ task: toSinglePageTask(currentIndex, primitivePage, page) }),
@@ -145,10 +135,11 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
                 rect,
                 anchorIndex: null,
                 floating: null,
+                reselectOnNextTouch: floating.sourceRect === null,
             },
             parts: {
                 ...newState.parts,
-                selectedId,
+                selectedId: floating.sourceRect === null ? null : selectedId,
             },
         }),
         actions.reopenCurrentPage(),
@@ -164,31 +155,100 @@ const floatingFromSelection = (state: State, rect: SelectionRect): FloatingSelec
     targetY: rect.minY,
     pointerOffsetX: 0,
     pointerOffsetY: 0,
-    kind: 'move',
 });
 
 const selectedPart = (state: State): EditorPart | undefined => (
     state.parts.items.find(part => part.id === state.parts.selectedId)
 );
 
+const floatingForOperation = (state: State): FloatingSelection | undefined => {
+    if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
+        return state.rectSelect.floating;
+    }
+    if (state.rectSelect.status === 'selected' && state.rectSelect.rect !== null) {
+        return floatingFromSelection(state, state.rectSelect.rect);
+    }
+    return undefined;
+};
+
+const transformFloatingSelection = (
+    transform: (floating: FloatingSelection) => Pick<FloatingSelection, 'cells' | 'width' | 'height'>,
+) => (state: State): NextState => {
+    const floating = floatingForOperation(state);
+    if (floating === undefined) {
+        return undefined;
+    }
+    const transformed = transform(floating);
+    return {
+        rectSelect: {
+            status: 'floating',
+            rect: floating.sourceRect,
+            anchorIndex: null,
+            floating: { ...floating, ...transformed },
+            reselectOnNextTouch: false,
+        },
+    };
+};
+
 export const rectSelectActions: Readonly<RectSelectActions> = {
     startRectSelection: ({ index }) => (state): NextState => {
+        if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
+            const floating = { ...state.rectSelect.floating };
+            const pointerX = index % FieldConstants.Width;
+            const pointerY = Math.floor(index / FieldConstants.Width);
+            const isOutsideFloatingRect = !isIndexInRect(index, floatingRect(floating));
+            if (floating.sourceRect === null
+                && floating.firstTapPending !== true
+                && floating.firstTapInProgress !== true
+                && isOutsideFloatingRect) {
+                return sequence(state, [
+                    commitFloating(floating),
+                    newState => actions.startRectSelection({ index })(newState),
+                ]);
+            }
+            if (floating.firstTapPending) {
+                return {
+                    rectSelect: {
+                        ...state.rectSelect,
+                        anchorIndex: index,
+                        floating: {
+                            ...floating,
+                            targetX: pointerX,
+                            targetY: pointerY,
+                            pointerOffsetX: 0,
+                            pointerOffsetY: 0,
+                            firstTapPending: false,
+                            firstTapInProgress: true,
+                        },
+                    },
+                };
+            }
+            floating.pointerOffsetX = pointerX - floating.targetX;
+            floating.pointerOffsetY = pointerY - floating.targetY;
+            return {
+                rectSelect: { ...state.rectSelect, anchorIndex: index, floating },
+            };
+        }
+        if (state.rectSelect.reselectOnNextTouch) {
+            return {
+                rectSelect: {
+                    status: 'selecting',
+                    rect: rectFromIndices(index, index),
+                    anchorIndex: index,
+                    floating: null,
+                    reselectOnNextTouch: false,
+                },
+            };
+        }
         const part = selectedPart(state);
         if (part !== undefined) {
-            const floating: FloatingSelection = {
-                cells: part.cells,
-                width: part.width,
-                height: part.height,
-                sourceRect: null,
-                targetX: 0,
-                targetY: 0,
-                pointerOffsetX: 0,
-                pointerOffsetY: 0,
-                kind: 'stamp',
-            };
-            const target = clampFloatingTarget(floating, index);
-            floating.targetX = target.x;
-            floating.targetY = target.y;
+            const floating: FloatingSelection = floatingPartAtTop(part.cells, part.width, part.height);
+            const pointerX = index % FieldConstants.Width;
+            const pointerY = Math.floor(index / FieldConstants.Width);
+            floating.targetX = pointerX;
+            floating.targetY = pointerY;
+            floating.firstTapPending = false;
+            floating.firstTapInProgress = true;
             return {
                 rectSelect: {
                     ...state.rectSelect,
@@ -196,16 +256,6 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                     anchorIndex: index,
                     floating,
                 },
-            };
-        }
-        if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
-            const floating = { ...state.rectSelect.floating };
-            const pointerX = index % FieldConstants.Width;
-            const pointerY = Math.floor(index / FieldConstants.Width);
-            floating.pointerOffsetX = pointerX - floating.targetX;
-            floating.pointerOffsetY = pointerY - floating.targetY;
-            return {
-                rectSelect: { ...state.rectSelect, anchorIndex: index, floating },
             };
         }
         const rect = state.rectSelect.rect;
@@ -216,7 +266,9 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             floating.pointerOffsetX = pointerX - rect.minX;
             floating.pointerOffsetY = pointerY - rect.minY;
             return {
-                rectSelect: { status: 'floating', rect, anchorIndex: index, floating },
+                rectSelect: {
+                    status: 'floating', rect, anchorIndex: index, floating,
+                },
             };
         }
         return {
@@ -225,6 +277,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                 rect: rectFromIndices(index, index),
                 anchorIndex: index,
                 floating: null,
+                reselectOnNextTouch: false,
             },
         };
     },
@@ -239,7 +292,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         }
         if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
             const floating = { ...state.rectSelect.floating };
-            const target = clampFloatingTarget(floating, index);
+            const target = floatingTargetForPointer(floating, index);
             floating.targetX = target.x;
             floating.targetY = target.y;
             return { rectSelect: { ...state.rectSelect, floating } };
@@ -249,10 +302,21 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
     endRectSelection: () => (state): NextState => {
         if (state.rectSelect.status === 'selecting') {
             return {
-                rectSelect: { ...state.rectSelect, status: 'selected', anchorIndex: null },
+                rectSelect: {
+                    ...state.rectSelect, status: 'selected', anchorIndex: null, reselectOnNextTouch: false,
+                },
             };
         }
         if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
+            if (state.rectSelect.floating.firstTapInProgress) {
+                return {
+                    rectSelect: {
+                        ...state.rectSelect,
+                        anchorIndex: null,
+                        floating: { ...state.rectSelect.floating, firstTapInProgress: false },
+                    },
+                };
+            }
             return commitFloating(state.rectSelect.floating)(state);
         }
         return undefined;
@@ -269,6 +333,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                     rect,
                     anchorIndex: null,
                     floating: null,
+                    reselectOnNextTouch: false,
                 },
             };
         }
@@ -287,6 +352,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             }
             const floating = { ...state.rectSelect.floating };
             floating.cells = floating.cells.map(() => Piece.Empty);
+            floating.forceEmpty = true;
             return commitFloating(floating)(state);
         }
         const rect = state.rectSelect.rect;
@@ -295,6 +361,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         }
         const floating = floatingFromSelection(state, rect);
         floating.cells = floating.cells.map(() => Piece.Empty);
+        floating.forceEmpty = true;
         return commitFloating(floating)(state);
     },
     mirrorRectSelection: () => (state): NextState => {
@@ -325,71 +392,102 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                 rect,
                 anchorIndex: null,
                 floating: floatingFromSelection(state, rect),
+                reselectOnNextTouch: false,
             },
         };
     },
     copyRectSelection: () => (state): NextState => {
-        const rect = state.rectSelect.rect;
-        if (state.rectSelect.status !== 'selected' || rect === null) {
+        const floating = floatingForOperation(state);
+        if (floating === undefined) {
             return undefined;
         }
-        return addPart(createPart(state, rect))(state);
+        return savePartToSlot({
+            id: generateKey(),
+            slot: Piece.Empty,
+            width: floating.width,
+            height: floating.height,
+            cells: floating.cells.slice(),
+            pinned: false,
+            createdAt: Date.now(),
+        })(state);
     },
     cutRectSelection: () => (state): NextState => {
-        const rect = state.rectSelect.rect;
-        if (state.rectSelect.status !== 'selected' || rect === null) {
+        const floating = floatingForOperation(state);
+        if (floating === undefined) {
             return undefined;
         }
-        const part = createPart(state, rect);
-        const floating = floatingFromSelection(state, rect);
-        floating.cells = floating.cells.map(() => Piece.Empty);
-        return sequence(state, [addPart(part), commitFloating(floating)]);
+        const part: EditorPart = {
+            id: generateKey(),
+            slot: Piece.Empty,
+            width: floating.width,
+            height: floating.height,
+            cells: floating.cells.slice(),
+            pinned: false,
+            createdAt: Date.now(),
+        };
+        if (floating.sourceRect === null) {
+            return savePartToSlot(part)(state);
+        }
+        const cleared = { ...floating, cells: floating.cells.map(() => Piece.Empty), forceEmpty: true };
+        return sequence(state, [savePartToSlot(part), commitFloating(cleared)]);
     },
-    activateStamp: () => (state): NextState => {
-        const selectedId = state.parts.selectedId ?? state.parts.items[0]?.id ?? null;
-        if (selectedId === null) {
+    selectPart: ({ id }) => (state): NextState => {
+        const part = state.parts.items.find(item => item.id === id);
+        if (part === undefined) {
+            return undefined;
+        }
+        if (state.parts.selectedId === id
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating?.sourceRect === null) {
             return undefined;
         }
         return {
-            parts: { ...state.parts, selectedId },
-            editorUi: { ...state.editorUi, primaryTool: 'select', bottomSlot: 'tray' },
+            parts: { ...state.parts, selectedId: id },
+            rectSelect: {
+                status: 'floating', rect: null, anchorIndex: null,
+                floating: floatingPartAtTop(part.cells, part.width, part.height),
+                reselectOnNextTouch: false,
+            },
         };
     },
-    deactivateStamp: () => (state): NextState => ({
-        parts: { ...state.parts, selectedId: null, continuous: false },
-        rectSelect: state.rectSelect.status === 'floating'
-            ? { status: 'none', rect: null, anchorIndex: null, floating: null }
-            : state.rectSelect,
-    }),
-    useSingleStamp: () => (state): NextState => ({
-        parts: { ...state.parts, continuous: false },
-    }),
-    selectPart: ({ id }) => (state): NextState => {
-        if (!state.parts.items.some(part => part.id === id)) {
+    togglePartPin: ({ slot }) => (state): NextState => {
+        let changed = false;
+        const toggled = state.parts.items.map((part) => {
+            if (part.slot !== slot) {
+                return part;
+            }
+            changed = true;
+            return { ...part, pinned: !part.pinned };
+        });
+        if (!changed) {
             return undefined;
         }
-        return { parts: { ...state.parts, selectedId: id } };
-    },
-    rotateSelectedPart: () => updateSelectedPart((part) => {
-        const rotated = rotatePartCells(part.cells, part.width, part.height);
-        return { ...part, ...rotated };
-    }),
-    mirrorSelectedPart: () => updateSelectedPart(part => ({
-        ...part,
-        cells: mirrorPartCells(part.cells, part.width, part.height),
-    })),
-    removeSelectedPart: () => (state): NextState => {
-        if (state.parts.selectedId === null) {
-            return undefined;
-        }
-        const items = state.parts.items.filter(part => part.id !== state.parts.selectedId);
+        const items = repackParts(toggled);
+        const selected = toggled.find(part => part.slot === slot);
+        const repackedSelected = selected === undefined
+            ? undefined : items.find(part => part.id === selected.id);
         saveParts(items);
-        return { parts: { ...state.parts, items, selectedId: null } };
+        return {
+            parts: { ...state.parts, items },
+            editorUi: repackedSelected === undefined ? undefined : {
+                ...state.editorUi,
+                paletteSelection: repackedSelected.slot,
+            },
+        };
     },
-    toggleSelectedPartPin: () => updateSelectedPart(part => ({ ...part, pinned: !part.pinned })),
-    toggleContinuousStamp: () => (state): NextState => ({
-        parts: { ...state.parts, continuous: !state.parts.continuous },
-    }),
+    // Field coordinates grow upward, so the array's clockwise transform is
+    // the visual counter-clockwise rotation on the editor canvas.
+    rotateSelectedPartLeft: () => transformFloatingSelection(floating => rotatePartCells(
+        floating.cells, floating.width, floating.height,
+    )),
+    rotateSelectedPartRight: () => transformFloatingSelection(floating => rotatePartCellsLeft(
+        floating.cells, floating.width, floating.height,
+    )),
+    mirrorSelectedPart: () => transformFloatingSelection(floating => ({
+        cells: mirrorPartCells(floating.cells, floating.width, floating.height),
+        width: floating.width,
+        height: floating.height,
+    })),
     toggleBlackTransparentPaste: () => (state): NextState => {
         const blackTransparent = !state.parts.blackTransparent;
         saveBlackTransparentPaste(state.parts.items, blackTransparent);

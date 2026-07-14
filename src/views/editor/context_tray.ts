@@ -9,11 +9,12 @@ import { i18n } from '../../locales/keys';
 import { rectHeight, rectWidth } from '../../lib/rect_selection';
 import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
+import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
 
 const trayButton = ({
-    key, datatest, label, iconName, active = false, disabled = false, onclick,
+    key, datatest, label, iconName, active = false, disabled = false, onclick, iconOnly = false,
 }: {
     key: string;
     datatest: string;
@@ -22,6 +23,7 @@ const trayButton = ({
     active?: boolean;
     disabled?: boolean;
     onclick: () => void;
+    iconOnly?: boolean;
 }) => button({
     key,
     datatest,
@@ -45,22 +47,25 @@ const trayButton = ({
         color: active ? '#fff' : disabled ? '#aaa' : '#333',
         cursor: disabled ? 'default' : 'pointer',
         display: 'flex',
-        flex: '1 0 56px',
+        flex: iconOnly ? '1 1 0' : '1 0 56px',
         fontFamily: 'inherit',
         fontSize: px(10),
         gap: px(3),
         height: '100%',
         justifyContent: 'center',
-        minWidth: px(56),
+        minWidth: iconOnly ? '0' : px(56),
         outlineOffset: '-3px',
-        padding: '0 4px',
+        padding: iconOnly ? '0' : '0 4px',
         transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
     }),
 }, [
     BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
     span({
         key: `${key}-label`,
-        style: style({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+        style: style({
+            display: iconOnly ? 'none' : 'block',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }),
     }, label),
 ]);
 
@@ -146,7 +151,7 @@ const paintTray = (state: State, actions: Actions): VNode<{}>[] => [
         key: 'tray-paint-pen', datatest: 'tray-paint-pen', label: i18n.EditorUi.Pen(), iconName: 'edit',
         active: state.editorUi.paintTool === 'pen'
             && state.editorUi.paletteSelection !== Piece.Empty,
-        onclick: () => actions.changePaintTool({ tool: 'pen' }),
+        onclick: () => actions.changePaintTool({ tool: 'pen', restorePalette: true }),
     }),
     trayButton({
         key: 'tray-paint-erase', datatest: 'tray-paint-erase', label: i18n.EditorUi.Erase(), iconName: 'backspace',
@@ -167,16 +172,88 @@ const paintTray = (state: State, actions: Actions): VNode<{}>[] => [
     }),
 ];
 
+const rotationDirection = (rotationName: string): string => ({
+    spawn: 'N',
+    right: 'E',
+    reverse: 'S',
+    left: 'W',
+}[rotationName] ?? '-');
+
 const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
     const page = state.fumen.pages[state.fumen.currentIndex];
     const canOperate = page?.piece !== undefined;
+    const canHold = canOperate && canSwapCurrentPieceWithHoldQueue(state);
     const rotationName = page?.piece === undefined ? 'empty' : {
         [Rotation.Spawn]: 'spawn',
         [Rotation.Right]: 'right',
         [Rotation.Reverse]: 'reverse',
         [Rotation.Left]: 'left',
     }[page.piece.rotation];
-    return [
+    const placeholder = (key: string) => div({
+        key,
+        'aria-hidden': 'true',
+        style: style({ background: '#fff', borderLeft: '1px solid #ddd', minWidth: '0' }),
+    });
+    const pieceButton = ({
+        key, label, iconName, disabled = false, onclick,
+    }: { key: string; label: string; iconName: string; disabled?: boolean; onclick: () => void }) => trayButton({
+        key,
+        label,
+        iconName,
+        disabled,
+        onclick,
+        datatest: key,
+        iconOnly: true,
+    });
+    return [div({
+        key: 'tray-piece-grid',
+        datatest: 'tray-piece-grid',
+        style: style({
+            display: 'grid',
+            flex: '1 1 auto',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+            minHeight: '0',
+            minWidth: '100%',
+            position: 'relative',
+        }),
+    }, [
+        placeholder('tray-piece-empty-top'),
+        state.mode.rotationSystem === 'srsPlus'
+            ? pieceButton({
+                key: 'tray-piece-rotate-180', label: i18n.EditorUi.Rotate180(), iconName: 'refresh',
+                disabled: !canOperate, onclick: actions.rotateTo180,
+            })
+            : placeholder('tray-piece-empty-180'),
+        pieceButton({
+            key: 'tray-piece-hold', label: i18n.EditorUi.Hold(), iconName: 'swap_horiz',
+            disabled: !canHold, onclick: actions.swapCurrentPieceWithHoldQueue,
+        }),
+        pieceButton({
+            key: 'tray-piece-harddrop', label: i18n.EditorUi.HardDrop(), iconName: 'vertical_align_bottom',
+            disabled: !canOperate, onclick: actions.harddrop,
+        }),
+        placeholder('tray-piece-empty-top-end'),
+        pieceButton({
+            key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
+            disabled: !canOperate, onclick: actions.moveToLeft,
+        }),
+        pieceButton({
+            key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
+            disabled: !canOperate, onclick: actions.moveToRight,
+        }),
+        pieceButton({
+            key: 'tray-piece-softdrop', label: i18n.EditorUi.SoftDrop(), iconName: 'keyboard_arrow_down',
+            disabled: !canOperate, onclick: actions.softdrop,
+        }),
+        pieceButton({
+            key: 'tray-piece-rotate-left', label: i18n.EditorUi.RotateLeft(), iconName: 'rotate_left',
+            disabled: !canOperate, onclick: actions.rotateToLeft,
+        }),
+        pieceButton({
+            key: 'tray-piece-rotate-right', label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
+            disabled: !canOperate, onclick: actions.rotateToRight,
+        }),
         div({
             key: `img-rotation-${rotationName}`,
             datatest: `img-rotation-${rotationName}`,
@@ -186,115 +263,50 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
                 background: '#333',
                 color: '#fff',
                 display: 'flex',
-                flex: '0 0 24px',
                 fontSize: px(9),
+                height: px(20),
                 justifyContent: 'center',
-                minWidth: px(24),
+                left: '0',
+                pointerEvents: 'none',
+                position: 'absolute',
                 textTransform: 'uppercase',
+                top: '0',
+                width: px(24),
             }),
-        }, rotationName === 'empty' ? '–' : rotationName!.slice(0, 1)),
-        trayButton({
-            key: 'tray-piece-spawn', datatest: 'tray-piece-spawn', label: i18n.EditorUi.Spawn(), iconName: 'add',
-            active: state.editorUi.pieceAction === 'spawn',
-            onclick: () => actions.changePieceAction({ pieceAction: 'spawn' }),
-        }),
-        trayButton({
-            key: 'tray-piece-drag', datatest: 'tray-piece-drag', label: i18n.EditorUi.Drag(), iconName: 'pan_tool',
-            active: state.editorUi.pieceAction === 'drag', disabled: !canOperate,
-            onclick: () => actions.changePieceAction({ pieceAction: 'drag' }),
-        }),
-        trayButton({
-            key: 'tray-piece-rotate-left',
-            datatest: 'tray-piece-rotate-left',
-            label: i18n.EditorUi.RotateLeft(),
-            iconName: 'rotate_left',
-            disabled: !canOperate, onclick: actions.rotateToLeft,
-        }),
-        trayButton({
-            key: 'tray-piece-rotate-right', datatest: 'tray-piece-rotate-right',
-            label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
-            disabled: !canOperate, onclick: actions.rotateToRight,
-        }),
-        trayButton({
-            key: 'tray-piece-drop', datatest: 'tray-piece-drop',
-            label: i18n.EditorUi.Drop(), iconName: 'vertical_align_bottom',
-            disabled: !canOperate, onclick: actions.harddrop,
-        }),
-    ];
+        }, rotationDirection(rotationName)),
+    ])];
 };
 
 const selectTray = (state: State, actions: Actions): VNode<{}>[] => {
-    const selected = state.rectSelect.status === 'selected' && state.rectSelect.rect !== null;
-    if (state.parts.selectedId !== null) {
-        const part = state.parts.items.find(item => item.id === state.parts.selectedId);
-        return [
-            trayButton({
-                key: 'tray-select-stamp-once', datatest: 'tray-select-stamp-once',
-                label: i18n.EditorUi.Once(), iconName: 'filter_1',
-                active: !state.parts.continuous, onclick: actions.useSingleStamp,
-            }),
-            trayButton({
-                key: 'tray-select-stamp-continuous', datatest: 'tray-select-stamp-continuous',
-                label: i18n.EditorUi.Continuous(), iconName: 'all_inclusive', active: state.parts.continuous,
-                onclick: actions.toggleContinuousStamp,
-            }),
-            trayButton({
-                key: 'tray-select-stamp-rotate', datatest: 'tray-select-stamp-rotate', label: i18n.EditorUi.Rotate(),
-                iconName: 'rotate_right', onclick: actions.rotateSelectedPart,
-            }),
-            trayButton({
-                key: 'tray-select-stamp-mirror', datatest: 'tray-select-stamp-mirror', label: i18n.EditorUi.Mirror(),
-                iconName: 'flip', onclick: actions.mirrorSelectedPart,
-            }),
-            trayButton({
-                key: 'tray-select-stamp-end', datatest: 'tray-select-stamp-end', label: i18n.EditorUi.End(),
-                iconName: 'close', onclick: actions.deactivateStamp,
-            }),
-            trayButton({
-                key: 'tray-select-black-transparent', datatest: 'tray-select-black-transparent',
-                label: i18n.EditorUi.BlackTransparent(), iconName: 'layers_clear',
-                active: state.parts.blackTransparent, onclick: actions.toggleBlackTransparentPaste,
-            }),
-            trayButton({
-                key: 'tray-select-part-pin', datatest: 'tray-select-part-pin',
-                label: part?.pinned ? i18n.EditorUi.Unpin() : i18n.EditorUi.Pin(),
-                iconName: 'push_pin', onclick: actions.toggleSelectedPartPin,
-            }),
-            trayButton({
-                key: 'tray-select-part-delete', datatest: 'tray-select-part-delete',
-                label: i18n.EditorUi.Delete(), iconName: 'delete', onclick: actions.removeSelectedPart,
-            }),
-        ];
-    }
+    const canOperate = (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null)
+        || (state.rectSelect.status === 'selected' && state.rectSelect.rect !== null);
     const operations = [
-        trayButton({
-            key: 'tray-select-move', datatest: 'tray-select-move', label: i18n.EditorUi.Move(), iconName: 'open_with',
-            disabled: !selected, onclick: actions.beginMoveRectSelection,
-        }),
         trayButton({
             key: 'tray-select-copy', datatest: 'tray-select-copy',
             label: i18n.EditorUi.Copy(), iconName: 'content_copy',
-            disabled: !selected, onclick: actions.copyRectSelection,
+            disabled: !canOperate, onclick: actions.copyRectSelection,
         }),
         trayButton({
             key: 'tray-select-cut', datatest: 'tray-select-cut', label: i18n.EditorUi.Cut(), iconName: 'content_cut',
-            disabled: !selected, onclick: actions.cutRectSelection,
+            disabled: !canOperate, onclick: actions.cutRectSelection,
         }),
         trayButton({
-            key: 'tray-select-stamp', datatest: 'tray-select-stamp', label: i18n.EditorUi.Stamp(), iconName: 'texture',
-            disabled: state.parts.items.length === 0, onclick: actions.activateStamp,
+            key: 'tray-select-rotate-left', datatest: 'tray-select-rotate-left',
+            label: i18n.EditorUi.RotateLeft(), iconName: 'rotate_left',
+            disabled: !canOperate, onclick: actions.rotateSelectedPartLeft,
         }),
         trayButton({
-            key: 'tray-select-deselect', datatest: 'tray-select-deselect',
-            label: i18n.EditorUi.Deselect(), iconName: 'deselect',
-            disabled: !selected, onclick: actions.clearRectSelection,
+            key: 'tray-select-rotate-right', datatest: 'tray-select-rotate-right',
+            label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
+            disabled: !canOperate, onclick: actions.rotateSelectedPartRight,
+        }),
+        trayButton({
+            key: 'tray-select-mirror', datatest: 'tray-select-mirror', label: i18n.EditorUi.Mirror(),
+            iconName: 'flip', disabled: !canOperate, onclick: actions.mirrorSelectedPart,
         }),
     ];
-    return selectionSummary(state).concat(operations).concat(state.parts.items.map(part => (
-        partTrayButton(part, false, actions, state.fumen.guideLineColor)
-    )));
+    return selectionSummary(state).concat(operations);
 };
-
 const slideTray = (actions: Actions): VNode<{}>[] => [
     trayButton({
         key: 'btn-slide-to-up-with-gray', datatest: 'btn-slide-to-up-with-gray', label: i18n.EditorUi.UpGray(),
@@ -361,6 +373,7 @@ export const contextTray = (
     actions: Actions,
     height: number = CONTEXT_TRAY_HEIGHT,
 ) => {
+    const trayHeight = height;
     let contents: VNode<{}>[];
     if (state.mode.type === ModeTypes.Slide) {
         contents = slideTray(actions);
@@ -382,7 +395,7 @@ export const contextTray = (
     return div({
         key: 'tray-context',
         datatest: 'tray-context',
-        className: `editor-context-tray${height < 24 ? ' editor-context-tray--compact' : ''}`,
+        className: `editor-context-tray${trayHeight < 24 ? ' editor-context-tray--compact' : ''}`,
         role: 'toolbar',
         'aria-label': i18n.EditorUi.ContextTools(),
         onwheel: handleTrayWheel,
@@ -392,8 +405,8 @@ export const contextTray = (
             borderTop: '1px solid #333',
             boxSizing: 'border-box',
             display: 'flex',
-            height: px(height),
-            minHeight: px(height),
+            height: px(trayHeight),
+            minHeight: px(trayHeight),
             overflowX: 'auto',
             overflowY: 'hidden',
             width: '100%',

@@ -22,6 +22,7 @@ interface Props {
         changeToListViewScreen: () => void;
         changeToTreeViewScreen: () => void;
         openMenuModal: () => void;
+        executeNewFumen: () => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
@@ -137,7 +138,10 @@ export const ReaderTools: Component<Props> = (
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true}
                             key="btn-open-menu" width={40} height={height - 10} fontSize={32} colors={palette}
                             shortcutLabel={getLabel('Menu')}
-                            actions={{ onclick: () => actions.openMenuModal() }}/>
+                            actions={{
+                                onclick: () => actions.openMenuModal(),
+                                onlongpress: () => actions.executeNewFumen(),
+                            }}/>
             </div>
         </nav>
     );

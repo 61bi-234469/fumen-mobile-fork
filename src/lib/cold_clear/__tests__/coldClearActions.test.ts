@@ -55,6 +55,7 @@ jest.mock('../../../locales/keys', () => ({
             TreeModeRequired: () => 'Enable tree mode',
             TopBranchesAdded: (count: number) => `${count} branches added`,
             OneBagAdded: () => 'One bag added',
+            InfiniteBagNonQueueWarning: () => 'Infinite bag replaced non-queue comment',
             HoldSwapLabel: () => 'Swap',
             HoldSwapMissingQueue: () => 'Next queue required',
             HoldSwapCurrentPieceRequired: () => 'Current piece required',
@@ -149,6 +150,10 @@ function makeColdClearState(overrides: {
         },
         mode: {
             rotationSystem: 'srs',
+        },
+        editorUi: {
+            infinitePieceQueue: false,
+            paletteSelection: 'comp',
         },
     } as any;
 }
@@ -1532,6 +1537,72 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.appendColdClearOneBagToComment()(state);
         expect(result).toBeUndefined();
         expect(setCommentText).not.toHaveBeenCalled();
+    });
+
+    test('toggleInfinitePieceQueue creates a random queue when the comment is empty', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
+
+        const state = makeColdClearState({ commentText: '' });
+        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'TJLSZIOTJLSZIOTJLSZI',
+            pageIndex: 0,
+        });
+        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.O, srs: true });
+        expect(changePieceAction).toHaveBeenCalledWith({ pieceAction: 'drag' });
+        expect(result.editorUi.infinitePieceQueue).toBe(true);
+
+        randomSpy.mockRestore();
+    });
+
+    test('toggleInfinitePieceQueue warns before replacing a non-queue comment', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
+
+        const state = makeColdClearState({ commentText: 'memo' });
+        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'TJLSZIOTJLSZIOTJLSZI',
+            pageIndex: 0,
+        });
+        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.O, srs: true });
+        expect(changePieceAction).toHaveBeenCalledWith({ pieceAction: 'drag' });
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Infinite bag replaced non-queue comment',
+        }));
+        expect(result.editorUi.infinitePieceQueue).toBe(true);
+
+        randomSpy.mockRestore();
+    });
+
+    test('toggleInfinitePieceQueue appends three bags before spawning the existing queue front', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
+
+        const state = makeColdClearState({ commentText: 'I' });
+        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'OTJLSZIOTJLSZIOTJLSZI',
+            pageIndex: 0,
+        });
+        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.I, srs: true });
+        expect(changePieceAction).toHaveBeenCalledWith({ pieceAction: 'drag' });
+        expect(result.editorUi.infinitePieceQueue).toBe(true);
+
+        randomSpy.mockRestore();
     });
 
     test('swapCurrentPieceWithHoldQueue swaps current with hold and keeps queue', () => {

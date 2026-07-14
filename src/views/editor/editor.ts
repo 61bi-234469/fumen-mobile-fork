@@ -17,7 +17,7 @@ import { getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
 import { editorRail } from './editor_rail';
 import { editorOverlay } from './editor_overlay';
-import { contextTray } from './context_tray';
+import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
 import {
@@ -225,6 +225,10 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const bandTop = layout.field.topLeft.y + (layout.field.blockSize + 1) * 22.5 + 1
         + layout.field.bottomBorderWidth;
     const bandHeight = layout.field.bottomBorderWidth + layout.field.blockSize;
+    const pieceTrayAvailableHeight = layout.canvas.size.height - bandTop + layout.comment.size.height - 1;
+    const trayHeight = state.editorUi.primaryTool === 'piece'
+        ? Math.min(CONTEXT_TRAY_HEIGHT * 2, Math.max(bandHeight, pieceTrayAvailableHeight))
+        : bandHeight;
 
     const fieldColumn = div({
         key: 'field-column',
@@ -283,7 +287,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 top: px(bandTop),
                 zIndex: 5,
             }),
-        }, [contextTray(state, actions, bandHeight)])] : []),
+        }, [contextTray(state, actions, trayHeight)])] : []),
     ]);
 
     const getChildren = () => {

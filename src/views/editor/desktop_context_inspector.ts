@@ -2,7 +2,7 @@ import { div, span } from '@hyperapp/html';
 import { Actions } from '../../actions';
 import { px, style } from '../../lib/types';
 import { State } from '../../states';
-import { contextTray } from './context_tray';
+import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { i18n } from '../../locales/keys';
 
 export const DESKTOP_CONTEXT_WIDTH = 240;
@@ -45,7 +45,7 @@ export const desktopContextInspector = (state: State, actions: Actions, height: 
             span({ key: 'selection', style: style({ color: '#666', fontSize: px(10), fontWeight: '400' }) },
                 selectionSummary),
         ]),
-        contextTray(state, actions),
+        contextTray(state, actions, CONTEXT_TRAY_HEIGHT * 2),
         div({
             key: 'context-details',
             style: style({ display: 'grid', gap: px(6), overflowY: 'auto', padding: px(10) }),

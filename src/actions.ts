@@ -270,6 +270,16 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.deleteSpawnMinoOnPaintDrag !== undefined) {
+        main.changeDeleteSpawnMinoOnPaintDrag({ enable: settings.deleteSpawnMinoOnPaintDrag });
+        updated = true;
+    }
+
+    if (settings.skipReaderMode !== undefined) {
+        main.changeSkipReaderMode({ enable: settings.skipReaderMode });
+        updated = true;
+    }
+
     if (settings.loop !== undefined) {
         main.changeLoop({ enable: settings.loop });
         updated = true;

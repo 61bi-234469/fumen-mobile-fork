@@ -48,6 +48,12 @@ export const i18n = {
             Off: () => t('UserSettings.Ghost.Off'),
             On: () => t('UserSettings.Ghost.On'),
         },
+        DeleteSpawnMinoOnPaintDrag: {
+            Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
+        },
+        SkipReaderMode: {
+            Title: () => t('UserSettings.SkipReaderMode.Title'),
+        },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
             Off: () => t('UserSettings.Loop.Off'),
@@ -121,6 +127,9 @@ export const i18n = {
         TreeModeDisabled: () => t('EditorPanel.TreeModeDisabled'),
     },
     EditorUi: {
+        Rotate180: () => t('EditorUi.Rotate180'), Hold: () => t('EditorUi.Hold'),
+        SoftDrop: () => t('EditorUi.SoftDrop'), HardDrop: () => t('EditorUi.HardDrop'),
+        ResetPiece: () => t('EditorUi.ResetPiece'), InfiniteBag: () => t('EditorUi.InfiniteBag'),
         ImportExport: () => t('EditorUi.ImportExport'), Settings: () => t('EditorUi.Settings'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),
@@ -339,6 +348,7 @@ export const i18n = {
         OneBagAddShortLabel: () => t('ColdClear.OneBagAddShortLabel'),
         OneBagAddDescription: () => t('ColdClear.OneBagAddDescription'),
         OneBagAdded: () => t('ColdClear.OneBagAdded'),
+        InfiniteBagNonQueueWarning: () => t('ColdClear.InfiniteBagNonQueueWarning'),
         HoldSwapLabel: () => t('ColdClear.HoldSwapLabel'),
         HoldSwapMissingQueue: () => t('ColdClear.HoldSwapMissingQueue'),
         HoldSwapCurrentPieceRequired: () => t('ColdClear.HoldSwapCurrentPieceRequired'),

@@ -5,6 +5,7 @@ export type PieceShortcutKey = keyof PieceShortcuts;
 type PieceShortcutActions = {
     moveToLeft?: () => void;
     moveToRight?: () => void;
+    softdrop?: () => void;
     harddrop?: () => void;
     rotateToLeft?: () => void;
     rotateToRight?: () => void;
@@ -24,7 +25,7 @@ export const executePieceShortcut = (
         actions.moveToRight?.();
         break;
     case 'Drop':
-        actions.harddrop?.();
+        (actions.softdrop ?? actions.harddrop)?.();
         break;
     case 'RotateLeft':
         actions.rotateToLeft?.();

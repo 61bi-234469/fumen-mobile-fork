@@ -29,6 +29,8 @@ export interface ScreenActions {
     changeScreen: (data: { screen: Screens }) => action;
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
+    changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    changeSkipReaderMode: (data: { enable: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
@@ -212,6 +214,23 @@ export const modeActions: Readonly<ScreenActions> = {
                 };
             },
         ]);
+    },
+    changeDeleteSpawnMinoOnPaintDrag: ({ enable }) => (state): NextState => {
+        if (state.mode.deleteSpawnMinoOnPaintDrag === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                deleteSpawnMinoOnPaintDrag: enable,
+            },
+        };
+    },
+    changeSkipReaderMode: ({ enable }) => (state): NextState => {
+        if (state.mode.skipReaderMode === enable) {
+            return undefined;
+        }
+        return { mode: { ...state.mode, skipReaderMode: enable } };
     },
     changeLoop: ({ enable }) => (state): NextState => {
         if (state.mode.loop === enable) {

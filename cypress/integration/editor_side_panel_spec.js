@@ -152,7 +152,7 @@ describe('Editor side panel', () => {
         cy.get(datatest('editor-side-panel')).should('be.visible');
         cy.get(datatest('btn-view-zoom-reset')).should('not.exist');
         cy.get(datatest('btn-piece-mode')).click();
-        cy.get(datatest('tray-piece-spawn')).should('be.visible');
+        cy.get(datatest('tray-piece-grid')).should('be.visible');
     });
 
     it('list tab: jumps to the clicked page, syncs comment edits, and reorders by drag & drop', () => {

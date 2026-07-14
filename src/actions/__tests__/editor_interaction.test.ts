@@ -7,8 +7,14 @@ jest.mock('../../actions', () => ({
         cancelRectSelectionPreview: () => () => undefined,
         convertToBlack: () => () => undefined,
         clearFieldAndPiece: () => () => undefined,
+        clearPiece: () => () => undefined,
+        resetPiece: () => () => undefined,
         convertToGray: () => () => undefined,
         spawnPiece: () => () => undefined,
+        toggleInfinitePieceQueue: () => () => undefined,
+        toggleBlackTransparentPaste: () => (state: State) => ({
+            parts: { ...state.parts, blackTransparent: false },
+        }),
     },
 }));
 
@@ -29,13 +35,18 @@ const createState = (): State => ({
         inspector: 'none',
         paletteSelection: 'comp',
         lastMino: Piece.T,
+        infinitePieceQueue: false,
         bottomSlot: 'tray',
     },
     fumen: {
         currentIndex: 0,
         pages: [{ index: 0 }],
     },
-} as State);
+    rectSelect: {
+        status: 'none', rect: null, anchorIndex: null, floating: null,
+    },
+    parts: { items: [], selectedId: null, blackTransparent: true },
+} as unknown as State);
 
 const apply = (state: State, action: (state: State) => Partial<State> | undefined): State => {
     const next = action(state);
@@ -72,7 +83,7 @@ describe('editorInteractionActions', () => {
 
     test('palette selection returns to paint while retaining paintTool and lastMino', () => {
         const state = createState();
-        state.editorUi.primaryTool = 'piece';
+        state.editorUi.primaryTool = 'paint';
         state.editorUi.paintTool = 'fill';
         state.editorUi.lastMino = Piece.L;
 
@@ -85,6 +96,33 @@ describe('editorInteractionActions', () => {
         expect(next.mode.type).toBe(ModeTypes.Fill);
         expect(next.mode.touch).toBe(TouchTypes.Fill);
         expect(next.mode.piece).toBe(Piece.Gray);
+    });
+
+    test('paint pen restores the previous palette after erasing', () => {
+        const state = createState();
+        const colored = apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }));
+        const erased = apply(colored, editorInteractionActions.selectEditorPalette({ selection: Piece.Empty }));
+
+        expect(erased.editorUi.paletteSelection).toBe(Piece.Empty);
+        expect(erased.editorUi.previousPaletteSelection).toBe(Piece.T);
+
+        const restored = apply(erased, editorInteractionActions.changePaintTool({
+            tool: 'pen', restorePalette: true,
+        }));
+        expect(restored.editorUi.paletteSelection).toBe(Piece.T);
+        expect(restored.mode.piece).toBe(Piece.T);
+    });
+
+    test('paint pen falls back to comp when no previous palette exists', () => {
+        const state = createState();
+        state.editorUi.paletteSelection = Piece.Empty;
+
+        const restored = apply(state, editorInteractionActions.changePaintTool({
+            tool: 'pen', restorePalette: true,
+        }));
+
+        expect(restored.editorUi.paletteSelection).toBe('comp');
+        expect(restored.mode.piece).toBeUndefined();
     });
 
     test('piece mode chooses drag only when the current page already has a piece', () => {
@@ -101,6 +139,20 @@ describe('editorInteractionActions', () => {
         const drag = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
         expect(drag.editorUi.pieceAction).toBe('drag');
         expect(drag.mode.touch).toBe(TouchTypes.MovePiece);
+    });
+
+    test('clicking a mino palette entry keeps PIECE mode active', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'piece';
+
+        const next = apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }));
+
+        expect(next.editorUi.primaryTool).toBe('piece');
+        expect(next.editorUi.paletteSelection).toBe(Piece.T);
+        expect(next.editorUi.lastMino).toBe(Piece.T);
+        expect(next.editorUi.pieceAction).toBe('spawn');
+        expect(next.mode.type).toBe(ModeTypes.Piece);
+        expect(next.mode.touch).toBe(TouchTypes.Piece);
     });
 
     test('pressing the active tool button again toggles the tray closed, then open', () => {
@@ -124,6 +176,74 @@ describe('editorInteractionActions', () => {
         const next = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'select' }));
         expect(next.editorUi.primaryTool).toBe('select');
         expect(next.editorUi.bottomSlot).toBe('tray');
+    });
+
+    test('leaving SELECT clears both the selection rectangle and active part', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'select';
+        state.rectSelect = {
+            status: 'selected',
+            rect: { minX: 1, minY: 1, maxX: 2, maxY: 2 },
+            anchorIndex: null,
+            floating: null,
+        };
+        state.parts.selectedId = 'part';
+
+        const next = apply(state, editorInteractionActions.changePrimaryTool({ tool: 'paint' }));
+
+        expect(next.rectSelect.status).toBe('none');
+        expect(next.parts.selectedId).toBeNull();
+    });
+
+    test('pressing the active part slot again does nothing while it is floating', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'select';
+        state.parts = {
+            items: [{
+                id: 'part', slot: Piece.T, width: 1, height: 1, cells: [Piece.T], pinned: false, createdAt: 1,
+            }],
+            selectedId: 'part',
+            blackTransparent: true,
+        };
+        state.rectSelect = {
+            status: 'floating',
+            rect: null,
+            anchorIndex: null,
+            floating: {
+                cells: [Piece.T], width: 1, height: 1, sourceRect: null,
+                targetX: 4, targetY: 22, pointerOffsetX: 0, pointerOffsetY: 0,
+            },
+        };
+
+        const next = editorInteractionActions.selectEditorPalette({ selection: Piece.T })(state);
+
+        expect(next).toBeUndefined();
+    });
+
+    test('transparency changes keep the floating selection preview active', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'select';
+        state.rectSelect = {
+            status: 'floating',
+            rect: { minX: 1, minY: 1, maxX: 2, maxY: 2 },
+            anchorIndex: null,
+            floating: {
+                cells: [Piece.Empty, Piece.T, Piece.Empty, Piece.Empty],
+                width: 2,
+                height: 2,
+                sourceRect: { minX: 1, minY: 1, maxX: 2, maxY: 2 },
+                targetX: 4,
+                targetY: 4,
+                pointerOffsetX: 0,
+                pointerOffsetY: 0,
+            },
+        };
+
+        const next = apply(state, editorInteractionActions.selectEditorPalette({ selection: 'comp' }));
+
+        expect(next.rectSelect.status).toBe('floating');
+        expect(next.parts.blackTransparent).toBe(false);
+        expect(next.editorUi.paletteSelection).toBe('comp');
     });
 
     test('pressing PAINT while in Slide/Comment mode returns to the paint tray instead of toggling it closed', () => {

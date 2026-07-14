@@ -67,7 +67,7 @@ const longPress = (selector) => {
     cy.get(datatest(selector)).trigger('pointerup', { pointerId: 1, button: 0 });
 };
 const spawnPieceForScenario = (selector) => {
-    cy.get(datatest('tray-piece-drop')).then(dropButton => {
+    cy.get(datatest('tray-piece-harddrop')).then(dropButton => {
         if (!dropButton.prop('disabled')) {
             operations.mode.tools.nextPage();
         }
@@ -312,13 +312,13 @@ export const operations = {
                 ensureModeActive('btn-piece-mode');
             },
             resetPiece: () => {
-                longPress('btn-piece-mode');
+                cy.get(datatest('btn-piece-gray')).click();
             },
             move: () => {
-                cy.get(datatest('tray-piece-drag')).click();
+                cy.get(datatest('tray-piece-move-left')).should('be.visible');
             },
             draw: () => {
-                cy.get(datatest('tray-piece-spawn')).click();
+                cy.get(datatest('btn-piece-t')).click();
             },
             rotateToRight: () => {
                 cy.get(datatest('tray-piece-rotate-right')).click();
@@ -342,7 +342,7 @@ export const operations = {
                 pressPieceShortcutToEnd('ArrowLeft');
             },
             harddrop: () => {
-                cy.get(datatest('tray-piece-drop')).click();
+                cy.get(datatest('tray-piece-harddrop')).click();
             },
             lockToOn: () => {
                 operations.mode.flags.open({ home: false });

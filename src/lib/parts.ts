@@ -3,10 +3,17 @@ import { Piece } from './enums';
 
 export const PARTS_STORAGE_KEY = 'parts@1';
 
+export const PART_SLOTS: Piece[] = [
+    Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray,
+];
+
+const isPartSlot = (value: any): value is Piece => PART_SLOTS.includes(value);
+
 const isPart = (value: any): value is EditorPart => (
     value !== null
     && typeof value === 'object'
     && typeof value.id === 'string'
+    && (value.slot === undefined || isPartSlot(value.slot))
     && Number.isInteger(value.width)
     && Number.isInteger(value.height)
     && 0 < value.width
@@ -19,12 +26,71 @@ const isPart = (value: any): value is EditorPart => (
 );
 
 export const limitParts = (items: EditorPart[]): EditorPart[] => {
-    const pinned = items.filter(item => item.pinned);
-    const recent = items
-        .filter(item => !item.pinned)
-        .sort((left, right) => right.createdAt - left.createdAt)
-        .slice(0, 10);
-    return pinned.concat(recent).sort((left, right) => right.createdAt - left.createdAt);
+    const bySlot = new Map<Piece, EditorPart>();
+    items.forEach((item) => {
+        if (!isPartSlot(item.slot)) {
+            return;
+        }
+        const previous = bySlot.get(item.slot);
+        if (previous === undefined
+            || (item.pinned && !previous.pinned)
+            || (!previous.pinned && item.createdAt > previous.createdAt)) {
+            bySlot.set(item.slot, item);
+        }
+    });
+    return PART_SLOTS
+        .map(slot => bySlot.get(slot))
+        .filter((item): item is EditorPart => item !== undefined);
+};
+
+const orderedParts = (items: EditorPart[]): EditorPart[] => PART_SLOTS
+    .map(slot => items.find(item => item.slot === slot))
+    .filter((item): item is EditorPart => item !== undefined);
+
+export const repackParts = (items: EditorPart[]): EditorPart[] => {
+    const ordered = orderedParts(items);
+    const unpinned = ordered.filter(item => !item.pinned);
+    const pinned = ordered.filter(item => item.pinned);
+    return unpinned.concat(pinned).map((item, index) => ({
+        ...item,
+        slot: PART_SLOTS[index],
+    }));
+};
+
+export const clearUnpinnedParts = (items: EditorPart[]): EditorPart[] => (
+    repackParts(items.filter(item => item.pinned))
+);
+
+/** Adds a copied part to the FIFO portion of the palette. */
+export const insertPart = (items: EditorPart[], part: EditorPart): EditorPart[] | undefined => {
+    const ordered = repackParts(items);
+    const unpinned = ordered.filter(item => !item.pinned);
+    const pinned = ordered.filter(item => item.pinned);
+    if (ordered.length >= PART_SLOTS.length && unpinned.length === 0) {
+        return undefined;
+    }
+    const nextUnpinned = ordered.length >= PART_SLOTS.length ? unpinned.slice(1) : unpinned;
+    return nextUnpinned.concat([{ ...part, pinned: false }], pinned).map((item, index) => ({
+        ...item,
+        slot: PART_SLOTS[index],
+    }));
+};
+
+const normalizeLoadedParts = (items: any[]): EditorPart[] => {
+    let legacySlotIndex = 0;
+    const normalized = items.reduce<EditorPart[]>((result, item) => {
+        if (!isPart(item)) {
+            return result;
+        }
+        const slot = item.slot ?? PART_SLOTS[legacySlotIndex];
+        legacySlotIndex += 1;
+        if (!isPartSlot(slot)) {
+            return result;
+        }
+        result.push({ ...item, slot });
+        return result;
+    }, []);
+    return limitParts(normalized);
 };
 
 export const loadParts = (): EditorPart[] => {
@@ -38,7 +104,7 @@ export const loadParts = (): EditorPart[] => {
         }
         const parsed = JSON.parse(stored);
         const items = parsed?.version === 1 && Array.isArray(parsed.items) ? parsed.items : [];
-        return limitParts(items.filter(isPart));
+        return normalizeLoadedParts(items);
     } catch {
         return [];
     }

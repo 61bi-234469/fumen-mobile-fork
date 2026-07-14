@@ -341,11 +341,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
             event.preventDefault();
             return;
         }
-        if (editShortcut === 'Insert' && 0 < state.parts.items.length) {
-            actions.activateStamp();
-            event.preventDefault();
-            return;
-        }
     }
 
     if (editShortcut && allowedKeys.includes(editShortcut)) {

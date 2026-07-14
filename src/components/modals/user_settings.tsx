@@ -11,6 +11,8 @@ declare const M: any;
 
 interface UserSettingsModalProps {
     ghostVisible: boolean;
+    deleteSpawnMinoOnPaintDrag: boolean;
+    skipReaderMode: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;
@@ -29,6 +31,8 @@ interface UserSettingsModalProps {
         commitUserSettings: () => void;
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
+        keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
+        keepSkipReaderMode: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
@@ -101,6 +105,8 @@ const tabLabels: Record<UserSettingsTab, () => string> = {
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
+        deleteSpawnMinoOnPaintDrag,
+        skipReaderMode,
         loop,
         shortcutLabelVisible,
         gradient,
@@ -344,6 +350,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: i18n.UserSettings.Ghost.Off(),
                                 onLabel: i18n.UserSettings.Ghost.On(),
                                 onChange: checked => actions.keepGhostVisible({ visible: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-delete-spawn-mino-on-paint-drag',
+                                datatest: 'switch-delete-spawn-mino-on-paint-drag',
+                                title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
+                                checked: deleteSpawnMinoOnPaintDrag,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
                             })}
 
                             <div>
@@ -592,6 +608,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: i18n.UserSettings.Loop.Off(),
                                 onLabel: i18n.UserSettings.Loop.On(),
                                 onChange: checked => actions.keepLoop({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-skip-reader-mode',
+                                datatest: 'switch-skip-reader-mode',
+                                title: i18n.UserSettings.SkipReaderMode.Title(),
+                                checked: skipReaderMode,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepSkipReaderMode({ enable: checked }),
                             })}
 
                             <div style={style({ marginTop: px(15), marginBottom: px(15) })}>

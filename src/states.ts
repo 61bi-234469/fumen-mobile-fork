@@ -72,7 +72,9 @@ export interface FloatingSelection {
     targetY: number;
     pointerOffsetX: number;
     pointerOffsetY: number;
-    kind: 'move' | 'stamp';
+    firstTapPending?: boolean;
+    firstTapInProgress?: boolean;
+    forceEmpty?: boolean;
 }
 
 export interface RectSelectState {
@@ -80,10 +82,12 @@ export interface RectSelectState {
     rect: SelectionRect | null;
     anchorIndex: number | null;
     floating: FloatingSelection | null;
+    reselectOnNextTouch?: boolean;
 }
 
 export interface EditorPart {
     id: string;
+    slot: Piece;
     width: number;
     height: number;
     cells: Piece[];
@@ -94,7 +98,6 @@ export interface EditorPart {
 export interface PartsState {
     items: EditorPart[];
     selectedId: string | null;
-    continuous: boolean;
     blackTransparent: boolean;
 }
 
@@ -127,7 +130,18 @@ const getInitialScreen = (): Screens => {
     if (screen === 'read' || screen === 'reader') {
         return Screens.Reader;
     }
-    return window.location.hash.includes('#/edit') ? Screens.Editor : Screens.Reader;
+    if (window.location.hash.includes('#/edit')) {
+        return Screens.Editor;
+    }
+    try {
+        const settings = JSON.parse(localStorage.getItem('user-settings@1') ?? '{}');
+        if (settings.skipReaderMode === true) {
+            return Screens.Editor;
+        }
+    } catch {
+        // Ignore malformed persisted settings.
+    }
+    return Screens.Reader;
 };
 
 // Immutableにする
@@ -175,6 +189,8 @@ export interface State {
     temporary: {
         userSettings: {
             ghostVisible: boolean;
+            deleteSpawnMinoOnPaintDrag: boolean;
+            skipReaderMode: boolean;
             loop: boolean;
             shortcutLabelVisible: boolean;
             gradient: string;
@@ -196,6 +212,7 @@ export interface State {
     events: {
         piece?: Piece;
         drawing: boolean;
+        pieceDragFromPaint?: boolean;
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
@@ -210,6 +227,8 @@ export interface State {
         piece: Piece | undefined;
         comment: CommentType;
         ghostVisible: boolean;
+        deleteSpawnMinoOnPaintDrag: boolean;
+        skipReaderMode: boolean;
         loop: boolean;
         shortcutLabelVisible: boolean;
         gradient: {
@@ -248,7 +267,9 @@ export interface State {
         pieceAction: PieceAction;
         inspector: EditorInspector;
         paletteSelection: PaletteSelection;
+        previousPaletteSelection?: PaletteSelection;
         lastMino: Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S;
+        infinitePieceQueue: boolean;
         bottomSlot: 'sentLine' | 'tray';
     };
     rectSelect: RectSelectState;
@@ -336,6 +357,8 @@ export const initState: Readonly<State> = {
     temporary: {
         userSettings: {
             ghostVisible: true,
+            deleteSpawnMinoOnPaintDrag: true,
+            skipReaderMode: false,
             loop: false,
             shortcutLabelVisible: false,
             gradient: '0000000',
@@ -357,6 +380,7 @@ export const initState: Readonly<State> = {
     events: {
         piece: undefined,  // 描画処理中のピースの種類
         drawing: false,
+        pieceDragFromPaint: false,
         inferences: [],
         prevPage: undefined,
         updated: false,
@@ -370,6 +394,8 @@ export const initState: Readonly<State> = {
         piece: undefined,  // UI上で選択されているのピースの種類
         comment: CommentType.Writable,
         ghostVisible: true,
+        deleteSpawnMinoOnPaintDrag: true,
+        skipReaderMode: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -406,7 +432,9 @@ export const initState: Readonly<State> = {
         pieceAction: 'spawn',
         inspector: 'none',
         paletteSelection: 'comp',
+        previousPaletteSelection: undefined,
         lastMino: Piece.T,
+        infinitePieceQueue: false,
         bottomSlot: 'tray',
     },
     rectSelect: {
@@ -418,7 +446,6 @@ export const initState: Readonly<State> = {
     parts: {
         items: loadParts(),
         selectedId: null,
-        continuous: false,
         blackTransparent: loadBlackTransparentPaste(),
     },
     tree: initialTreeState,
@@ -595,7 +622,7 @@ function createKonvaObjects() {
     {
         const selectionFrame = new konva.Rect({
             fillEnabled: false,
-            stroke: '#f44336',
+            stroke: '#1976d2',
             strokeWidth: 2,
             dash: [6, 4],
             listening: false,

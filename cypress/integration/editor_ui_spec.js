@@ -51,6 +51,26 @@ describe('Editor UI final concept', () => {
         });
     });
 
+    [
+        [320, 568],
+        [375, 667],
+        [390, 844],
+        [844, 390],
+    ].forEach(([width, height]) => {
+        it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
+            cy.viewport(width, height);
+            visit({ mode: 'edit' });
+            cy.get(datatest('btn-piece-mode')).click();
+
+            cy.get(datatest('tray-context')).then(tray => {
+                cy.get(datatest('tools')).then(tools => {
+                    expect(tray[0].getBoundingClientRect().bottom)
+                        .to.be.at.most(tools[0].getBoundingClientRect().top);
+                });
+            });
+        });
+    });
+
     it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
         visit({ mode: 'edit' });
 
@@ -77,8 +97,8 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-select-mode')).click();
         cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
         cy.get(datatest('btn-piece-i'))
-            .find('[data-palette-swatch="mino"]')
-            .should('have.text', 'I');
+            .find('[data-palette-swatch]')
+            .should('not.exist');
 
         cy.get(datatest('btn-piece-i')).click()
             .should('have.css', 'background-color', 'rgb(244, 248, 253)')
@@ -179,32 +199,96 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('tray-context')).should('be.visible');
     });
 
-    it('spawns lastMino from PIECE and keeps it through non-mino palette choices', () => {
+    it('spawns from PIECE palette clicks and keeps PIECE active for reset/delete', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('btn-piece-t')).find('img').should('exist');
         cy.get(datatest('btn-piece-empty')).find('img').should('not.exist');
-        operations.mode.block.click(5, 5);
-        cy.get(datatest('tray-piece-drag')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-piece-t')).click();
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
 
-        cy.get(datatest('btn-piece-mode')).trigger('pointerdown', { pointerId: 1, button: 0 });
-        cy.wait(550);
-        cy.get(datatest('btn-piece-mode')).trigger('pointerup', { pointerId: 1, button: 0 });
-        cy.get(datatest('tray-piece-drop')).should('be.disabled');
-
         cy.get(datatest('btn-piece-empty')).click();
-        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
-        cy.get(datatest('btn-piece-mode')).click();
-        operations.mode.block.click(5, 5);
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-harddrop')).should('be.disabled');
+        cy.get(datatest('btn-piece-gray')).click();
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
     });
 
-    it('selects, copies, and stamps a rectangular part from the SELECT tray', () => {
+    it('drags the spawn mino from PAINT without painting over it', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.tools.home();
+        operations.mode.block.I();
+
+        operations.mode.block.click(4, 20);
+
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('restores the previous PAINT color after switching from eraser to pen', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(datatest('tray-paint-erase')).click();
+        cy.get(datatest('tray-paint-pen')).click();
+
+        cy.get(datatest('btn-piece-i')).should('have.attr', 'aria-pressed', 'true');
+    });
+
+    it('deletes the spawn mino when PAINT eraser is used on it', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.tools.home();
+        cy.get(datatest('btn-piece-empty')).click();
+        cy.get(datatest('tray-paint-erase')).should('have.attr', 'aria-pressed', 'true');
+
+        operations.mode.block.click(4, 20);
+
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('not.have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('deletes the spawn mino when PAINT eraser drag reaches it', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.tools.home();
+        cy.get(datatest('btn-piece-empty')).click();
+
+        operations.mode.block.drag({ x: 0, y: 0 }, { x: 4, y: 20 });
+
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('not.have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('deletes the spawn mino when empty fill drag reaches it', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.fill.open();
+        cy.get(datatest('btn-piece-empty')).click();
+
+        operations.mode.block.drag({ x: 0, y: 0 }, { x: 4, y: 20 });
+
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('not.have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('selects, copies, and spawns a rectangular part from a paint slot', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-t')).click();
         operations.mode.block.click(1, 1);
@@ -214,12 +298,26 @@ describe('Editor UI final concept', () => {
         operations.mode.block.drag({ x: 1, y: 1 }, { x: 2, y: 1 });
         cy.get(datatest('tray-selection-summary')).should('contain', '2×1');
         cy.get(datatest('tray-select-copy')).click();
-        cy.get('[datatest^="tray-part-"]').should('have.length', 1);
-        cy.get(datatest('tray-select-stamp')).click();
-        cy.get(datatest('tray-select-stamp-rotate')).should('be.visible');
-        cy.get(datatest('tray-select-black-transparent')).click();
+        cy.get('[datatest^="tray-part-"]').should('not.exist');
+        cy.get(datatest('btn-piece-i-pin'))
+            .should('have.css', 'color', 'rgb(117, 117, 117)')
+            .and('have.css', 'opacity', '0.45')
+            .and('have.css', 'border-top-width', '0px');
+        cy.get(datatest('btn-piece-i-pin')).click();
+        cy.get(datatest('btn-piece-i-pin')).should('have.attr', 'aria-label', 'Unpin');
+        cy.get(datatest('tray-select-part-pin')).should('not.exist');
+        cy.get(datatest('tray-select-rotate-left')).should('be.visible');
+        cy.get(datatest('tray-select-rotate-right')).should('be.visible');
+        cy.get(datatest('btn-piece-inference')).click();
+        cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Lighter);
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Lighter);
         operations.mode.block.click(5, 5);
-        cy.get('[datatest^="tray-part-"]').should('have.length', 1);
+        cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Lighter);
+        operations.mode.block.click(5, 5);
+        cy.get('[datatest^="tray-part-"]').should('not.exist');
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);
         cy.get(datatest('btn-undo')).click();
@@ -238,12 +336,7 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray');
         cy.get(datatest('btn-select-mode')).click();
-        cy.get(datatest('tray-context')).then(tray => {
-            expect(tray[0].scrollWidth).to.be.greaterThan(tray[0].clientWidth);
-        });
-        cy.get(datatest('tray-context')).trigger('wheel', { deltaY: 160 });
-        cy.get(datatest('tray-context')).then(tray => {
-            expect(tray[0].scrollLeft).to.be.greaterThan(0);
-        });
+        cy.get(datatest('tray-select-copy')).should('be.visible');
+        cy.get(datatest('tray-select-part-pin')).should('not.exist');
     });
 });

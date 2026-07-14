@@ -3,20 +3,77 @@ import { operations } from '../support/operations';
 
 // テト譜を開く
 describe('Put pieces', () => {
-    it('Move piece', () => {
+    it('Hard drop advances to the next page and reset re-spawns the piece', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();
         operations.mode.piece.spawn.O();
 
-        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.piece.harddrop();
-        operations.mode.piece.moveToLeft();
-        cy.get(datatest('img-rotation-spawn')).should('be.visible');
-
-        operations.mode.tools.undo();
-        operations.mode.tools.redo();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('img-rotation-empty')).should('be.visible');
         operations.mode.piece.resetPiece();
-        cy.get(datatest('tray-piece-drag')).should('be.disabled');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
+    });
+
+    it('spawns the first configured next piece after hard drop', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('T:JIOTSL');
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('text-comment')).should('have.value', 'T:IOTSL');
+        mino(Piece.J, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
+        });
+    });
+
+    it('seeds three 7bags when enabling infinite queue with an existing queue', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('T:I');
+        operations.mode.piece.open();
+
+        cy.get(datatest('btn-piece-inference')).click()
+            .should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^T:[IOTLJSZ]{21}$/);
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^T:[IOTLJSZ]{20}$/);
+    });
+
+    it('seeds 21 pieces and spawns the first one when the queue is empty', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+
+        cy.get(datatest('btn-piece-inference')).click()
+            .should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^[IOTLJSZ]{20}$/);
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-comment')).invoke('val').then(comment => {
+            expect(comment).to.have.length(26);
+            expect(comment.slice(-7).split('').sort().join('')).to.equal('IJLOSTZ');
+        });
+    });
+
+    it('does not replenish an infinite queue while at least 21 pieces remain', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('T:IOTLJSZIOTLJSZIOTLJSZ');
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        cy.get(datatest('btn-piece-inference')).click()
+            .should('have.attr', 'aria-pressed', 'true');
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-comment')).invoke('val').then(comment => {
+            expect(comment.replace(/^T:/, '')).to.have.length(41);
+        });
     });
 
     it('Put pieces', () => {
@@ -24,18 +81,15 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
         operations.mode.block.click(5, 5);
 
-        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
 
         operations.mode.piece.resetPiece();
-        cy.get(datatest('tray-piece-drop')).should('be.disabled');
-
-        operations.mode.piece.draw();
-        operations.mode.block.click(5, 5);
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.piece.harddrop();
-        cy.get(datatest('img-rotation-spawn')).should('be.visible');
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
     });
 
     it('Show current rotation', () => {
@@ -159,7 +213,7 @@ describe('Put pieces', () => {
         operations.mode.piece.spawn.O();
         operations.mode.piece.harddrop();
 
-        expectFumen('v115@vhGVQJXBJU3IRyIStIWjITZI');
+        expectFumen('v115@vhHVQJXBJU3IRyIStIWjITZIAgH');
     });
 
     it('Spawn classic piece', () => {
@@ -191,7 +245,7 @@ describe('Put pieces', () => {
         operations.mode.piece.spawn.O();
         operations.mode.piece.harddrop();
 
-        expectFumen('v115@vhGFrBHhBEXBRSBCIBG+AD0A');
+        expectFumen('v115@vhHFrBHhBEXBRSBCIBG+AD0AAAA');
     });
 
     it('Spawn: usecase 1', () => {
@@ -234,7 +288,6 @@ describe('Put pieces', () => {
             operations.mode.piece.moveToLeftEnd();
             operations.mode.piece.rotateToRight();
             operations.mode.piece.harddrop();
-            operations.mode.piece.rotateToRight();
         }
 
         {
@@ -243,46 +296,35 @@ describe('Put pieces', () => {
             operations.mode.piece.harddrop();
         }
 
-        expectFumen('v115@vhGRQJUGJKJJTNJ/MJFKJWSJ');
+        expectFumen('v115@vhHRQJUGJKJJTNJ/MJtEJWIJAgH');
     });
 
 
-    it('Reset', () => {
+    it('Reset and delete spawn mino', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();
-        operations.mode.piece.draw();
 
         // Piece actions that need a placed piece start disabled.
-        cy.get(datatest('tray-piece-drag')).should('be.disabled');
+        cy.get(datatest('tray-piece-harddrop')).should('be.disabled');
         cy.get(datatest('tray-piece-rotate-right')).should('be.disabled');
         cy.get(datatest('tray-piece-rotate-left')).should('be.disabled');
-        cy.get(datatest('tray-piece-drop')).should('be.disabled');
 
-        operations.mode.block.click(5, 5);
+        operations.mode.piece.spawn.T();
 
-        // SPAWN creates lastMino immediately and switches to DRAG.
-        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
+        // Clicking a palette mino creates it immediately and keeps PIECE active.
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         cy.get(datatest('tray-piece-rotate-right')).should('not.be.disabled');
         cy.get(datatest('tray-piece-rotate-left')).should('not.be.disabled');
-        cy.get(datatest('tray-piece-drop')).should('not.be.disabled');
 
+        // GRAY re-spawns the current mino instead of deleting it.
         operations.mode.piece.resetPiece();
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
 
-        operations.mode.piece.spawn.Z();
-
-        // A spawned piece enables drag, rotation, and drop.
-        cy.get(datatest('tray-piece-drag')).should('not.be.disabled');
-        cy.get(datatest('tray-piece-rotate-right')).should('not.be.disabled');
-        cy.get(datatest('tray-piece-rotate-left')).should('not.be.disabled');
-        cy.get(datatest('tray-piece-drop')).should('not.be.disabled');
-
-        operations.mode.piece.resetPiece();
-
-        // Reset disables the placed-piece operations again.
-        cy.get(datatest('tray-piece-drag')).should('be.disabled');
+        // EMPTY deletes the spawn mino.
+        cy.get(datatest('btn-piece-empty')).click();
+        cy.get(datatest('tray-piece-harddrop')).should('be.disabled');
         cy.get(datatest('tray-piece-rotate-right')).should('be.disabled');
         cy.get(datatest('tray-piece-rotate-left')).should('be.disabled');
-        cy.get(datatest('tray-piece-drop')).should('be.disabled');
     });
 
     it('Inference', () => {

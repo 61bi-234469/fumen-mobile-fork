@@ -1,4 +1,4 @@
-import { datatest, leftTap, rightTap, visit } from '../support/common';
+import { Color, datatest, leftTap, mino, Piece, rightTap, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('User settings', () => {
@@ -35,6 +35,29 @@ describe('User settings', () => {
         // verify
         operations.menu.openUserSettings();
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
+    });
+
+    it('Spawn mino deletion while paint dragging', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        operations.menu.openUserSettings();
+        cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
+        cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).uncheck({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.tools.home();
+        cy.get(datatest('btn-piece-empty')).click();
+        operations.mode.block.drag({ x: 0, y: 0 }, { x: 4, y: 20 });
+
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        operations.menu.openUserSettings();
+        cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('not.be.checked');
     });
 
     it('Loop: reader', () => {

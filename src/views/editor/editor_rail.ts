@@ -198,7 +198,93 @@ const minoPaletteSwatch = (selection: Piece, height: number, guideLineColor: boo
     }, parsePieceName(selection) ?? '');
 };
 
-const paletteContent = (selection: PaletteSelection, state: State, height: number) => {
+const partPaletteSwatch = (
+    part: State['parts']['items'][number],
+    state: State,
+    actions: Actions,
+) => div({
+    style: style({
+        alignItems: 'center', display: 'flex', justifyContent: 'center',
+        height: '100%', position: 'relative', width: '100%',
+    }),
+}, [
+    div({
+        key: 'part-grid',
+        style: style({
+            display: 'grid', gap: '1px',
+            gridTemplateColumns: `repeat(${part.width}, 3px)`,
+            gridTemplateRows: `repeat(${part.height}, 3px)`,
+        }),
+    }, part.cells.map((piece, index) => div({
+        key: `part-cell-${index}`,
+        style: style({
+            background: piece === Piece.Empty ? '#111'
+                : decidePieceColor(piece, HighlightType.Normal, state.fumen.guideLineColor),
+            height: px(3), width: px(3),
+        }),
+    }))),
+    span({
+        key: 'part-pin',
+        datatest: `btn-piece-${(parsePieceName(part.slot) ?? '').toLowerCase()}-pin`,
+        role: 'button',
+        'aria-label': part.pinned ? i18n.EditorUi.Unpin() : i18n.EditorUi.Pin(),
+        onclick: (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            actions.togglePartPin({ slot: part.slot });
+        },
+        onpointerdown: (event: PointerEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerup: (event: PointerEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointercancel: (event: PointerEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        style: style({
+            alignItems: 'center',
+            background: part.pinned ? '#e3f2fd' : 'transparent',
+            border: part.pinned ? '1px solid #90caf9' : '0',
+            color: part.pinned ? '#1565c0' : '#757575',
+            display: 'flex',
+            height: px(20),
+            justifyContent: 'center',
+            opacity: part.pinned ? 1 : .45,
+            position: 'absolute',
+            right: '0',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            transition: 'background-color 100ms ease, border-color 100ms ease, opacity 100ms ease',
+            width: px(18),
+        }),
+    }, [BlockIcon({ key: 'part-pin-icon', iconSize: 12 }, 'push_pin')]),
+]);
+
+const paletteContent = (selection: PaletteSelection, state: State, height: number, actions: Actions) => {
+    const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
+    if (state.editorUi.primaryTool === 'select' && part !== undefined) {
+        return partPaletteSwatch(part, state, actions);
+    }
+    if (state.editorUi.primaryTool === 'select' && selection !== 'comp') {
+        return div({
+            'aria-hidden': 'true',
+            'data-empty-part-slot': String(selection),
+            style: style({ height: '100%', width: '100%' }),
+        });
+    }
+    if (state.editorUi.primaryTool === 'piece' && selection === Piece.Empty) {
+        return BlockIcon({ key: 'delete-piece-icon', iconSize: Math.max(14, height - 7) }, 'delete');
+    }
+    if (state.editorUi.primaryTool === 'piece' && selection === Piece.Gray) {
+        return span({
+            key: 'reset-piece-label',
+            style: style({ fontSize: px(Math.max(10, height * 0.3)), fontWeight: '600' }),
+        }, 'RESET');
+    }
     if (state.editorUi.primaryTool === 'piece' && isMinoPaletteSelection(selection)) {
         const pieceName = parsePieceName(selection);
         const src = state.fumen.guideLineColor ? `img/${pieceName}.svg` : `img/${pieceName}_classic.svg`;
@@ -221,6 +307,37 @@ const paletteContent = (selection: PaletteSelection, state: State, height: numbe
         });
     }
     if (selection === 'comp') {
+        if (state.editorUi.primaryTool === 'select') {
+            const enabled = state.parts.blackTransparent;
+            return div({
+                'aria-hidden': 'true',
+                style: style({
+                    alignItems: 'center', display: 'flex', gap: px(3), height: '100%', justifyContent: 'center',
+                    width: '100%',
+                }),
+            }, [
+                BlockIcon({ key: 'empty-transparent-icon', iconSize: 13 }, enabled ? 'layers_clear' : 'layers'),
+                div({
+                    key: 'empty-transparent-switch',
+                    style: style({
+                        background: enabled ? '#1976d2' : '#9e9e9e',
+                        borderRadius: px(8), height: px(14), padding: px(2), width: px(26),
+                    }),
+                }, [div({
+                    key: 'empty-transparent-switch-knob',
+                    style: style({
+                        background: '#fff', borderRadius: '50%', height: px(10),
+                        marginLeft: enabled ? px(12) : '0', transition: 'margin-left 100ms ease', width: px(10),
+                    }),
+                })]),
+            ]);
+        }
+        if (state.editorUi.primaryTool === 'piece') {
+            return span({
+                key: 'infinite-bag-label',
+                style: style({ fontSize: px(Math.max(16, height * 0.7)), fontWeight: '700' }),
+            }, '∞');
+        }
         const compact = height < 24;
         return div({
             'data-palette-swatch': 'comp',
@@ -374,13 +491,13 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 selected: state.editorUi.primaryTool === 'piece',
                 onpress: () => actions.changePrimaryTool({ tool: 'piece' }),
                 onlongpress: () => executePieceShortcut('Reset', actions),
-                children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('PIECE'))])],
+                children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('P'))])],
             }),
             toolCell({
                 key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
                 selected: state.editorUi.primaryTool === 'select',
                 onpress: () => actions.changePrimaryTool({ tool: 'select' }),
-                children: [icon('select_all', iconSize), ...(compact ? [] : [span({ key: 'select' }, text('SELECT'))])],
+                children: [icon('select_all', iconSize), ...(compact ? [] : [span({ key: 'select' }, text('S'))])],
             }),
         ]),
         toolCell({
@@ -398,17 +515,39 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     ];
     const paletteCells = selections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
-        const label = selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
+        const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
+        const label = state.editorUi.primaryTool === 'piece' && selection === Piece.Empty
+            ? i18n.EditorUi.Delete()
+            : state.editorUi.primaryTool === 'piece' && selection === Piece.Gray
+                ? i18n.EditorUi.ResetPiece()
+                : selection === 'comp' && state.editorUi.primaryTool === 'piece'
+                    ? i18n.EditorUi.InfiniteBag() : selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
         return toolCell({
             label,
             height: cellHeight,
             key: `btn-piece-${name}`,
             datatest: `btn-piece-${name}`,
-            selected: state.editorUi.paletteSelection === selection,
+            selected: selection === 'comp'
+                ? state.editorUi.primaryTool === 'piece' && state.editorUi.infinitePieceQueue
+                    || state.editorUi.primaryTool === 'select' && state.parts.blackTransparent
+                : state.editorUi.primaryTool === 'select' && part !== undefined
+                    ? state.parts.selectedId === part.id
+                    : state.editorUi.paletteSelection === selection,
             selectionKind: 'palette',
-            onpress: () => actions.selectEditorPalette({ selection }),
+            onpress: () => {
+                if (state.editorUi.primaryTool === 'piece' && selection === 'comp') {
+                    actions.commitCommentText();
+                    actions.toggleInfinitePieceQueue();
+                    return;
+                }
+                if (state.editorUi.primaryTool === 'select' && selection === 'comp') {
+                    actions.toggleBlackTransparentPaste();
+                    return;
+                }
+                actions.selectEditorPalette({ selection });
+            },
             onlongpress: () => actions.executeEditorPaletteShortcut({ selection }),
-            children: withShortcut(paletteContent(selection, state, cellHeight),
+            children: withShortcut(paletteContent(selection, state, cellHeight, actions),
                 compact ? undefined : getPaletteShortcut(state, selection)),
         });
     });

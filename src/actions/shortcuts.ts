@@ -1,4 +1,4 @@
-import { ModeTypes, Piece, Screens } from '../lib/enums';
+import { Piece, Screens } from '../lib/enums';
 import { isModifierKey, matchShortcut } from '../lib/shortcuts';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
@@ -129,92 +129,16 @@ const paletteToPiece = (palette: PaletteKey): Piece | null => {
     }
 };
 
-// ミノかどうか判定
-const isMino = (palette: PaletteKey): boolean => {
-    return ['I', 'L', 'O', 'Z', 'T', 'J', 'S'].includes(palette);
-};
-
 // パレット短押し動作を実行
-const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Actions) => {
-    const modeType = state.mode.type;
-
-    // Comp の場合
-    if (palette === 'Comp') {
-        // Fill/FillRow/SelectPiece では DrawingToolMode に切り替えてから実行
-        if (modeType === ModeTypes.Fill || modeType === ModeTypes.FillRow || modeType === ModeTypes.SelectPiece) {
-            actions.changeToDrawingToolMode();
-            actions.selectInferencePieceColor();
-        } else {
-            actions.selectInferencePieceColor();
-        }
-        return;
-    }
-
+const executePaletteShortPress = (palette: PaletteKey, actions: Actions) => {
     const piece = paletteToPiece(palette);
-    if (piece === null) return;
-
-    switch (modeType) {
-    // DrawingTool/Utils/Flags/Comment/Slide モード: selectPieceColor
-    case ModeTypes.DrawingTool:
-    case ModeTypes.Utils:
-    case ModeTypes.Flags:
-    case ModeTypes.Comment:
-    case ModeTypes.Slide:
-    case ModeTypes.Drawing:
-    case ModeTypes.Piece:
-        actions.selectPieceColor({ piece });
-        break;
-
-    // Fill/FillRow モード: selectFillPieceColor
-    case ModeTypes.Fill:
-    case ModeTypes.FillRow:
-        actions.selectFillPieceColor({ piece });
-        break;
-
-    // SelectPiece モード: ミノは spawnPiece + changeToMovePieceMode + changeToPieceMode
-    // Empty/Gray は changeToDrawingToolMode + selectPieceColor
-    case ModeTypes.SelectPiece:
-        if (isMino(palette)) {
-            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
-            actions.changeToMovePieceMode();
-            actions.changeToPieceMode();
-        } else {
-            // Empty/Gray の場合は DrawingToolMode に切り替え
-            actions.changeToDrawingToolMode();
-            actions.selectPieceColor({ piece });
-        }
-        break;
-    }
+    actions.selectEditorPalette({ selection: piece === null ? 'comp' : piece });
 };
 
 // パレット長押し動作を実行
-const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
-    // Comp: convertToBlack
-    if (palette === 'Comp') {
-        actions.convertToBlack();
-        return;
-    }
-
-    // Empty: clearFieldAndPiece
-    if (palette === 'Empty') {
-        actions.clearFieldAndPiece();
-        return;
-    }
-
-    // Gray: convertToGray
-    if (palette === 'Gray') {
-        actions.convertToGray();
-        return;
-    }
-
-    // ミノ: spawnPiece + changeToMovePieceMode
-    if (isMino(palette)) {
-        const piece = paletteToPiece(palette);
-        if (piece !== null) {
-            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
-            actions.changeToMovePieceMode();
-        }
-    }
+const executePaletteLongPress = (palette: PaletteKey, actions: Actions) => {
+    const piece = paletteToPiece(palette);
+    actions.executeEditorPaletteShortcut({ selection: piece === null ? 'comp' : piece });
 };
 
 // 編集用ショートカット短押し動作を実行
@@ -375,6 +299,27 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 入力フォーカス中は無効
     if (isInputFocused()) return;
 
+    if (event.key === 'Escape') {
+        if (state.editorUi.inspector !== 'none') {
+            actions.closeEditorInspector();
+            event.preventDefault();
+            return;
+        }
+        if (state.rectSelect.status === 'selecting' || state.rectSelect.status === 'floating') {
+            actions.cancelRectSelectionPreview();
+            event.preventDefault();
+            return;
+        }
+    }
+
+    if (state.editorUi?.primaryTool === 'select'
+        && (event.key === 'Delete' || event.key === 'Backspace')
+        && (state.rectSelect?.status === 'selected' || state.rectSelect?.status === 'floating')) {
+        actions.deleteRectSelection();
+        event.preventDefault();
+        return;
+    }
+
     // 修飾キー自体は無視
     if (isModifierKey(event.code)) return;
 
@@ -384,6 +329,19 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 編集用ショートカットを検索（Mod+対応）
     const editShortcut = findEditShortcutByEvent(state.mode.editShortcuts, event);
     const allowedKeys = allowedEditShortcuts[screen];
+
+    if (state.editorUi?.primaryTool === 'select' && editShortcut !== undefined) {
+        if (editShortcut === 'Copy' && state.rectSelect?.status === 'selected') {
+            actions.copyRectSelection();
+            event.preventDefault();
+            return;
+        }
+        if (editShortcut === 'Cut' && state.rectSelect?.status === 'selected') {
+            actions.cutRectSelection();
+            event.preventDefault();
+            return;
+        }
+    }
 
     if (editShortcut && allowedKeys.includes(editShortcut)) {
         event.preventDefault();
@@ -441,7 +399,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
     // 長押しタイマー開始
     longPressTimer = setTimeout(() => {
-        executePaletteLongPress(palette, getState!(), getActions!());
+        executePaletteLongPress(palette, getActions!());
         longPressExecuted = true;
         longPressTimer = null;
     }, LONG_PRESS_DURATION);
@@ -486,7 +444,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
                     executeEditShortPress(activeShortcut.key, state, actions);
                 }
             } else if (activeShortcut.type === 'palette') {
-                executePaletteShortPress(activeShortcut.key, state, actions);
+                executePaletteShortPress(activeShortcut.key, actions);
             }
         }
     } else if (!longPressExecuted && activeShortcut) {

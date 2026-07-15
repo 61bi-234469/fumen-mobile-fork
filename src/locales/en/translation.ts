@@ -43,6 +43,12 @@
             Off: () => 'Off',
             On: () => 'On',
         },
+        DeleteSpawnMinoOnPaintDrag: {
+            Title: 'Delete spawn mino when paint drag passes over it',
+        },
+        SkipReaderMode: {
+            Title: 'Skip Reader mode on startup',
+        },
         Loop: {
             Title: 'Loop on page navigation [Reader]',
             Off: () => 'Off',
@@ -110,6 +116,22 @@
         TreeTab: 'Tree',
         EnableTreeMode: 'Enable tree mode',
         TreeModeDisabled: 'Tree mode is disabled.',
+    },
+    EditorUi: {
+        Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
+        ResetPiece: 'Reset spawn mino', InfiniteBag: '∞ 7bag',
+        ImportExport: 'Import / Export', Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
+        Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
+        Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row', Spawn: 'Spawn', Drag: 'Drag',
+        RotateLeft: 'Rotate left', RotateRight: 'Rotate right', Drop: 'Drop', Move: 'Move', Stamp: 'Stamp',
+        Deselect: 'Deselect', Once: 'Once', Continuous: 'Continuous', Rotate: 'Rotate', Mirror: 'Mirror', End: 'End',
+        AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
+        KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
+        UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',
+        Blank: 'Blank', Inherit: 'Inherit', NoSelection: 'No selection', Palette: 'Palette', Parts: 'Parts',
+        Pinned: 'Pinned', TrayHandle: 'Show context tools',
+        BlackTransparent: 'Empty cells pass through', Pin: 'Pin', Unpin: 'Unpin', Delete: 'Delete',
+        Blocks: '{{count}} blocks',
     },
     Clipboard: {
         Title: 'Copy to clipboard',
@@ -313,6 +335,7 @@
         OneBagAddShortLabel: '+1bag',
         OneBagAddDescription: 'Append shuffled IOTJLSZ to comment queue',
         OneBagAdded: 'ColdClear: Added 1bag to queue',
+        InfiniteBagNonQueueWarning: '∞ 7bag: replaced the non-queue comment with a random queue',
         HoldSwapLabel: 'Swap',
         HoldSwapMissingQueue: 'AI: Next queue is required',
         HoldSwapCurrentPieceRequired: 'AI: Current piece is required',

@@ -11,13 +11,15 @@ import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { test180Rotation, testLeftRotationSrsPlus, testRightRotationSrsPlus } from '../lib/srs_plus';
 import { fillRowActions } from './fill_row';
-import { coldClearActions } from './cold_clear';
+import { coldClearActions, createRandomSevenBag, getCurrentColdClearQueueComment } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { State } from '../states';
 import { getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 import { intermediateCellIndices } from '../lib/grid_line';
+import { legacyModeForPaintTool } from '../lib/editor_interaction';
+import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -60,6 +62,8 @@ export interface FieldEditorActions {
 
     clearPiece(): action;
 
+    resetPiece(): action;
+
     clearFieldAndPiece(): action;
 
     rotateToLeft(): action;
@@ -76,7 +80,11 @@ export interface FieldEditorActions {
 
     moveToRightEnd(): action;
 
+    softdrop(): action;
+
     harddrop(): action;
+
+    spawnNextPieceFromColdClearQueue(): action;
 }
 
 // Helper to determine right-click override mode based on current ModeType
@@ -101,8 +109,25 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
+const INFINITE_QUEUE_REFILL_THRESHOLD = 21;
+
+const appendInfiniteQueueBagIfNeeded = (queue: Piece[], currentQueueLength: number): Piece[] => {
+    if (currentQueueLength >= INFINITE_QUEUE_REFILL_THRESHOLD) {
+        return queue;
+    }
+    return queue.concat(createRandomSevenBag());
+};
 
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
+    if (state.editorUi?.primaryTool === 'paint'
+        && state.mode.deleteSpawnMinoOnPaintDrag
+        && state.mode.piece === Piece.Empty
+        && isSpawnMinoCell(state, index)) {
+        return actions.clearPiece()(state);
+    }
+    if (state.events.pieceDragFromPaint) {
+        return movePieceActions.ontouchMoveField({ index })(state);
+    }
     switch (state.mode.touch) {
     case TouchTypes.Drawing:
         return drawBlockActions.ontouchMoveField({ index })(state);
@@ -114,9 +139,44 @@ const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
         return fillRowActions.ontouchMoveField({ index })(state);
     case TouchTypes.Fill:
         return fillActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Select:
+        return actions.moveRectSelection({ index })(state);
     }
     return undefined;
 };
+
+const isSpawnMinoCell = (state: State, index: number): boolean => {
+    const editorUi = (state as Partial<State>).editorUi;
+    if (editorUi?.primaryTool !== 'paint') {
+        return false;
+    }
+    const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
+    if (piece === undefined || !isMinoPiece(piece.type)) {
+        return false;
+    }
+    const rawField = new Pages(state.fumen.pages)
+        .getField(state.fumen.currentIndex, PageFieldOperation.Command);
+    if (rawField.getAtIndex(index, true) !== Piece.Empty) {
+        return false;
+    }
+    return getBlockPositions(
+        piece.type,
+        piece.rotation,
+        piece.coordinate.x,
+        piece.coordinate.y,
+    ).some(position => toPositionIndex(position) === index);
+};
+
+const restorePaintTouchState = (state: State): NextState => ({
+    mode: {
+        ...state.mode,
+        touch: legacyModeForPaintTool(state.editorUi.paintTool).touch,
+    },
+    events: {
+        ...state.events,
+        pieceDragFromPaint: false,
+    },
+});
 
 const dispatchTouchMoveSentLine = (index: number) => (state: State): NextState => {
     switch (state.mode.touch) {
@@ -194,14 +254,40 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.fixInferencePiece(),
             fieldEditorActions.resetInferencePiece(),
+            actions.cancelRectSelectionPreview(),
         ]);
     },
     ontouchStartField: ({ index }) => (state): NextState => {
         const dispatch = (newState: State): NextState => {
+            if (isSpawnMinoCell(newState, index)) {
+                if (newState.mode.piece === Piece.Empty) {
+                    return actions.clearPiece()(newState);
+                }
+                return movePieceActions.ontouchStartField({ index })({
+                    ...newState,
+                    mode: {
+                        ...newState.mode,
+                        touch: TouchTypes.MovePiece,
+                    },
+                    events: {
+                        ...newState.events,
+                        pieceDragFromPaint: true,
+                    },
+                });
+            }
             switch (newState.mode.touch) {
             case TouchTypes.Drawing:
                 return drawBlockActions.ontouchStartField({ index })(newState);
             case TouchTypes.Piece:
+                if (newState.editorUi.pieceAction === 'spawn') {
+                    return sequence(newState, [
+                        actions.spawnPiece({
+                            piece: newState.editorUi.lastMino,
+                            srs: newState.mode.rotationSystem !== 'classic',
+                        }),
+                        actions.changePieceAction({ pieceAction: 'drag' }),
+                    ]);
+                }
                 return putPieceActions.ontouchStartField({ index })(newState);
             case TouchTypes.MovePiece:
                 return movePieceActions.ontouchStartField({ index })(newState);
@@ -209,6 +295,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchStartField({ index })(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Select:
+                return actions.startRectSelection({ index })(newState);
             }
             return undefined;
         };
@@ -241,6 +329,12 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     },
     ontouchEnd: () => (state): NextState => {
         const dispatch = (newState: State): NextState => {
+            if (newState.events.pieceDragFromPaint) {
+                return sequence(newState, [
+                    movePieceActions.ontouchEnd(),
+                    restorePaintTouchState,
+                ]);
+            }
             switch (newState.mode.touch) {
             case TouchTypes.Drawing:
                 return drawBlockActions.ontouchEnd()(newState);
@@ -252,6 +346,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchEnd()(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchEnd()(newState);
+            case TouchTypes.Select:
+                return actions.endRectSelection()(newState);
             }
             return undefined;
         };
@@ -304,6 +400,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return setTouchTrail(undefined, undefined)(state);
     },
     onrightStartField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return actions.cancelRectSelectionPreview()(state);
+        }
         // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
         // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
         // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
@@ -323,11 +422,17 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         });
     },
     onrightMoveField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchMoveField({ index })(patchedState);
         });
     },
     onrightEnd: () => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchEnd()(patchedState);
         });
@@ -440,6 +545,26 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    resetPiece: () => (state): NextState => {
+        const page = state.fumen.pages[state.fumen.currentIndex];
+        const piece = page?.piece?.type;
+        const spawnPiece = piece !== undefined && piece !== Piece.Empty && piece !== Piece.Gray
+            ? piece
+            : state.editorUi.lastMino;
+        return sequence(state, [
+            actions.spawnPiece({
+                piece: spawnPiece,
+                srs: state.mode.rotationSystem !== 'classic',
+            }),
+            nextState => ({
+                editorUi: {
+                    ...nextState.editorUi,
+                    pieceAction: 'drag',
+                    lastMino: spawnPiece,
+                },
+            }),
         ]);
     },
     clearFieldAndPiece: () => (state): NextState => {
@@ -762,7 +887,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    harddrop: () => (state): NextState => {
+    softdrop: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -804,6 +929,62 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    harddrop: () => (state): NextState => {
+        return sequence(state, [
+            fieldEditorActions.softdrop(),
+            (nextState) => {
+                const pageIndex = nextState.fumen.currentIndex;
+                const page = nextState.fumen.pages[pageIndex];
+                if (page?.piece === undefined || !page.flags.lock) {
+                    return undefined;
+                }
+
+                const field = new Pages(nextState.fumen.pages)
+                    .getField(pageIndex, PageFieldOperation.Command);
+                const piece = page.piece;
+                if (!field.isOnGround(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)) {
+                    return undefined;
+                }
+
+                const nextPageIndex = pageIndex + 1;
+                return sequence(nextState, [
+                    actions.insertPage({ index: nextPageIndex }),
+                    actions.openPage({ index: nextPageIndex }),
+                    actions.spawnNextPieceFromColdClearQueue(),
+                ]);
+            },
+        ]);
+    },
+
+    spawnNextPieceFromColdClearQueue: () => (state): NextState => {
+        const currentComment = getCurrentColdClearQueueComment(state);
+        const parsed = currentComment === null ? null : parseQueueStateComment(currentComment);
+        if (!parsed || parsed.queue.length === 0) {
+            return actions.changePieceAction({ pieceAction: 'spawn' })(state);
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const nextPiece = parsed.queue[0];
+        const remainingQueue = parsed.queue.slice(1);
+        const nextQueue = state.editorUi.infinitePieceQueue
+            ? appendInfiniteQueueBagIfNeeded(remainingQueue, parsed.queue.length)
+            : remainingQueue;
+        const nextComment = buildQueueStateComment(
+            parsed.hold,
+            nextQueue,
+            parsed.b2b,
+            parsed.combo,
+        );
+
+        return sequence(state, [
+            actions.setCommentText({ pageIndex, text: nextComment }),
+            actions.spawnPiece({
+                piece: nextPiece,
+                srs: state.mode.rotationSystem !== 'classic',
+            }),
+            actions.changePieceAction({ pieceAction: 'drag' }),
         ]);
     },
 };

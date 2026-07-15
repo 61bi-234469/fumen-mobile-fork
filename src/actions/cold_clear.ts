@@ -37,6 +37,7 @@ import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
 import type { FieldEditorActions } from './field_editor';
+import type { EditorInteractionActions } from './editor_interaction';
 import { persistViewSettings } from './view_settings';
 
 declare const M: any;
@@ -108,7 +109,8 @@ type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
     & Pick<CommentActions, 'setCommentText'>
-    & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>;
+    & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>
+    & Pick<EditorInteractionActions, 'changePieceAction'>;
 
 let currentSession: RunSession | null = null;
 
@@ -147,6 +149,7 @@ export interface ColdClearActions {
     setColdClearThinkMs: (data: { thinkMs: number }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
+    toggleInfinitePieceQueue: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
     returnCurrentPieceToQueue: () => action;
     previewColdClearQueueComment: (data: {
@@ -307,6 +310,24 @@ const resolveCommentTextWithPreview = (
         return preview.text;
     }
     return resolveCommentTextFromPage(pages, pageIndex);
+};
+
+export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+    return resolveCommentTextWithPreview(
+        state.fumen.pages,
+        state.fumen.currentIndex,
+        state.coldClear.queuePreview,
+    );
+};
+
+export const createRandomSevenBag = (): Piece[] => shufflePieces(ONE_BAG_PIECES);
+
+export const createRandomSevenBags = (count: number): Piece[] => {
+    const queue: Piece[] = [];
+    for (let i = 0; i < count; i += 1) {
+        queue.push(...createRandomSevenBag());
+    }
+    return queue;
 };
 
 const parseQueueCommentFromPage = (
@@ -1435,6 +1456,73 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     queuePreview: null,
                 },
             }),
+        ]);
+    },
+
+    toggleInfinitePieceQueue: () => (state): NextState => {
+        const enabled = !state.editorUi.infinitePieceQueue;
+        if (!enabled) {
+            return {
+                editorUi: {
+                    ...state.editorUi,
+                    infinitePieceQueue: false,
+                    paletteSelection: 'comp',
+                },
+            };
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        const hasSpawnMino = page?.piece !== undefined && isMinoPiece(page.piece.type);
+        const currentComment = getCurrentColdClearQueueComment(state) ?? '';
+        const parsed = parseQueueStateComment(currentComment);
+        const hasQueue = parsed !== null && parsed.queue.length > 0;
+
+        if (currentComment.trim() !== '' && parsed === null) {
+            M.toast({
+                html: i18n.ColdClear.InfiniteBagNonQueueWarning(),
+                classes: 'top-toast',
+                displayLength: 1800,
+            });
+        }
+
+        const initialQueue = createRandomSevenBags(3);
+        const queueWithInitialBags = hasQueue
+            ? parsed!.queue.concat(initialQueue)
+            : initialQueue;
+        const initialSpawnPiece = hasSpawnMino ? undefined : queueWithInitialBags[0];
+        const nextQueue = initialSpawnPiece === undefined
+            ? queueWithInitialBags
+            : queueWithInitialBags.slice(1);
+        const nextComment = parsed === null
+            ? buildQueueComment(null, nextQueue)
+            : buildQueueStateComment(parsed.hold, nextQueue, parsed.b2b, parsed.combo);
+        const nextEditorUi = (nextState: State): NextState => ({
+            editorUi: {
+                ...nextState.editorUi,
+                infinitePieceQueue: true,
+                paletteSelection: 'comp',
+            },
+        });
+
+        if (!appActions) {
+            return nextEditorUi(state);
+        }
+
+        const runtimeActions = appActions;
+        return sequence(state, [
+            () => {
+                runtimeActions.setCommentText({ pageIndex, text: nextComment });
+                if (initialSpawnPiece !== undefined) {
+                    runtimeActions.spawnPiece({
+                        piece: initialSpawnPiece,
+                        srs: state.mode.rotationSystem !== 'classic',
+                    });
+                    runtimeActions.changePieceAction({ pieceAction: 'drag' });
+                }
+                return undefined;
+            },
+            nextEditorUi,
         ]);
     },
 

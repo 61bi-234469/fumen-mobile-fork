@@ -13,6 +13,7 @@ interface Props {
     };
     field: Block[];
     sentLine: Block[];
+    sentLineVisible: boolean;
     blockSize: number;
     fieldMarginWidth: number;
     guideLineColor: boolean;
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export const Field: Component<Props> = (
-    { topLeft, field, sentLine, blockSize, fieldMarginWidth, guideLineColor, getGradientPattern },
+    { topLeft, field, sentLine, sentLineVisible, blockSize, fieldMarginWidth, guideLineColor, getGradientPattern },
 ) => {
     const fieldBottomLeft = topLeft.y + (blockSize + 1) * 22.5 + 1;
 
@@ -54,8 +55,8 @@ export const Field: Component<Props> = (
                       size={size} position={position} color={color} mark={mark} rect={rect}/>;
     });
 
-    // せり上がりの描画
-    const sentBlocks = resources.konva.sentBlocks.map((rect, index) => {
+    // せり上がりの描画（トレイ表示中など、行を確保できない場合は非表示にする）
+    const sentBlocks = !sentLineVisible ? [] : resources.konva.sentBlocks.map((rect, index) => {
         const [xIndex, yIndex] = [index % 10, Math.floor(index / 10)];
         const blockValue = sentLine[xIndex + yIndex * 10];
 

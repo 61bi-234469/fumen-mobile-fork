@@ -9,6 +9,8 @@ export interface UserSettingsActions {
     copyUserSettingsToTemporary: () => action;
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
+    keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    keepSkipReaderMode: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
@@ -31,6 +33,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 ...state.temporary,
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
+                    deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+                    skipReaderMode: state.mode.skipReaderMode,
                     loop: state.mode.loop,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     gradient: gradientToStr(state.mode.gradient),
@@ -50,6 +54,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     commitUserSettings: () => (state): NextState => {
         return sequence(state, [
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
+            actions.changeDeleteSpawnMinoOnPaintDrag({
+                enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            }),
+            actions.changeSkipReaderMode({ enable: state.temporary.userSettings.skipReaderMode }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
             actions.changeShortcutLabelVisible({ visible: state.temporary.userSettings.shortcutLabelVisible }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
@@ -96,6 +104,35 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     ghostVisible: visible,
+                },
+            },
+        };
+    },
+    keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    deleteSpawnMinoOnPaintDrag: enable,
+                },
+            },
+        };
+    },
+    keepSkipReaderMode: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    skipReaderMode: enable,
                 },
             },
         };
@@ -384,6 +421,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
 const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
+        deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+        skipReaderMode: state.mode.skipReaderMode,
         loop: state.mode.loop,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         gradient: gradientToStr(state.mode.gradient),

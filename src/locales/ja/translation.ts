@@ -39,6 +39,12 @@ export const resources = {
             Off: () => '無効',
             On: () => '有効',
         },
+        DeleteSpawnMinoOnPaintDrag: {
+            Title: '黒ペイントドラッグでスポーンミノを通過削除',
+        },
+        SkipReaderMode: {
+            Title: 'アクセス時にReaderモードをスキップ',
+        },
         Loop: {
             Title: 'ページ移動のループ [Reader]',
             Off: () => '無効',
@@ -106,6 +112,22 @@ export const resources = {
         TreeTab: 'ツリー',
         EnableTreeMode: 'ツリーモードを有効にする',
         TreeModeDisabled: 'ツリーモードが無効です。',
+    },
+    EditorUi: {
+        Rotate180: '180°回転', Hold: 'Hold', SoftDrop: 'ソフトドロップ', HardDrop: 'ハードドロップ',
+        ResetPiece: 'スポーンミノをリセット', InfiniteBag: '∞ 7bag',
+        ImportExport: '読み込み / 書き出し', Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
+        Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
+        Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る', Spawn: '出現', Drag: '移動',
+        RotateLeft: '左回転', RotateRight: '右回転', Drop: '落下', Move: '移動', Stamp: 'スタンプ',
+        Deselect: '選択解除', Once: '1回', Continuous: '連続', Rotate: '回転', Mirror: '反転', End: '終了',
+        AllMirror: '全ページ反転', ToGray: 'グレー化', Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
+        KeyPage: 'キーページ', ReferencePage: '参照ページ', Lock: '固定', Rise: 'せり上がり', MirrorFlag: '反転フラグ',
+        UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',
+        Blank: '空にする', Inherit: '引き継ぐ', NoSelection: '選択なし', Palette: 'パレット', Parts: 'パーツ',
+        Pinned: '固定済み', TrayHandle: '操作ツールを表示',
+        BlackTransparent: '空セルを透過', Pin: '固定', Unpin: '固定解除', Delete: '削除',
+        Blocks: '{{count}}ブロック',
     },
     GifFrameDelayMs: {
         Title: 'GIFページ送り間隔',
@@ -185,7 +207,7 @@ export const resources = {
         Zoom: 'ズーム',
     },
     ListViewReplace: {
-        Title: 'コメント置換',
+        Title: '全ページコメント置換',
         Before: '置換前：',
         After: '置換後：',
         FindPlaceholder: '検索するテキスト',
@@ -288,6 +310,7 @@ export const resources = {
         OneBagAddShortLabel: '+1bag',
         OneBagAddDescription: 'コメントのキュー末尾にランダムIOTJLSZを追記',
         OneBagAdded: 'ColdClear: 1bagを追記しました',
+        InfiniteBagNonQueueWarning: '∞ 7bag: キュー以外のコメントをランダムキューに置き換えました',
         HoldSwapLabel: '入替',
         HoldSwapMissingQueue: 'AI: ネクストキューが必要です',
         HoldSwapCurrentPieceRequired: 'AI: カレントミノが必要です',

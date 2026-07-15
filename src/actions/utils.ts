@@ -28,6 +28,7 @@ import {
 import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { getURLQuery } from '../params';
 import { Screens } from '../lib/enums';
+import { clearUnpinnedParts, saveParts } from '../lib/parts';
 
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
@@ -151,7 +152,18 @@ export const utilsActions: Readonly<UtilsActions> = {
         return loadFumen(fumen, purgeOnFailed);
     },
     loadNewFumen: () => (state): NextState => {
-        return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
+        const items = clearUnpinnedParts(state.parts.items);
+        saveParts(items);
+        return sequence(state, [
+            utilsActions.loadFumen({ fumen: 'v115@vhAAgH' }),
+            newState => ({
+                parts: {
+                    ...newState.parts,
+                    items,
+                    selectedId: null,
+                },
+            }),
+        ]);
     },
     executeNewFumen: () => (state): NextState => {
         return sequence(state, [

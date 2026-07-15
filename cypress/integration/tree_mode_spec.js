@@ -365,6 +365,35 @@ describe('Tree mode in list view', () => {
         cy.get(datatest('tools')).should('exist');
     });
 
+    it('opens UTIL without leaving list or tree view', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).find(datatest('btn-utils-mode')).click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('overlay-utils')).should('be.visible')
+            .find(datatest('btn-slide-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils')).find(datatest('btn-comment-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils'))
+            .find(datatest('btn-inspector-close')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Show pages in tree view"]').click();
+        cy.get(datatest('list-view-tools')).find(datatest('btn-utils-mode')).should('be.visible').click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('fumen-graph-container')).should('exist');
+
+        cy.get(datatest('overlay-utils')).should('be.visible')
+            .find(datatest('btn-slide-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils')).find(datatest('btn-comment-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils'))
+            .find(datatest('btn-replace')).should('be.visible').click();
+        cy.get(datatest('mdl-list-view-replace')).should('be.visible')
+            .find(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-list-view-replace')).should('not.exist');
+    });
+
     it('allows undo immediately after switching to list view, with no post-transition lock', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 

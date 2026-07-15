@@ -92,6 +92,8 @@ export const view: View<State, Actions> = (state, actions) => {
         state.modal.userSettings ? UserSettingsModal({
             actions,
             ghostVisible: state.temporary.userSettings.ghostVisible,
+            deleteSpawnMinoOnPaintDrag: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            skipReaderMode: state.temporary.userSettings.skipReaderMode,
             loop: state.temporary.userSettings.loop,
             shortcutLabelVisible: state.temporary.userSettings.shortcutLabelVisible,
             gradient: state.temporary.userSettings.gradient,

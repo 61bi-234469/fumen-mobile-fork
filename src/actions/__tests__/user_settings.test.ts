@@ -24,6 +24,8 @@ const { userSettingsActions } = require('../user_settings');
 
 const baseUserSettings = {
     ghostVisible: true,
+    deleteSpawnMinoOnPaintDrag: true,
+    skipReaderMode: false,
     loop: false,
     shortcutLabelVisible: false,
     gradient: '0000000',
@@ -41,6 +43,8 @@ const baseUserSettings = {
 const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
+        deleteSpawnMinoOnPaintDrag: true,
+        skipReaderMode: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -104,6 +108,15 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepDeleteSpawnMinoOnPaintDrag', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepDeleteSpawnMinoOnPaintDrag({ enable: false })(state);
+
+            expect(next.temporary.userSettings.deleteSpawnMinoOnPaintDrag).toBe(false);
+        });
+    });
+
     describe('keepTrimTopBlank', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
@@ -155,6 +168,8 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
+                'changeDeleteSpawnMinoOnPaintDrag',
+                'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changeGifFrameDelay', 'changeRotationSystem',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',

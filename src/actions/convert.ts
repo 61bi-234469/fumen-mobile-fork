@@ -237,6 +237,7 @@ export const convertActions: Readonly<ConvertActions> = {
     convertToGray: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField((field) => {
                 const copy = field.copy();
                 copy.convertToGray();
@@ -247,6 +248,7 @@ export const convertActions: Readonly<ConvertActions> = {
     convertToBlack: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField((field) => {
                 const copy = field.copy();
                 copy.convertNonGrayToEmpty();
@@ -258,6 +260,7 @@ export const convertActions: Readonly<ConvertActions> = {
     clearField: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField(_ => new Field({})),
         ]);
     },
@@ -265,11 +268,13 @@ export const convertActions: Readonly<ConvertActions> = {
         return sequence(state, [
             actions.removeUnsettledItems(),
             convertToMirror(),
+            actions.mirrorRectSelection(),
         ]);
     },
     convertAllToMirror: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertAllToMirror(),
         ]);
     },

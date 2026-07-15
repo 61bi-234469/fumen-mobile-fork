@@ -9,6 +9,16 @@ import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
 import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
 
+const focusCommentInput = () => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    setTimeout(() => {
+        const element = document.querySelector('[datatest="text-comment"]') as HTMLInputElement | null;
+        element?.focus();
+    }, 0);
+};
+
 export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
@@ -137,7 +147,7 @@ export const modeActions: Readonly<ScreenActions> = {
     changeToShiftMode: () => (state): NextState => {
         return sequence(state, [
             actions.clearRectSelection(),
-            changeTouchType({ type: TouchTypes.Drawing, clear: true }),
+            changeTouchType({ type: TouchTypes.Select, clear: true }),
             changeModeType({ type: ModeTypes.Slide }),
             newState => ({ editorUi: {
                 ...newState.editorUi,
@@ -145,6 +155,7 @@ export const modeActions: Readonly<ScreenActions> = {
                 inspector: 'none',
                 bottomSlot: 'tray',
             } }),
+            actions.beginWholeFieldMove(),
         ]);
     },
     changeToFillRowMode: () => (state): NextState => {
@@ -163,6 +174,7 @@ export const modeActions: Readonly<ScreenActions> = {
         return actions.changePaintTool({ tool: 'fill' })(state);
     },
     changeToCommentMode: () => (state): NextState => {
+        focusCommentInput();
         return sequence(state, [
             changeTouchType({ type: TouchTypes.Drawing, clear: true }),
             changeModeType({ type: ModeTypes.Comment }),

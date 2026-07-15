@@ -1,7 +1,16 @@
 import { State } from '../../states';
 import { Piece } from '../../lib/enums';
+import { Field } from '../../lib/fumen/field';
 
-jest.mock('../../actions', () => ({ actions: {} }));
+jest.mock('../../actions', () => ({
+    actions: {
+        registerHistoryTask: () => () => undefined,
+        reopenCurrentPage: () => () => undefined,
+        startRectSelection: () => () => ({
+            rectSelect: { status: 'selecting' },
+        }),
+    },
+}));
 
 // tslint:disable-next-line:no-var-requires
 const { rectSelectActions } = require('../rect_select');
@@ -53,5 +62,63 @@ describe('rectSelectActions', () => {
             floating: null,
             reselectOnNextTouch: false,
         });
+    });
+
+    test('commits a rotated selection on the first outside click', () => {
+        const field = new Field({});
+        field.add(1, 1, Piece.T);
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: field },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'selected',
+                rect: { minX: 1, minY: 1, maxX: 2, maxY: 2 },
+                anchorIndex: null,
+                floating: null,
+            },
+            parts: { items: [], selectedId: null, blackTransparent: true },
+        } as unknown as State;
+
+        const rotated = {
+            ...state,
+            ...(rectSelectActions.rotateSelectedPartLeft()(state) as State),
+        } as State;
+        const next = rectSelectActions.startRectSelection({ index: 5 + 5 * 10 })(rotated) as any;
+
+        expect(next.fumen.pages[0].field.obj).toBeDefined();
+        expect(next.rectSelect.status).toBe('selecting');
+    });
+
+    test('starts the whole field as a floating selection', () => {
+        const field = new Field({});
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: field },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'none', rect: null, anchorIndex: null, floating: null,
+            },
+        } as unknown as State;
+
+        const next = rectSelectActions.beginWholeFieldMove()(state) as any;
+
+        expect(next.rectSelect.status).toBe('floating');
+        expect(next.rectSelect.rect).toEqual({ minX: 0, minY: 0, maxX: 9, maxY: 22 });
+        expect(next.rectSelect.floating.sourceRect).toEqual(next.rectSelect.rect);
+        expect(next.rectSelect.floating.width).toBe(10);
+        expect(next.rectSelect.floating.height).toBe(23);
     });
 });

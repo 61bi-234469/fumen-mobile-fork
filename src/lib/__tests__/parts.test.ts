@@ -75,7 +75,7 @@ describe('parts persistence', () => {
 
         expect(repacked.map(item => [item.id, item.slot])).toEqual([
             ['recent', Piece.I],
-            ['pinned-top', Piece.L],
+            ['pinned-top', Piece.Gray],
         ]);
     });
 
@@ -91,7 +91,10 @@ describe('parts persistence', () => {
             'part-1', 'part-2', 'part-3', 'part-4', 'part-5', 'part-6', 'part-7', 'new', 'part-8',
         ]);
         expect(inserted!.slice(-1)[0].pinned).toBe(true);
-        expect(inserted!.map(item => item.slot)).toEqual(PART_SLOTS.slice(0, inserted!.length));
+        expect(inserted!.map(item => item.slot)).toEqual([
+            ...PART_SLOTS.slice(0, PART_SLOTS.length - 1),
+            PART_SLOTS[PART_SLOTS.length - 1],
+        ]);
     });
 
     it('does not insert when every slot is pinned', () => {
@@ -106,6 +109,6 @@ describe('parts persistence', () => {
             part('unpinned', 2, false, Piece.L),
         ];
 
-        expect(clearUnpinnedParts(items)).toEqual([{ ...items[0], slot: Piece.I }]);
+        expect(clearUnpinnedParts(items)).toEqual([{ ...items[0], slot: Piece.Gray }]);
     });
 });

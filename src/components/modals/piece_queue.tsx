@@ -10,13 +10,14 @@ import {
 } from '../../lib/piece_queue';
 import { Component, px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
-import { resources } from '../../states';
+import { PieceQueueFocus, resources } from '../../states';
 
 declare const M: any;
 
 interface PieceQueueModalProps {
     currentQueueState: ColdClearMenuQueueState | null;
     canClearComment: boolean;
+    initialFocus: PieceQueueFocus;
     actions: {
         closePieceQueueModal: () => void;
         previewColdClearQueueComment: (data: {
@@ -37,8 +38,11 @@ let focusTarget: FocusTarget = 'next';
 export const PieceQueueModal: Component<PieceQueueModalProps> = ({
     currentQueueState,
     canClearComment,
+    initialFocus,
     actions,
 }) => {
+    const renderedFocusTarget: FocusTarget = resources.modals.pieceQueue === undefined
+        ? initialFocus : focusTarget;
     const closeInstance = () => {
         const modal = resources.modals.pieceQueue;
         if (modal !== undefined) {
@@ -55,6 +59,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         destroy();
     };
     const oncreate = (element: HTMLDivElement) => {
+        focusTarget = initialFocus;
         const instance = M.Modal.init(element, {
             onCloseStart: () => {
                 actions.commitColdClearQueueComment();
@@ -64,6 +69,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         });
         instance.open();
         resources.modals.pieceQueue = instance;
+        setFocus(initialFocus);
     };
 
     const sectionStyle = style({
@@ -110,8 +116,8 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
     };
     const paneStyle = (target: FocusTarget, flex: string) => style({
         flex,
-        background: focusTarget === target ? '#eff6ff' : '#fff',
-        border: focusTarget === target ? '2px solid #1976d2' : '2px solid #e0e0e0',
+        background: renderedFocusTarget === target ? '#eff6ff' : '#fff',
+        border: renderedFocusTarget === target ? '2px solid #1976d2' : '2px solid #e0e0e0',
         borderRadius: '0',
         boxSizing: 'border-box',
         cursor: 'pointer',
@@ -136,6 +142,10 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         if (oneBagButton) {
             oneBagButton.disabled = target === 'hold';
         }
+        const input = document.querySelector(
+            `[datatest="input-piece-queue-${target}"]`,
+        ) as HTMLInputElement | null;
+        input?.focus();
     };
 
     return (
@@ -268,7 +278,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                     <button
                                         key="btn-piece-queue-one-bag"
                                         datatest="btn-piece-queue-one-bag"
-                                        disabled={focusTarget === 'hold'}
+                                        disabled={renderedFocusTarget === 'hold'}
                                         onclick={(event: MouseEvent) => {
                                             event.preventDefault();
                                             actions.appendColdClearOneBagToComment();

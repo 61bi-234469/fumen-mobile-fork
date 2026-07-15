@@ -540,7 +540,11 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 ? i18n.EditorUi.ResetPiece()
                 : selection === 'comp' && state.editorUi.primaryTool === 'piece'
                     ? i18n.EditorUi.InfiniteBag() : selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
+        const onlongpress = state.editorUi.primaryTool === 'select'
+            ? part === undefined ? undefined : () => actions.toggleBlackTransparentPaste()
+            : () => actions.executeEditorPaletteShortcut({ selection });
         return toolCell({
+            onlongpress,
             label,
             height: cellHeight,
             key: `btn-piece-${name}`,
@@ -564,7 +568,6 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 }
                 actions.selectEditorPalette({ selection });
             },
-            onlongpress: () => actions.executeEditorPaletteShortcut({ selection }),
             children: withShortcut(paletteContent(selection, state, cellHeight, actions,
                 layout.buttons.size.width / (twoColumns ? 2 : 1)),
                 compact ? undefined : getPaletteShortcut(state, selection)),

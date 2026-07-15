@@ -8,6 +8,7 @@ import { pieceQueuePieceToChar } from '../../lib/piece_queue';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { HighlightType } from '../../state_types';
+import { PieceQueueFocus } from '../../states';
 
 const NEXT_COUNT = 5;
 
@@ -137,7 +138,7 @@ export const pieceQueueOverlays = ({
     gap: number;
     fieldHeight: number;
     guideLineColor: boolean;
-    openSettings: () => void;
+    openSettings: (data: { focus: PieceQueueFocus }) => void;
 }) => {
     const hold = queueState?.hold ?? undefined;
     const nexts = queueState?.queue.slice(0, NEXT_COUNT) ?? [];
@@ -157,7 +158,7 @@ export const pieceQueueOverlays = ({
         key: 'piece-queue-hold',
         datatest: 'piece-queue-hold',
         label: openLabel,
-        onclick: openSettings,
+        onclick: () => openSettings({ focus: 'hold' }),
         piece: hold,
         children: [
             heading('piece-queue-hold-heading', i18n.PieceQueue.HoldLabel()),
@@ -195,7 +196,7 @@ export const pieceQueueOverlays = ({
         key: 'piece-queue-next',
         datatest: 'piece-queue-next',
         label: openLabel,
-        onclick: openSettings,
+        onclick: () => openSettings({ focus: 'next' }),
         children: [
             heading('piece-queue-next-heading', i18n.PieceQueue.NextLabel()),
             ...nextRows,

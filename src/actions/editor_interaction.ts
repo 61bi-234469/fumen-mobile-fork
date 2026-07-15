@@ -286,6 +286,9 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     : selection,
                 bottomSlot: state.editorUi.bottomSlot,
             },
+            ...(state.mode.type === ModeTypes.Slide ? {
+                rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+            } : {}),
         };
     }),
     executeEditorPaletteShortcut: ({ selection }) => (state): NextState => {

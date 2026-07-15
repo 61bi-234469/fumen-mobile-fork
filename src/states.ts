@@ -55,6 +55,7 @@ export type PaintTool = 'pen' | 'fill' | 'fillRow';
 export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
 export type PaletteSelection = Piece | 'comp';
+export type PieceQueueFocus = 'hold' | 'next';
 
 export interface SelectionRect {
     minX: number;
@@ -207,6 +208,7 @@ export interface State {
             editorSidePanel: boolean;
         };
         userSettingsTab: UserSettingsTab;
+        pieceQueueFocus: PieceQueueFocus;
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -378,6 +380,7 @@ export const initState: Readonly<State> = {
             editorSidePanel: false,
         },
         userSettingsTab: 'field',
+        pieceQueueFocus: 'next',
     },
     handlers: {
         animation: undefined,

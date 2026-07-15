@@ -331,15 +331,15 @@ describe('Editor UI final concept', () => {
             .and('have.css', 'opacity', '0.45')
             .and('have.css', 'border-top-width', '0px');
         cy.get(datatest('btn-piece-i-pin')).click();
-        cy.get(datatest('btn-piece-i-pin')).should('have.attr', 'aria-label', 'Unpin');
+        cy.get(datatest('btn-piece-gray-pin')).should('have.attr', 'aria-label', 'Unpin');
         cy.get(datatest('tray-select-part-pin')).should('not.exist');
         cy.get(datatest('tray-select-rotate-left')).should('be.visible');
         cy.get(datatest('tray-select-rotate-right')).should('be.visible');
         cy.get(datatest('btn-piece-inference')).click();
         cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'false');
-        cy.get(datatest('btn-piece-i')).click();
+        cy.get(datatest('btn-piece-gray')).click();
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
-        cy.get(datatest('btn-piece-i')).click();
+        cy.get(datatest('btn-piece-gray')).click();
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         operations.mode.block.click(5, 5);
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
@@ -350,6 +350,24 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-undo')).click();
         cy.get(block(5, 5)).should('not.have.attr', 'color', Color.T.Normal);
         cy.get(block(6, 5)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('uses SELECT stock long press to toggle clipping without spawning a mino', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'true');
+
+        cy.get(datatest('btn-piece-i')).trigger('pointerdown', { pointerId: 1, button: 0 });
+        cy.wait(600);
+        cy.get(datatest('btn-piece-i')).trigger('pointerup', { pointerId: 1, button: 0 });
+
+        cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'false');
+        cy.get(datatest('btn-select-mode')).should('have.attr', 'data-active', 'true');
     });
 
     it('uses the configured DAS for PIECE tray end movement', () => {

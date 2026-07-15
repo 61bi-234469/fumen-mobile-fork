@@ -149,6 +149,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             currentQueueState,
             canClearComment,
+            initialFocus: state.temporary.pieceQueueFocus,
         }) : undefined as any,
 
         div({ key: 'view-end' }),

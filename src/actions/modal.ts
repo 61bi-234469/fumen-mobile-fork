@@ -1,6 +1,6 @@
 import { NextState, sequence } from './commons';
 import { action } from '../actions';
-import { UserSettingsTab } from '../states';
+import { PieceQueueFocus, UserSettingsTab } from '../states';
 
 export interface ModalActions {
     showOpenErrorMessage: (data: { message: string }) => action;
@@ -13,7 +13,7 @@ export interface ModalActions {
     openListViewMenuModal: () => action;
     openTreeDisableConfirmModal: () => action;
     openColdClearMenuModal: () => action;
-    openPieceQueueModal: () => action;
+    openPieceQueueModal: (data?: { focus?: PieceQueueFocus }) => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
@@ -162,11 +162,15 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    openPieceQueueModal: () => (state): NextState => {
+    openPieceQueueModal: (data = {}) => (state): NextState => {
         return {
             modal: {
                 ...state.modal,
                 pieceQueue: true,
+            },
+            temporary: {
+                ...state.temporary,
+                pieceQueueFocus: data.focus ?? 'next',
             },
         };
     },

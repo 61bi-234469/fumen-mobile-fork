@@ -264,7 +264,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         gap: layout.pieceQueue.gap,
         fieldHeight: layout.field.size.height,
         guideLineColor: state.fumen.guideLineColor,
-        openSettings: actions.openPieceQueueModal,
+        openSettings: ({ focus }) => actions.openPieceQueueModal({ focus }),
     }) : null;
 
     const fieldColumn = div({

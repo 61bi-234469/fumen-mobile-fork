@@ -265,4 +265,21 @@ describe('editorInteractionActions', () => {
         expect(next.editorUi.bottomSlot).toBe('tray');
         expect(next.mode.type).not.toBe(ModeTypes.Slide);
     });
+
+    test('palette selection clears the selection frame left by Slide mode', () => {
+        const state = createState();
+        state.mode.type = ModeTypes.Slide;
+        state.editorUi.primaryTool = 'paint';
+        state.rectSelect = {
+            status: 'selected',
+            rect: { minX: 0, minY: 0, maxX: 9, maxY: 22 },
+            anchorIndex: null,
+            floating: null,
+        };
+
+        const next = apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }));
+
+        expect(next.rectSelect.status).toBe('none');
+        expect(next.rectSelect.rect).toBeNull();
+    });
 });

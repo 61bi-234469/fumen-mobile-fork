@@ -38,24 +38,27 @@ export const limitParts = (items: EditorPart[]): EditorPart[] => {
             bySlot.set(item.slot, item);
         }
     });
-    return PART_SLOTS
+    const limited = PART_SLOTS
         .map(slot => bySlot.get(slot))
         .filter((item): item is EditorPart => item !== undefined);
+    return assignPartSlots(limited);
 };
 
 const orderedParts = (items: EditorPart[]): EditorPart[] => PART_SLOTS
     .map(slot => items.find(item => item.slot === slot))
     .filter((item): item is EditorPart => item !== undefined);
 
-export const repackParts = (items: EditorPart[]): EditorPart[] => {
-    const ordered = orderedParts(items);
+const assignOrderedPartSlots = (ordered: EditorPart[]): EditorPart[] => {
     const unpinned = ordered.filter(item => !item.pinned);
     const pinned = ordered.filter(item => item.pinned);
-    return unpinned.concat(pinned).map((item, index) => ({
-        ...item,
-        slot: PART_SLOTS[index],
-    }));
+    const pinnedStart = PART_SLOTS.length - pinned.length;
+    return unpinned.map((item, index) => ({ ...item, slot: PART_SLOTS[index] }))
+        .concat(pinned.map((item, index) => ({ ...item, slot: PART_SLOTS[pinnedStart + index] })));
 };
+
+const assignPartSlots = (items: EditorPart[]): EditorPart[] => assignOrderedPartSlots(orderedParts(items));
+
+export const repackParts = (items: EditorPart[]): EditorPart[] => assignPartSlots(items);
 
 export const clearUnpinnedParts = (items: EditorPart[]): EditorPart[] => (
     repackParts(items.filter(item => item.pinned))
@@ -70,10 +73,7 @@ export const insertPart = (items: EditorPart[], part: EditorPart): EditorPart[] 
         return undefined;
     }
     const nextUnpinned = ordered.length >= PART_SLOTS.length ? unpinned.slice(1) : unpinned;
-    return nextUnpinned.concat([{ ...part, pinned: false }], pinned).map((item, index) => ({
-        ...item,
-        slot: PART_SLOTS[index],
-    }));
+    return assignOrderedPartSlots(nextUnpinned.concat([{ ...part, pinned: false }], pinned));
 };
 
 const normalizeLoadedParts = (items: any[]): EditorPart[] => {

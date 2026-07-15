@@ -36,4 +36,20 @@ describe('PIECE queues', () => {
         cy.get(datatest('text-comment')).should('have.value', 'T:IOZ');
         cy.get(datatest('piece-queue-next-2')).should('have.attr', 'data-piece', 'Z');
     });
+
+    it('focuses the modal section matching the tapped queue panel', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('T:IO').blur();
+        cy.get(datatest('btn-piece-mode')).click();
+
+        cy.get(datatest('piece-queue-hold')).click();
+        cy.get(datatest('input-piece-queue-hold')).should('be.focused');
+        cy.get(datatest('pane-piece-queue-hold')).should('have.css', 'border-top-color', 'rgb(25, 118, 210)');
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('input-piece-queue-next')).should('be.focused');
+        cy.get(datatest('pane-piece-queue-next')).should('have.css', 'border-top-color', 'rgb(25, 118, 210)');
+        cy.get(datatest('btn-piece-queue-close')).click();
+    });
 });

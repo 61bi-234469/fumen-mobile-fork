@@ -30,6 +30,7 @@ export interface RectSelectActions {
     deleteRectSelection(): action;
     mirrorRectSelection(): action;
     beginMoveRectSelection(): action;
+    beginWholeFieldMove(): action;
     copyRectSelection(): action;
     cutRectSelection(): action;
     selectPart(data: { id: string }): action;
@@ -197,8 +198,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             const pointerX = index % FieldConstants.Width;
             const pointerY = Math.floor(index / FieldConstants.Width);
             const isOutsideFloatingRect = !isIndexInRect(index, floatingRect(floating));
-            if (floating.sourceRect === null
-                && floating.firstTapPending !== true
+            if (floating.firstTapPending !== true
                 && floating.firstTapInProgress !== true
                 && isOutsideFloatingRect) {
                 return sequence(state, [
@@ -386,6 +386,23 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         if (state.rectSelect.status !== 'selected' || rect === null) {
             return undefined;
         }
+        return {
+            rectSelect: {
+                status: 'floating',
+                rect,
+                anchorIndex: null,
+                floating: floatingFromSelection(state, rect),
+                reselectOnNextTouch: false,
+            },
+        };
+    },
+    beginWholeFieldMove: () => (state): NextState => {
+        const rect: SelectionRect = {
+            minX: 0,
+            minY: 0,
+            maxX: FieldConstants.Width - 1,
+            maxY: FieldConstants.Height - 1,
+        };
         return {
             rectSelect: {
                 status: 'floating',

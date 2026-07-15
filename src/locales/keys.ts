@@ -215,6 +215,7 @@ export const i18n = {
             Descendants: () => t('TreeView.OperationScope.Descendants'),
         },
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
+        NoGrayAfterHardDrop: () => t('TreeView.NoGrayAfterHardDrop'),
         ZoomReset: () => t('TreeView.ZoomReset'),
         DeleteNode: () => t('TreeView.DeleteNode'),
         DragHandle: () => t('TreeView.DragHandle'),
@@ -298,6 +299,13 @@ export const i18n = {
     Navigator: {
         ShowSidePanel: () => t('Navigator.ShowSidePanel'),
         HideSidePanel: () => t('Navigator.HideSidePanel'),
+    },
+    PieceQueue: {
+        Title: () => t('PieceQueue.Title'),
+        HoldLabel: () => t('PieceQueue.HoldLabel'),
+        NextLabel: () => t('PieceQueue.NextLabel'),
+        NextOrderHint: () => t('PieceQueue.NextOrderHint'),
+        OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),

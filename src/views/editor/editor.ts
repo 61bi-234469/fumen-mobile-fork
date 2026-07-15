@@ -1,4 +1,4 @@
-import { CommentType, GradientPattern, Piece, Platforms, Screens } from '../../lib/enums';
+import { CommentType, GradientPattern, Piece, Screens } from '../../lib/enums';
 import { Coordinate, getNavigatorHeight, Size } from '../commons';
 import { View } from 'hyperapp';
 import { resources, State } from '../../states';
@@ -20,11 +20,9 @@ import { editorOverlay } from './editor_overlay';
 import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
-import {
-    DESKTOP_CONTEXT_WIDTH,
-    desktopContextInspector,
-} from './desktop_context_inspector';
 import { getEditorBottomMetrics, getEditorRailConfig } from './responsive_layout';
+import { pieceQueueOverlays } from './piece_queue_overlay';
+import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -47,6 +45,11 @@ export interface EditorLayout {
     buttons: {
         size: Size;
         columns: 1 | 2;
+    };
+    pieceQueue: {
+        visible: boolean;
+        width: number;
+        gap: number;
     };
     comment: {
         topLeft: Coordinate;
@@ -100,10 +103,19 @@ interface LayoutParams {
     sidePanelWidth: number;
     rightInspectorWidth: number;
     trayInBottom: boolean;
+    pieceQueueVisible?: boolean;
 }
 
 export const getLayout = (
-    { topLeftY, width, height, sidePanelWidth, rightInspectorWidth, trayInBottom }: LayoutParams,
+    {
+        topLeftY,
+        width,
+        height,
+        sidePanelWidth,
+        rightInspectorWidth,
+        trayInBottom,
+        pieceQueueVisible = false,
+    }: LayoutParams,
 ): EditorLayout => {
     const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
     const borderWidthBottomField = 2.4;
@@ -117,10 +129,19 @@ export const getLayout = (
     };
 
     const rail = getEditorRailConfig(canvasSize.height);
+    const pieceQueueWidth = pieceQueueVisible
+        ? Math.min(56, Math.max(34, canvasSize.width * .12))
+        : 0;
+    const pieceQueueGap = pieceQueueVisible
+        ? Math.min(6, Math.max(2, canvasSize.width * .012))
+        : 0;
+    const pieceQueueReserve = pieceQueueVisible
+        ? pieceQueueWidth * 2 + pieceQueueGap * 2
+        : 0;
 
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - rail.reserve) / 10.5,
+        (canvasSize.width - rail.reserve - pieceQueueReserve) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -164,6 +185,11 @@ export const getLayout = (
         buttons: {
             size: pieceButtonsSize,
             columns: rail.columns,
+        },
+        pieceQueue: {
+            visible: pieceQueueVisible,
+            width: pieceQueueWidth,
+            gap: pieceQueueGap,
         },
         comment: {
             topLeft: {
@@ -229,12 +255,24 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const trayHeight = state.editorUi.primaryTool === 'piece'
         ? Math.min(CONTEXT_TRAY_HEIGHT * 2, Math.max(bandHeight, pieceTrayAvailableHeight))
         : bandHeight;
+    const queueState = layout.pieceQueue.visible
+        ? resolveCurrentColdClearMenuQueueState(state)
+        : null;
+    const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
+        queueState,
+        width: layout.pieceQueue.width,
+        gap: layout.pieceQueue.gap,
+        fieldHeight: layout.field.size.height,
+        guideLineColor: state.fumen.guideLineColor,
+        openSettings: actions.openPieceQueueModal,
+    }) : null;
 
     const fieldColumn = div({
         key: 'field-column',
         style: style({
             display: 'flex',
             flexDirection: 'column',
+            flexShrink: 0,
             position: 'relative',
             width: px(layout.field.size.width),
         }),
@@ -292,7 +330,11 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
 
     const getChildren = () => {
         return [   // canvas:Field とのマッピング用仮想DOM
+            ...(queueOverlays ? [queueOverlays.holdPanel] : []),
+
             fieldColumn,
+
+            ...(queueOverlays ? [queueOverlays.nextPanel] : []),
 
             editorRail(state, actions, layout),
 
@@ -438,13 +480,13 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
 export const view: View<State, Actions> = (state, actions) => {
     const navigatorHeight = getNavigatorHeight(state.platform);
     const sidePanelWidth = getSidePanelWidth(state);
-    const rightInspectorWidth = state.platform === Platforms.PC
-        && 1400 <= state.display.width - sidePanelWidth ? DESKTOP_CONTEXT_WIDTH : 0;
+    // Keep the context tray in the bottom slot on every platform.
+    const rightInspectorWidth = 0;
 
     const pageSliderVisible = state.mode.comment === CommentType.PageSlider;
     // トレイを盤面下部（せり上がり部と同じ枠）に置くかどうか。
-    // 右インスペクタ表示中はトレイをそちらに出すため下部枠は使わない。
-    const trayInBottom = rightInspectorWidth === 0 && !pageSliderVisible;
+    // ページスライダー表示中はコメント欄を優先してトレイを出さない。
+    const trayInBottom = !pageSliderVisible;
     // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
     // （盤面サイズは develop 時点の計算式と完全に一致させる）。
     // 初期匁E
@@ -452,6 +494,7 @@ export const view: View<State, Actions> = (state, actions) => {
         rightInspectorWidth,
         sidePanelWidth,
         trayInBottom,
+        pieceQueueVisible: state.editorUi.primaryTool === 'piece',
         ...state.display,
         topLeftY: navigatorHeight,
     });
@@ -490,7 +533,6 @@ export const view: View<State, Actions> = (state, actions) => {
 
             ScreenField(state, actions, layout),
 
-            ...(0 < rightInspectorWidth ? [desktopContextInspector(state, actions, layout.canvas.size.height)] : []),
         ]),
 
         div({

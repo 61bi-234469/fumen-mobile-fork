@@ -156,4 +156,32 @@ describe('rect selection helpers', () => {
         expect(composed[0].piece).toBe(Piece.I);
         expect(composed[1].piece).toBe(Piece.S);
     });
+
+    test('does not darken a selection preview', () => {
+        const source = Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
+        const state = {
+            field: source,
+            rectSelect: {
+                status: 'floating',
+                rect: { minX: 0, minY: 0, maxX: 1, maxY: 0 },
+                anchorIndex: null,
+                floating: {
+                    cells: [Piece.T, Piece.I],
+                    width: 2,
+                    height: 1,
+                    sourceRect: { minX: 0, minY: 0, maxX: 1, maxY: 0 },
+                    targetX: 4,
+                    targetY: 2,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+            parts: { blackTransparent: true },
+        } as State;
+
+        const composed = composeSelectionField(state);
+
+        expect(composed[24].highlight).toBeUndefined();
+        expect(composed[25].highlight).toBeUndefined();
+    });
 });

@@ -950,7 +950,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
                 const nextPageIndex = pageIndex + 1;
                 return sequence(nextState, [
-                    actions.insertPage({ index: nextPageIndex }),
+                    actions.insertPage({
+                        index: nextPageIndex,
+                        skipGrayAfterLineClear: nextState.tree.grayAfterLineClear
+                            && nextState.mode.noGrayAfterHardDrop,
+                    }),
                     actions.openPage({ index: nextPageIndex }),
                     actions.spawnNextPieceFromColdClearQueue(),
                 ]);

@@ -20,6 +20,7 @@ export interface UserSettingsActions {
     keepPieceShortcutDas: (data: { dasMs: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
@@ -44,6 +45,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
+                    noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     editorSidePanel: state.editorPanel.enabled,
@@ -78,6 +80,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
+            }),
+            actions.changeNoGrayAfterHardDrop({
+                enable: state.temporary.userSettings.noGrayAfterHardDrop,
             }),
             // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
             actions.setTreeState({
@@ -374,6 +379,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings || !state.temporary.userSettings.grayAfterLineClear) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    noGrayAfterHardDrop: enable,
+                },
+            },
+        };
+    },
     keepTrimTopBlank: ({ enable }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
@@ -432,6 +452,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
+        noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
     });
     return undefined;
 };

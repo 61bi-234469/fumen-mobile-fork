@@ -13,8 +13,23 @@ import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
 
+const DEFAULT_LONG_PRESS_DURATION = 500;
+const trayPressState: {
+    key: string | null;
+    timer: ReturnType<typeof setTimeout> | null;
+    triggered: boolean;
+} = { key: null, timer: null, triggered: false };
+
+const clearTrayPress = () => {
+    if (trayPressState.timer !== null) {
+        clearTimeout(trayPressState.timer);
+        trayPressState.timer = null;
+    }
+};
+
 const trayButton = ({
-    key, datatest, label, iconName, active = false, disabled = false, onclick, iconOnly = false,
+    key, datatest, label, iconName, active = false, disabled = false, onclick, onlongpress,
+    longPressDurationMs = DEFAULT_LONG_PRESS_DURATION, iconOnly = false,
 }: {
     key: string;
     datatest: string;
@@ -23,51 +38,99 @@ const trayButton = ({
     active?: boolean;
     disabled?: boolean;
     onclick: () => void;
+    onlongpress?: () => void;
+    longPressDurationMs?: number;
     iconOnly?: boolean;
-}) => button({
-    key,
-    datatest,
-    disabled,
-    type: 'button',
-    'aria-label': label,
-    'aria-pressed': active ? 'true' : 'false',
-    onclick: (event: MouseEvent) => {
-        if (!disabled) {
+}) => {
+    const handlePointerDown = () => {
+        if (disabled || onlongpress === undefined) {
+            return;
+        }
+        clearTrayPress();
+        trayPressState.key = key;
+        trayPressState.triggered = false;
+        trayPressState.timer = setTimeout(() => {
+            trayPressState.triggered = true;
+            trayPressState.timer = null;
+            onlongpress();
+        }, longPressDurationMs);
+    };
+    const cancelPointer = () => {
+        if (trayPressState.key !== key) {
+            return;
+        }
+        clearTrayPress();
+        trayPressState.key = null;
+        trayPressState.triggered = false;
+    };
+    const handlePointerUp = (event: PointerEvent) => {
+        if (disabled || onlongpress === undefined || trayPressState.key !== key) {
+            return;
+        }
+        clearTrayPress();
+        if (!trayPressState.triggered) {
             onclick();
         }
+        trayPressState.key = null;
+        trayPressState.triggered = false;
         event.preventDefault();
         event.stopPropagation();
-    },
-    style: style({
-        alignItems: 'center',
-        background: active ? '#f44336' : '#fff',
-        border: '0',
-        borderLeft: '1px solid #ddd',
-        boxShadow: active ? 'inset 0 0 0 2px #fff, inset 0 0 0 3px #d32f2f' : 'none',
-        color: active ? '#fff' : disabled ? '#aaa' : '#333',
-        cursor: disabled ? 'default' : 'pointer',
-        display: 'flex',
-        flex: iconOnly ? '1 1 0' : '1 0 56px',
-        fontFamily: 'inherit',
-        fontSize: px(10),
-        gap: px(3),
-        height: '100%',
-        justifyContent: 'center',
-        minWidth: iconOnly ? '0' : px(56),
-        outlineOffset: '-3px',
-        padding: iconOnly ? '0' : '0 4px',
-        transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
-    }),
-}, [
-    BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
-    span({
-        key: `${key}-label`,
+    };
+    const pointerHandlers = onlongpress === undefined ? {
+        onclick: (event: MouseEvent) => {
+            if (!disabled) {
+                onclick();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        },
+    } : {
+        onpointerdown: handlePointerDown,
+        onpointerup: handlePointerUp,
+        onpointercancel: cancelPointer,
+        onpointerleave: cancelPointer,
+        oncontextmenu: (event: Event) => event.preventDefault(),
+    };
+
+    return button({
+        key,
+        datatest,
+        disabled,
+        type: 'button',
+        'aria-label': label,
+        'aria-pressed': active ? 'true' : 'false',
+        ...pointerHandlers,
         style: style({
-            display: iconOnly ? 'none' : 'block',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            alignItems: 'center',
+            background: active ? '#f44336' : '#fff',
+            border: '0',
+            borderLeft: '1px solid #ddd',
+            boxShadow: active ? 'inset 0 0 0 2px #fff, inset 0 0 0 3px #d32f2f' : 'none',
+            color: active ? '#fff' : disabled ? '#aaa' : '#333',
+            cursor: disabled ? 'default' : 'pointer',
+            display: 'flex',
+            flex: iconOnly ? '1 1 0' : '1 0 56px',
+            fontFamily: 'inherit',
+            fontSize: px(10),
+            gap: px(3),
+            height: '100%',
+            justifyContent: 'center',
+            minWidth: iconOnly ? '0' : px(56),
+            outlineOffset: '-3px',
+            padding: iconOnly ? '0' : '0 4px',
+            transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
         }),
-    }, label),
-]);
+    }, [
+        BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
+        span({
+            key: `${key}-label`,
+            style: style({
+                display: iconOnly ? 'none' : 'block',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }),
+        }, label),
+    ]);
+};
 
 const partThumbnail = (part: EditorPart, guideLineColor: boolean) => div({
     style: style({
@@ -195,13 +258,22 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         style: style({ background: '#fff', borderLeft: '1px solid #ddd', minWidth: '0' }),
     });
     const pieceButton = ({
-        key, label, iconName, disabled = false, onclick,
-    }: { key: string; label: string; iconName: string; disabled?: boolean; onclick: () => void }) => trayButton({
+        key, label, iconName, disabled = false, onclick, onlongpress,
+    }: {
+        key: string;
+        label: string;
+        iconName: string;
+        disabled?: boolean;
+        onclick: () => void;
+        onlongpress?: () => void;
+    }) => trayButton({
         key,
         label,
         iconName,
         disabled,
         onclick,
+        onlongpress,
+        longPressDurationMs: state.mode.pieceShortcutDasMs,
         datatest: key,
         iconOnly: true,
     });
@@ -236,11 +308,11 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         placeholder('tray-piece-empty-top-end'),
         pieceButton({
             key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
-            disabled: !canOperate, onclick: actions.moveToLeft,
+            disabled: !canOperate, onclick: actions.moveToLeft, onlongpress: actions.moveToLeftEnd,
         }),
         pieceButton({
             key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
-            disabled: !canOperate, onclick: actions.moveToRight,
+            disabled: !canOperate, onclick: actions.moveToRight, onlongpress: actions.moveToRightEnd,
         }),
         pieceButton({
             key: 'tray-piece-softdrop', label: i18n.EditorUi.SoftDrop(), iconName: 'keyboard_arrow_down',

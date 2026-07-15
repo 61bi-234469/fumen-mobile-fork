@@ -15,6 +15,7 @@ import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
+import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
 import { getSidePanelWidth } from './views/editor/side_panel_layout';
@@ -103,6 +104,7 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
+            noGrayAfterHardDrop: state.temporary.userSettings.noGrayAfterHardDrop,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,
@@ -141,6 +143,12 @@ export const view: View<State, Actions> = (state, actions) => {
             nextLimit: state.coldClear.nextLimit,
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
+        }) : undefined as any,
+
+        state.modal.pieceQueue ? PieceQueueModal({
+            actions,
+            currentQueueState,
+            canClearComment,
         }) : undefined as any,
 
         div({ key: 'view-end' }),

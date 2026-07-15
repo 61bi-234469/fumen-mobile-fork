@@ -35,6 +35,7 @@ const baseUserSettings = {
     pieceShortcutDasMs: 167,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
+    noGrayAfterHardDrop: false,
     grayAfterLineClear: false,
     trimTopBlank: false,
     editorSidePanel: false,
@@ -54,6 +55,7 @@ const createState = (override: any = {}) => ({
         pieceShortcutDasMs: 167,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
+        noGrayAfterHardDrop: false,
     },
     tree: {
         grayAfterLineClear: true,
@@ -105,6 +107,22 @@ describe('userSettingsActions', () => {
             const next = userSettingsActions.keepGrayAfterLineClear({ enable: true })(state);
 
             expect(next).toBeUndefined();
+        });
+    });
+
+    describe('keepNoGrayAfterHardDrop', () => {
+        test('updates temporary when line-clear graying is enabled', () => {
+            const state = createState();
+            state.temporary.userSettings.grayAfterLineClear = true;
+            const next = userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state);
+
+            expect(next.temporary.userSettings.noGrayAfterHardDrop).toBe(true);
+        });
+
+        test('does nothing when line-clear graying is disabled', () => {
+            const state = createState({ tree: { grayAfterLineClear: false } });
+
+            expect(userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state)).toBeUndefined();
         });
     });
 
@@ -172,6 +190,7 @@ describe('userSettingsActions', () => {
                 'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changeGifFrameDelay', 'changeRotationSystem',
+                'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {

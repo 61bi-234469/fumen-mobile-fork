@@ -1,5 +1,5 @@
 import { FieldConstants, Piece } from './enums';
-import { HighlightType, Block } from '../state_types';
+import { Block } from '../state_types';
 import { FloatingSelection, SelectionRect, State } from '../states';
 
 export const rectFromIndices = (first: number, second: number): SelectionRect => {
@@ -155,10 +155,7 @@ export const composeSelectionField = (state: State): Block[] => {
                 }
                 continue;
             }
-            field[index] = {
-                piece,
-                highlight: piece === Piece.Empty ? undefined : HighlightType.Lighter,
-            };
+            field[index] = { piece };
         }
     }
     return field;

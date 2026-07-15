@@ -13,6 +13,7 @@ export interface ModalActions {
     openListViewMenuModal: () => action;
     openTreeDisableConfirmModal: () => action;
     openColdClearMenuModal: () => action;
+    openPieceQueueModal: () => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
@@ -22,6 +23,7 @@ export interface ModalActions {
     closeListViewMenuModal: () => action;
     closeTreeDisableConfirmModal: () => action;
     closeColdClearMenuModal: () => action;
+    closePieceQueueModal: () => action;
     closeAllModals: () => action;
 }
 
@@ -160,6 +162,14 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    openPieceQueueModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                pieceQueue: true,
+            },
+        };
+    },
     closeListViewMenuModal: () => (state): NextState => {
         return {
             modal: {
@@ -187,6 +197,14 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    closePieceQueueModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                pieceQueue: false,
+            },
+        };
+    },
     closeAllModals: () => (state): NextState => {
         return {
             modal: {
@@ -199,6 +217,7 @@ export const modalActions: Readonly<ModalActions> = {
                 listViewMenu: false,
                 treeDisableConfirm: false,
                 coldClearMenu: state.coldClear.isRunning ? true : false,
+                pieceQueue: false,
             },
         };
     },

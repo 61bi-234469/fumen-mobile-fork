@@ -35,6 +35,7 @@ export interface ScreenActions {
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
     changeRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    changeNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
@@ -301,6 +302,17 @@ export const modeActions: Readonly<ScreenActions> = {
                 ...state.fumen,
                 pages,
                 guideLineColor,
+            },
+        };
+    },
+    changeNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
+        if (state.mode.noGrayAfterHardDrop === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                noGrayAfterHardDrop: enable,
             },
         };
     },

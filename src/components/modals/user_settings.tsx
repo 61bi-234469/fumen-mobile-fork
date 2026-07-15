@@ -22,6 +22,7 @@ interface UserSettingsModalProps {
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
+    noGrayAfterHardDrop: boolean;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
@@ -42,6 +43,7 @@ interface UserSettingsModalProps {
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
+        keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
@@ -116,6 +118,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasMs,
         gifFrameDelayMs,
         rotationSystem,
+        noGrayAfterHardDrop,
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
@@ -157,7 +160,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange }: {
+    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange, disabled = false }: {
         key: string;
         datatest: string;
         title: string;
@@ -165,6 +168,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         offLabel: string;
         onLabel: string;
         onChange: (checked: boolean) => void;
+        disabled?: boolean;
     }) => {
         const onupdate = (e: HTMLInputElement) => {
             if (e.checked !== checked) {
@@ -184,7 +188,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                 <label>
                     {offLabel}
-                    <input type="checkbox" dataTest={datatest}
+                    <input type="checkbox" dataTest={datatest} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
                     {onLabel}
@@ -386,6 +390,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-no-gray-after-hard-drop',
+                                datatest: 'switch-no-gray-after-hard-drop',
+                                title: i18n.TreeView.NoGrayAfterHardDrop(),
+                                checked: noGrayAfterHardDrop,
+                                disabled: !grayAfterLineClear,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepNoGrayAfterHardDrop({ enable: checked }),
                             })}
 
                             <div>

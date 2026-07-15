@@ -11,6 +11,13 @@ import {
     COLD_CLEAR_TOP_BRANCH_COUNT_MIN,
     COLD_CLEAR_THINK_MS_PRESETS,
 } from '../../actions/cold_clear';
+import {
+    parsePieceHoldText,
+    parsePieceQueueText,
+    PIECE_QUEUE_ORDER,
+    PIECE_QUEUE_TO_CHAR,
+    pieceQueueToText,
+} from '../../lib/piece_queue';
 
 declare const M: any;
 
@@ -74,56 +81,11 @@ type MenuItem = {
     onDisabledClick?: () => void;
 };
 
-const PIECE_ORDER: Piece[] = [Piece.I, Piece.O, Piece.T, Piece.L, Piece.J, Piece.S, Piece.Z];
-const PIECE_TO_CHAR: Record<number, string> = {
-    [Piece.I]: 'I',
-    [Piece.O]: 'O',
-    [Piece.T]: 'T',
-    [Piece.L]: 'L',
-    [Piece.J]: 'J',
-    [Piece.S]: 'S',
-    [Piece.Z]: 'Z',
-};
-const CHAR_TO_PIECE: Record<string, Piece> = {
-    I: Piece.I,
-    O: Piece.O,
-    T: Piece.T,
-    L: Piece.L,
-    J: Piece.J,
-    S: Piece.S,
-    Z: Piece.Z,
-};
-
-const toQueueText = (queue: Piece[]): string => queue.map(piece => PIECE_TO_CHAR[piece]).join('');
-
-const parseQueueText = (text: string): Piece[] | null => {
-    const trimmed = text.trim();
-    if (trimmed.length === 0) {
-        return [];
-    }
-
-    const chars = trimmed.toUpperCase().split('');
-    const parsed: Piece[] = [];
-    for (const c of chars) {
-        const piece = CHAR_TO_PIECE[c];
-        if (piece === undefined) {
-            return null;
-        }
-        parsed.push(piece);
-    }
-    return parsed;
-};
-
-const parseHoldText = (text: string): Piece | null | undefined => {
-    const trimmed = text.trim();
-    if (trimmed.length === 0) {
-        return null;
-    }
-    if (trimmed.length !== 1) {
-        return undefined;
-    }
-    return CHAR_TO_PIECE[trimmed.toUpperCase()];
-};
+const PIECE_ORDER = PIECE_QUEUE_ORDER;
+const PIECE_TO_CHAR = PIECE_QUEUE_TO_CHAR;
+const toQueueText = pieceQueueToText;
+const parseQueueText = parsePieceQueueText;
+const parseHoldText = parsePieceHoldText;
 
 type QueueFocusTarget = 'hold' | 'next';
 let queueFocusTarget: QueueFocusTarget = 'next';

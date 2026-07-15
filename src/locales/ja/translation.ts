@@ -171,12 +171,13 @@ export const resources = {
     },
     TreeView: {
         OperationScope: {
-            Label: '操作対象',
+            Label: '移動/削除',
             Node: 'ノードのみ',
             Subtree: 'ノードと配下',
             Descendants: '配下のみ',
         },
-        GrayAfterLineClear: 'ライン消去後にグレーアウト',
+        GrayAfterLineClear: '+ボタンでグレー化',
+        NoGrayAfterHardDrop: 'ハードドロップではグレー化しない',
         ZoomReset: 'ズームをリセット',
         DeleteNode: 'ページを削除',
         DragHandle: 'ドラッグして移動',
@@ -260,6 +261,13 @@ export const resources = {
     Navigator: {
         ShowSidePanel: 'サイドパネルを表示',
         HideSidePanel: 'サイドパネルを隠す',
+    },
+    PieceQueue: {
+        Title: 'ピースキュー設定',
+        HoldLabel: 'HOLD',
+        NextLabel: 'NEXT',
+        NextOrderHint: 'NEXTは左から順に使用され、フィールドでは近いNEXTから上に表示されます。',
+        OpenSettings: 'ピースキュー設定を開く',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',

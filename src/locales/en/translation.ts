@@ -196,12 +196,13 @@
     },
     TreeView: {
         OperationScope: {
-            Label: 'Target',
+            Label: 'Move/Delete',
             Node: 'Node only',
             Subtree: 'Node & descendants',
             Descendants: 'Descendants only',
         },
-        GrayAfterLineClear: 'Gray out cleared lines',
+        GrayAfterLineClear: 'Gray out with + button',
+        NoGrayAfterHardDrop: 'Do not gray out on hard drop',
         ZoomReset: 'Reset zoom',
         DeleteNode: 'Delete page',
         DragHandle: 'Drag to move',
@@ -285,6 +286,13 @@
     Navigator: {
         ShowSidePanel: 'Show side panel',
         HideSidePanel: 'Hide side panel',
+    },
+    PieceQueue: {
+        Title: 'Piece queue settings',
+        HoldLabel: 'HOLD',
+        NextLabel: 'NEXT',
+        NextOrderHint: 'NEXT pieces are used from left to right. The first piece appears at the top of the field.',
+        OpenSettings: 'Open piece queue settings',
     },
     ColdClear: {
         MenuTitle: 'ColdClear',

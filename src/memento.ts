@@ -171,6 +171,7 @@ interface UserSettings {
     pieceShortcutDasMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
+    noGrayAfterHardDrop: boolean;
 }
 
 interface ViewSettings {
@@ -247,6 +248,7 @@ export const localStorageWrapper = {
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
             rotationSystem: safer.rotationSystem(obj.rotationSystem),
+            noGrayAfterHardDrop: safer.boolean(obj.noGrayAfterHardDrop),
         };
     },
     saveViewSettings: (data: ViewSettings) => {

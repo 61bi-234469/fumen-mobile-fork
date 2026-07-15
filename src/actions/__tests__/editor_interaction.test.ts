@@ -98,6 +98,15 @@ describe('editorInteractionActions', () => {
         expect(next.mode.piece).toBe(Piece.Gray);
     });
 
+    test('palette selection keeps a hidden PAINT tray hidden', () => {
+        const state = createState();
+        state.editorUi.bottomSlot = 'sentLine';
+
+        const next = apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }));
+
+        expect(next.editorUi.bottomSlot).toBe('sentLine');
+    });
+
     test('paint pen restores the previous palette after erasing', () => {
         const state = createState();
         const colored = apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }));

@@ -284,7 +284,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 previousPaletteSelection: selection === Piece.Empty
                     ? state.editorUi.previousPaletteSelection
                     : selection,
-                bottomSlot: 'tray',
+                bottomSlot: state.editorUi.bottomSlot,
             },
         };
     }),

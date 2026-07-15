@@ -341,6 +341,12 @@ export const operations = {
             moveToLeftEnd: () => {
                 pressPieceShortcutToEnd('ArrowLeft');
             },
+            moveToRightEndByTrayLongPress: () => {
+                longPress('tray-piece-move-right');
+            },
+            moveToLeftEndByTrayLongPress: () => {
+                longPress('tray-piece-move-left');
+            },
             harddrop: () => {
                 cy.get(datatest('tray-piece-harddrop')).click();
             },

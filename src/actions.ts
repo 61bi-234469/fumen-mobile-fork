@@ -394,6 +394,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.noGrayAfterHardDrop !== undefined) {
+        main.changeNoGrayAfterHardDrop({ enable: settings.noGrayAfterHardDrop });
+        updated = true;
+    }
+
     const viewSettings = localStorageWrapper.loadViewSettings();
     if (viewSettings.trimTopBlank !== undefined) {
         main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });

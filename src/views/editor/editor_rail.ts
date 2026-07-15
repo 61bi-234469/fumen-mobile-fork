@@ -202,72 +202,90 @@ const partPaletteSwatch = (
     part: State['parts']['items'][number],
     state: State,
     actions: Actions,
-) => div({
-    style: style({
-        alignItems: 'center', display: 'flex', justifyContent: 'center',
-        height: '100%', position: 'relative', width: '100%',
-    }),
-}, [
-    div({
-        key: 'part-grid',
-        style: style({
-            display: 'grid', gap: '1px',
-            gridTemplateColumns: `repeat(${part.width}, 3px)`,
-            gridTemplateRows: `repeat(${part.height}, 3px)`,
-        }),
-    }, part.cells.map((piece, index) => div({
-        key: `part-cell-${index}`,
-        style: style({
-            background: piece === Piece.Empty ? '#111'
-                : decidePieceColor(piece, HighlightType.Normal, state.fumen.guideLineColor),
-            height: px(3), width: px(3),
-        }),
-    }))),
-    span({
-        key: 'part-pin',
-        datatest: `btn-piece-${(parsePieceName(part.slot) ?? '').toLowerCase()}-pin`,
-        role: 'button',
-        'aria-label': part.pinned ? i18n.EditorUi.Unpin() : i18n.EditorUi.Pin(),
-        onclick: (event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            actions.togglePartPin({ slot: part.slot });
-        },
-        onpointerdown: (event: PointerEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-        },
-        onpointerup: (event: PointerEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-        },
-        onpointercancel: (event: PointerEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-        },
-        style: style({
-            alignItems: 'center',
-            background: part.pinned ? '#e3f2fd' : 'transparent',
-            border: part.pinned ? '1px solid #90caf9' : '0',
-            color: part.pinned ? '#1565c0' : '#757575',
-            display: 'flex',
-            height: px(20),
-            justifyContent: 'center',
-            opacity: part.pinned ? 1 : .45,
-            position: 'absolute',
-            right: '0',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            transition: 'background-color 100ms ease, border-color 100ms ease, opacity 100ms ease',
-            width: px(18),
-        }),
-    }, [BlockIcon({ key: 'part-pin-icon', iconSize: 12 }, 'push_pin')]),
-]);
+    height: number,
+    width: number,
+) => {
+    const cellSize = Math.max(1, Math.min(6,
+        Math.floor((width - 4) / part.width), Math.floor(height / part.height)));
+    const cells: VNode<{}>[] = [];
+    for (let displayRow = 0; displayRow < part.height; displayRow += 1) {
+        const sourceRow = part.height - displayRow - 1;
+        for (let x = 0; x < part.width; x += 1) {
+            const sourceIndex = x + sourceRow * part.width;
+            const piece = part.cells[sourceIndex];
+            cells.push(div({
+                key: `part-cell-${sourceIndex}`,
+                style: style({
+                    background: piece === Piece.Empty ? '#111'
+                        : decidePieceColor(piece, HighlightType.Normal, state.fumen.guideLineColor),
+                    height: px(cellSize), width: px(cellSize),
+                }),
+            }));
+        }
+    }
 
-const paletteContent = (selection: PaletteSelection, state: State, height: number, actions: Actions) => {
+    return div({
+        style: style({
+            alignItems: 'center', display: 'flex', justifyContent: 'center',
+            height: '100%', position: 'relative', width: '100%',
+        }),
+    }, [
+        div({
+            key: 'part-grid',
+            style: style({
+                display: 'grid', gap: '0',
+                gridTemplateColumns: `repeat(${part.width}, ${cellSize}px)`,
+                gridTemplateRows: `repeat(${part.height}, ${cellSize}px)`,
+            }),
+        }, cells),
+        span({
+            key: 'part-pin',
+            datatest: `btn-piece-${(parsePieceName(part.slot) ?? '').toLowerCase()}-pin`,
+            role: 'button',
+            'aria-label': part.pinned ? i18n.EditorUi.Unpin() : i18n.EditorUi.Pin(),
+            onclick: (event: MouseEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+                actions.togglePartPin({ slot: part.slot });
+            },
+            onpointerdown: (event: PointerEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+            },
+            onpointerup: (event: PointerEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+            },
+            onpointercancel: (event: PointerEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+            },
+            style: style({
+                alignItems: 'center',
+                background: part.pinned ? '#e3f2fd' : 'transparent',
+                border: part.pinned ? '1px solid #90caf9' : '0',
+                color: part.pinned ? '#1565c0' : '#757575',
+                display: 'flex',
+                height: px(20),
+                justifyContent: 'center',
+                opacity: part.pinned ? 1 : .45,
+                position: 'absolute',
+                right: '0',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                transition: 'background-color 100ms ease, border-color 100ms ease, opacity 100ms ease',
+                width: px(18),
+            }),
+        }, [BlockIcon({ key: 'part-pin-icon', iconSize: 12 }, 'push_pin')]),
+    ]);
+};
+
+const paletteContent = (
+    selection: PaletteSelection, state: State, height: number, actions: Actions, width: number,
+) => {
     const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
     if (state.editorUi.primaryTool === 'select' && part !== undefined) {
-        return partPaletteSwatch(part, state, actions);
+        return partPaletteSwatch(part, state, actions, height, width);
     }
     if (state.editorUi.primaryTool === 'select' && selection !== 'comp') {
         return div({
@@ -547,7 +565,8 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 actions.selectEditorPalette({ selection });
             },
             onlongpress: () => actions.executeEditorPaletteShortcut({ selection }),
-            children: withShortcut(paletteContent(selection, state, cellHeight, actions),
+            children: withShortcut(paletteContent(selection, state, cellHeight, actions,
+                layout.buttons.size.width / (twoColumns ? 2 : 1)),
                 compact ? undefined : getPaletteShortcut(state, selection)),
         });
     });

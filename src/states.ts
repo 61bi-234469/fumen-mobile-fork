@@ -185,6 +185,7 @@ export interface State {
         listViewMenu: boolean;
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
+        pieceQueue: boolean;
     };
     temporary: {
         userSettings: {
@@ -200,6 +201,7 @@ export interface State {
             pieceShortcutDasMs: number;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
+            noGrayAfterHardDrop: boolean;
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             editorSidePanel: boolean;
@@ -240,6 +242,7 @@ export interface State {
         pieceShortcutDasMs: number;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
+        noGrayAfterHardDrop: boolean;
     };
     history: {
         undoCount: number;
@@ -353,6 +356,7 @@ export const initState: Readonly<State> = {
         listViewMenu: false,
         treeDisableConfirm: false,
         coldClearMenu: false,
+        pieceQueue: false,
     },
     temporary: {
         userSettings: {
@@ -368,6 +372,7 @@ export const initState: Readonly<State> = {
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
+            noGrayAfterHardDrop: false,
             grayAfterLineClear: false,
             trimTopBlank: false,
             editorSidePanel: false,
@@ -405,6 +410,7 @@ export const initState: Readonly<State> = {
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
+        noGrayAfterHardDrop: false,
     },
     history: {
         undoCount: 0,
@@ -479,6 +485,7 @@ export const resources = {
         listViewMenu: undefined as any,
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
+        pieceQueue: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

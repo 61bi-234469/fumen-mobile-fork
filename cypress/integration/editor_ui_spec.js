@@ -105,6 +105,33 @@ describe('Editor UI final concept', () => {
             .and('have.css', 'color', 'rgb(51, 51, 51)');
     });
 
+    it('keeps the PAINT tray hidden when selecting another palette entry', () => {
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('tray-context')).should('not.exist');
+        cy.get(datatest('btn-piece-t')).click();
+        cy.get(datatest('tray-context')).should('not.exist');
+    });
+
+    it('keeps transformed select previews at normal brightness', () => {
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+        operations.mode.block.click(2, 1);
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 2, y: 1 });
+
+        cy.get(datatest('tray-select-rotate-left')).click();
+        cy.get(block(1, 1)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(1, 2)).should('have.attr', 'color', Color.T.Normal);
+
+        cy.get(datatest('tray-select-mirror')).click();
+        cy.get(block(1, 1)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(1, 2)).should('have.attr', 'color', Color.T.Normal);
+    });
+
     it('removes the bottom-bar home button while keeping the paint entry point', () => {
         visit({ mode: 'edit' });
 
@@ -311,11 +338,11 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-inference')).click();
         cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'false');
         cy.get(datatest('btn-piece-i')).click();
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Lighter);
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         cy.get(datatest('btn-piece-i')).click();
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Lighter);
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         operations.mode.block.click(5, 5);
-        cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Lighter);
+        cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         operations.mode.block.click(5, 5);
         cy.get('[datatest^="tray-part-"]').should('not.exist');
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
@@ -325,16 +352,33 @@ describe('Editor UI final concept', () => {
         cy.get(block(6, 5)).should('not.have.attr', 'color', Color.T.Normal);
     });
 
-    it('shows the desktop context inspector only on wide PC layouts', () => {
+    it('uses the configured DAS for PIECE tray end movement', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.moveToRightEndByTrayLongPress();
+
+        mino(Piece.T, Rotation.Spawn)(8, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('keeps the context tray in the bottom slot on wide PC layouts', () => {
         cy.viewport(1024, 768);
         visit({ mode: 'edit', mobile: false });
         cy.get(datatest('editor-context-inspector')).should('not.exist');
 
         cy.viewport(1920, 1080);
         cy.reload();
-        cy.get(datatest('editor-context-inspector')).should('be.visible');
+        cy.get(datatest('editor-context-inspector')).should('not.exist');
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray');
+        cy.get(datatest('tray-context')).then(tray => {
+            cy.get(datatest('tools')).then(tools => {
+                expect(tray[0].getBoundingClientRect().bottom)
+                    .to.be.at.most(tools[0].getBoundingClientRect().top);
+            });
+        });
         cy.get(datatest('btn-select-mode')).click();
         cy.get(datatest('tray-select-copy')).should('be.visible');
         cy.get(datatest('tray-select-part-pin')).should('not.exist');

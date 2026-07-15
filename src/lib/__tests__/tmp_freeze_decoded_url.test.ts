@@ -35,7 +35,14 @@ describe('tmp decoded-url clipboard variant', () => {
         // tslint:disable-next-line:no-console
         console.log('extracted head:', JSON.stringify(fumen.slice(0, 80)));
         // tslint:disable-next-line:no-console
-        console.log('contains space:', fumen.includes(' '), '| contains +:', fumen.includes('+'), '| length:', fumen.length);
+        console.log(
+            'contains space:',
+            fumen.includes(' '),
+            '| contains +:',
+            fumen.includes('+'),
+            '| length:',
+            fumen.length,
+        );
     });
 
     it('decodes the extracted fumen (10s timeout)', async () => {

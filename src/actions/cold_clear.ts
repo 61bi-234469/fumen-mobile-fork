@@ -160,6 +160,7 @@ export interface ColdClearActions {
         b2b: boolean;
         combo: number;
     }) => action;
+    seedQueuePreviewFromSpawnedPiece: () => action;
     commitColdClearQueueComment: () => action;
     clearCommentForColdClearQueue: () => action;
     stopColdClearSearch: () => action;
@@ -634,10 +635,8 @@ export const isColdClearSearchBlockedByHoldQueue = (
     return queueState !== null && queueState.hold === null;
 };
 
+// pieceモードのホールドボタン用。AI探索のHold使用設定 (holdAllowed) とは独立して判定する
 export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
-    if (!state.coldClear.holdAllowed) {
-        return false;
-    }
     const pageIndex = state.fumen.currentIndex;
     const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
     if (parsed === null) {
@@ -1595,9 +1594,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (state.coldClear.isRunning) {
             return undefined;
         }
-        if (!state.coldClear.holdAllowed) {
-            return undefined;
-        }
 
         const pageIndex = state.fumen.currentIndex;
         const page = state.fumen.pages[pageIndex];
@@ -1736,6 +1732,32 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 queuePreview: { pageIndex, text: nextText },
             },
         };
+    },
+
+    // フィールドにスポーンミノがあるとき、キューのカレント枠に反映する (モーダル表示時に使用)
+    seedQueuePreviewFromSpawnedPiece: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (!page?.piece || !isMinoPiece(page.piece.type)) {
+            return undefined;
+        }
+
+        const queueState = resolveCurrentColdClearMenuQueueState(state);
+        if (queueState === null || queueState.current === page.piece.type) {
+            return undefined;
+        }
+
+        return coldClearActions.previewColdClearQueueComment({
+            hold: queueState.hold,
+            current: page.piece.type,
+            queue: queueState.queue,
+            b2b: queueState.b2b,
+            combo: queueState.combo,
+        })(state);
     },
 
     commitColdClearQueueComment: () => (state): NextState => {

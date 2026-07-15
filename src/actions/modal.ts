@@ -1,6 +1,7 @@
 import { NextState, sequence } from './commons';
 import { action } from '../actions';
 import { PieceQueueFocus, UserSettingsTab } from '../states';
+import { coldClearActions } from './cold_clear';
 
 export interface ModalActions {
     showOpenErrorMessage: (data: { message: string }) => action;
@@ -155,24 +156,32 @@ export const modalActions: Readonly<ModalActions> = {
         };
     },
     openColdClearMenuModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                coldClearMenu: true,
-            },
-        };
+        return sequence(state, [
+            // スポーンミノがあればカレント枠に反映してから開く
+            coldClearActions.seedQueuePreviewFromSpawnedPiece(),
+            nextState => ({
+                modal: {
+                    ...nextState.modal,
+                    coldClearMenu: true,
+                },
+            }),
+        ]);
     },
     openPieceQueueModal: (data = {}) => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                pieceQueue: true,
-            },
-            temporary: {
-                ...state.temporary,
-                pieceQueueFocus: data.focus ?? 'next',
-            },
-        };
+        return sequence(state, [
+            // スポーンミノがあればカレント枠に反映してから開く
+            coldClearActions.seedQueuePreviewFromSpawnedPiece(),
+            nextState => ({
+                modal: {
+                    ...nextState.modal,
+                    pieceQueue: true,
+                },
+                temporary: {
+                    ...nextState.temporary,
+                    pieceQueueFocus: data.focus ?? 'next',
+                },
+            }),
+        ]);
     },
     closeListViewMenuModal: () => (state): NextState => {
         return {

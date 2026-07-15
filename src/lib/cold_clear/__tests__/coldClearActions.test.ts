@@ -1992,9 +1992,70 @@ describe('coldClearActions run isolation', () => {
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'T:IO' });
     });
 
-    test('canSwapCurrentPieceWithHoldQueue returns false when holdAllowed is false', () => {
-        const state = makeColdClearState({ commentText: 'IOT', holdAllowed: false });
-        expect(canSwapCurrentPieceWithHoldQueue(state as any)).toBe(false);
+    test('canSwapCurrentPieceWithHoldQueue is independent from AI holdAllowed setting', () => {
+        const enabledState = makeColdClearState({ commentText: 'IOT', holdAllowed: false });
+        expect(canSwapCurrentPieceWithHoldQueue(enabledState as any)).toBe(true);
+
+        const noQueueState = makeColdClearState({ commentText: 'memo', holdAllowed: false });
+        expect(canSwapCurrentPieceWithHoldQueue(noQueueState as any)).toBe(false);
+    });
+
+    test('swapCurrentPieceWithHoldQueue works while AI holdAllowed is false', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'S:LZJI', holdAllowed: false });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeDefined();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[T](S)LZJI' });
+        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.S, srs: true });
+    });
+
+    test('seedQueuePreviewFromSpawnedPiece sets spawned piece as current in preview', () => {
+        const state = makeColdClearState({ commentText: '#Q=[S]()IOL' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.seedQueuePreviewFromSpawnedPiece()(state) as any;
+        expect(result).toBeDefined();
+        expect(result.coldClear.queuePreview).toEqual({
+            pageIndex: 0,
+            text: '#Q=[S](T)IOL',
+        });
+    });
+
+    test('seedQueuePreviewFromSpawnedPiece does nothing when current already matches', () => {
+        const state = makeColdClearState({ commentText: '#Q=[S](T)IOL' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(state)).toBeUndefined();
+    });
+
+    test('seedQueuePreviewFromSpawnedPiece does nothing without spawned piece or queue comment', () => {
+        const noPieceState = makeColdClearState({ commentText: '#Q=[S]()IOL' });
+        expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(noPieceState)).toBeUndefined();
+
+        const nonQueueState = makeColdClearState({ commentText: 'memo' });
+        nonQueueState.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(nonQueueState)).toBeUndefined();
     });
 
     test('resolveCurrentColdClearMenuQueueState returns editable empty state for empty comment', () => {

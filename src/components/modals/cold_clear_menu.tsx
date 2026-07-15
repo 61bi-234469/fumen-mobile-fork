@@ -23,6 +23,7 @@ declare const M: any;
 
 interface ColdClearQueueState {
     hold: Piece | null;
+    current: Piece | null;
     queue: Piece[];
     b2b: boolean;
     combo: number;
@@ -56,6 +57,7 @@ interface ColdClearMenuModalProps {
         setColdClearThinkMs: (data: { thinkMs: number }) => void;
         previewColdClearQueueComment: (data: {
             hold: Piece | null;
+            current: Piece | null;
             queue: Piece[];
             b2b: boolean;
             combo: number;
@@ -87,7 +89,7 @@ const toQueueText = pieceQueueToText;
 const parseQueueText = parsePieceQueueText;
 const parseHoldText = parsePieceHoldText;
 
-type QueueFocusTarget = 'hold' | 'next';
+type QueueFocusTarget = 'hold' | 'current' | 'next';
 let queueFocusTarget: QueueFocusTarget = 'next';
 
 export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
@@ -281,28 +283,24 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
     };
 
     const applyFocusHighlight = (target: QueueFocusTarget) => {
-        const holdPane = document.querySelector('[datatest="pane-cold-clear-hold"]') as HTMLElement | null;
-        const nextPane = document.querySelector('[datatest="pane-cold-clear-next"]') as HTMLElement | null;
-        if (holdPane) {
-            holdPane.style.border = target === 'hold' ? '2px solid #3b82f6' : '2px solid #e5e7eb';
-            holdPane.style.background = target === 'hold' ? '#eff6ff' : '#fff';
-            const label = holdPane.querySelector('p') as HTMLElement | null;
-            if (label) {
-                label.style.color = target === 'hold' ? '#2563eb' : '#374151';
-            }
-        }
-        if (nextPane) {
-            nextPane.style.border = target === 'next' ? '2px solid #3b82f6' : '2px solid #e5e7eb';
-            nextPane.style.background = target === 'next' ? '#eff6ff' : '#fff';
-            const label = nextPane.querySelector('p') as HTMLElement | null;
-            if (label) {
-                label.style.color = target === 'next' ? '#2563eb' : '#374151';
+        const panes: QueueFocusTarget[] = ['hold', 'current', 'next'];
+        for (const pane of panes) {
+            const paneElement = document.querySelector(
+                `[datatest="pane-cold-clear-${pane}"]`,
+            ) as HTMLElement | null;
+            if (paneElement) {
+                paneElement.style.border = target === pane ? '2px solid #3b82f6' : '2px solid #e5e7eb';
+                paneElement.style.background = target === pane ? '#eff6ff' : '#fff';
+                const label = paneElement.querySelector('p') as HTMLElement | null;
+                if (label) {
+                    label.style.color = target === pane ? '#2563eb' : '#374151';
+                }
             }
         }
         const oneBagBtn = document
             .querySelector('[datatest="btn-cold-clear-append-one-bag"]') as HTMLButtonElement | null;
         if (oneBagBtn) {
-            oneBagBtn.disabled = isRunning || target === 'hold';
+            oneBagBtn.disabled = isRunning || target !== 'next';
         }
     };
 
@@ -313,7 +311,13 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
 
     const queueEditorDisabled = isRunning || currentQueueState === null;
     const updateQueueState = (
-        updater: (current: ColdClearQueueState) => { hold: Piece | null; queue: Piece[]; b2b: boolean; combo: number },
+        updater: (current: ColdClearQueueState) => {
+            hold: Piece | null;
+            current: Piece | null;
+            queue: Piece[];
+            b2b: boolean;
+            combo: number;
+        },
     ) => {
         if (queueEditorDisabled || currentQueueState === null) {
             return;
@@ -321,6 +325,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         const next = updater(currentQueueState);
         actions.previewColdClearQueueComment({
             hold: next.hold,
+            current: next.current,
             queue: next.queue,
             b2b: next.b2b,
             combo: Math.max(0, Math.floor(next.combo)),
@@ -523,6 +528,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                 <p key="cold-clear-queue-summary" style={summaryStyle}>
                                     {i18n.ColdClear.QueueStateSummary(
                                         currentQueueState.hold === null ? '' : PIECE_TO_CHAR[currentQueueState.hold],
+                                        currentQueueState.current === null
+                                            ? '' : PIECE_TO_CHAR[currentQueueState.current],
                                         toQueueText(currentQueueState.queue),
                                     )}
                                 </p>,
@@ -597,6 +604,66 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                         />
                                     </div>
                                     <div
+                                        key="cold-clear-current-pane"
+                                        datatest="pane-cold-clear-current"
+                                        onclick={() => {
+                                            setQueueFocus('current');
+                                        }}
+                                        style={style({
+                                            flex: '1',
+                                            minWidth: '0',
+                                            padding: px(8),
+                                            borderRadius: '6px',
+                                            cursor: queueEditorDisabled ? 'default' : 'pointer',
+                                            border: queueFocusTarget === 'current'
+                                                ? '2px solid #3b82f6'
+                                                : '2px solid #e5e7eb',
+                                            background: queueFocusTarget === 'current'
+                                                ? '#eff6ff'
+                                                : '#fff',
+                                        })}
+                                    >
+                                        <p style={style({
+                                            margin: '0px',
+                                            fontSize: px(11),
+                                            fontWeight: 700,
+                                            color: queueFocusTarget === 'current' ? '#2563eb' : '#374151',
+                                            marginBottom: px(4),
+                                        })}>{i18n.ColdClear.QueueCurrentLabel()}</p>
+                                        <input
+                                            datatest="input-cold-clear-queue-current"
+                                            type="text"
+                                            maxLength={1}
+                                            value={
+                                                currentQueueState.current === null
+                                                    ? ''
+                                                    : PIECE_TO_CHAR[currentQueueState.current]
+                                            }
+                                            disabled={queueEditorDisabled}
+                                            onfocus={() => {
+                                                setQueueFocus('current');
+                                            }}
+                                            onchange={(event: Event) => {
+                                                const target = event.target as HTMLInputElement;
+                                                const parsed = parseHoldText(target.value);
+                                                if (parsed === undefined) {
+                                                    return;
+                                                }
+                                                updateQueueState(queueState => ({
+                                                    ...queueState,
+                                                    current: parsed,
+                                                }));
+                                            }}
+                                            style={style({
+                                                width: '100%',
+                                                margin: '0px',
+                                                textAlign: 'center',
+                                                height: px(32),
+                                                boxSizing: 'border-box',
+                                            })}
+                                        />
+                                    </div>
+                                    <div
                                         key="cold-clear-next-pane"
                                         datatest="pane-cold-clear-next"
                                         onclick={() => {
@@ -659,6 +726,11 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                                         ...queueState,
                                                         hold: piece,
                                                     }));
+                                                } else if (queueFocusTarget === 'current') {
+                                                    updateQueueState(queueState => ({
+                                                        ...queueState,
+                                                        current: piece,
+                                                    }));
                                                 } else {
                                                     updateQueueState(queueState => ({
                                                         ...queueState,
@@ -682,6 +754,11 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                                     ...queueState,
                                                     hold: null,
                                                 }));
+                                            } else if (queueFocusTarget === 'current') {
+                                                updateQueueState(queueState => ({
+                                                    ...queueState,
+                                                    current: null,
+                                                }));
                                             } else {
                                                 updateQueueState(queueState => ({
                                                     ...queueState,
@@ -696,7 +773,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     <button
                                         key="cold-clear-append-one-bag"
                                         datatest="btn-cold-clear-append-one-bag"
-                                        disabled={isRunning || queueFocusTarget === 'hold'}
+                                        disabled={isRunning || queueFocusTarget !== 'next'}
                                         onclick={(event: MouseEvent) => {
                                             event.preventDefault();
                                             actions.appendColdClearOneBagToComment();

@@ -33,7 +33,7 @@ describe('PIECE queues', () => {
         cy.get(datatest('btn-piece-queue-add-Z')).click();
         cy.get(datatest('btn-piece-queue-close')).click();
 
-        cy.get(datatest('text-comment')).should('have.value', 'T:IOZ');
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[T]()IOZ');
         cy.get(datatest('piece-queue-next-2')).should('have.attr', 'data-piece', 'Z');
     });
 
@@ -51,5 +51,21 @@ describe('PIECE queues', () => {
         cy.get(datatest('input-piece-queue-next')).should('be.focused');
         cy.get(datatest('pane-piece-queue-next')).should('have.css', 'border-top-color', 'rgb(25, 118, 210)');
         cy.get(datatest('btn-piece-queue-close')).click();
+    });
+
+    it('edits the current piece from the modal', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('#Q=[T]()IO').blur();
+        cy.get(datatest('btn-piece-mode')).click();
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+
+        cy.get(datatest('pane-piece-queue-current')).click();
+        cy.get(datatest('input-piece-queue-current')).should('be.focused');
+        cy.get(datatest('btn-piece-queue-add-S')).click();
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[T](S)IO');
     });
 });

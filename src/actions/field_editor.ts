@@ -965,18 +965,64 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     spawnNextPieceFromColdClearQueue: () => (state): NextState => {
         const currentComment = getCurrentColdClearQueueComment(state);
         const parsed = currentComment === null ? null : parseQueueStateComment(currentComment);
-        if (!parsed || parsed.queue.length === 0) {
+        if (!parsed) {
             return actions.changePieceAction({ pieceAction: 'spawn' })(state);
         }
 
         const pageIndex = state.fumen.currentIndex;
-        const nextPiece = parsed.queue[0];
-        const remainingQueue = parsed.queue.slice(1);
+        const page = state.fumen.pages[pageIndex];
+        // Quizページのrefコメントは取得時点で設置操作が反映済み。
+        // メタデータ付き等の非Quizコメントは、直前ページで設置したミノがカレントに残ったままのため
+        // ここでQuiz相当の進行 (Direct/Swap/Stock) を行う
+        const isAdvancedQuizComment = page !== undefined && page.flags.quiz && page.comment.text === undefined;
+
+        let hold = parsed.hold;
+        let current = parsed.current;
+        let queue = parsed.queue;
+        if (!isAdvancedQuizComment && current !== null) {
+            const prevPage = state.fumen.pages[pageIndex - 1];
+            const placedPiece = prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)
+                ? prevPage.piece.type
+                : undefined;
+            if (placedPiece !== undefined) {
+                if (placedPiece === current) {
+                    current = null;
+                } else if (placedPiece === hold) {
+                    hold = current;
+                    current = null;
+                } else if (hold === null && placedPiece === queue[0]) {
+                    hold = current;
+                    current = null;
+                    queue = queue.slice(1);
+                }
+            }
+        }
+
+        // カレントが空のときはNEXT先頭を取り出してカレントにする
+        if (current === null) {
+            if (queue.length === 0) {
+                // スポーンできなくても、進行後の状態はコメントに反映しておく
+                const advancedComment = buildQueueStateComment(hold, null, [], parsed.b2b, parsed.combo);
+                if (advancedComment !== currentComment) {
+                    return sequence(state, [
+                        actions.setCommentText({ pageIndex, text: advancedComment }),
+                        actions.changePieceAction({ pieceAction: 'spawn' }),
+                    ]);
+                }
+                return actions.changePieceAction({ pieceAction: 'spawn' })(state);
+            }
+            current = queue[0];
+            queue = queue.slice(1);
+        }
+
+        const spawnPiece = current;
+        // 既知ミノ数はカレントを含めて数える
         const nextQueue = state.editorUi.infinitePieceQueue
-            ? appendInfiniteQueueBagIfNeeded(remainingQueue, parsed.queue.length)
-            : remainingQueue;
+            ? appendInfiniteQueueBagIfNeeded(queue, queue.length + 1)
+            : queue;
         const nextComment = buildQueueStateComment(
-            parsed.hold,
+            hold,
+            spawnPiece,
             nextQueue,
             parsed.b2b,
             parsed.combo,
@@ -985,7 +1031,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             actions.setCommentText({ pageIndex, text: nextComment }),
             actions.spawnPiece({
-                piece: nextPiece,
+                piece: spawnPiece,
                 srs: state.mode.rotationSystem !== 'classic',
             }),
             actions.changePieceAction({ pieceAction: 'drag' }),

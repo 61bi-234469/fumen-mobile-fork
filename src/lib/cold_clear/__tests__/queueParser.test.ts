@@ -1,37 +1,70 @@
 import { Piece } from '../../enums';
 import { buildQueueComment, buildQueueStateComment, parseQueueComment, parseQueueStateComment } from '../queueParser';
 
-describe('parseQueueComment', () => {
-    test('parse queue without hold', () => {
-        const result = parseQueueComment('IOTLJSZ');
+describe('parseQueueComment (#Q format)', () => {
+    test('parse queue without hold and current', () => {
+        const result = parseQueueComment('#Q=[]()IOTLJSZ');
         expect(result).toEqual({
             hold: null,
+            current: null,
             queue: [Piece.I, Piece.O, Piece.T, Piece.L, Piece.J, Piece.S, Piece.Z],
         });
     });
 
-    test('parse queue with hold', () => {
-        const result = parseQueueComment('T:IOSL');
+    test('parse queue with hold and current', () => {
+        const result = parseQueueComment('#Q=[T](I)OSL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.S, Piece.L],
         });
     });
 
-    test('parse single piece', () => {
-        const result = parseQueueComment('I');
+    test('parse current-only queue', () => {
+        const result = parseQueueComment('#Q=[](I)');
         expect(result).toEqual({
             hold: null,
-            queue: [Piece.I],
+            current: Piece.I,
+            queue: [],
         });
     });
 
-    test('parse hold with single queue piece', () => {
-        const result = parseQueueComment('T:I');
+    test('parse hold-only queue', () => {
+        const result = parseQueueComment('#Q=[T]()');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I],
+            current: null,
+            queue: [],
         });
+    });
+
+    test('parse lowercase quiz queue', () => {
+        const result = parseQueueComment('#Q=[t](i)os');
+        expect(result).toEqual({
+            hold: Piece.T,
+            current: Piece.I,
+            queue: [Piece.O, Piece.S],
+        });
+    });
+
+    test('ignore trailing quiz sections after semicolon', () => {
+        const result = parseQueueComment('#Q=[T](I)OS;JLZ');
+        expect(result).toEqual({
+            hold: Piece.T,
+            current: Piece.I,
+            queue: [Piece.O, Piece.S],
+        });
+    });
+
+    test('return null for empty quiz', () => {
+        expect(parseQueueComment('#Q=[]()')).toBeNull();
+    });
+
+    test('return null for invalid quiz grammar', () => {
+        expect(parseQueueComment('#Q=[TT](I)OS')).toBeNull();
+        expect(parseQueueComment('#Q=[T]IOS')).toBeNull();
+        expect(parseQueueComment('#Q=(I)OS')).toBeNull();
+        expect(parseQueueComment('#Q=[X](I)OS')).toBeNull();
     });
 
     test('return null for empty string', () => {
@@ -42,91 +75,26 @@ describe('parseQueueComment', () => {
         expect(parseQueueComment('hello')).toBeNull();
     });
 
-    test('return null for multiple colons', () => {
-        expect(parseQueueComment('T:I:O')).toBeNull();
-    });
-
-    test('return null for quiz format', () => {
-        expect(parseQueueComment('#Q=[]()')).toBeNull();
-    });
-
-    test('parse lowercase queue', () => {
-        const result = parseQueueComment('iot');
-        expect(result).toEqual({
-            hold: null,
-            queue: [Piece.I, Piece.O, Piece.T],
-        });
-    });
-
-    test('return null for leading space', () => {
-        expect(parseQueueComment(' IOTL')).toBeNull();
-    });
-
-    test('return null for trailing space', () => {
-        expect(parseQueueComment('IOTL ')).toBeNull();
-    });
-
-    test('parse mixed case queue', () => {
-        const result = parseQueueComment('IoTl');
-        expect(result).toEqual({
-            hold: null,
-            queue: [Piece.I, Piece.O, Piece.T, Piece.L],
-        });
-    });
-
-    test('parse lowercase hold with lowercase queue', () => {
-        const result = parseQueueComment('t:iosl');
+    test('parse scored quiz queue', () => {
+        const result = parseQueueComment('score=123.45 | #Q=[T](I)OL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.L],
         });
     });
 
-    test('parse mixed case hold and queue', () => {
-        const result = parseQueueComment('T:iosl');
+    test('parse outside-top quiz queue', () => {
+        const result = parseQueueComment('outsideTop=10000 | #Q=[T](I)OL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
-        });
-    });
-
-    test('return null for colon only', () => {
-        expect(parseQueueComment(':')).toBeNull();
-    });
-
-    test('parse hold with empty queue (colon at end)', () => {
-        expect(parseQueueComment('T:')).toEqual({
-            hold: Piece.T,
-            queue: [],
-        });
-    });
-
-    test('parse scored queue without hold', () => {
-        const result = parseQueueComment('score=123.45 | IOTL');
-        expect(result).toEqual({
-            hold: null,
-            queue: [Piece.I, Piece.O, Piece.T, Piece.L],
-        });
-    });
-
-    test('parse scored queue with hold', () => {
-        const result = parseQueueComment('score=-8.30 | T:IOL');
-        expect(result).toEqual({
-            hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.L],
-        });
-    });
-
-    test('parse outside-top queue with hold', () => {
-        const result = parseQueueComment('outsideTop=10000 | T:IOL');
-        expect(result).toEqual({
-            hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.L],
         });
     });
 
     test('return null for invalid score format', () => {
-        expect(parseQueueComment('score=abc | IOTL')).toBeNull();
+        expect(parseQueueComment('score=abc | #Q=[](I)OTL')).toBeNull();
     });
 
     test('return null for score-only text', () => {
@@ -138,88 +106,185 @@ describe('parseQueueComment', () => {
     });
 
     test('return null for invalid scored queue grammar', () => {
-        expect(parseQueueComment('score=12.3 | IOTL')).toBeNull();
-        expect(parseQueueComment('score=12.34|IOTL')).toBeNull();
-        expect(parseQueueComment('Score=12.34 | IOTL')).toBeNull();
+        expect(parseQueueComment('score=12.3 | #Q=[](I)OTL')).toBeNull();
+        expect(parseQueueComment('score=12.34|#Q=[](I)OTL')).toBeNull();
+        expect(parseQueueComment('Score=12.34 | #Q=[](I)OTL')).toBeNull();
+    });
+});
+
+describe('parseQueueComment (legacy format, read-only compatibility)', () => {
+    test('parse legacy queue without hold', () => {
+        const result = parseQueueComment('IOTLJSZ');
+        expect(result).toEqual({
+            hold: null,
+            current: null,
+            queue: [Piece.I, Piece.O, Piece.T, Piece.L, Piece.J, Piece.S, Piece.Z],
+        });
+    });
+
+    test('parse legacy queue with hold', () => {
+        const result = parseQueueComment('T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            current: null,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+        });
+    });
+
+    test('parse legacy mixed case queue', () => {
+        const result = parseQueueComment('IoTl');
+        expect(result).toEqual({
+            hold: null,
+            current: null,
+            queue: [Piece.I, Piece.O, Piece.T, Piece.L],
+        });
+    });
+
+    test('parse legacy hold with empty queue (colon at end)', () => {
+        expect(parseQueueComment('T:')).toEqual({
+            hold: Piece.T,
+            current: null,
+            queue: [],
+        });
+    });
+
+    test('parse legacy scored queue with hold', () => {
+        const result = parseQueueComment('score=-8.30 | T:IOL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            current: null,
+            queue: [Piece.I, Piece.O, Piece.L],
+        });
+    });
+
+    test('return null for multiple colons', () => {
+        expect(parseQueueComment('T:I:O')).toBeNull();
+    });
+
+    test('return null for colon only', () => {
+        expect(parseQueueComment(':')).toBeNull();
+    });
+
+    test('return null for leading space', () => {
+        expect(parseQueueComment(' IOTL')).toBeNull();
+    });
+
+    test('return null for trailing space', () => {
+        expect(parseQueueComment('IOTL ')).toBeNull();
     });
 });
 
 describe('buildQueueComment', () => {
-    test('build with hold and queue', () => {
-        expect(buildQueueComment(Piece.T, [Piece.I, Piece.O, Piece.S])).toBe('T:IOS');
+    test('build with hold, current and queue', () => {
+        expect(buildQueueComment(Piece.T, Piece.I, [Piece.O, Piece.S])).toBe('#Q=[T](I)OS');
     });
 
     test('build without hold', () => {
-        expect(buildQueueComment(null, [Piece.I, Piece.O, Piece.T])).toBe('IOT');
+        expect(buildQueueComment(null, Piece.I, [Piece.O, Piece.T])).toBe('#Q=[](I)OT');
     });
 
-    test('return hold marker when queue is empty (with hold)', () => {
-        expect(buildQueueComment(Piece.T, [])).toBe('T:');
+    test('build without current', () => {
+        expect(buildQueueComment(Piece.T, null, [Piece.I, Piece.O])).toBe('#Q=[T]()IO');
     });
 
-    test('return empty string when queue is empty (without hold)', () => {
-        expect(buildQueueComment(null, [])).toBe('');
+    test('build hold-only queue', () => {
+        expect(buildQueueComment(Piece.T, null, [])).toBe('#Q=[T]()');
     });
 
-    test('build single piece queue without hold', () => {
-        expect(buildQueueComment(null, [Piece.Z])).toBe('Z');
+    test('build current-only queue', () => {
+        expect(buildQueueComment(null, Piece.Z, [])).toBe('#Q=[](Z)');
     });
 
-    test('build single piece queue with hold', () => {
-        expect(buildQueueComment(Piece.I, [Piece.Z])).toBe('I:Z');
+    test('return empty string when everything is empty', () => {
+        expect(buildQueueComment(null, null, [])).toBe('');
+    });
+
+    test('round-trip through parseQueueComment', () => {
+        const built = buildQueueComment(Piece.T, Piece.I, [Piece.O, Piece.S, Piece.L]);
+        expect(parseQueueComment(built)).toEqual({
+            hold: Piece.T,
+            current: Piece.I,
+            queue: [Piece.O, Piece.S, Piece.L],
+        });
+    });
+
+    test('round-trip empty current with next pieces', () => {
+        const built = buildQueueComment(null, null, [Piece.S, Piece.Z]);
+        expect(built).toBe('#Q=[]()SZ');
+        expect(parseQueueComment(built)).toEqual({
+            hold: null,
+            current: null,
+            queue: [Piece.S, Piece.Z],
+        });
     });
 });
 
 describe('parseQueueStateComment', () => {
     test('parse queue state defaults to b2b=false and combo=0', () => {
-        const result = parseQueueStateComment('T:IOSL');
+        const result = parseQueueStateComment('#Q=[T](I)OSL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.S, Piece.L],
             b2b: false,
             combo: 0,
         });
     });
 
     test('parse queue state with b2b and combo metadata', () => {
-        const result = parseQueueStateComment('b2b=1 | combo=3 | T:IOSL');
+        const result = parseQueueStateComment('b2b=1 | combo=3 | #Q=[T](I)OSL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.S, Piece.L],
             b2b: true,
             combo: 3,
         });
     });
 
     test('parse queue state when b2b and combo are in one metadata segment', () => {
-        const result = parseQueueStateComment('b2b=1 combo=3 | T:IOSL');
+        const result = parseQueueStateComment('b2b=1 combo=3 | #Q=[T](I)OSL');
         expect(result).toEqual({
             hold: Piece.T,
-            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            current: Piece.I,
+            queue: [Piece.O, Piece.S, Piece.L],
             b2b: true,
             combo: 3,
         });
     });
 
     test('parse queue state with score, outsideTop, b2b and combo metadata', () => {
-        const result = parseQueueStateComment('score=12.30 | outsideTop=10000 | b2b=false | combo=-1 | IOT');
+        const result = parseQueueStateComment('score=12.30 | outsideTop=10000 | b2b=false | combo=-1 | #Q=[](I)OT');
         expect(result).toEqual({
             hold: null,
-            queue: [Piece.I, Piece.O, Piece.T],
+            current: Piece.I,
+            queue: [Piece.O, Piece.T],
             b2b: false,
             combo: 0,
         });
     });
 
+    test('parse legacy queue state', () => {
+        const result = parseQueueStateComment('b2b=1 combo=3 | T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            current: null,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            b2b: true,
+            combo: 3,
+        });
+    });
+
     test('return null when metadata grammar is invalid', () => {
-        expect(parseQueueStateComment('b2b=yes | combo=2 | IOT')).toBeNull();
-        expect(parseQueueStateComment('b2b=1  combo=2 | IOT')).toBeNull();
+        expect(parseQueueStateComment('b2b=yes | combo=2 | #Q=[](I)OT')).toBeNull();
+        expect(parseQueueStateComment('b2b=1  combo=2 | #Q=[](I)OT')).toBeNull();
     });
 
     test('parse metadata-only queue state (no queue segment)', () => {
         const result = parseQueueStateComment('score=12.30 | b2b=1 combo=2');
         expect(result).toEqual({
             hold: null,
+            current: null,
             queue: [],
             b2b: true,
             combo: 2,
@@ -227,9 +292,10 @@ describe('parseQueueStateComment', () => {
     });
 
     test('parse hold-only queue state', () => {
-        const result = parseQueueStateComment('b2b=1 combo=3 | T:');
+        const result = parseQueueStateComment('b2b=1 combo=3 | #Q=[T]()');
         expect(result).toEqual({
             hold: Piece.T,
+            current: null,
             queue: [],
             b2b: true,
             combo: 3,
@@ -239,43 +305,53 @@ describe('parseQueueStateComment', () => {
 
 describe('buildQueueStateComment', () => {
     test('omit default b2b/combo', () => {
-        expect(buildQueueStateComment(Piece.T, [Piece.I, Piece.O], false, 0)).toBe('T:IO');
+        expect(buildQueueStateComment(Piece.T, Piece.I, [Piece.O], false, 0)).toBe('#Q=[T](I)O');
     });
 
     test('emit b2b/combo when non-default', () => {
-        expect(buildQueueStateComment(Piece.T, [Piece.I], true, 3)).toBe('b2b=1 combo=3 | T:I');
+        expect(buildQueueStateComment(Piece.T, Piece.I, [], true, 3)).toBe('b2b=1 combo=3 | #Q=[T](I)');
     });
 
-    test('emit metadata-only when queue and hold are empty', () => {
-        expect(buildQueueStateComment(null, [], true, 2)).toBe('b2b=1 combo=2');
+    test('emit metadata-only when queue is empty', () => {
+        expect(buildQueueStateComment(null, null, [], true, 2)).toBe('b2b=1 combo=2');
+    });
+
+    test('round-trip through parseQueueStateComment', () => {
+        const built = buildQueueStateComment(Piece.T, Piece.I, [Piece.O, Piece.S], true, 2);
+        expect(parseQueueStateComment(built)).toEqual({
+            hold: Piece.T,
+            current: Piece.I,
+            queue: [Piece.O, Piece.S],
+            b2b: true,
+            combo: 2,
+        });
     });
 });
 
 describe('hold swap logic', () => {
-    test('no hold used: consume front of queue', () => {
-        // Input: T:IOSL, place I (no hold)
-        const parsed = parseQueueComment('T:IOSL')!;
-        // I is placed from queue front, hold stays T
-        const newHold = parsed.hold; // T
-        const newQueue = parsed.queue.slice(1); // [O, S, L]
-        expect(buildQueueComment(newHold, newQueue)).toBe('T:OSL');
+    test('no hold used: current is placed, next front becomes current', () => {
+        // Input: #Q=[T](I)OSL, place I (no hold)
+        const parsed = parseQueueComment('#Q=[T](I)OSL')!;
+        const newCurrent = parsed.queue[0]; // O
+        const newQueue = parsed.queue.slice(1); // [S, L]
+        expect(buildQueueComment(parsed.hold, newCurrent, newQueue)).toBe('#Q=[T](O)SL');
     });
 
-    test('hold used: swap hold and queue front', () => {
-        // Input: T:IOSL, place T (hold used), I goes to hold
-        const parsed = parseQueueComment('T:IOSL')!;
-        // Hold T is placed, queue front I moves to hold
-        const newHold = parsed.queue[0]; // I
-        const newQueue = parsed.queue.slice(1); // [O, S, L]
-        expect(buildQueueComment(newHold, newQueue)).toBe('I:OSL');
+    test('hold used: swap hold and current', () => {
+        // Input: #Q=[T](I)OSL, place T (hold used), I goes to hold
+        const parsed = parseQueueComment('#Q=[T](I)OSL')!;
+        const newHold = parsed.current; // I
+        const newCurrent = parsed.queue[0]; // O
+        const newQueue = parsed.queue.slice(1); // [S, L]
+        expect(buildQueueComment(newHold, newCurrent, newQueue)).toBe('#Q=[I](O)SL');
     });
 
-    test('no hold, hold used: first piece becomes hold, second is placed', () => {
-        // Input: IOTLJSZ, hold empty, hold is used
-        // I goes to hold, O is placed
-        const parsed = parseQueueComment('IOTLJSZ')!;
-        const newHold = parsed.queue[0]; // I
-        const newQueue = parsed.queue.slice(2); // [T, L, J, S, Z]
-        expect(buildQueueComment(newHold, newQueue)).toBe('I:TLJSZ');
+    test('no hold, hold used: current becomes hold, next front is placed', () => {
+        // Input: #Q=[](I)OTLJSZ, hold empty, hold is used -> I goes to hold, O is placed
+        const parsed = parseQueueComment('#Q=[](I)OTLJSZ')!;
+        const newHold = parsed.current; // I
+        const newCurrent = parsed.queue[1]; // T
+        const newQueue = parsed.queue.slice(2); // [L, J, S, Z]
+        expect(buildQueueComment(newHold, newCurrent, newQueue)).toBe('#Q=[I](T)LJSZ');
     });
 });

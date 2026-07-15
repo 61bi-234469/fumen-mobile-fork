@@ -22,6 +22,7 @@ interface PieceQueueModalProps {
         closePieceQueueModal: () => void;
         previewColdClearQueueComment: (data: {
             hold: Piece | null;
+            current: Piece | null;
             queue: Piece[];
             b2b: boolean;
             combo: number;
@@ -32,7 +33,7 @@ interface PieceQueueModalProps {
     };
 }
 
-type FocusTarget = 'hold' | 'next';
+type FocusTarget = 'hold' | 'current' | 'next';
 let focusTarget: FocusTarget = 'next';
 
 export const PieceQueueModal: Component<PieceQueueModalProps> = ({
@@ -109,6 +110,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         const next = updater(currentQueueState);
         actions.previewColdClearQueueComment({
             hold: next.hold,
+            current: next.current,
             queue: next.queue,
             b2b: next.b2b,
             combo: next.combo,
@@ -126,21 +128,21 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
     });
     const setFocus = (target: FocusTarget) => {
         focusTarget = target;
-        const holdPane = document.querySelector('[datatest="pane-piece-queue-hold"]') as HTMLElement | null;
-        const nextPane = document.querySelector('[datatest="pane-piece-queue-next"]') as HTMLElement | null;
+        const panes: FocusTarget[] = ['hold', 'current', 'next'];
+        for (const pane of panes) {
+            const paneElement = document.querySelector(
+                `[datatest="pane-piece-queue-${pane}"]`,
+            ) as HTMLElement | null;
+            if (paneElement) {
+                paneElement.style.border = target === pane ? '2px solid #1976d2' : '2px solid #e0e0e0';
+                paneElement.style.background = target === pane ? '#eff6ff' : '#fff';
+            }
+        }
         const oneBagButton = document.querySelector(
             '[datatest="btn-piece-queue-one-bag"]',
         ) as HTMLButtonElement | null;
-        if (holdPane) {
-            holdPane.style.border = target === 'hold' ? '2px solid #1976d2' : '2px solid #e0e0e0';
-            holdPane.style.background = target === 'hold' ? '#eff6ff' : '#fff';
-        }
-        if (nextPane) {
-            nextPane.style.border = target === 'next' ? '2px solid #1976d2' : '2px solid #e0e0e0';
-            nextPane.style.background = target === 'next' ? '#eff6ff' : '#fff';
-        }
         if (oneBagButton) {
-            oneBagButton.disabled = target === 'hold';
+            oneBagButton.disabled = target !== 'next';
         }
         const input = document.querySelector(
             `[datatest="input-piece-queue-${target}"]`,
@@ -217,6 +219,37 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                         />
                                     </div>
                                     <div
+                                        key="piece-queue-current-pane"
+                                        datatest="pane-piece-queue-current"
+                                        onclick={() => setFocus('current')}
+                                        style={paneStyle('current', '1')}
+                                    >
+                                        <p style={style({
+                                            fontSize: px(11),
+                                            fontWeight: '700',
+                                            margin: `0 0 ${px(4)} 0`,
+                                        })}>
+                                            {i18n.PieceQueue.CurrentLabel()}
+                                        </p>
+                                        <input
+                                            datatest="input-piece-queue-current"
+                                            type="text"
+                                            maxlength={1}
+                                            value={currentQueueState.current === null
+                                                ? '' : pieceQueuePieceToChar(currentQueueState.current)}
+                                            onfocus={() => setFocus('current')}
+                                            onchange={(event: Event) => {
+                                                const value = (event.target as HTMLInputElement).value;
+                                                const parsed = parsePieceHoldText(value);
+                                                if (parsed === undefined) {
+                                                    return;
+                                                }
+                                                updateQueue(queue => ({ ...queue, current: parsed }));
+                                            }}
+                                            style={inputStyle}
+                                        />
+                                    </div>
+                                    <div
                                         key="piece-queue-next-pane"
                                         datatest="pane-piece-queue-next"
                                         onclick={() => setFocus('next')}
@@ -258,9 +291,16 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                         datatest={`btn-piece-queue-add-${pieceQueuePieceToChar(piece)}`}
                                         onclick={(event: MouseEvent) => {
                                             event.preventDefault();
-                                            updateQueue(queue => focusTarget === 'hold'
-                                                ? { ...queue, hold: piece }
-                                                : { ...queue, queue: queue.queue.concat(piece) });
+                                            updateQueue((queue) => {
+                                                switch (focusTarget) {
+                                                case 'hold':
+                                                    return { ...queue, hold: piece };
+                                                case 'current':
+                                                    return { ...queue, current: piece };
+                                                default:
+                                                    return { ...queue, queue: queue.queue.concat(piece) };
+                                                }
+                                            });
                                         }}
                                         style={pieceButtonStyle}
                                     >{pieceQueuePieceToChar(piece)}</button>)}
@@ -269,16 +309,23 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                         datatest="btn-piece-queue-clear"
                                         onclick={(event: MouseEvent) => {
                                             event.preventDefault();
-                                            updateQueue(queue => focusTarget === 'hold'
-                                                ? { ...queue, hold: null }
-                                                : { ...queue, queue: [] });
+                                            updateQueue((queue) => {
+                                                switch (focusTarget) {
+                                                case 'hold':
+                                                    return { ...queue, hold: null };
+                                                case 'current':
+                                                    return { ...queue, current: null };
+                                                default:
+                                                    return { ...queue, queue: [] };
+                                                }
+                                            });
                                         }}
                                         style={pieceButtonStyle}
                                     >{i18n.ColdClear.QueueClearLabel()}</button>
                                     <button
                                         key="btn-piece-queue-one-bag"
                                         datatest="btn-piece-queue-one-bag"
-                                        disabled={renderedFocusTarget === 'hold'}
+                                        disabled={renderedFocusTarget !== 'next'}
                                         onclick={(event: MouseEvent) => {
                                             event.preventDefault();
                                             actions.appendColdClearOneBagToComment();

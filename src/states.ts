@@ -55,7 +55,7 @@ export type PaintTool = 'pen' | 'fill' | 'fillRow';
 export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
 export type PaletteSelection = Piece | 'comp';
-export type PieceQueueFocus = 'hold' | 'next';
+export type PieceQueueFocus = 'hold' | 'current' | 'next';
 
 export interface SelectionRect {
     minX: number;

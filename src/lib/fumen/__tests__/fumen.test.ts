@@ -753,6 +753,50 @@ describe('fumen', () => {
             await expect(encode(pages)).resolves.toEqual('vhGSSYXAFLDmClcJSAVDEHBEooRBMoAVBUtfBAXsBA?AANrBmnBAAAAAA');
         });
 
+        test('Quiz with hold and current piece round-trips', async () => {
+            const page: Page = {
+                index: 0,
+                field: { obj: new Field({}) },
+                piece: undefined,
+                comment: { text: '#Q=[T](I)OS' },
+                flags: {
+                    lock: true,
+                    colorize: true,
+                    mirror: false,
+                    rise: false,
+                    quiz: true,
+                },
+            };
+
+            const encoded = await encode([page]);
+            const decoded = await decode(`v115@${encoded}`);
+            expect(decoded).toHaveLength(1);
+            expect(decoded[0].comment.text).toEqual('#Q=[T](I)OS');
+            expect(decoded[0].flags.quiz).toBe(true);
+        });
+
+        test('Quiz with empty current piece round-trips', async () => {
+            const page: Page = {
+                index: 0,
+                field: { obj: new Field({}) },
+                piece: undefined,
+                comment: { text: '#Q=[]()SZ' },
+                flags: {
+                    lock: true,
+                    colorize: true,
+                    mirror: false,
+                    rise: false,
+                    quiz: true,
+                },
+            };
+
+            const encoded = await encode([page]);
+            const decoded = await decode(`v115@${encoded}`);
+            expect(decoded).toHaveLength(1);
+            expect(decoded[0].comment.text).toEqual('#Q=[]()SZ');
+            expect(decoded[0].flags.quiz).toBe(true);
+        });
+
         test('No lock', async () => {
             const pages = await decode('v115@vhAAgl');
             await expect(encode(pages)).resolves.toEqual('vhAAgl');

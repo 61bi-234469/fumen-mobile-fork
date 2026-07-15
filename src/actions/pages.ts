@@ -164,7 +164,9 @@ export const pageActions: Readonly<PageActions> = {
                 },
             }),
             (newState) => {
-                if (!newState.tree.enabled) return undefined;
+                // ツリー無効中もデータが残っている限りactiveNodeIdを追従させる
+                // (insertKeyPageなどのページ操作はenabledに関係なくツリーを更新するため)
+                if (newState.tree.rootId === null || newState.tree.nodes.length === 0) return undefined;
                 const tree: SerializedTree = {
                     nodes: newState.tree.nodes,
                     rootId: newState.tree.rootId,

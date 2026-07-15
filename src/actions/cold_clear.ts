@@ -254,9 +254,12 @@ const resolveTargetNode = (
     tree = getTreeForState(state),
 ): { nodeId: TreeNodeId; pageIndex: number } | null => {
 
+    // activeNodeIdはツリー無効中のページ移動に追従しないことがあるため、
+    // 現在表示中のページと一致する場合のみ信頼する
     if (state.tree.activeNodeId) {
         const activeNode = findNode(tree, state.tree.activeNodeId);
-        if (activeNode && !isVirtualNode(activeNode)) {
+        if (activeNode && !isVirtualNode(activeNode)
+            && activeNode.pageIndex === state.fumen.currentIndex) {
             return { nodeId: activeNode.id, pageIndex: activeNode.pageIndex };
         }
     }

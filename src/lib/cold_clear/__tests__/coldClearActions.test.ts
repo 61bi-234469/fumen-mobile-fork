@@ -1,5 +1,6 @@
 import {
     isColdClearSearchBlockedByHoldQueue,
+    canStartColdClearSequenceSearch,
     canSwapCurrentPieceWithHoldQueue,
     coldClearActions,
     initColdClearActions,
@@ -1921,5 +1922,76 @@ describe('coldClearActions run isolation', () => {
             combo: 0,
             score: null,
         });
+    });
+});
+
+describe('coldClearActions stale activeNodeId (tree data present but disabled)', () => {
+    beforeEach(() => {
+        resetForTesting();
+        jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+        resetForTesting();
+    });
+
+    const flags = { lock: true, mirror: false, rise: false, quiz: false, colorize: true };
+
+    // ツリー無効化中はopenPageがactiveNodeIdを更新しない期間があるため、
+    // activeNodeIdがページ0のまま・表示はページ1という食い違い状態を再現する
+    const makeStaleActiveNodeState = () => {
+        const state = makeColdClearState({ commentText: '' });
+        const initialField = new Field({});
+        state.fumen.pages = [
+            {
+                flags: { ...flags },
+                field: { obj: initialField.copy() },
+                piece: undefined,
+                comment: { text: '' },
+                index: 0,
+            },
+            {
+                flags: { ...flags },
+                field: { obj: initialField.copy() },
+                piece: undefined,
+                comment: { text: 'TIOLJSZ' },
+                index: 1,
+            },
+        ];
+        state.fumen.maxPage = 2;
+        state.fumen.currentIndex = 1;
+        state.tree = {
+            enabled: false,
+            nodes: [
+                { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['n0'] },
+                { id: 'n0', parentId: 'root', pageIndex: 0, childrenIds: ['n1'] },
+                { id: 'n1', parentId: 'n0', pageIndex: 1, childrenIds: [] },
+            ],
+            rootId: 'root',
+            activeNodeId: 'n0',
+        };
+        return state;
+    };
+
+    test('canStartColdClearSequenceSearch follows the current page, not the stale node', () => {
+        const state = makeStaleActiveNodeState();
+        expect(canStartColdClearSequenceSearch(state as any)).toBe(true);
+    });
+
+    test('startColdClearSearch targets the node of the current page', () => {
+        const state = makeStaleActiveNodeState();
+        const result = coldClearActions.startColdClearSearch()(state) as any;
+        expect(result).toBeDefined();
+        expect(result.coldClear.isRunning).toBe(true);
+        expect(result.coldClear.targetNodeId).toBe('n1');
+        expect(result.tree.activeNodeId).toBe('n1');
+    });
+
+    test('active node is still used when it matches the current page', () => {
+        const state = makeStaleActiveNodeState();
+        state.tree.activeNodeId = 'n1';
+        const result = coldClearActions.startColdClearSearch()(state) as any;
+        expect(result).toBeDefined();
+        expect(result.coldClear.targetNodeId).toBe('n1');
     });
 });

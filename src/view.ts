@@ -102,6 +102,7 @@ export const view: View<State, Actions> = (state, actions) => {
             editShortcuts: state.temporary.userSettings.editShortcuts,
             pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
             pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
+            pieceShortcutArrMs: state.temporary.userSettings.pieceShortcutArrMs,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
             noGrayAfterHardDrop: state.temporary.userSettings.noGrayAfterHardDrop,

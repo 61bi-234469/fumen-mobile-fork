@@ -50,6 +50,7 @@ export interface ScreenActions {
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
     changePieceShortcutDas: (data: { dasMs: number }) => action;
+    changePieceShortcutArr: (data: { arrMs: number }) => action;
     changeGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
@@ -357,6 +358,14 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 pieceShortcutDasMs: dasMs,
+            },
+        };
+    },
+    changePieceShortcutArr: ({ arrMs }) => (state): NextState => {
+        return {
+            mode: {
+                ...state.mode,
+                pieceShortcutArrMs: arrMs,
             },
         };
     },

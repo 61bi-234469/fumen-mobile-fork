@@ -169,6 +169,7 @@ interface UserSettings {
     editShortcuts: string;  // JSON文字列で保存
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasMs: number;
+    pieceShortcutArrMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -246,6 +247,7 @@ export const localStorageWrapper = {
             editShortcuts: safer.string(obj.editShortcuts),
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
+            pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
             rotationSystem: safer.rotationSystem(obj.rotationSystem),
             noGrayAfterHardDrop: safer.boolean(obj.noGrayAfterHardDrop),

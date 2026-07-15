@@ -99,7 +99,9 @@ export const resources = {
             Rotate180: '180°回転',
             Reset: 'ピースリセット',
             DasMs: 'DAS(ms)',
-            DasDescription: '左右移動の長押しで端まで移動',
+            DasDescription: '左右移動の長押しでリピート開始までの時間',
+            ArrMs: 'ARR(ms)',
+            ArrDescription: 'DAS後のリピート間隔。0にするとDAS後に端まで即移動',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {

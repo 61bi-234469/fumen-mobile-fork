@@ -10,26 +10,13 @@ import { rectHeight, rectWidth } from '../../lib/rect_selection';
 import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
+import { endDasHold, startDasHold } from '../../lib/piece_das';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
 
-const DEFAULT_LONG_PRESS_DURATION = 500;
-const trayPressState: {
-    key: string | null;
-    timer: ReturnType<typeof setTimeout> | null;
-    triggered: boolean;
-} = { key: null, timer: null, triggered: false };
-
-const clearTrayPress = () => {
-    if (trayPressState.timer !== null) {
-        clearTimeout(trayPressState.timer);
-        trayPressState.timer = null;
-    }
-};
-
-const trayButton = ({
-    key, datatest, label, iconName, active = false, disabled = false, onclick, onlongpress,
-    longPressDurationMs = DEFAULT_LONG_PRESS_DURATION, iconOnly = false,
+const trayButtonView = ({
+    key, datatest, label, iconName, active = false, disabled = false, iconOnly = false, touchActionNone = false,
+    handlers,
 }: {
     key: string;
     datatest: string;
@@ -37,61 +24,10 @@ const trayButton = ({
     iconName: string;
     active?: boolean;
     disabled?: boolean;
-    onclick: () => void;
-    onlongpress?: () => void;
-    longPressDurationMs?: number;
     iconOnly?: boolean;
+    touchActionNone?: boolean;
+    handlers: object;
 }) => {
-    const handlePointerDown = () => {
-        if (disabled || onlongpress === undefined) {
-            return;
-        }
-        clearTrayPress();
-        trayPressState.key = key;
-        trayPressState.triggered = false;
-        trayPressState.timer = setTimeout(() => {
-            trayPressState.triggered = true;
-            trayPressState.timer = null;
-            onlongpress();
-        }, longPressDurationMs);
-    };
-    const cancelPointer = () => {
-        if (trayPressState.key !== key) {
-            return;
-        }
-        clearTrayPress();
-        trayPressState.key = null;
-        trayPressState.triggered = false;
-    };
-    const handlePointerUp = (event: PointerEvent) => {
-        if (disabled || onlongpress === undefined || trayPressState.key !== key) {
-            return;
-        }
-        clearTrayPress();
-        if (!trayPressState.triggered) {
-            onclick();
-        }
-        trayPressState.key = null;
-        trayPressState.triggered = false;
-        event.preventDefault();
-        event.stopPropagation();
-    };
-    const pointerHandlers = onlongpress === undefined ? {
-        onclick: (event: MouseEvent) => {
-            if (!disabled) {
-                onclick();
-            }
-            event.preventDefault();
-            event.stopPropagation();
-        },
-    } : {
-        onpointerdown: handlePointerDown,
-        onpointerup: handlePointerUp,
-        onpointercancel: cancelPointer,
-        onpointerleave: cancelPointer,
-        oncontextmenu: (event: Event) => event.preventDefault(),
-    };
-
     return button({
         key,
         datatest,
@@ -99,7 +35,7 @@ const trayButton = ({
         type: 'button',
         'aria-label': label,
         'aria-pressed': active ? 'true' : 'false',
-        ...pointerHandlers,
+        ...handlers,
         style: style({
             alignItems: 'center',
             background: active ? '#f44336' : '#fff',
@@ -118,6 +54,7 @@ const trayButton = ({
             minWidth: iconOnly ? '0' : px(56),
             outlineOffset: '-3px',
             padding: iconOnly ? '0' : '0 4px',
+            touchAction: touchActionNone ? 'none' : undefined,
             transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
         }),
     }, [
@@ -130,6 +67,95 @@ const trayButton = ({
             }),
         }, label),
     ]);
+};
+
+const trayButton = ({
+    key, datatest, label, iconName, active = false, disabled = false, onclick, iconOnly = false,
+}: {
+    key: string;
+    datatest: string;
+    label: string;
+    iconName: string;
+    active?: boolean;
+    disabled?: boolean;
+    onclick: () => void;
+    iconOnly?: boolean;
+}) => trayButtonView({
+    key, datatest, label, iconName, active, disabled, iconOnly,
+    handlers: {
+        onclick: (event: MouseEvent) => {
+            if (!disabled) {
+                onclick();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        },
+    },
+});
+
+// ピース操作用ボタン
+// - pointerdownで即時実行（pointerupを待たない）
+// - ボタンごとに独立したポインタ処理のため、複数ボタンの同時押しが可能
+// - hold指定時はDAS/ARRエンジンで押しっぱなしのリピート移動に対応
+const pieceActionButton = ({
+    key, datatest, label, iconName, disabled = false, onpress, hold,
+}: {
+    key: string;
+    datatest: string;
+    label: string;
+    iconName: string;
+    disabled?: boolean;
+    onpress: () => void;
+    hold?: {
+        dasMs: number;
+        arrMs: number;
+        move: () => void;
+        moveToEnd: () => void;
+    };
+}) => {
+    const holdId = `tray:${key}`;
+    const handlePointerDown = (event: PointerEvent) => {
+        if (disabled) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const target = event.currentTarget as HTMLElement;
+        if (target.setPointerCapture !== undefined) {
+            try {
+                target.setPointerCapture(event.pointerId);
+            } catch (e) {
+                // 合成イベントなどでpointerIdが無効な場合は無視
+            }
+        }
+        if (hold !== undefined) {
+            startDasHold(holdId, hold);
+        } else {
+            onpress();
+        }
+    };
+    const handlePointerEnd = (event: PointerEvent) => {
+        if (hold !== undefined) {
+            endDasHold(holdId);
+        }
+        event.preventDefault();
+    };
+    return trayButtonView({
+        key, datatest, label, iconName, disabled,
+        iconOnly: true,
+        touchActionNone: true,
+        handlers: {
+            onpointerdown: handlePointerDown,
+            onpointerup: handlePointerEnd,
+            onpointercancel: handlePointerEnd,
+            oncontextmenu: (event: Event) => event.preventDefault(),
+            onclick: (event: MouseEvent) => {
+                // アクションはpointerdownで実行済みのため、後続のclickは無効化する
+                event.preventDefault();
+                event.stopPropagation();
+            },
+        },
+    });
 };
 
 const partThumbnail = (part: EditorPart, guideLineColor: boolean) => div({
@@ -258,24 +284,29 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         style: style({ background: '#fff', borderLeft: '1px solid #ddd', minWidth: '0' }),
     });
     const pieceButton = ({
-        key, label, iconName, disabled = false, onclick, onlongpress,
+        key, label, iconName, disabled = false, onpress, hold,
     }: {
         key: string;
         label: string;
         iconName: string;
         disabled?: boolean;
-        onclick: () => void;
-        onlongpress?: () => void;
-    }) => trayButton({
+        onpress: () => void;
+        hold?: {
+            move: () => void;
+            moveToEnd: () => void;
+        };
+    }) => pieceActionButton({
         key,
         label,
         iconName,
         disabled,
-        onclick,
-        onlongpress,
-        longPressDurationMs: state.mode.pieceShortcutDasMs,
+        onpress,
+        hold: hold === undefined ? undefined : {
+            ...hold,
+            dasMs: state.mode.pieceShortcutDasMs,
+            arrMs: state.mode.pieceShortcutArrMs,
+        },
         datatest: key,
-        iconOnly: true,
     });
     return [div({
         key: 'tray-piece-grid',
@@ -294,37 +325,39 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         state.mode.rotationSystem === 'srsPlus'
             ? pieceButton({
                 key: 'tray-piece-rotate-180', label: i18n.EditorUi.Rotate180(), iconName: 'refresh',
-                disabled: !canOperate, onclick: actions.rotateTo180,
+                disabled: !canOperate, onpress: actions.rotateTo180,
             })
             : placeholder('tray-piece-empty-180'),
         pieceButton({
             key: 'tray-piece-hold', label: i18n.EditorUi.Hold(), iconName: 'swap_horiz',
-            disabled: !canHold, onclick: actions.swapCurrentPieceWithHoldQueue,
+            disabled: !canHold, onpress: actions.swapCurrentPieceWithHoldQueue,
         }),
         pieceButton({
             key: 'tray-piece-harddrop', label: i18n.EditorUi.HardDrop(), iconName: 'vertical_align_bottom',
-            disabled: !canOperate, onclick: actions.harddrop,
+            disabled: !canOperate, onpress: actions.harddrop,
         }),
         placeholder('tray-piece-empty-top-end'),
         pieceButton({
             key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
-            disabled: !canOperate, onclick: actions.moveToLeft, onlongpress: actions.moveToLeftEnd,
+            disabled: !canOperate, onpress: actions.moveToLeft,
+            hold: { move: actions.moveToLeft, moveToEnd: actions.moveToLeftEnd },
         }),
         pieceButton({
             key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
-            disabled: !canOperate, onclick: actions.moveToRight, onlongpress: actions.moveToRightEnd,
+            disabled: !canOperate, onpress: actions.moveToRight,
+            hold: { move: actions.moveToRight, moveToEnd: actions.moveToRightEnd },
         }),
         pieceButton({
             key: 'tray-piece-softdrop', label: i18n.EditorUi.SoftDrop(), iconName: 'keyboard_arrow_down',
-            disabled: !canOperate, onclick: actions.softdrop,
+            disabled: !canOperate, onpress: actions.softdrop,
         }),
         pieceButton({
             key: 'tray-piece-rotate-left', label: i18n.EditorUi.RotateLeft(), iconName: 'rotate_left',
-            disabled: !canOperate, onclick: actions.rotateToLeft,
+            disabled: !canOperate, onpress: actions.rotateToLeft,
         }),
         pieceButton({
             key: 'tray-piece-rotate-right', label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
-            disabled: !canOperate, onclick: actions.rotateToRight,
+            disabled: !canOperate, onpress: actions.rotateToRight,
         }),
         div({
             key: `img-rotation-${rotationName}`,

@@ -103,6 +103,8 @@ export interface PartsState {
 }
 
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
+// 0のときはDAS経過後に端まで即移動する（従来動作）
+export const DEFAULT_PIECE_SHORTCUT_ARR_MS = 0;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
@@ -200,6 +202,7 @@ export interface State {
             editShortcuts: EditShortcuts;
             pieceShortcuts: PieceShortcuts;
             pieceShortcutDasMs: number;
+            pieceShortcutArrMs: number;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
             noGrayAfterHardDrop: boolean;
@@ -242,6 +245,7 @@ export interface State {
         editShortcuts: EditShortcuts;
         pieceShortcuts: PieceShortcuts;
         pieceShortcutDasMs: number;
+        pieceShortcutArrMs: number;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
         noGrayAfterHardDrop: boolean;
@@ -372,6 +376,7 @@ export const initState: Readonly<State> = {
             editShortcuts: { ...defaultEditShortcuts },
             pieceShortcuts: { ...defaultPieceShortcuts },
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+            pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
             noGrayAfterHardDrop: false,
@@ -411,6 +416,7 @@ export const initState: Readonly<State> = {
         editShortcuts: { ...defaultEditShortcuts },
         pieceShortcuts: { ...defaultPieceShortcuts },
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+        pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,

@@ -384,6 +384,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.pieceShortcutArrMs !== undefined) {
+        main.changePieceShortcutArr({ arrMs: settings.pieceShortcutArrMs });
+        updated = true;
+    }
+
     if (settings.gifFrameDelayMs !== undefined) {
         main.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(settings.gifFrameDelayMs) });
         updated = true;

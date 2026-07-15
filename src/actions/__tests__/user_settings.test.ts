@@ -33,6 +33,7 @@ const baseUserSettings = {
     editShortcuts: {},
     pieceShortcuts: {},
     pieceShortcutDasMs: 167,
+    pieceShortcutArrMs: 0,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     noGrayAfterHardDrop: false,
@@ -53,6 +54,7 @@ const createState = (override: any = {}) => ({
         editShortcuts: {},
         pieceShortcuts: {},
         pieceShortcutDasMs: 167,
+        pieceShortcutArrMs: 0,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,
@@ -166,6 +168,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepPieceShortcutArr', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state);
+
+            expect(next.temporary.userSettings.pieceShortcutArrMs).toBe(33);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state)).toBeUndefined();
+        });
+    });
+
     describe('setUserSettingsTab', () => {
         test('switches the active tab', () => {
             const state = createState();
@@ -189,7 +206,7 @@ describe('userSettingsActions', () => {
                 'changeDeleteSpawnMinoOnPaintDrag',
                 'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
-                'changePieceShortcutDas', 'changeGifFrameDelay', 'changeRotationSystem',
+                'changePieceShortcutDas', 'changePieceShortcutArr', 'changeGifFrameDelay', 'changeRotationSystem',
                 'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
@@ -202,6 +219,7 @@ describe('userSettingsActions', () => {
             const state = createState();
             state.temporary.userSettings = {
                 ...baseUserSettings,
+                pieceShortcutArrMs: 33,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
@@ -209,6 +227,7 @@ describe('userSettingsActions', () => {
 
             userSettingsActions.commitUserSettings()(state);
 
+            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrMs: 33 });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

@@ -103,7 +103,9 @@
             Rotate180: 'Rotate 180°',
             Reset: 'Reset Piece',
             DasMs: 'DAS (ms)',
-            DasDescription: 'Long-press left/right moves to edge',
+            DasDescription: 'Delay before auto-repeat when holding left/right',
+            ArrMs: 'ARR (ms)',
+            ArrDescription: 'Auto-repeat interval after DAS. 0 moves to the edge instantly',
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {

@@ -20,6 +20,7 @@ interface UserSettingsModalProps {
     editShortcuts: EditShortcuts;
     pieceShortcuts: PieceShortcuts;
     pieceShortcutDasMs: number;
+    pieceShortcutArrMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -41,6 +42,7 @@ interface UserSettingsModalProps {
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
+        keepPieceShortcutArr: (data: { arrMs: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
@@ -116,6 +118,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         editShortcuts,
         pieceShortcuts,
         pieceShortcutDasMs,
+        pieceShortcutArrMs,
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
@@ -277,6 +280,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         const value = parseInt(target.value, 10);
         if (!isNaN(value) && value >= 50 && value <= 1000) {
             actions.keepPieceShortcutDas({ dasMs: value });
+        }
+    };
+
+    const onchangeArr = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value) && value >= 0 && value <= 1000) {
+            actions.keepPieceShortcutArr({ arrMs: value });
         }
     };
 
@@ -604,6 +615,28 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         max={1000}
                                         step={10}
                                         onchange={onchangeDas}
+                                        style={style({
+                                            width: px(80),
+                                            textAlign: 'center',
+                                        })}
+                                    />
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.ArrMs()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.ArrDescription()}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        datatest="input-piece-arr"
+                                        value={pieceShortcutArrMs}
+                                        min={0}
+                                        max={1000}
+                                        step={10}
+                                        onchange={onchangeArr}
                                         style={style({
                                             width: px(80),
                                             textAlign: 'center',

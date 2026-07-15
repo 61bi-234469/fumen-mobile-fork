@@ -109,6 +109,8 @@ export const i18n = {
             Reset: () => t('UserSettings.PieceShortcuts.Reset'),
             DasMs: () => t('UserSettings.PieceShortcuts.DasMs'),
             DasDescription: () => t('UserSettings.PieceShortcuts.DasDescription'),
+            ArrMs: () => t('UserSettings.PieceShortcuts.ArrMs'),
+            ArrDescription: () => t('UserSettings.PieceShortcuts.ArrDescription'),
         },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),

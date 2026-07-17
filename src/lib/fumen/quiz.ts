@@ -11,8 +11,17 @@ export class Quiz {
         return name;
     }
 
-    static isQuizComment(comment: string) {
-        return comment.startsWith('#Q=');
+    static isQuizComment(comment: string): boolean {
+        if (!comment.startsWith('#Q=')) {
+            return false;
+        }
+
+        try {
+            new Quiz(comment);
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     static create(nexts: string): Quiz;

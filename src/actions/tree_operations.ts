@@ -52,7 +52,15 @@ import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../histor
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
-import { Pages, PageFieldOperation } from '../lib/pages';
+import {
+    Pages,
+    PageFieldOperation,
+    materializePageComments,
+    recomputeQuizFlags,
+    resolvePageCommentSnapshot,
+    resolvePageCommentText,
+} from '../lib/pages';
+import { Quiz } from '../lib/fumen/quiz';
 import { persistViewSettings } from './view_settings';
 
 // ============================================================================
@@ -417,6 +425,23 @@ const removePagesByIndices = (pages: Page[], removedIndices: number[]): Page[] =
     return pagesObj.pages;
 };
 
+const getQuizPageIndicesAffectedByRemoval = (
+    pages: Page[],
+    removedIndices: number[],
+): Set<number> => {
+    const removed = new Set(removedIndices);
+    const pagesWithQuizFlags = recomputeQuizFlags(pages);
+
+    return new Set(
+        pagesWithQuizFlags
+            .filter(page => page.flags.quiz
+                && page.comment.ref !== undefined
+                && !removed.has(page.index)
+                && removedIndices.some(index => page.comment.ref! <= index && index <= page.index))
+            .map(page => page.index),
+    );
+};
+
 const shiftTreeForRemovedPages = (tree: SerializedTree, removedIndices: number[]): SerializedTree => {
     let updatedTree = tree;
     const sortedIndices = [...removedIndices].sort((a, b) => b - a);
@@ -455,7 +480,7 @@ export const createSnapshot = (
     };
 };
 
-const rebuildPageRefsForOrder = (
+export const rebuildPageRefsForOrder = (
     pages: Page[],
     originalPages: Page[],
     originalFirstPageColorize: boolean,
@@ -467,8 +492,16 @@ const rebuildPageRefsForOrder = (
 
     const originalPagesObj = new Pages(originalPages);
     const originalFields = new Map<number, Field>();
+    const originalComments = new Map<number, string>();
     originalPages.forEach((page) => {
         originalFields.set(page.index, originalPagesObj.getField(page.index, PageFieldOperation.None));
+        try {
+            originalComments.set(page.index, resolvePageCommentText(originalPages, page.index));
+        } catch (e) {
+            if (page.comment.text !== undefined) {
+                originalComments.set(page.index, page.comment.text);
+            }
+        }
     });
 
     const newPages = pages.map((page, newIndex) => {
@@ -523,19 +556,25 @@ const rebuildPageRefsForOrder = (
         if (page.comment.ref !== undefined) {
             const mappedRef = oldIndexToNewIndex.get(page.comment.ref);
             if (mappedRef !== undefined && mappedRef < newIndex) {
-                newPage.comment = { ...page.comment, ref: mappedRef };
-            } else {
-                let resolvedText: string | undefined;
-                let refIndex: number | undefined = page.comment.ref;
-                while (refIndex !== undefined) {
-                    const refPage = pages.find(p => p.index === refIndex);
-                    if (refPage && refPage.comment.text !== undefined) {
-                        resolvedText = refPage.comment.text;
-                        break;
-                    }
-                    refIndex = refPage?.comment.ref;
+                const originalReferenceSpan = originalPages
+                    .slice(page.comment.ref, page.index + 1)
+                    .map(originalPage => originalPage.index);
+                const reorderedReferenceSpan = pages
+                    .slice(mappedRef, newIndex + 1)
+                    .map(reorderedPage => reorderedPage.index);
+                const referenceSpanPreserved = originalReferenceSpan.length === reorderedReferenceSpan.length
+                    && originalReferenceSpan.every((oldIndex, position) => (
+                        oldIndex === reorderedReferenceSpan[position]
+                    ));
+
+                const pageIsQuiz = page.flags.quiz || Quiz.isQuizComment(originalComments.get(page.index) ?? '');
+                if (!pageIsQuiz || referenceSpanPreserved) {
+                    newPage.comment = { ...page.comment, ref: mappedRef };
+                } else {
+                    newPage.comment = { text: originalComments.get(page.index) ?? '' };
                 }
-                newPage.comment = { text: resolvedText ?? '' };
+            } else {
+                newPage.comment = { text: originalComments.get(page.index) ?? '' };
             }
         }
 
@@ -559,7 +598,7 @@ const rebuildPageRefsForOrder = (
         };
     });
 
-    return newPages;
+    return recomputeQuizFlags(newPages);
 };
 
 export const normalizeTreeAndPages = (
@@ -568,12 +607,13 @@ export const normalizeTreeAndPages = (
     currentIndex: number,
     activeNodeId?: TreeNodeId | null,
 ): { tree: SerializedTree; pages: Page[]; currentIndex: number; changed: boolean } => {
-    if (pages.length <= 1) {
-        return { tree, pages, currentIndex, changed: false };
+    const normalizedPages = recomputeQuizFlags(pages);
+    if (normalizedPages.length <= 1) {
+        return { tree, currentIndex, pages: normalizedPages, changed: false };
     }
 
     const dfsIndices = flattenTreeToPageIndices(tree)
-        .filter(index => index >= 0 && index < pages.length);
+        .filter(index => index >= 0 && index < normalizedPages.length);
     const seen = new Set<number>();
     const order: number[] = [];
     dfsIndices.forEach((index) => {
@@ -582,7 +622,7 @@ export const normalizeTreeAndPages = (
             order.push(index);
         }
     });
-    for (let i = 0; i < pages.length; i += 1) {
+    for (let i = 0; i < normalizedPages.length; i += 1) {
         if (!seen.has(i)) {
             order.push(i);
         }
@@ -590,7 +630,7 @@ export const normalizeTreeAndPages = (
 
     const isIdentityOrder = order.every((index, position) => index === position);
     if (isIdentityOrder) {
-        return { tree, pages, currentIndex, changed: false };
+        return { tree, currentIndex, pages: normalizedPages, changed: false };
     }
 
     const indexMap = new Map<number, number>();
@@ -598,11 +638,11 @@ export const normalizeTreeAndPages = (
         indexMap.set(oldIndex, newIndex);
     });
 
-    const reorderedPages = order.map(oldIndex => pages[oldIndex]);
-    const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
+    const reorderedPages = order.map(oldIndex => normalizedPages[oldIndex]);
+    const originalFirstPageColorize = normalizedPages[0]?.flags.colorize ?? true;
     const newPages = rebuildPageRefsForOrder(
         reorderedPages,
-        pages,
+        normalizedPages,
         originalFirstPageColorize,
     );
 
@@ -632,12 +672,13 @@ const clonePageForAppend = (page: Page, index: number): Page => {
             ? { ref: page.comment.ref }
             : { text: '' };
 
+    const quiz = clonedComment.text !== undefined && Quiz.isQuizComment(clonedComment.text);
     return {
         ...page,
         index,
         field: clonedField,
         comment: clonedComment,
-        flags: { ...page.flags },
+        flags: { ...page.flags, quiz },
         piece: page.piece !== undefined ? {
             type: page.piece.type,
             rotation: page.piece.rotation,
@@ -712,13 +753,19 @@ const removeTreeNodeById = (
     }
 
     const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+    const pagesWithQuizFlags = recomputeQuizFlags(state.fumen.pages);
+    const affectedQuizPageIndices = getQuizPageIndicesAffectedByRemoval(
+        pagesWithQuizFlags,
+        removedPageIndices,
+    );
+    const pagesWithMaterializedQuiz = materializePageComments(pagesWithQuizFlags, affectedQuizPageIndices);
     const prunedTree = scope === 'descendants'
         ? node.childrenIds.reduce(
             (currentTree, childId) => removeNode(currentTree, childId, true),
             tree,
         )
         : removeNode(tree, nodeId, scope === 'subtree');
-    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+    const newPages = removePagesByIndices(pagesWithMaterializedQuiz, removedPageIndices);
     const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
 
     const activeNodeId = state.tree.activeNodeId;
@@ -797,7 +844,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
 
         // Remove #TREE= from comments
-        const cleanedPages = state.fumen.pages.map((page, index) => {
+        const cleanedPages = recomputeQuizFlags(state.fumen.pages.map((page, index) => {
             if (index === 0 && page.comment.text !== undefined) {
                 const cleanComment = removeTreeFromComment(page.comment.text);
                 if (cleanComment !== page.comment.text) {
@@ -805,7 +852,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 }
             }
             return page;
-        });
+        }));
 
         const nextSnapshot: TreeOperationSnapshot = {
             tree: { nodes: [], rootId: null, version: 2 },
@@ -960,21 +1007,17 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             newField.convertToGray();
         }
 
-        // Resolve comment ref to find the page with actual text
-        // If current page has text, new page can ref it directly
-        // If current page has ref, follow to find the text source page
-        let commentRefIndex = currentNode.pageIndex;
-        if (currentPage.comment.ref !== undefined) {
-            commentRefIndex = currentPage.comment.ref;
-        }
-
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
         // Preserve lock flag from parent page
+        const commentText = resolvePageCommentSnapshot(state.fumen.pages, currentNode.pageIndex, 'after');
+        const isQuizComment = Quiz.isQuizComment(commentText);
         const newPage: Page = {
             index: newPageIndex,
             field: { obj: newField },
-            comment: { ref: commentRefIndex },
-            flags: { ...currentPage.flags, quiz: false },
+            comment: isQuizComment
+                ? { text: commentText }
+                : { ref: currentPage.comment.ref ?? currentNode.pageIndex },
+            flags: { ...currentPage.flags, quiz: isQuizComment },
         };
 
         // Add branch to tree
@@ -1126,21 +1169,17 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             newField.convertToGray();
         }
 
-        // Resolve comment ref to find the page with actual text
-        // If current page has text, new page can ref it directly
-        // If current page has ref, follow to find the text source page
-        let commentRefIndex = currentNode.pageIndex;
-        if (currentPage.comment.ref !== undefined) {
-            commentRefIndex = currentPage.comment.ref;
-        }
-
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
         // Preserve lock flag from parent page
+        const commentText = resolvePageCommentSnapshot(state.fumen.pages, currentNode.pageIndex, 'after');
+        const isQuizComment = Quiz.isQuizComment(commentText);
         const newPage: Page = {
             index: newPageIndex,
             field: { obj: newField },
-            comment: { ref: commentRefIndex },
-            flags: { ...currentPage.flags, quiz: false },
+            comment: isQuizComment
+                ? { text: commentText }
+                : { ref: currentPage.comment.ref ?? currentNode.pageIndex },
+            flags: { ...currentPage.flags, quiz: isQuizComment },
         };
 
         // Insert node in tree
@@ -1185,21 +1224,18 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const resolvedField = pagesObj.getField(sourceNode.pageIndex, PageFieldOperation.Command);
         const newField = resolvedField.copy();
 
-        // Resolve comment ref to find the page with actual text
-        // If source page has text, new page can ref it directly
-        // If source page has ref, follow to find the text source page
-        let commentRefIndex = sourceNode.pageIndex;
-        if (sourcePage.comment.ref !== undefined) {
-            commentRefIndex = sourcePage.comment.ref;
-        }
+        const commentText = resolvePageCommentText(state.fumen.pages, sourceNode.pageIndex);
+        const isQuizComment = Quiz.isQuizComment(commentText);
 
         // Create new page with resolved field data
         // Copy all flags from source (including quiz flag - per spec, don't force quiz=false)
         const newPage: Page = {
             index: newPageIndex,
             field: { obj: newField },
-            comment: { ref: commentRefIndex },
-            flags: { ...sourcePage.flags },
+            comment: isQuizComment
+                ? { text: commentText }
+                : { ref: sourcePage.comment.ref ?? sourceNode.pageIndex },
+            flags: { ...sourcePage.flags, quiz: isQuizComment },
             piece: sourcePage.piece !== undefined ? {
                 type: sourcePage.piece.type,
                 rotation: sourcePage.piece.rotation,

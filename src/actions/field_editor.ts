@@ -993,7 +993,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         if (current === null) {
             if (queue.length === 0) {
                 // スポーンできなくても、進行後の状態はコメントに反映しておく
-                const advancedComment = buildQueueStateComment(hold, null, [], parsed.b2b, parsed.combo);
+                const advancedComment = buildQueueStateComment(
+                    hold, null, [], parsed.b2b, parsed.combo, parsed.suffix,
+                );
                 if (advancedComment !== currentComment) {
                     return sequence(state, [
                         actions.setCommentText({ pageIndex, text: advancedComment }),
@@ -1017,6 +1019,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             nextQueue,
             parsed.b2b,
             parsed.combo,
+            parsed.suffix,
         );
 
         return sequence(state, [

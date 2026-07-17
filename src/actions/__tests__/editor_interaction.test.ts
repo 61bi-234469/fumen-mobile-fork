@@ -150,6 +150,19 @@ describe('editorInteractionActions', () => {
         expect(drag.mode.touch).toBe(TouchTypes.MovePiece);
     });
 
+    test('toggling PIECE returns to the previous PAINT or SELECT tool', () => {
+        const paintState = createState();
+        const paintPiece = apply(paintState, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        expect(paintPiece.editorUi.previousPrimaryTool).toBe('paint');
+        expect(apply(paintPiece, editorInteractionActions.togglePieceMode()).editorUi.primaryTool).toBe('paint');
+
+        const selectState = createState();
+        selectState.editorUi.primaryTool = 'select';
+        const selectPiece = apply(selectState, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        expect(selectPiece.editorUi.previousPrimaryTool).toBe('select');
+        expect(apply(selectPiece, editorInteractionActions.togglePieceMode()).editorUi.primaryTool).toBe('select');
+    });
+
     test('clicking a mino palette entry keeps PIECE mode active', () => {
         const state = createState();
         state.editorUi.primaryTool = 'piece';

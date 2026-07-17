@@ -375,6 +375,7 @@ export const i18n = {
         PlacedPieceRequired: () => t('ColdClear.PlacedPieceRequired'),
         CurrentPieceRequired: () => t('ColdClear.CurrentPieceRequired'),
         CurrentPieceMismatch: () => t('ColdClear.CurrentPieceMismatch'),
+        InvalidQuizChain: () => t('ColdClear.InvalidQuizChain'),
         FloatingPieceUnsupported: () => t('ColdClear.FloatingPieceUnsupported'),
         CannotEvaluatePlacedSpawn: () => t('ColdClear.CannotEvaluatePlacedSpawn'),
         PlacedSpawnRetrying: () => t('ColdClear.PlacedSpawnRetrying'),

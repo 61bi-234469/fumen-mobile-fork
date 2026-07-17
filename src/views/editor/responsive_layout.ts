@@ -1,7 +1,7 @@
 export const EDITOR_COMPACT_HEIGHT = 520;
 export const EDITOR_TWO_COLUMN_RAIL_HEIGHT = 420;
 const MIN_RAIL_CELL_HEIGHT = 18;
-const MAX_RAIL_CELL_HEIGHT = 30;
+const MAX_RAIL_CELL_HEIGHT = 32;
 const RAIL_GROUP_GAPS_HEIGHT = 16;
 
 export const getEditorBottomMetrics = (displayHeight: number) => {

@@ -272,6 +272,7 @@ export interface State {
     };
     editorUi: {
         primaryTool: PrimaryTool;
+        previousPrimaryTool?: Exclude<PrimaryTool, 'piece'>;
         paintTool: PaintTool;
         pieceAction: PieceAction;
         inspector: EditorInspector;
@@ -443,6 +444,7 @@ export const initState: Readonly<State> = {
     },
     editorUi: {
         primaryTool: 'paint',
+        previousPrimaryTool: undefined,
         paintTool: 'pen',
         pieceAction: 'spawn',
         inspector: 'none',

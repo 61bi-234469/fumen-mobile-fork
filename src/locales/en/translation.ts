@@ -121,7 +121,7 @@
     },
     EditorUi: {
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
-        ResetPiece: 'Reset spawn mino', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', InfiniteBag: '∞ 7bag',
         ImportExport: 'Import / Export', Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row', Spawn: 'Spawn', Drag: 'Drag',
@@ -360,6 +360,7 @@
         PlacedPieceRequired: 'AI: Place a piece before running this action',
         CurrentPieceRequired: 'AI: Set the current piece before evaluating the score',
         CurrentPieceMismatch: 'AI: Current piece does not match the placed piece',
+        InvalidQuizChain: 'AI: The quiz comment reference chain is invalid',
         FloatingPieceUnsupported: 'AI: Floating piece is not supported',
         CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
         PlacedSpawnRetrying: 'AI: Deepening search...',

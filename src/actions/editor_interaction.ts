@@ -14,6 +14,7 @@ import { floatingPartAtTop } from '../lib/rect_selection';
 
 export interface EditorInteractionActions {
     changePrimaryTool(data: { tool: PrimaryTool }): action;
+    togglePieceMode(): action;
     changePaintTool(data: { tool: PaintTool; restorePalette?: boolean }): action;
     changePieceAction(data: { pieceAction: PieceAction }): action;
     openEditorInspector(data: { inspector: Exclude<EditorInspector, 'none'> }): action;
@@ -63,6 +64,12 @@ const cancelSelectionPreviewAndSet = (update: (state: State) => NextState) => (s
     sequence(state, [actions.cancelRectSelectionPreview(), update])
 );
 
+const previousPrimaryTool = (state: State): Exclude<PrimaryTool, 'piece'> | undefined => (
+    state.editorUi.primaryTool === 'piece'
+        ? state.editorUi.previousPrimaryTool
+        : state.editorUi.primaryTool
+);
+
 export const editorInteractionActions: Readonly<EditorInteractionActions> = {
     changePrimaryTool: ({ tool }) => cancelSelectionPreviewAndSet((state) => {
         // 同じボタンをもう一度押したときはトレイを閉じるトグル動作にする。
@@ -78,6 +85,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 editorUi: {
                     ...state.editorUi,
                     bottomSlot,
+                    previousPrimaryTool: previousPrimaryTool(state),
                     primaryTool: tool,
                     inspector: 'none',
                 },
@@ -91,6 +99,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             const editorUi: State['editorUi'] = {
                 ...state.editorUi,
                 bottomSlot,
+                previousPrimaryTool: previousPrimaryTool(state),
                 primaryTool: tool,
                 inspector: 'none',
             };
@@ -116,6 +125,13 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             },
         };
     }),
+    togglePieceMode: () => (state): NextState => (
+        editorInteractionActions.changePrimaryTool({
+            tool: state.editorUi.primaryTool === 'piece'
+                ? state.editorUi.previousPrimaryTool ?? 'paint'
+                : 'piece',
+        })(state)
+    ),
     changePaintTool: ({ tool, restorePalette = false }) => cancelSelectionPreviewAndSet((state) => {
         const legacy = legacyModeForPaintTool(tool);
         const paletteSelection = restorePalette && state.editorUi.paletteSelection === Piece.Empty
@@ -142,6 +158,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
     changePieceAction: ({ pieceAction }) => cancelSelectionPreviewAndSet((state) => {
         const editorUi: State['editorUi'] = {
             ...state.editorUi,
+            previousPrimaryTool: previousPrimaryTool(state),
             primaryTool: 'piece',
             inspector: 'none',
             bottomSlot: 'tray',
@@ -317,6 +334,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 },
                 editorUi: {
                     ...nextState.editorUi,
+                    previousPrimaryTool: previousPrimaryTool(state),
                     primaryTool: 'piece',
                     pieceAction: 'drag',
                     inspector: 'none',

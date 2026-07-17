@@ -4,6 +4,8 @@ export interface ParsedQueue {
     hold: Piece | null;
     current: Piece | null;
     queue: Piece[];
+    /** Text after the first quiz section, including the leading semicolon. */
+    suffix?: string;
 }
 
 export interface ParsedQueueState extends ParsedQueue {
@@ -108,13 +110,17 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
         }
     }
 
-    return {
+    const result: ParsedQueueState = {
         b2b,
         combo,
         hold: queue.hold,
         current: queue.current,
         queue: queue.queue,
     };
+    if (queue.suffix !== undefined) {
+        result.suffix = queue.suffix;
+    }
+    return result;
 }
 
 function parseQueueOnlyComment(text: string): ParsedQueue | null {
@@ -128,12 +134,16 @@ function parseQueueOnlyComment(text: string): ParsedQueue | null {
 
     const quizMatch = QUIZ_QUEUE_REGEX.exec(text);
     if (quizMatch) {
-        const [, holdChar, currentChar, queueStr] = quizMatch;
-        return {
+        const [, holdChar, currentChar, queueStr, suffix] = quizMatch;
+        const result: ParsedQueue = {
             hold: holdChar ? CHAR_TO_PIECE[holdChar] : null,
             current: currentChar ? CHAR_TO_PIECE[currentChar] : null,
             queue: Array.prototype.map.call(queueStr, (c: string) => CHAR_TO_PIECE[c]) as Piece[],
         };
+        if (suffix !== undefined) {
+            result.suffix = suffix;
+        }
+        return result;
     }
 
     if (text.startsWith('#Q=')) {
@@ -166,12 +176,17 @@ const toChar = (piece: Piece | null): string => {
     return piece !== null ? PIECE_TO_CHAR[piece] : '';
 };
 
-export function buildQueueComment(hold: Piece | null, current: Piece | null, queue: Piece[]): string {
-    if (hold === null && current === null && queue.length === 0) {
+export function buildQueueComment(
+    hold: Piece | null,
+    current: Piece | null,
+    queue: Piece[],
+    suffix: string = '',
+): string {
+    if (hold === null && current === null && queue.length === 0 && suffix === '') {
         return '';
     }
     const queueStr = queue.map(p => PIECE_TO_CHAR[p]).join('');
-    return `#Q=[${toChar(hold)}](${toChar(current)})${queueStr}`;
+    return `#Q=[${toChar(hold)}](${toChar(current)})${queueStr}${suffix}`;
 }
 
 export function buildQueueStateComment(
@@ -180,8 +195,9 @@ export function buildQueueStateComment(
     queue: Piece[],
     b2b: boolean,
     combo: number,
+    suffix: string = '',
 ): string {
-    const queueComment = buildQueueComment(hold, current, queue);
+    const queueComment = buildQueueComment(hold, current, queue, suffix);
     const metadataTokens: string[] = [];
 
     if (b2b) {

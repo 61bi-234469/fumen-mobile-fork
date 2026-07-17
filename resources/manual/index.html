@@ -15,11 +15,12 @@
   </div>
 </header>
 <nav aria-label="目次">
-  <a href="#start">はじめに</a><a href="#screens">画面</a><a href="#edit">編集</a><a href="#pages">ページ</a><a href="#list">リスト</a><a href="#tree">ツリー</a><a href="#side-panel">サイドパネル</a><a href="#ai">AI分析</a><a href="#share">読込・共有</a><a href="#settings">設定</a><a href="#tips">便利な操作</a><a href="#trouble">困ったとき</a>
+  <a href="#start">はじめに</a><a href="#screens">画面</a><a href="#edit">編集</a><a href="#pages">ページ</a><a href="#list">リスト</a><a href="#tree">ツリー</a><a href="#side-panel">サイドパネル</a><a href="#ai">Cold Clear</a><a href="#share">読込・共有</a><a href="#settings">設定</a><a href="#tips">便利な操作</a><a href="#trouble">困ったとき</a>
 </nav>
 <main>
   <section id="start">
     <h2>まず使ってみる</h2>
+    <p class="note">このマニュアルは、実装と実画面を基に生成AIを利用して作成・メンテナンスしています。</p>
     <ol class="steps">
       <li><a href="../index.html">Fumen Mobile Forkを開く</a>。</li>
       <li>編集画面で色を選び、盤面をタップまたはドラッグしてブロックを置く。</li>
@@ -38,7 +39,7 @@
       <div class="card"><h3>List</h3><p>全ページをカード形式で並べて確認します。並べ替え、コメント一括編集、画像やURLの出力に向いています。</p></div>
       <div class="card"><h3>Tree</h3><p>同じ局面から複数の手順へ分岐させます。候補手、セットアップ、補完の整理に向いています。</p></div>
     </div>
-    <p class="note">ListとTreeは同じ一覧画面内で切り替えます。ツリーを有効にすると、ページ順はツリー構造に合わせて管理されます。PCではEditの左側へList/Treeをサイドパネル表示することもできます。</p>
+    <p class="note">ListとTreeは同じ一覧画面内の「リスト」「ツリー」タブで切り替えます。ツリーを有効にすると、ページ順はツリー構造に合わせて管理されます。PCではEditの左側へList/Treeをサイドパネル表示することもできます。</p>
   </section>
 
   <section id="edit">
@@ -139,7 +140,7 @@
   <section id="tree">
     <h2>Treeで手順を分岐管理する</h2>
     <ol class="steps">
-      <li>List上部のツリートグルをオンにする。</li>
+      <li>List上部の「ツリーモードを有効にする」を選ぶ。</li>
       <li>ツリーアイコンを選び、Treeへ切り替える。</li>
       <li>起点にしたいノードを選び、色付きボタンで続きを作る。</li>
     </ol>
@@ -153,14 +154,14 @@
           <tr><td><span class="dot green"></span>緑の＋</td><td>選択ノードの続きとしてページを追加</td><td>そのノードの次へ移動</td></tr>
           <tr><td><span class="dot orange"></span>オレンジの＋</td><td>選択ノードから新しい分岐を追加</td><td>分岐先へ移動</td></tr>
           <tr><td><span class="dot blue"></span>青の複製</td><td>ノードや分岐を複製</td><td>—</td></tr>
-          <tr><td><span class="dot red"></span>右上の赤い削除</td><td>「移動/削除」で選んだ範囲を削除。直後の通知からUndo可能</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>「ページを削除」</td><td>「移動/削除」で選んだ範囲を削除。直後の通知からUndo可能</td><td>—</td></tr>
         </tbody>
       </table>
     </div>
     <ul>
       <li><strong>移動/削除：</strong>左下のチップで「ノードのみ」「ノードと配下」「配下のみ」を選びます。移動と削除に同じ範囲が適用されます。</li>
       <li><strong>配下のみ：</strong>ノードを残して子孫だけを移動・削除します。通常、緑ボタンは直下の子が1つのときに使えますが、移動先が葉ノードなら複数の子サブツリーも元の順序で移動できます。</li>
-      <li><strong>削除：</strong>各ノード右上の赤い削除アイコンを選びます。削除後に表示される通知の<strong>元に戻す</strong>で復元できます。最後の1ページは削除できません。</li>
+      <li><strong>削除：</strong>各ノード右上の「ページを削除」アイコンを選びます。削除後に表示される通知の<strong>元に戻す</strong>で復元できます。最後の1ページは削除できません。</li>
       <li><strong>ノード選択：</strong>カードを1回選ぶとアクティブになります。別ノードでは、同じカードをもう一度選ぶとそのページのEditへ移動します。</li>
       <li><strong>ツリー解除：</strong>ツリー情報が削除されるため、確認ダイアログが表示されます。</li>
       <li><strong>親ツリー追加：</strong>既存の枝につながらない独立したルートを作ります。別セットや別巡目を同じテト譜で管理するときに使います。</li>
@@ -249,7 +250,7 @@
     <ul>
       <li><strong>取り込み：</strong><strong>クリップボードから読み込む</strong>は全体を置き換え、<strong>クリップボードから挿入</strong>は現在の内容の末尾へ追加します。クリップボード上のtetgram RawData JSONも自動判定します。PCでは<kbd>Ctrl</kbd>+<kbd>V</kbd>（Macは<kbd>⌘</kbd>+<kbd>V</kbd>）の短押しが挿入、500ms以上の長押しが読み込みと同じ動作です。</li>
       <li><strong>画像を保存：</strong>PNGとGIFを選べます。GIFではフレーム間隔を設定できます。</li>
-      <li><strong>出力範囲：</strong>全ページ、または先頭からアクティブページ／ノードまでを選べます。</li>
+      <li><strong>出力範囲：</strong>List/TreeのImport/Exportでは、画像・共有・外部サイトに適用する範囲を「すべてのページ」または「選択中のページまで」から選べます。</li>
       <li><strong>共有：</strong>FUMENとURLをコピーまたは開けます。</li>
       <li><strong>tetgram連携：</strong>tetgram用rawデータをコピーはツリー構造（リスト配置）ごと渡せます。tetgramで開くは盤面を読み込み済みで開きますが、ツリーのリスト配置はURLに含まれません。</li>
       <li><strong>URL短縮：</strong>TinyURLによる短縮を利用するか設定できます。</li>
@@ -323,7 +324,6 @@
 </main>
 <footer>
   <p><a href="../index.html">アプリへ戻る</a> · <a href="../help.html">Helpへ戻る</a> · <a href="https://github.com/61bi-234469/fumen-mobile-fork">GitHub</a></p>
-  <p>このマニュアルは、実装と実画面を基に生成AIを利用して作成・メンテナンスしています。</p>
   <p>画面や機能は更新により変わることがあります。</p>
 </footer>
 </body>

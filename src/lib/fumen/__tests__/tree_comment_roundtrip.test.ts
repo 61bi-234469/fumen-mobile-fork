@@ -1,5 +1,6 @@
 import { Field } from '../field';
 import { Page } from '../types';
+import { decode, encode } from '../fumen';
 import {
     createTreeFromPages,
     embedTreeInPages,
@@ -40,6 +41,47 @@ const createPages = (): Page[] => [
 ];
 
 describe('#TREE= comment round trip', () => {
+    test('keeps quiz flags stable across encode and decode', async () => {
+        const pages = createPages().map((page, index) => index === 0
+            ? {
+                ...page,
+                comment: { text: '#Q=[](I)OT' },
+                flags: { ...page.flags, quiz: true },
+            }
+            : {
+                ...page,
+                flags: { ...page.flags, quiz: true },
+            });
+
+        const encoded = await encode(pages);
+        const decoded = await decode(`v115@${encoded}`);
+
+        expect(decoded.map(page => page.flags.quiz)).toEqual([true, true, true]);
+    });
+
+    test('recomputes quiz flags after removing the tree marker', () => {
+        const pages = createPages().map((page, index) => index === 0
+            ? {
+                ...page,
+                comment: { text: '#Q=[](I)OT' },
+                flags: { ...page.flags, quiz: true },
+            }
+            : {
+                ...page,
+                flags: { ...page.flags, quiz: true },
+            });
+        const tree = createTreeFromPages(pages);
+
+        const embeddedPages = embedTreeInPages(pages, tree, true);
+        embeddedPages.forEach((page) => {
+            page.flags.quiz = false;
+        });
+
+        const { cleanedPages } = extractTreeFromPages(embeddedPages);
+        expect(cleanedPages.every(page => page.flags.quiz)).toBe(true);
+        expect(cleanedPages[0].comment.text).toBe('#Q=[](I)OT');
+    });
+
     test('serialize then parse preserves node count, virtual root, and parent/child pageIndex relationships', () => {
         const tree = createTreeFromPages(createPages());
         const serialized = serializeTreeToComment(tree);

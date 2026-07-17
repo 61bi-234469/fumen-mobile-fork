@@ -21,9 +21,15 @@ const fieldPoint = (canvasElement, x, y) => {
 const ensureSentLineVisible = () => {
     cy.get('body').then(($body) => {
         if ($body.find('[datatest="tray-context"]').length > 0) {
-            cy.get('[datatest="btn-piece-mode"][aria-pressed="true"],'
+            const activeTool = '[datatest="btn-piece-mode"][aria-pressed="true"],'
                 + '[datatest="btn-select-mode"][aria-pressed="true"],'
-                + '[datatest="btn-paint-mode"][aria-pressed="true"]').click();
+                + '[datatest="btn-paint-mode"][aria-pressed="true"]';
+            if ($body.find('[datatest="btn-piece-mode"][aria-pressed="true"]').length > 0) {
+                cy.get('[datatest="btn-piece-mode"]').click();
+                cy.get(activeTool).click();
+            } else {
+                cy.get(activeTool).click();
+            }
         }
     });
 };

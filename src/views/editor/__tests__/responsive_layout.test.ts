@@ -31,7 +31,7 @@ describe('editor responsive layout', () => {
     });
 
     test('keeps usable rail cell heights for representative field sizes', () => {
-        expect(getResponsiveRailCellHeight(676, 1)).toBe(30);
+        expect(getResponsiveRailCellHeight(676, 1)).toBe(32);
         expect(getResponsiveRailCellHeight(456, 1)).toBe(21);
         expect(getResponsiveRailCellHeight(282, 2)).toBe(20);
     });

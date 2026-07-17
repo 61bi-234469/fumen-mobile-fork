@@ -301,7 +301,7 @@ const paletteContent = (
         return span({
             key: 'reset-piece-label',
             style: style({ fontSize: px(Math.max(10, height * 0.3)), fontWeight: '600' }),
-        }, 'RESET');
+        }, i18n.EditorUi.ResetPiece());
     }
     if (state.editorUi.primaryTool === 'piece' && isMinoPaletteSelection(selection)) {
         const pieceName = parsePieceName(selection);
@@ -396,7 +396,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const twoColumns = layout.buttons.columns === 2;
     const compact = twoColumns || layout.canvas.size.height < 560 || layout.buttons.size.width < 72;
     const text = (label: string) => compact ? '' : label;
-    const iconSize = Math.max(14, Math.min(20, cellHeight - 7));
+    const iconSize = Math.max(14, Math.min(21, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {
         if (compact || !state.mode.shortcutLabelVisible) {
             return undefined;
@@ -477,47 +477,65 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 children: compact ? icon('flag', iconSize) : [icon('flag', iconSize), span({ key: 'f' }, 'F')],
             }),
         ]),
-        toolCell({
-            key: 'btn-cold-clear', datatest: 'btn-cold-clear', label: i18n.ColdClear.MenuButtonLabel(),
-            height: cellHeight, status: state.coldClear.isRunning,
-            onpress: actions.openColdClearMenuModal,
-            children: [
-                icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
-                ...(compact ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
-                ...(state.coldClear.progress ? [span({
-                    key: 'progress-badge',
-                    style: style({
-                        background: '#333', borderRadius: '8px', color: '#fff', fontSize: px(7),
-                        lineHeight: '11px', minWidth: '18px', padding: '0 2px', position: 'absolute',
-                        right: '2px', top: '2px',
-                    }),
-                }, `${state.coldClear.progress.current}/${state.coldClear.progress.total}`)] : []),
-                span({
-                    key: 'progress-live', 'aria-live': 'polite',
-                    style: style({ clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', height: '1px', overflow: 'hidden',
-                        position: 'absolute', whiteSpace: 'nowrap', width: '1px' }),
-                }, state.coldClear.progress
-                    ? i18n.ColdClear.Progress(state.coldClear.progress.current, state.coldClear.progress.total) : ''),
-            ],
-        }),
     ]);
 
-    const modeGroup = toolGroup('rail-modes', [
-        row('rail-mode-row', [
+    const pieceModeCell = toolCell({
+        key: 'btn-piece-mode', datatest: 'btn-piece-mode', label: 'PIECE', height: cellHeight,
+        selected: state.editorUi.primaryTool === 'piece',
+        onpress: actions.togglePieceMode,
+        onlongpress: () => executePieceShortcut('Reset', actions),
+        children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('P'))])],
+    });
+
+    const aiAndPieceGroup = toolGroup('rail-ai-piece', [
+        row('rail-ai-piece-row', [
+            pieceModeCell,
             toolCell({
-                key: 'btn-piece-mode', datatest: 'btn-piece-mode', label: 'PIECE', height: cellHeight,
-                selected: state.editorUi.primaryTool === 'piece',
-                onpress: () => actions.changePrimaryTool({ tool: 'piece' }),
-                onlongpress: () => executePieceShortcut('Reset', actions),
-                children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('P'))])],
-            }),
-            toolCell({
-                key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
-                selected: state.editorUi.primaryTool === 'select',
-                onpress: () => actions.changePrimaryTool({ tool: 'select' }),
-                children: [icon('select_all', iconSize), ...(compact ? [] : [span({ key: 'select' }, text('S'))])],
+                key: 'btn-cold-clear', datatest: 'btn-cold-clear', label: i18n.ColdClear.MenuButtonLabel(),
+                height: cellHeight, status: state.coldClear.isRunning,
+                onpress: actions.openColdClearMenuModal,
+                children: [
+                    icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
+                    ...(compact ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
+                    ...(state.coldClear.progress ? [span({
+                        key: 'progress-badge',
+                        style: style({
+                            background: '#333', borderRadius: '8px', color: '#fff', fontSize: px(7),
+                            lineHeight: '11px', minWidth: '18px', padding: '0 2px', position: 'absolute',
+                            right: '2px', top: '2px',
+                        }),
+                    }, `${state.coldClear.progress.current}/${state.coldClear.progress.total}`)] : []),
+                    span({
+                        key: 'progress-live', 'aria-live': 'polite',
+                        style: style({ clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', height: '1px', overflow: 'hidden',
+                            position: 'absolute', whiteSpace: 'nowrap', width: '1px' }),
+                    }, state.coldClear.progress ? i18n.ColdClear.Progress(
+                        state.coldClear.progress.current,
+                        state.coldClear.progress.total,
+                    ) : ''),
+                ],
             }),
         ]),
+    ]);
+    const auxiliaryAndAiGroup = div({
+        key: 'rail-auxiliary-ai',
+        style: style({
+            display: 'flex',
+            flexDirection: 'column',
+            gap: px(4),
+            width: '100%',
+        }),
+    }, [auxiliaryGroup, aiAndPieceGroup]);
+
+    const modeGroup = toolGroup('rail-modes', [
+        toolCell({
+            key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
+            selected: state.editorUi.primaryTool === 'select',
+            onpress: () => actions.changePrimaryTool({ tool: 'select' }),
+            children: [icon('select_all', iconSize), ...(compact ? [] : [span({
+                key: 'select', style: style({ marginLeft: '3px' }),
+            }, 'SELECT')])],
+        }),
         toolCell({
             key: 'btn-paint-mode', datatest: 'btn-paint-mode', label: 'PAINT', height: cellHeight,
             selected: state.editorUi.primaryTool === 'paint',
@@ -554,6 +572,9 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                     || state.editorUi.primaryTool === 'select' && state.parts.blackTransparent
                 : state.editorUi.primaryTool === 'select' && part !== undefined
                     ? state.parts.selectedId === part.id
+                    : state.editorUi.primaryTool === 'piece'
+                        && (selection === Piece.Empty || selection === Piece.Gray)
+                        ? false
                     : state.editorUi.paletteSelection === selection,
             selectionKind: 'palette',
             onpress: () => {
@@ -593,5 +614,5 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             overflow: 'hidden',
             width: px(layout.buttons.size.width),
         }),
-    }, [systemGroup, pageGroup, auxiliaryGroup, modeGroup, paletteGroup]);
+    }, [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup]);
 };

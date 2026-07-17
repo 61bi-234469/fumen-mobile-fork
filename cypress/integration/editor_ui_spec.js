@@ -16,6 +16,23 @@ const assertRailOrder = () => {
     });
 };
 
+const assertRailArrangement = () => {
+    const selectors = ['btn-utils-mode', 'btn-piece-mode', 'btn-cold-clear', 'btn-select-mode', 'btn-paint-mode'];
+    cy.get(selectors.map(datatest).join(',')).then(elements => {
+        const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+        const utilities = rect('btn-utils-mode');
+        const piece = rect('btn-piece-mode');
+        const ai = rect('btn-cold-clear');
+        const select = rect('btn-select-mode');
+        const paint = rect('btn-paint-mode');
+        expect(piece.top - utilities.bottom).to.be.greaterThan(0);
+        expect(piece.top - utilities.bottom).to.be.lessThan(10);
+        expect(Math.abs(piece.top - ai.top)).to.be.lessThan(1);
+        expect(piece.left).to.be.lessThan(ai.left);
+        expect(select.top).to.be.lessThan(paint.top);
+    });
+};
+
 describe('Editor UI final concept', () => {
     beforeEach(() => cy.clearLocalStorage());
 
@@ -39,6 +56,7 @@ describe('Editor UI final concept', () => {
                 expect(Math.abs(field.bottom - rail.bottom)).to.be.lessThan(1);
             });
             assertRailOrder();
+            assertRailArrangement();
             if (width === 390 && height === 844) {
                 cy.get(datatest('tray-context')).should('not.have.class', 'editor-context-tray--compact');
             }
@@ -69,6 +87,21 @@ describe('Editor UI final concept', () => {
                 });
             });
         });
+    });
+
+    it('shows SELECT and keeps spawn actions from appearing selected', () => {
+        cy.viewport(1000, 800);
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-select-mode')).should('contain.text', 'SELECT');
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-gray'))
+            .should('contain.text', 'RESPAWN')
+            .and('have.attr', 'data-active', 'false');
+        cy.get(datatest('btn-piece-empty')).should('have.attr', 'data-active', 'false');
+
+        cy.get(datatest('btn-piece-gray')).click().should('have.attr', 'data-active', 'false');
+        cy.get(datatest('btn-piece-empty')).click().should('have.attr', 'data-active', 'false');
     });
 
     it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
@@ -191,7 +224,7 @@ describe('Editor UI final concept', () => {
         });
     });
 
-    it('toggles the context tray by pressing the active mode button again', () => {
+    it('toggles the context tray for PAINT and toggles PIECE mode separately', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
@@ -217,12 +250,15 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('tray-context')).should('be.visible');
 
-        // Pressing that same (now active) mode button again toggles the tray off.
+        // Pressing Piece again returns to the previous Paint mode without closing the tray.
         cy.get(datatest('btn-piece-mode')).click();
-        cy.get(datatest('tray-context')).should('not.exist');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('tray-context')).should('be.visible');
 
-        // Pressing it once more toggles the tray back on.
+        // Piece can be enabled again without changing tray visibility.
         cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
     });
 

@@ -220,6 +220,21 @@ describe('buildQueueComment', () => {
 });
 
 describe('parseQueueStateComment', () => {
+    test('round-trips quiz suffixes while editing the queue state', () => {
+        const text = '#Q=[O](L)J;#Q=[S](Z)T;hello';
+        const result = parseQueueStateComment(text);
+
+        expect(result?.suffix).toBe(';#Q=[S](Z)T;hello');
+        expect(buildQueueStateComment(
+            result!.hold,
+            result!.current,
+            result!.queue,
+            result!.b2b,
+            result!.combo,
+            result!.suffix,
+        )).toBe(text);
+    });
+
     test('parse queue state defaults to b2b=false and combo=0', () => {
         const result = parseQueueStateComment('#Q=[T](I)OSL');
         expect(result).toEqual({

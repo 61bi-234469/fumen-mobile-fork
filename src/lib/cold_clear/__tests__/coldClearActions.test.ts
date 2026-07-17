@@ -67,6 +67,7 @@ jest.mock('../../../locales/keys', () => ({
             PlacedPieceRequired: () => 'Placed piece required',
             CurrentPieceRequired: () => 'Current piece required for score',
             CurrentPieceMismatch: () => 'Current piece mismatch',
+            InvalidQuizChain: () => 'Invalid quiz chain',
             FloatingPieceUnsupported: () => 'Floating piece unsupported',
             CannotEvaluatePlacedSpawn: () => 'Cannot evaluate current placement',
             PlacedSpawnRetrying: () => 'Deepening search',
@@ -316,6 +317,29 @@ describe('coldClearActions run isolation', () => {
         const state = makeColdClearState({ commentText: 'hello' });
         const result = coldClearActions.startColdClearSearch()(state);
         expect(result).toBeUndefined();
+    });
+
+    test('notifies when the quiz comment reference chain is invalid', () => {
+        const state = makeColdClearState();
+        state.fumen.pages[0].comment = { ref: 0 };
+
+        coldClearActions.startColdClearSearch()(state);
+
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Invalid quiz chain',
+        }));
+    });
+
+    test('normal search rejects a spawned piece that differs from queue current', () => {
+        const state = makeColdClearState({ commentText: '#Q=[](O)T' });
+        state.fumen.pages[0].piece = {
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        };
+
+        expect(canStartColdClearSequenceSearch(state)).toBe(false);
+        expect(coldClearActions.startColdClearSearch()(state)).toBeUndefined();
     });
 
     test('stopColdClearSearch sets isRunning=false and abortRequested=true', () => {

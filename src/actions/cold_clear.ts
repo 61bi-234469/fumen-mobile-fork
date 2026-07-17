@@ -6,7 +6,7 @@ import { State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { isQuizCommentResult, PageFieldOperation, Pages } from '../lib/pages';
-import { getBlockPositions } from '../lib/piece';
+import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import {
     parseQueueComment,
     parseQueueStateComment,
@@ -38,7 +38,10 @@ import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
 import type { FieldEditorActions } from './field_editor';
 import type { EditorInteractionActions } from './editor_interaction';
+import type { MementoActions } from './memento';
+import type { PageActions } from './pages';
 import { persistViewSettings } from './view_settings';
+import { toPrimitivePage, toSinglePageTask } from '../history_task';
 
 declare const M: any;
 
@@ -111,7 +114,9 @@ type ColdClearRuntimeActions = ColdClearActions
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
     & Pick<CommentActions, 'setCommentText'>
     & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>
-    & Pick<EditorInteractionActions, 'changePieceAction'>;
+    & Pick<EditorInteractionActions, 'changePieceAction'>
+    & Pick<MementoActions, 'registerHistoryTask'>
+    & Pick<PageActions, 'reopenCurrentPage'>;
 
 let currentSession: RunSession | null = null;
 
@@ -159,6 +164,7 @@ export interface ColdClearActions {
         queue: Piece[];
         b2b: boolean;
         combo: number;
+        syncCurrentPiece?: boolean;
     }) => action;
     seedQueuePreviewFromSpawnedPiece: () => action;
     commitColdClearQueueComment: () => action;
@@ -369,7 +375,45 @@ const commitQueuePreviewIfNeeded = (state: Readonly<State>): void => {
     appActions.setCommentText({
         pageIndex: preview.pageIndex,
         text: preview.text,
+        ...(preview.historyKey ? { mergeKey: preview.historyKey } : {}),
     });
+};
+
+const syncSpawnedPieceFromQueueCurrent = (
+    state: State,
+    current: Piece | null,
+    mergeKey?: string,
+): string | undefined => {
+    if (!appActions) {
+        return mergeKey;
+    }
+
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (!page) {
+        return mergeKey;
+    }
+
+    if (current === null) {
+        if (page.piece === undefined) {
+            return mergeKey;
+        }
+    } else if (page.piece !== undefined && page.piece.type === current) {
+        return mergeKey;
+    }
+
+    const prevPage = toPrimitivePage(page);
+    page.piece = current === null
+        ? undefined
+        : createSpawnMove(current, state.mode.rotationSystem !== 'classic');
+    const task = toSinglePageTask(pageIndex, prevPage, page);
+
+    appActions.registerHistoryTask({
+        task,
+        ...(mergeKey ? { mergeKey } : {}),
+    });
+    appActions.reopenCurrentPage();
+    return mergeKey ?? task.key;
 };
 
 export interface ColdClearMenuQueueState {
@@ -671,14 +715,18 @@ const toMove = (result: CCMove): Move | null => {
     };
 };
 
-// 設置後のキュー状態を返す。カレントは常に設置前の状態で埋まっている前提で、
-// 設置後は NEXT 先頭が新しいカレントになる (尽きたら null)
-const applyQueueAfterMove = (
+interface MoveQueueTransition {
+    placement: { hold: Piece | null; current: Piece; queue: Piece[] };
+    next: { hold: Piece | null; current: Piece | null; queue: Piece[] };
+}
+
+// ホールド操作後・設置直前の状態と、設置後の状態をまとめて返す
+const resolveMoveQueueTransition = (
     hold: Piece | null,
     current: Piece,
     queue: Piece[],
     usedHold: boolean,
-): { hold: Piece | null; current: Piece | null; queue: Piece[] } | null => {
+): MoveQueueTransition | null => {
     if (usedHold) {
         if (hold === null) {
             // カレントがホールドへ入り、NEXT先頭が設置される
@@ -686,24 +734,41 @@ const applyQueueAfterMove = (
                 return null;
             }
             return {
-                hold: current,
-                current: 2 <= queue.length ? queue[1] : null,
-                queue: queue.slice(2),
+                placement: {
+                    hold: current,
+                    current: queue[0],
+                    queue: queue.slice(1),
+                },
+                next: {
+                    hold: current,
+                    current: 2 <= queue.length ? queue[1] : null,
+                    queue: queue.slice(2),
+                },
             };
         }
 
         // ホールドとカレントが入れ替わり、旧ホールドが設置される
         return {
-            hold: current,
-            current: 1 <= queue.length ? queue[0] : null,
-            queue: queue.slice(1),
+            placement: {
+                hold: current,
+                current: hold,
+                queue: queue.slice(),
+            },
+            next: {
+                hold: current,
+                current: 1 <= queue.length ? queue[0] : null,
+                queue: queue.slice(1),
+            },
         };
     }
 
     return {
-        hold,
-        current: 1 <= queue.length ? queue[0] : null,
-        queue: queue.slice(1),
+        placement: { hold, current, queue: queue.slice() },
+        next: {
+            hold,
+            current: 1 <= queue.length ? queue[0] : null,
+            queue: queue.slice(1),
+        },
     };
 };
 
@@ -1694,7 +1759,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         return undefined;
     },
 
-    previewColdClearQueueComment: ({ hold, current, queue, b2b, combo }) => (state): NextState => {
+    previewColdClearQueueComment: (
+        { hold, current, queue, b2b, combo, syncCurrentPiece = false },
+    ) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1718,18 +1785,34 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             b2b,
             combo,
         );
+        const currentPreview = state.coldClear.queuePreview;
+        const previewHistoryKey = currentPreview?.pageIndex === pageIndex
+            ? currentPreview.historyKey
+            : undefined;
+        const historyKey = syncCurrentPiece
+            ? syncSpawnedPieceFromQueueCurrent(state, current, previewHistoryKey)
+            : previewHistoryKey;
         if (
-            state.coldClear.queuePreview
-            && state.coldClear.queuePreview.pageIndex === pageIndex
-            && state.coldClear.queuePreview.text === nextText
+            currentPreview
+            && currentPreview.pageIndex === pageIndex
+            && currentPreview.text === nextText
+            && currentPreview.historyKey === historyKey
         ) {
+            return undefined;
+        }
+
+        if (!currentPreview && nextText === currentComment && historyKey === undefined) {
             return undefined;
         }
 
         return {
             coldClear: {
                 ...state.coldClear,
-                queuePreview: { pageIndex, text: nextText },
+                queuePreview: {
+                    pageIndex,
+                    text: nextText,
+                    ...(historyKey ? { historyKey } : {}),
+                },
             },
         };
     },
@@ -1779,6 +1862,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             appActions.setCommentText({
                 pageIndex: preview.pageIndex,
                 text: preview.text,
+                ...(preview.historyKey ? { mergeKey: preview.historyKey } : {}),
             });
         }
 
@@ -1800,7 +1884,14 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        appActions.setCommentText({ pageIndex, text: '' });
+        const historyKey = state.coldClear.queuePreview?.pageIndex === pageIndex
+            ? state.coldClear.queuePreview.historyKey
+            : undefined;
+        appActions.setCommentText({
+            pageIndex,
+            text: '',
+            ...(historyKey ? { mergeKey: historyKey } : {}),
+        });
 
         return {
             coldClear: {
@@ -1882,8 +1973,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const queueState = applyQueueAfterMove(session.hold, session.current, session.queue, result.hold);
-        if (!queueState) {
+        const queueTransition = resolveMoveQueueTransition(
+            session.hold, session.current, session.queue, result.hold);
+        if (!queueTransition || queueTransition.placement.current !== move.type) {
             finishSingleSearch(runId);
             return undefined;
         }
@@ -1891,9 +1983,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         // 結果ページには設置前のキュー状態を書き込む (page.piece がそのページのカレントミノに対応する)
         const pageComment = buildScoredQueueComment(
             result.score,
-            session.hold,
-            session.current,
-            session.queue,
+            queueTransition.placement.hold,
+            queueTransition.placement.current,
+            queueTransition.placement.queue,
             session.b2b,
             session.combo,
         );
@@ -1917,16 +2009,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         session.field.put(move);
         session.field.clearLine();
 
-        session.hold = queueState.hold;
-        session.queue = queueState.queue;
+        session.hold = queueTransition.next.hold;
+        session.queue = queueTransition.next.queue;
         session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
         session.combo = normalizeCombo(result.combo);
 
-        if (queueState.current === null || session.resultPages.length >= session.totalMoves) {
+        if (queueTransition.next.current === null || session.resultPages.length >= session.totalMoves) {
             finishSingleSearch(runId);
             return undefined;
         }
-        session.current = queueState.current;
+        session.current = queueTransition.next.current;
 
         if (session.nextLimit !== null) {
             terminateSession(session);
@@ -2079,8 +2171,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             }
 
             // ホールド消費に必要なミノが足りない候補は除外する
-            const queueState = applyQueueAfterMove(session.hold, session.current, session.queue, result.hold);
-            if (!queueState) {
+            const queueTransition = resolveMoveQueueTransition(
+                session.hold, session.current, session.queue, result.hold);
+            if (!queueTransition || queueTransition.placement.current !== move.type) {
                 return;
             }
 
@@ -2101,9 +2194,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 comment: {
                     text: buildScoredQueueComment(
                         result.score,
-                        session.hold,
-                        session.current,
-                        session.queue,
+                        queueTransition.placement.hold,
+                        queueTransition.placement.current,
+                        queueTransition.placement.queue,
                         session.b2b,
                         session.combo,
                     ),

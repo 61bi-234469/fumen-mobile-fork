@@ -297,7 +297,7 @@ export interface State {
         nextLimit: number | null;
         weightsPreset: number;
         thinkMs: number;
-        queuePreview: { pageIndex: number; text: string } | null;
+        queuePreview: { pageIndex: number; text: string; historyKey?: string } | null;
     };
     version: string;
     platform: Platforms;

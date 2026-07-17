@@ -352,7 +352,7 @@ describe('Editor UI final concept', () => {
         cy.get(block(6, 5)).should('not.have.attr', 'color', Color.T.Normal);
     });
 
-    it('uses SELECT stock long press to toggle clipping without spawning a mino', () => {
+    it('uses SELECT stock long press to toggle clipping without changing transparency', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-t')).click();
         operations.mode.block.click(1, 1);
@@ -361,12 +361,14 @@ describe('Editor UI final concept', () => {
         operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
         cy.get(datatest('tray-select-copy')).click();
         cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'true');
+        cy.get(datatest('btn-piece-i-pin')).should('have.attr', 'aria-label', 'Pin');
 
         cy.get(datatest('btn-piece-i')).trigger('pointerdown', { pointerId: 1, button: 0 });
         cy.wait(600);
         cy.get(datatest('btn-piece-i')).trigger('pointerup', { pointerId: 1, button: 0 });
 
-        cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'false');
+        cy.get(datatest('btn-piece-i-pin')).should('have.attr', 'aria-label', 'Unpin');
+        cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'true');
         cy.get(datatest('btn-select-mode')).should('have.attr', 'data-active', 'true');
     });
 

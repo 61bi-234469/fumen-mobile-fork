@@ -121,4 +121,44 @@ describe('rectSelectActions', () => {
         expect(next.rectSelect.floating.width).toBe(10);
         expect(next.rectSelect.floating.height).toBe(23);
     });
+
+    test('keeps a moved selection uncommitted when the pointer is released', () => {
+        const field = new Field({});
+        field.add(1, 1, Piece.T);
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: field },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'floating',
+                rect: { minX: 1, minY: 1, maxX: 1, maxY: 1 },
+                anchorIndex: 11,
+                floating: {
+                    cells: [Piece.T],
+                    width: 1,
+                    height: 1,
+                    sourceRect: { minX: 1, minY: 1, maxX: 1, maxY: 1 },
+                    targetX: 4,
+                    targetY: 5,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+        } as unknown as State;
+
+        const next = rectSelectActions.endRectSelection()(state) as any;
+
+        expect(next.rectSelect.status).toBe('floating');
+        expect(next.rectSelect.anchorIndex).toBeNull();
+        expect(next.rectSelect.floating.targetX).toBe(4);
+        expect(next.fumen).toBeUndefined();
+        expect(field.get(1, 1)).toBe(Piece.T);
+        expect(field.get(4, 5)).toBe(Piece.Empty);
+    });
 });

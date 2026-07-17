@@ -264,6 +264,14 @@ describe('Tree mode in list view', () => {
             );
             expect(expandedInsert.getAttribute('r')).to.equal('18');
 
+            // The destructive controls disappear while moving, and the copy
+            // positions become blue-plus branch targets.
+            expect(win.document.querySelector('[datatest^="btn-tree-node-delete-"]'))
+                .to.equal(null);
+            expect(win.document.querySelector(
+                '[datatest^="btn-tree-copy-"] circle:nth-of-type(2)[r="18"]',
+            )).to.not.equal(null);
+
             fireTouch('touchmove', end);
             await wait(120);
             fireTouch('touchend', end);
@@ -276,6 +284,42 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
         cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('starts moving from a node body after a long press', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildThreeNodeChain();
+
+        cy.window().then(async (win) => {
+            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const nodes = win.document.querySelectorAll('[datatest^="tree-node-"]');
+            const source = nodes[2];
+            const rect = source.getBoundingClientRect();
+            const start = { x: rect.left + 40, y: rect.top + 60 };
+            const target = win.document.elementFromPoint(start.x, start.y) || source;
+            const fireTouch = createTouchDispatcher(win, target);
+
+            fireTouch('touchstart', start);
+            await wait(550);
+
+            expect(win.document.querySelector('[datatest="tree-drag-ghost"]'))
+                .to.not.equal(null);
+
+            const insertCircle = win.document.querySelector('svg circle[fill="#10B981"]');
+            const targetRect = insertCircle.getBoundingClientRect();
+            const end = {
+                x: targetRect.left + targetRect.width / 2,
+                y: targetRect.top + targetRect.height / 2,
+            };
+            fireTouch('touchmove', end);
+            await wait(120);
+            fireTouch('touchend', end);
+        });
+
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
     });
 
     it('hides the source parent insert button even when the parent is branched', () => {

@@ -1,5 +1,19 @@
 import { FumenError } from './errors';
 import { Piece, Rotation } from './enums';
+import { Move } from './fumen/types';
+
+export function createSpawnMove(piece: Piece, srs: boolean): Move {
+    if (srs) {
+        return { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
+    }
+    if (piece === Piece.I) {
+        return { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 21 } };
+    }
+    if (piece === Piece.O) {
+        return { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 21 } };
+    }
+    return { type: piece, rotation: Rotation.Reverse, coordinate: { x: 4, y: 21 } };
+}
 
 export function getBlockPositions(piece: Piece, rotation: Rotation, x: number, y: number): number[][] {
     return getBlocks(piece, rotation).map((position) => {

@@ -123,6 +123,7 @@ export const resources = {
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る', Spawn: '出現', Drag: '移動',
         RotateLeft: '左回転', RotateRight: '右回転', Drop: '落下', Move: '移動', Stamp: 'スタンプ',
         Deselect: '選択解除', Once: '1回', Continuous: '連続', Rotate: '回転', Mirror: '反転', End: '終了',
+        UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         AllMirror: '全ページ反転', ToGray: 'グレー化', Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
         KeyPage: 'キーページ', ReferencePage: '参照ページ', Lock: '固定', Rise: 'せり上がり', MirrorFlag: '反転フラグ',
         UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',

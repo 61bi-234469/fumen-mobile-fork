@@ -541,7 +541,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 : selection === 'comp' && state.editorUi.primaryTool === 'piece'
                     ? i18n.EditorUi.InfiniteBag() : selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
         const onlongpress = state.editorUi.primaryTool === 'select'
-            ? part === undefined ? undefined : () => actions.toggleBlackTransparentPaste()
+            ? part === undefined ? undefined : () => actions.togglePartPin({ slot: part.slot })
             : () => actions.executeEditorPaletteShortcut({ selection });
         return toolCell({
             onlongpress,

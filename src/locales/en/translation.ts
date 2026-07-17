@@ -127,6 +127,7 @@
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row', Spawn: 'Spawn', Drag: 'Drag',
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right', Drop: 'Drop', Move: 'Move', Stamp: 'Stamp',
         Deselect: 'Deselect', Once: 'Once', Continuous: 'Continuous', Rotate: 'Rotate', Mirror: 'Mirror', End: 'End',
+        UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
         KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',

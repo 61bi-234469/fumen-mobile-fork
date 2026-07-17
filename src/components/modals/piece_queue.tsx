@@ -26,6 +26,7 @@ interface PieceQueueModalProps {
             queue: Piece[];
             b2b: boolean;
             combo: number;
+            syncCurrentPiece?: boolean;
         }) => void;
         commitColdClearQueueComment: () => void;
         clearCommentForColdClearQueue: () => void;
@@ -103,12 +104,14 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
     });
     const updateQueue = (
         updater: (queue: ColdClearMenuQueueState) => ColdClearMenuQueueState,
+        syncCurrentPiece = false,
     ) => {
         if (currentQueueState === null) {
             return;
         }
         const next = updater(currentQueueState);
         actions.previewColdClearQueueComment({
+            syncCurrentPiece,
             hold: next.hold,
             current: next.current,
             queue: next.queue,
@@ -244,7 +247,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                                 if (parsed === undefined) {
                                                     return;
                                                 }
-                                                updateQueue(queue => ({ ...queue, current: parsed }));
+                                                updateQueue(queue => ({ ...queue, current: parsed }), true);
                                             }}
                                             style={inputStyle}
                                         />
@@ -300,7 +303,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                                 default:
                                                     return { ...queue, queue: queue.queue.concat(piece) };
                                                 }
-                                            });
+                                            }, focusTarget === 'current');
                                         }}
                                         style={pieceButtonStyle}
                                     >{pieceQueuePieceToChar(piece)}</button>)}
@@ -318,7 +321,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                                 default:
                                                     return { ...queue, queue: [] };
                                                 }
-                                            });
+                                            }, focusTarget === 'current');
                                         }}
                                         style={pieceButtonStyle}
                                     >{i18n.ColdClear.QueueClearLabel()}</button>

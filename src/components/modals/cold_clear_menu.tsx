@@ -61,6 +61,7 @@ interface ColdClearMenuModalProps {
             queue: Piece[];
             b2b: boolean;
             combo: number;
+            syncCurrentPiece?: boolean;
         }) => void;
         commitColdClearQueueComment: () => void;
         clearCommentForColdClearQueue: () => void;
@@ -318,12 +319,14 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             b2b: boolean;
             combo: number;
         },
+        syncCurrentPiece = false,
     ) => {
         if (queueEditorDisabled || currentQueueState === null) {
             return;
         }
         const next = updater(currentQueueState);
         actions.previewColdClearQueueComment({
+            syncCurrentPiece,
             hold: next.hold,
             current: next.current,
             queue: next.queue,
@@ -652,7 +655,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                                 updateQueueState(queueState => ({
                                                     ...queueState,
                                                     current: parsed,
-                                                }));
+                                                }), true);
                                             }}
                                             style={style({
                                                 width: '100%',
@@ -730,7 +733,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                                     updateQueueState(queueState => ({
                                                         ...queueState,
                                                         current: piece,
-                                                    }));
+                                                    }), true);
                                                 } else {
                                                     updateQueueState(queueState => ({
                                                         ...queueState,
@@ -758,7 +761,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                                 updateQueueState(queueState => ({
                                                     ...queueState,
                                                     current: null,
-                                                }));
+                                                }), true);
                                             } else {
                                                 updateQueueState(queueState => ({
                                                     ...queueState,

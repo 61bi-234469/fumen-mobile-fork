@@ -35,7 +35,7 @@ export const convertActions: Readonly<ConvertActions> = {
             && state.rectSelect.floating !== null
             && state.rectSelect.floating.firstTapInProgress !== true) {
             return sequence(state, [
-                actions.endRectSelection(),
+                actions.commitRectSelection(),
                 newState => convertActions.shiftToLeft()(newState),
             ]);
         }
@@ -85,7 +85,7 @@ export const convertActions: Readonly<ConvertActions> = {
             && state.rectSelect.floating !== null
             && state.rectSelect.floating.firstTapInProgress !== true) {
             return sequence(state, [
-                actions.endRectSelection(),
+                actions.commitRectSelection(),
                 newState => convertActions.shiftToRight()(newState),
             ]);
         }
@@ -135,7 +135,7 @@ export const convertActions: Readonly<ConvertActions> = {
             && state.rectSelect.floating !== null
             && state.rectSelect.floating.firstTapInProgress !== true) {
             return sequence(state, [
-                actions.endRectSelection(),
+                actions.commitRectSelection(),
                 newState => convertActions.shiftToUp()(newState),
             ]);
         }
@@ -185,7 +185,7 @@ export const convertActions: Readonly<ConvertActions> = {
             && state.rectSelect.floating !== null
             && state.rectSelect.floating.firstTapInProgress !== true) {
             return sequence(state, [
-                actions.endRectSelection(),
+                actions.commitRectSelection(),
                 newState => convertActions.shiftToUpWithGray()(newState),
             ]);
         }
@@ -235,7 +235,7 @@ export const convertActions: Readonly<ConvertActions> = {
             && state.rectSelect.floating !== null
             && state.rectSelect.floating.firstTapInProgress !== true) {
             return sequence(state, [
-                actions.endRectSelection(),
+                actions.commitRectSelection(),
                 newState => convertActions.shiftToBottom()(newState),
             ]);
         }

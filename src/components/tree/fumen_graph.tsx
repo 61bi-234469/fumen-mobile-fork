@@ -56,6 +56,7 @@ import {
     getDeleteButtonOffset,
     getDragHandleOffset,
     getInsertButtonOffset,
+    getTreeCopyButtonDropTarget,
     getRootGhostRect,
     TreeNodeLayout,
 } from '../../lib/fumen/tree_view_layout';
@@ -149,6 +150,7 @@ interface Props {
     autoFocusPending?: boolean;
     actions: {
         onNodeActivate: (nodeId: TreeNodeId) => void;
+        onNodeTouchStart: (nodeId: TreeNodeId, event: TouchEvent) => void;
         onPageClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
         onInsertNode: (parentNodeId: TreeNodeId) => void;
@@ -234,6 +236,7 @@ const renderNodeCard = (
     isDragging: boolean,
     trimTopBlank: boolean,
     thumbnailRenderScale: number,
+    canStartDrag: boolean,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
     const isActive = node.id === activeNodeId;
@@ -269,6 +272,11 @@ const renderNodeCard = (
             onclick={() => {
                 if (!isDragging) {
                     actions.onNodeActivate(node.id);
+                }
+            }}
+            ontouchstart={(e: TouchEvent) => {
+                if (!isDragging && canStartDrag && e.touches.length === 1) {
+                    actions.onNodeTouchStart(node.id, e);
                 }
             }}
         >
@@ -323,6 +331,8 @@ const renderNodeControls = (
     isBranchButtonHighlighted: boolean,
     isInsertDropTarget: boolean,
     isBranchDropTarget: boolean,
+    isCopyButtonHighlighted: boolean,
+    isCopyDropTarget: boolean,
     hideButtons: boolean,
     hideInsertButton: boolean,
     hideBranchButton: boolean,
@@ -411,46 +421,49 @@ const renderNodeControls = (
                 );
             })()}
 
-            {/* Permanent delete button (top-right). Grayed out when the removal
-                would delete every page. */}
-            <g
-                datatest={`btn-tree-node-delete-${node.id}`}
-                transform={`translate(${deleteButtonOffset.x}, ${deleteButtonOffset.y})`}
-                style={style({ cursor: canDelete && !isDragging ? 'pointer' : 'not-allowed' })}
-                onmousedown={(e: MouseEvent) => {
-                    e.stopPropagation();
-                }}
-                onclick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    if (!isDragging && canDelete) {
-                        actions.onDeleteNode(node.id);
-                    }
-                }}
-                ontouchstart={handleButtonTouchStart}
-            >
-                <title>{i18n.TreeView.DeleteNode()}</title>
-                <circle
-                    r={TREE_DELETE_BUTTON_HIT_RADIUS}
-                    fill="transparent"
-                />
-                <circle
-                    r={TREE_DELETE_BUTTON_SIZE / 2}
-                    fill={canDelete ? TREE_COLORS.delete : TREE_COLORS.disabled}
-                    stroke="#fff"
-                    stroke-width={2}
-                    filter="url(#tree-control-button-shadow)"
-                />
-                {iconTrash}
-            </g>
-
-            {/* Copy button - below the node (outside node bounds) */}
-            {canCopy && !isDragging && (
+            {/* Permanent delete button (top-right). It is removed during a drag
+                so the drag surface stays focused on move targets. */}
+            {!isDragging && (
                 <g
+                    datatest={`btn-tree-node-delete-${node.id}`}
+                    transform={`translate(${deleteButtonOffset.x}, ${deleteButtonOffset.y})`}
+                    style={style({ cursor: canDelete ? 'pointer' : 'not-allowed' })}
+                    onmousedown={(e: MouseEvent) => {
+                        e.stopPropagation();
+                    }}
+                    onclick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        if (canDelete) {
+                            actions.onDeleteNode(node.id);
+                        }
+                    }}
+                    ontouchstart={handleButtonTouchStart}
+                >
+                    <title>{i18n.TreeView.DeleteNode()}</title>
+                    <circle
+                        r={TREE_DELETE_BUTTON_HIT_RADIUS}
+                        fill="transparent"
+                    />
+                    <circle
+                        r={TREE_DELETE_BUTTON_SIZE / 2}
+                        fill={canDelete ? TREE_COLORS.delete : TREE_COLORS.disabled}
+                        stroke="#fff"
+                        stroke-width={2}
+                        filter="url(#tree-control-button-shadow)"
+                    />
+                    {iconTrash}
+                </g>
+            )}
+
+            {/* Copy button - below the node. During a drag it becomes a blue
+                plus target for the parent's branch operation. */}
+            {canCopy && (
+                <g
+                    datatest={`btn-tree-copy-${node.id}`}
                     transform={`translate(${copyButtonOffset.x}, ${copyButtonOffset.y})`}
                     style={style({
                         cursor: isDragging ? 'default' : 'pointer',
-                        pointerEvents: isDragging ? 'none' : 'auto',
-                        opacity: isDragging ? 0.4 : 1,
+                        pointerEvents: 'auto',
                     })}
                     onmousedown={(e: MouseEvent) => {
                         e.stopPropagation();
@@ -481,14 +494,13 @@ const renderNodeControls = (
                     />
                     {/* Visible button */}
                     <circle
-                        r={TREE_COPY_BUTTON_SIZE / 2}
+                        r={(isCopyDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_COPY_BUTTON_SIZE) / 2}
                         fill={TREE_COLORS.accent}
                         stroke="#fff"
-                        stroke-width={2}
+                        stroke-width={isCopyButtonHighlighted ? 3 : 2}
                         filter="url(#tree-control-button-shadow)"
                     />
-                    {/* Duplicate-page icon */}
-                    {iconCopy}
+                    {isDragging ? iconPlus(6) : iconCopy}
                 </g>
             )}
 
@@ -810,6 +822,10 @@ export const FumenGraph: Component<Props> = ({
         const isBranchDropTarget = canDropAsBranch
             && node.childrenIds.length > 0
             && !hideBranchButton;
+        const copyDropTarget = isDragging && dragSourceNodeId !== null
+            ? getTreeCopyButtonDropTarget(tree, node.id, dragSourceNodeId, dragScope)
+            : null;
+        const isCopyDropTarget = copyDropTarget !== null;
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -818,6 +834,9 @@ export const FumenGraph: Component<Props> = ({
         const isBranchButtonHighlighted = isDragging
             && dragTargetButtonParentId === node.id
             && dragTargetButtonType === 'branch';
+        const isCopyButtonHighlighted = isCopyDropTarget
+            && dragTargetButtonParentId === copyDropTarget?.nodeId
+            && dragTargetButtonType === copyDropTarget?.type;
 
         const canDelete = canDeleteNode(tree, node.id, operationScope, pages.length);
         const canStartDrag = operationScope !== 'descendants' || node.childrenIds.length > 0;
@@ -842,6 +861,7 @@ export const FumenGraph: Component<Props> = ({
                 isDragging,
                 trimTopBlank,
                 thumbnailRenderScale,
+                canStartDrag,
             ),
             controls: renderNodeControls(
                 node,
@@ -855,6 +875,8 @@ export const FumenGraph: Component<Props> = ({
                 isBranchButtonHighlighted,
                 isInsertDropTarget,
                 isBranchDropTarget,
+                isCopyButtonHighlighted,
+                isCopyDropTarget,
                 hideButtons,
                 hideInsertButton,
                 hideBranchButton,

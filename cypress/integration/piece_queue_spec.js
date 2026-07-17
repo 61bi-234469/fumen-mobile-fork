@@ -1,4 +1,5 @@
 import { datatest, visit } from '../support/common';
+import { operations } from '../support/operations';
 
 describe('PIECE queues', () => {
     beforeEach(() => cy.clearLocalStorage());
@@ -67,5 +68,23 @@ describe('PIECE queues', () => {
         cy.get(datatest('btn-piece-queue-close')).click();
 
         cy.get(datatest('text-comment')).should('have.value', '#Q=[T](S)IO');
+    });
+
+    it('respawns the edited current piece and undoes queue and spawn together', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('text-comment')).clear().type('#Q=[Z](S)L').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.S();
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('pane-piece-queue-current')).click();
+        cy.get(datatest('btn-piece-queue-add-O')).click();
+        cy.get(datatest('btn-piece-queue-close')).click();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](O)L');
+
+        operations.mode.tools.undo();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](S)L');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
     });
 });

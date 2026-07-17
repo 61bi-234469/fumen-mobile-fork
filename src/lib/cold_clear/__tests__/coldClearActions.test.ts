@@ -92,7 +92,7 @@ function makeColdClearState(overrides: {
     holdAllowed?: boolean;
     speculate?: boolean;
     nextLimit?: number | null;
-    queuePreview?: { pageIndex: number; text: string } | null;
+    queuePreview?: { pageIndex: number; text: string; historyKey?: string } | null;
     commentText?: string;
     flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean };
     treeEnabled?: boolean;
@@ -240,6 +240,23 @@ describe('coldClearActions run isolation', () => {
         // The spawned piece stays out of the field; the pre-lock blocks remain.
         expect(initMsg.field[0]).toBe(1);
         expect(initMsg.queue).toEqual([0]);
+    });
+
+    test('startColdClearSearch passes spawned current exactly once after hold', () => {
+        const state = makeColdClearState({ commentText: '#Q=[Z](S)LI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.S,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        };
+
+        coldClearActions.startColdClearSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+        expect(initMsg.hold).toBe(6);
+        expect(initMsg.queue).toEqual([5, 3, 0]);
     });
 
     test('startColdClearSearch pops next front as current when current is empty', () => {
@@ -745,6 +762,74 @@ describe('coldClearActions run isolation', () => {
         expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
     });
 
+    test('single result comment reflects hold swap before placing the held piece', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: '#Q=[Z](S)L' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: '#Q=[Z](S)L',
+        });
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: true, piece: 6, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 3, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages[0].piece.type).toBe(Piece.Z);
+        expect(pages[0].comment.text).toBe('#Q=[S](Z)L');
+        expect(pages[1].piece.type).toBe(Piece.L);
+        expect(pages[1].comment.text).toBe('#Q=[S](L)');
+    });
+
+    test('single result comment reflects empty hold before placing the next piece', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: '#Q=[](S)Z' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: '#Q=[](S)Z',
+        });
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: true, piece: 6, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages[0].piece.type).toBe(Piece.Z);
+        expect(pages[0].comment.text).toBe('#Q=[S](Z)');
+    });
+
     test('onColdClearMoveResult falls back to queue-only when score is missing', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'IOT' });
         const startResult = coldClearActions.startColdClearSearch()(state);
@@ -860,6 +945,37 @@ describe('coldClearActions run isolation', () => {
         // 分岐ページは設置前のキュー状態を持つ (page.piece がカレントミノ)
         const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('score=1.20 | #Q=[](I)OTL');
+    });
+
+    test('top branch comment reflects hold swap before placing the held piece', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: '#Q=[Z](S)L' });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: '#Q=[Z](S)L',
+        });
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: true, piece: 6, rotation: 0, x: 4, y: 0, score: 1 }],
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages[0].piece.type).toBe(Piece.Z);
+        expect(pages[0].comment.text).toBe('score=1.00 | #Q=[S](Z)L');
     });
 
     test('onColdClearTopMovesResult stores display as pre-clear and replay as post-clear', () => {
@@ -2056,6 +2172,102 @@ describe('coldClearActions run isolation', () => {
             coordinate: { x: 4, y: 0 },
         };
         expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(nonQueueState)).toBeUndefined();
+    });
+
+    test('queue current preview respawns a different piece and merges comment history', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));
+        const reopenCurrentPage = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, registerHistoryTask, reopenCurrentPage } as any);
+        const state = makeColdClearState({ commentText: '#Q=[Z](S)LI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.S,
+            rotation: Rotation.Right,
+            coordinate: { x: 3, y: 4 },
+        };
+
+        const result = coldClearActions.previewColdClearQueueComment({
+            hold: Piece.Z,
+            current: Piece.O,
+            queue: [Piece.L, Piece.I],
+            b2b: false,
+            combo: 0,
+            syncCurrentPiece: true,
+        })(state) as any;
+
+        expect(state.fumen.pages[0].piece).toEqual({
+            type: Piece.O,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        });
+        expect(registerHistoryTask).toHaveBeenCalledTimes(1);
+        expect(reopenCurrentPage).toHaveBeenCalledTimes(1);
+        const historyKey = result.coldClear.queuePreview.historyKey;
+        expect(historyKey).toBe(registerHistoryTask.mock.calls[0][0].task.key);
+
+        const previewState = {
+            ...state,
+            coldClear: result.coldClear,
+        } as any;
+        coldClearActions.commitColdClearQueueComment()(previewState);
+        expect(setCommentText).toHaveBeenCalledWith({
+            pageIndex: 0,
+            text: '#Q=[Z](O)LI',
+            mergeKey: historyKey,
+        });
+    });
+
+    test('queue current preview preserves position when the piece type already matches', () => {
+        const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));
+        const reopenCurrentPage = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ registerHistoryTask, reopenCurrentPage } as any);
+        const state = makeColdClearState({ commentText: '#Q=[Z](S)LI' });
+        const move = {
+            type: Piece.S,
+            rotation: Rotation.Right,
+            coordinate: { x: 3, y: 4 },
+        };
+        state.fumen.pages[0].piece = move;
+
+        const result = coldClearActions.previewColdClearQueueComment({
+            hold: Piece.Z,
+            current: Piece.S,
+            queue: [Piece.L, Piece.I],
+            b2b: false,
+            combo: 0,
+            syncCurrentPiece: true,
+        })(state);
+
+        expect(result).toBeUndefined();
+        expect(state.fumen.pages[0].piece).toBe(move);
+        expect(registerHistoryTask).not.toHaveBeenCalled();
+        expect(reopenCurrentPage).not.toHaveBeenCalled();
+    });
+
+    test('queue current preview clears the spawned piece', () => {
+        const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));
+        const reopenCurrentPage = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ registerHistoryTask, reopenCurrentPage } as any);
+        const state = makeColdClearState({ commentText: '#Q=[Z](S)LI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.S,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        };
+
+        const result = coldClearActions.previewColdClearQueueComment({
+            hold: Piece.Z,
+            current: null,
+            queue: [Piece.L, Piece.I],
+            b2b: false,
+            combo: 0,
+            syncCurrentPiece: true,
+        })(state) as any;
+
+        expect(state.fumen.pages[0].piece).toBeUndefined();
+        expect(result.coldClear.queuePreview.text).toBe('#Q=[Z]()LI');
+        expect(registerHistoryTask).toHaveBeenCalledTimes(1);
+        expect(reopenCurrentPage).toHaveBeenCalledTimes(1);
     });
 
     test('resolveCurrentColdClearMenuQueueState returns editable empty state for empty comment', () => {

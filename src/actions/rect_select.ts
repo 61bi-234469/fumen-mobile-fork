@@ -25,6 +25,7 @@ export interface RectSelectActions {
     startRectSelection(data: { index: number }): action;
     moveRectSelection(data: { index: number }): action;
     endRectSelection(): action;
+    commitRectSelection(): action;
     cancelRectSelectionPreview(): action;
     clearRectSelection(): action;
     deleteRectSelection(): action;
@@ -317,6 +318,20 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                     },
                 };
             }
+            // Keep the moved selection as a preview until the next outside
+            // click explicitly confirms it. Committing here would write the
+            // preview to the field as soon as the pointer is released.
+            return {
+                rectSelect: {
+                    ...state.rectSelect,
+                    anchorIndex: null,
+                },
+            };
+        }
+        return undefined;
+    },
+    commitRectSelection: () => (state): NextState => {
+        if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
             return commitFloating(state.rectSelect.floating)(state);
         }
         return undefined;

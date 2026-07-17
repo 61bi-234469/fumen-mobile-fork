@@ -15,7 +15,7 @@ import { coldClearActions, createRandomSevenBag, getCurrentColdClearQueueComment
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { State } from '../states';
-import { getBlockPositions } from '../lib/piece';
+import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 import { intermediateCellIndices } from '../lib/grid_line';
 import { legacyModeForPaintTool } from '../lib/editor_interaction';
@@ -494,16 +494,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        let next;
-        if (srs) {
-            next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
-        } else if (piece === Piece.I) {
-            next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 21 } };
-        } else if (piece === Piece.O) {
-            next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 21 } };
-        } else {
-            next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 4, y: 21 } };
-        }
+        const next = createSpawnMove(piece, srs);
 
         const currentMove = page.piece;
         if (currentMove !== undefined

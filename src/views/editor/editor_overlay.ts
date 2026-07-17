@@ -1,4 +1,5 @@
 import { button, div, span } from '@hyperapp/html';
+import { VNode } from 'hyperapp';
 import { Actions } from '../../actions';
 import { State } from '../../states';
 import { px, style } from '../../lib/types';
@@ -143,6 +144,39 @@ const startOverlayDrag = (event: PointerEvent) => {
     event.stopPropagation();
 };
 
+const overlaySection = ({ key, datatest, label, children }: {
+    key: string;
+    datatest: string;
+    label: string;
+    children: VNode<{}>[];
+}) => div({
+    key,
+    datatest,
+    role: 'group',
+    'aria-label': label,
+    style: style({
+        display: 'grid',
+        gap: px(5),
+    }),
+}, [
+    div({
+        key: `${key}-heading`,
+        datatest: `${datatest}-heading`,
+        role: 'heading',
+        'aria-level': 3,
+        style: style({
+            borderBottom: '1px solid #c7c7c7',
+            color: '#555',
+            fontSize: px(10),
+            fontWeight: '700',
+            letterSpacing: '.04em',
+            lineHeight: px(16),
+            padding: '0 2px 2px',
+        }),
+    }, label),
+    ...children,
+]);
+
 export const editorOverlay = (state: State, actions: Actions, layout?: EditorLayout) => {
     const inspector = state.editorUi.inspector;
     if (inspector === 'none') {
@@ -158,38 +192,62 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
     };
     const isEditorView = state.mode.screen === Screens.Editor;
     const utilities = [
-        overlayButton({
-            key: 'btn-all-mirror', datatest: 'btn-all-mirror', label: i18n.EditorUi.AllMirror(), iconName: 'compare_arrows',
-            onclick: actions.convertAllToMirror,
+        overlaySection({
+            key: 'utils-current-page',
+            datatest: 'utils-scope-current-page',
+            label: i18n.EditorUi.UtilsCurrentPage(),
+            children: [
+                overlayButton({
+                    key: 'btn-mirror', datatest: 'btn-mirror',
+                    label: i18n.EditorUi.Mirror(), iconName: 'compare_arrows',
+                    onclick: actions.convertToMirror,
+                }),
+                overlayButton({
+                    key: 'btn-convert-to-gray', datatest: 'btn-convert-to-gray',
+                    label: i18n.EditorUi.ToGray(), iconName: 'color_lens',
+                    onclick: actions.convertToGray,
+                }),
+                overlayButton({
+                    key: 'btn-clear-field', datatest: 'btn-clear-field',
+                    label: i18n.EditorUi.Clear(), iconName: 'clear',
+                    danger: true,
+                    onclick: actions.clearField,
+                }),
+            ],
         }),
-        overlayButton({
-            key: 'btn-mirror', datatest: 'btn-mirror', label: i18n.EditorUi.Mirror(), iconName: 'compare_arrows',
-            onclick: actions.convertToMirror,
-        }),
-        overlayButton({
-            key: 'btn-convert-to-gray', datatest: 'btn-convert-to-gray', label: i18n.EditorUi.ToGray(), iconName: 'color_lens',
-            onclick: actions.convertToGray,
-        }),
-        overlayButton({
-            key: 'btn-clear-field', datatest: 'btn-clear-field', label: i18n.EditorUi.Clear(), iconName: 'clear',
-            danger: true,
-            onclick: actions.clearField,
+        overlaySection({
+            key: 'utils-all-pages',
+            datatest: 'utils-scope-all-pages',
+            label: i18n.EditorUi.UtilsAllPages(),
+            children: [
+                overlayButton({
+                    key: 'btn-all-mirror', datatest: 'btn-all-mirror', label: i18n.EditorUi.AllMirror(), iconName: 'compare_arrows',
+                    onclick: actions.convertAllToMirror,
+                }),
+                overlayButton({
+                    key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
+                    onclick: () => closeAndRun(actions.openListViewReplaceModal),
+                }),
+            ],
         }),
         ...(isEditorView ? [
-            overlayButton({
-                key: 'btn-slide-mode', datatest: 'btn-slide-mode', label: i18n.EditorUi.Slide(), iconName: 'swap_vert',
-                onclick: () => closeAndRun(actions.changeToShiftMode),
-            }),
-            overlayButton({
-                key: 'btn-comment-mode', datatest: 'btn-comment-mode',
-                label: i18n.EditorUi.Comment(), iconName: 'title',
-                onclick: () => closeAndRun(actions.changeToCommentMode),
+            overlaySection({
+                key: 'utils-editing-modes',
+                datatest: 'utils-scope-editing-modes',
+                label: i18n.EditorUi.UtilsModes(),
+                children: [
+                    overlayButton({
+                        key: 'btn-slide-mode', datatest: 'btn-slide-mode', label: i18n.EditorUi.Slide(), iconName: 'swap_vert',
+                        onclick: () => closeAndRun(actions.changeToShiftMode),
+                    }),
+                    overlayButton({
+                        key: 'btn-comment-mode', datatest: 'btn-comment-mode',
+                        label: i18n.EditorUi.Comment(), iconName: 'title',
+                        onclick: () => closeAndRun(actions.changeToCommentMode),
+                    }),
+                ],
             }),
         ] : []),
-        overlayButton({
-            key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
-            onclick: () => closeAndRun(actions.openListViewReplaceModal),
-        }),
     ];
     const keyPage = page.field.obj !== undefined;
     const flags = [

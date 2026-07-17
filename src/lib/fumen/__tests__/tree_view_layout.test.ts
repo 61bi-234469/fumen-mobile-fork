@@ -4,6 +4,7 @@ import {
     getDragHandleOffset,
     getInsertButtonOffset,
     getNodeOccupiedHeight,
+    getTreeCopyButtonDropTarget,
     TREE_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_HIT_RADIUS,
     TREE_DELETE_BUTTON_SIZE,
@@ -13,6 +14,7 @@ import {
     TREE_NODE_FOOTER_HEIGHT,
     TREE_NODE_WIDTH,
 } from '../tree_view_layout';
+import { SerializedTree } from '../tree_types';
 
 describe('tree_view_layout node control geometry', () => {
     const nodeHeight = 310; // full thumbnail (230) + extra height (80)
@@ -62,5 +64,37 @@ describe('tree_view_layout node control geometry', () => {
         expect(branch.y + TREE_BUTTON_HIT_RADIUS).toBeLessThanOrEqual(getNodeOccupiedHeight(smallHeight));
         const insert = getInsertButtonOffset(smallHeight);
         expect(insert.y - TREE_BUTTON_HIT_RADIUS).toBeGreaterThanOrEqual(0);
+    });
+});
+
+describe('tree_view_layout copy-position drop target', () => {
+    const tree: SerializedTree = {
+        rootId: 'virtual-root',
+        version: 1,
+        nodes: [
+            { id: 'parent', parentId: 'virtual-root', pageIndex: 0, childrenIds: ['source', 'target'] },
+            { id: 'source', parentId: 'parent', pageIndex: 1, childrenIds: [] },
+            { id: 'target', parentId: 'parent', pageIndex: 2, childrenIds: [] },
+            { id: 'virtual-root', parentId: null, pageIndex: -1, childrenIds: ['parent'] },
+        ],
+    };
+
+    test('maps the blue plus position to the parent branch operation', () => {
+        expect(getTreeCopyButtonDropTarget(tree, 'target', 'source', 'node'))
+            .toEqual({ nodeId: 'parent', type: 'branch' });
+    });
+
+    test('does not expose the parent branch when it is hidden for a lone child', () => {
+        const loneChildTree: SerializedTree = {
+            ...tree,
+            nodes: tree.nodes.map(node => node.id === 'parent'
+                ? { ...node, childrenIds: ['source'] }
+                : node.id === 'target'
+                    ? { ...node, parentId: 'virtual-root' }
+                    : node),
+        };
+
+        expect(getTreeCopyButtonDropTarget(loneChildTree, 'source', 'source', 'node'))
+            .toBeNull();
     });
 });

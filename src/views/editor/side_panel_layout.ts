@@ -1,6 +1,7 @@
 import { Platforms, Screens } from '../../lib/enums';
 import { State } from '../../states';
 import { getNavigatorHeight } from '../commons';
+import { getEditorBottomMetrics, getEditorRailConfig } from './responsive_layout';
 
 // 表示条件: 設定ON && PC && Editor画面 && 画面幅が閾値以上
 export const SIDE_PANEL_MIN_DISPLAY_WIDTH = 1024;
@@ -10,8 +11,6 @@ export const SIDE_PANEL_MIN_WIDTH = 280;
 export const SIDE_PANEL_TAB_BAR_HEIGHT = 40;
 
 // editor.ts の getLayout と対応する定数（blockSize の高さ/幅制約の式に合わせる）
-const EDITOR_TOOLS_HEIGHT = 50;
-const EDITOR_COMMENT_HEIGHT = 35;
 const FIELD_BOTTOM_BORDER = 2.4;
 const BOARD_AREA_SLACK = 30;
 
@@ -19,8 +18,10 @@ const BOARD_AREA_SLACK = 30;
 // (canvasHeight - border - 2) / 24 で決まるため、幅制約 (canvasWidth - 90) / 10.5 が
 // それを下回らない最小幅 + 余白を確保すれば、残りの横幅は盤面に使われない。
 const getRequiredCanvasWidth = (displayHeight: number, topLeftY: number): number => {
-    const canvasHeight = displayHeight - (EDITOR_TOOLS_HEIGHT + EDITOR_COMMENT_HEIGHT + topLeftY);
-    return (canvasHeight - FIELD_BOTTOM_BORDER - 2) * 10.5 / 24 + 90 + BOARD_AREA_SLACK;
+    const { commentHeight, toolsHeight } = getEditorBottomMetrics(displayHeight);
+    const canvasHeight = displayHeight - (toolsHeight + commentHeight + topLeftY);
+    const rail = getEditorRailConfig(canvasHeight);
+    return (canvasHeight - FIELD_BOTTOM_BORDER - 2) * 10.5 / 24 + rail.reserve + BOARD_AREA_SLACK;
 };
 
 export const getSidePanelWidthBounds = (state: Readonly<State>) => {

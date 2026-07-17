@@ -9,6 +9,8 @@ export interface UserSettingsActions {
     copyUserSettingsToTemporary: () => action;
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
+    keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    keepSkipReaderMode: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
@@ -16,8 +18,10 @@ export interface UserSettingsActions {
     keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => action;
     keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
     keepPieceShortcutDas: (data: { dasMs: number }) => action;
+    keepPieceShortcutArr: (data: { arrMs: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
@@ -31,6 +35,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 ...state.temporary,
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
+                    deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+                    skipReaderMode: state.mode.skipReaderMode,
                     loop: state.mode.loop,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     gradient: gradientToStr(state.mode.gradient),
@@ -38,8 +44,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     editShortcuts: { ...state.mode.editShortcuts },
                     pieceShortcuts: { ...state.mode.pieceShortcuts },
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
+                    pieceShortcutArrMs: state.mode.pieceShortcutArrMs,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
+                    noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     editorSidePanel: state.editorPanel.enabled,
@@ -50,6 +58,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     commitUserSettings: () => (state): NextState => {
         return sequence(state, [
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
+            actions.changeDeleteSpawnMinoOnPaintDrag({
+                enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            }),
+            actions.changeSkipReaderMode({ enable: state.temporary.userSettings.skipReaderMode }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
             actions.changeShortcutLabelVisible({ visible: state.temporary.userSettings.shortcutLabelVisible }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
@@ -65,11 +77,17 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePieceShortcutDas({
                 dasMs: state.temporary.userSettings.pieceShortcutDasMs,
             }),
+            actions.changePieceShortcutArr({
+                arrMs: state.temporary.userSettings.pieceShortcutArrMs,
+            }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
+            }),
+            actions.changeNoGrayAfterHardDrop({
+                enable: state.temporary.userSettings.noGrayAfterHardDrop,
             }),
             // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
             actions.setTreeState({
@@ -96,6 +114,35 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     ghostVisible: visible,
+                },
+            },
+        };
+    },
+    keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    deleteSpawnMinoOnPaintDrag: enable,
+                },
+            },
+        };
+    },
+    keepSkipReaderMode: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    skipReaderMode: enable,
                 },
             },
         };
@@ -292,6 +339,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepPieceShortcutArr: ({ arrMs }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    pieceShortcutArrMs: arrMs,
+                },
+            },
+        };
+    },
     keepGifFrameDelay: ({ delayMs }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
@@ -333,6 +395,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     grayAfterLineClear: enable,
+                },
+            },
+        };
+    },
+    keepNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
+        if (!state.modal.userSettings || !state.temporary.userSettings.grayAfterLineClear) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    noGrayAfterHardDrop: enable,
                 },
             },
         };
@@ -384,6 +461,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
 const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
+        deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+        skipReaderMode: state.mode.skipReaderMode,
         loop: state.mode.loop,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         gradient: gradientToStr(state.mode.gradient),
@@ -391,8 +470,10 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         editShortcuts: JSON.stringify(state.mode.editShortcuts),
         pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
         pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
+        pieceShortcutArrMs: state.mode.pieceShortcutArrMs,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
+        noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
     });
     return undefined;
 };

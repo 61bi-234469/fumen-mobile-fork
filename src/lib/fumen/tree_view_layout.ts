@@ -65,6 +65,36 @@ export const getDragHandleOffset = (nodeHeight: number) =>
         + TREE_COPY_BUTTON_SIZE / 2 });
 
 /**
+ * Resolve the blue copy-position drop target for a node while another node is
+ * being dragged. The copy position is visually attached to the node, but its
+ * operation is the same as dropping onto that node's parent branch button.
+ */
+export const getTreeCopyButtonDropTarget = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    sourceNodeId: TreeNodeId,
+    scope: TreeOperationScope,
+): { nodeId: TreeNodeId; type: 'branch' } | null => {
+    const node = findNode(tree, nodeId);
+    if (!node || isVirtualNode(node) || node.parentId === null) return null;
+
+    const parentNode = findNode(tree, node.parentId);
+    if (!parentNode) return null;
+
+    const sourceNode = findNode(tree, sourceNodeId);
+    const hideBranchButton = sourceNode?.parentId === parentNode.id
+        && parentNode.childrenIds.length <= 1
+        && scope !== 'descendants';
+    const canUseParentBranch = parentNode.childrenIds.length > 0 || isVirtualNode(parentNode);
+    if (!canUseParentBranch || hideBranchButton
+        || !canMoveScope(tree, sourceNodeId, parentNode.id, scope, 'branch')) {
+        return null;
+    }
+
+    return { nodeId: parentNode.id, type: 'branch' };
+};
+
+/**
  * Total vertical space a node occupies inside its lane: the card itself, the
  * footer controls below it, and the enlarged add-button hit areas (whichever
  * extends lower).
@@ -216,6 +246,25 @@ export const findTreeButtonDropTarget = (
     for (const node of tree.nodes) {
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
         if (!nodeLayout) continue;
+
+        // The copy position becomes a blue branch-drop target while dragging.
+        // It intentionally resolves to the branch button of this node's parent.
+        const copyDropTarget = getTreeCopyButtonDropTarget(
+            tree,
+            node.id,
+            sourceNodeId,
+            scope,
+        );
+        if (copyDropTarget !== null) {
+            const copyOffset = getCopyButtonOffset(nodeLayout.height);
+            const distToCopy = Math.hypot(
+                svgX - (nodeLayout.x + copyOffset.x),
+                svgY - (nodeLayout.y + copyOffset.y),
+            );
+            if (distToCopy <= TREE_COPY_BUTTON_HIT_RADIUS) {
+                return copyDropTarget;
+            }
+        }
 
         const isValidTarget = canMoveScope(tree, sourceNodeId, node.id, scope, 'insert')
             || canMoveScope(tree, sourceNodeId, node.id, scope, 'branch');

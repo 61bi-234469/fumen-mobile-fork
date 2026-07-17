@@ -63,7 +63,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .blue { background: #3978e6; }
 .red { background: #e44848; }
 .shot { margin: 18px 0 0; }
-.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; }
+.shot img { display: block; width: auto; max-width: 100%; height: auto; margin-inline: auto; border: 1px solid var(--line); border-radius: 12px; }
 .shot figcaption { margin-top: 7px; color: var(--muted); font-size: .9rem; }
 code, kbd { padding: 2px 5px; background: var(--soft); border-radius: 4px; }
 .warn { border-left: 4px solid var(--accent); }

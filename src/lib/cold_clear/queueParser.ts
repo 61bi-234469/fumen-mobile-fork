@@ -2,7 +2,10 @@ import { Piece } from '../enums';
 
 export interface ParsedQueue {
     hold: Piece | null;
+    current: Piece | null;
     queue: Piece[];
+    /** Text after the first quiz section, including the leading semicolon. */
+    suffix?: string;
 }
 
 export interface ParsedQueueState extends ParsedQueue {
@@ -10,7 +13,10 @@ export interface ParsedQueueState extends ParsedQueue {
     combo: number;
 }
 
-const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]*$/;
+// #Q=[hold](current)next... 形式 (テト譜Quiz互換)。`;` 以降は次のクイズとして無視する
+const QUIZ_QUEUE_REGEX = /^#Q=\[([IOTLJSZiotljsz]?)\]\(([IOTLJSZiotljsz]?)\)([IOTLJSZiotljsz]*)(;.*)?$/;
+// 旧形式 (読み込みのみ互換): NEXT列 または ホールド:NEXT列
+const LEGACY_QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]*$/;
 const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
 const B2B_SEGMENT_REGEX = /^b2b=(0|1|true|false)$/;
@@ -50,12 +56,13 @@ export function parseQueueComment(text: string): ParsedQueue | null {
         return null;
     }
 
-    if (parsed.hold === null && parsed.queue.length === 0) {
+    if (parsed.hold === null && parsed.current === null && parsed.queue.length === 0) {
         return null;
     }
 
     return {
         hold: parsed.hold,
+        current: parsed.current,
         queue: parsed.queue,
     };
 }
@@ -72,7 +79,7 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
 
     const queueOnly = parseQueueOnlyComment(segments[segments.length - 1]);
     const metadataSegmentCount = queueOnly ? segments.length - 1 : segments.length;
-    const queue = queueOnly || { hold: null, queue: [] };
+    const queue = queueOnly || { hold: null, current: null, queue: [] };
 
     let b2b = false;
     let combo = 0;
@@ -103,23 +110,47 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
         }
     }
 
-    return {
+    const result: ParsedQueueState = {
         b2b,
         combo,
         hold: queue.hold,
+        current: queue.current,
         queue: queue.queue,
     };
+    if (queue.suffix !== undefined) {
+        result.suffix = queue.suffix;
+    }
+    return result;
 }
 
 function parseQueueOnlyComment(text: string): ParsedQueue | null {
     if (text === '') {
         return {
             hold: null,
+            current: null,
             queue: [],
         };
     }
 
-    if (!QUEUE_REGEX.test(text)) {
+    const quizMatch = QUIZ_QUEUE_REGEX.exec(text);
+    if (quizMatch) {
+        const [, holdChar, currentChar, queueStr, suffix] = quizMatch;
+        const result: ParsedQueue = {
+            hold: holdChar ? CHAR_TO_PIECE[holdChar] : null,
+            current: currentChar ? CHAR_TO_PIECE[currentChar] : null,
+            queue: Array.prototype.map.call(queueStr, (c: string) => CHAR_TO_PIECE[c]) as Piece[],
+        };
+        if (suffix !== undefined) {
+            result.suffix = suffix;
+        }
+        return result;
+    }
+
+    if (text.startsWith('#Q=')) {
+        return null;
+    }
+
+    if (!LEGACY_QUEUE_REGEX.test(text)) {
         return null;
     }
 
@@ -127,6 +158,7 @@ function parseQueueOnlyComment(text: string): ParsedQueue | null {
     if (colonIndex === -1) {
         return {
             hold: null,
+            current: null,
             queue: Array.prototype.map.call(text, (c: string) => CHAR_TO_PIECE[c]) as Piece[],
         };
     }
@@ -135,31 +167,37 @@ function parseQueueOnlyComment(text: string): ParsedQueue | null {
     const queueStr = text.substring(colonIndex + 1);
     return {
         hold: CHAR_TO_PIECE[holdChar],
+        current: null,
         queue: Array.prototype.map.call(queueStr, (c: string) => CHAR_TO_PIECE[c]) as Piece[],
     };
 }
 
-export function buildQueueComment(hold: Piece | null, queue: Piece[]): string {
-    if (queue.length === 0) {
-        if (hold !== null) {
-            return `${PIECE_TO_CHAR[hold]}:`;
-        }
+const toChar = (piece: Piece | null): string => {
+    return piece !== null ? PIECE_TO_CHAR[piece] : '';
+};
+
+export function buildQueueComment(
+    hold: Piece | null,
+    current: Piece | null,
+    queue: Piece[],
+    suffix: string = '',
+): string {
+    if (hold === null && current === null && queue.length === 0 && suffix === '') {
         return '';
     }
     const queueStr = queue.map(p => PIECE_TO_CHAR[p]).join('');
-    if (hold === null) {
-        return queueStr;
-    }
-    return `${PIECE_TO_CHAR[hold]}:${queueStr}`;
+    return `#Q=[${toChar(hold)}](${toChar(current)})${queueStr}${suffix}`;
 }
 
 export function buildQueueStateComment(
     hold: Piece | null,
+    current: Piece | null,
     queue: Piece[],
     b2b: boolean,
     combo: number,
+    suffix: string = '',
 ): string {
-    const queueComment = buildQueueComment(hold, queue);
+    const queueComment = buildQueueComment(hold, current, queue, suffix);
     const metadataTokens: string[] = [];
 
     if (b2b) {

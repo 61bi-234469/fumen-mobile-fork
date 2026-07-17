@@ -9,7 +9,7 @@ import {
     toSinglePageTask,
 } from '../history_task';
 import { isQuizCommentResult, PageFieldOperation, Pages, parseToCommands } from '../lib/pages';
-import { FieldConstants, Piece, Rotation } from '../lib/enums';
+import { FieldConstants, ModeTypes, Piece, Rotation } from '../lib/enums';
 import { getBlockPositions, getBlocks, getPieces } from '../lib/piece';
 import { State } from '../states';
 import { Field } from '../lib/fumen/field';
@@ -30,6 +30,15 @@ export interface ConvertActions {
 
 export const convertActions: Readonly<ConvertActions> = {
     shiftToLeft: () => (state): NextState => {
+        if (state.mode.type === ModeTypes.Slide
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating !== null
+            && state.rectSelect.floating.firstTapInProgress !== true) {
+            return sequence(state, [
+                actions.commitRectSelection(),
+                newState => convertActions.shiftToLeft()(newState),
+            ]);
+        }
         const currentIndex = state.fumen.currentIndex;
         const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
@@ -71,6 +80,15 @@ export const convertActions: Readonly<ConvertActions> = {
         ]);
     },
     shiftToRight: () => (state): NextState => {
+        if (state.mode.type === ModeTypes.Slide
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating !== null
+            && state.rectSelect.floating.firstTapInProgress !== true) {
+            return sequence(state, [
+                actions.commitRectSelection(),
+                newState => convertActions.shiftToRight()(newState),
+            ]);
+        }
         const currentIndex = state.fumen.currentIndex;
         const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
@@ -112,6 +130,15 @@ export const convertActions: Readonly<ConvertActions> = {
         ]);
     },
     shiftToUp: () => (state): NextState => {
+        if (state.mode.type === ModeTypes.Slide
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating !== null
+            && state.rectSelect.floating.firstTapInProgress !== true) {
+            return sequence(state, [
+                actions.commitRectSelection(),
+                newState => convertActions.shiftToUp()(newState),
+            ]);
+        }
         const currentIndex = state.fumen.currentIndex;
         const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
@@ -153,6 +180,15 @@ export const convertActions: Readonly<ConvertActions> = {
         ]);
     },
     shiftToUpWithGray: () => (state): NextState => {
+        if (state.mode.type === ModeTypes.Slide
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating !== null
+            && state.rectSelect.floating.firstTapInProgress !== true) {
+            return sequence(state, [
+                actions.commitRectSelection(),
+                newState => convertActions.shiftToUpWithGray()(newState),
+            ]);
+        }
         const currentIndex = state.fumen.currentIndex;
         const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
@@ -194,6 +230,15 @@ export const convertActions: Readonly<ConvertActions> = {
         ]);
     },
     shiftToBottom: () => (state): NextState => {
+        if (state.mode.type === ModeTypes.Slide
+            && state.rectSelect.status === 'floating'
+            && state.rectSelect.floating !== null
+            && state.rectSelect.floating.firstTapInProgress !== true) {
+            return sequence(state, [
+                actions.commitRectSelection(),
+                newState => convertActions.shiftToBottom()(newState),
+            ]);
+        }
         const currentIndex = state.fumen.currentIndex;
         const pages = state.fumen.pages;
         const pagesObj = new Pages(pages);
@@ -237,6 +282,7 @@ export const convertActions: Readonly<ConvertActions> = {
     convertToGray: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField((field) => {
                 const copy = field.copy();
                 copy.convertToGray();
@@ -247,6 +293,7 @@ export const convertActions: Readonly<ConvertActions> = {
     convertToBlack: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField((field) => {
                 const copy = field.copy();
                 copy.convertNonGrayToEmpty();
@@ -258,6 +305,7 @@ export const convertActions: Readonly<ConvertActions> = {
     clearField: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertToGoalField(_ => new Field({})),
         ]);
     },
@@ -265,11 +313,13 @@ export const convertActions: Readonly<ConvertActions> = {
         return sequence(state, [
             actions.removeUnsettledItems(),
             convertToMirror(),
+            actions.mirrorRectSelection(),
         ]);
     },
     convertAllToMirror: () => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
+            actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
             convertAllToMirror(),
         ]);
     },

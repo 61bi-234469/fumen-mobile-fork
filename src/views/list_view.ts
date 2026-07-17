@@ -37,6 +37,7 @@ import {
     stopTreeDragFeedback,
 } from './tree_mouse_interaction';
 import { handleTreeNodeDelete } from './tree_node_delete';
+import { editorOverlay } from './editor/editor_overlay';
 
 const TOOLS_HEIGHT = 50;
 
@@ -62,6 +63,10 @@ let treeTouchDragActive = false;
 // Pending drag started on a node handle: the drag state itself starts only after
 // the pointer moved TREE_DRAG_START_THRESHOLD px (both touch and mouse).
 let treePendingDragNodeId: string | null = null;
+let treePendingDragKind: 'handle' | 'longPress' | null = null;
+let treeLongPressTimer: number | null = null;
+
+const TREE_LONG_PRESS_DELAY = 500;
 
 let treeTouchContainerElement: HTMLElement | null = null;
 let treeTouchStartTarget: EventTarget | null = null;
@@ -75,6 +80,13 @@ const clearTreeTouchStartPosition = () => {
     setTreeTouchStartPosition(null);
 };
 
+const cancelTreeLongPress = () => {
+    if (treeLongPressTimer !== null) {
+        window.clearTimeout(treeLongPressTimer);
+        treeLongPressTimer = null;
+    }
+};
+
 const cleanupTreeTouchEndListeners = () => {
     if (treeTouchEndCleanup) {
         treeTouchEndCleanup();
@@ -83,9 +95,11 @@ const cleanupTreeTouchEndListeners = () => {
 };
 
 const resetTreeTouchTracking = () => {
+    cancelTreeLongPress();
     cleanupTreeTouchEndListeners();
     treeTouchDragActive = false;
     treePendingDragNodeId = null;
+    treePendingDragKind = null;
     treeTouchStartTarget = null;
     clearTreeTouchStartPosition();
 };
@@ -147,6 +161,7 @@ export const view: View<State, Actions> = (state, actions) => {
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#f5f5f5',
+        position: 'relative',
     });
 
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
@@ -397,7 +412,9 @@ export const view: View<State, Actions> = (state, actions) => {
         const sourceNodeId = state.tree.dragState.sourceNodeId;
 
         if (sourceNodeId === null) {
-            // Pending handle drag: activate only after the pointer moved far enough
+            // A node-body long press must remain still until the hold timer fires.
+            // If it travels farther first, cancel it so ordinary swipes keep
+            // scrolling the tree instead of moving a node.
             if (treePendingDragNodeId === null) return;
             const startPos = getTreeTouchStartPosition();
             if (!startPos) return;
@@ -408,8 +425,18 @@ export const view: View<State, Actions> = (state, actions) => {
                 return; // Not enough movement yet
             }
 
+            if (treePendingDragKind === 'longPress') {
+                cancelTreeLongPress();
+                treePendingDragNodeId = null;
+                treePendingDragKind = null;
+                clearTreeTouchStartPosition();
+                return;
+            }
+
             const nodeId = treePendingDragNodeId;
+            cancelTreeLongPress();
             treePendingDragNodeId = null;
+            treePendingDragKind = null;
             treeTouchDragActive = true;
             actions.startTreeDrag({ sourceNodeId: nodeId });
             beginTreeAutoScroll();
@@ -418,6 +445,9 @@ export const view: View<State, Actions> = (state, actions) => {
         }
 
         treeTouchDragActive = true;
+        if (e.cancelable) {
+            e.preventDefault();
+        }
         updateTreeAutoScrollPointer(touch.clientX, touch.clientY);
         evaluateTreeDropTargetAt(touch.clientX, touch.clientY);
     };
@@ -425,6 +455,10 @@ export const view: View<State, Actions> = (state, actions) => {
     const handleTreeTouchEnd = (e: TouchEvent) => {
         cleanupTreeTouchEndListeners();
         const container = treeTouchContainerElement ?? (e.currentTarget as HTMLElement);
+
+        if (treeTouchDragActive && e.cancelable) {
+            e.preventDefault();
+        }
 
         // Get touch start position (set by fumen_graph.tsx buttons' ontouchstart).
         // This is necessary because the buttons' ontouchstart fires before the container's
@@ -590,8 +624,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
-                convertAllToMirror: () => actions.convertAllToMirror(),
-                openListViewReplaceModal: () => actions.openListViewReplaceModal(),
+                openUtils: () => actions.openEditorInspector({ inspector: 'utils' }),
                 openListViewMenuModal: () => actions.openListViewMenuModal(),
                 openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
                 toggleTreeMode: () => state.tree.enabled
@@ -601,6 +634,8 @@ export const view: View<State, Actions> = (state, actions) => {
             },
             height: TOOLS_HEIGHT,
         }),
+
+        state.editorUi.inspector === 'utils' ? editorOverlay(state, actions) : undefined as any,
 
         div({
             key: 'list-view-content',
@@ -620,10 +655,12 @@ export const view: View<State, Actions> = (state, actions) => {
             },
             ontouchstart: (e: TouchEvent) => {
                 if (e.touches.length === 2) {
+                    cancelTreeLongPress();
                     cleanupTreeTouchEndListeners();
                     treeTouchEndHandled = false;
                     treeTouchStartTarget = null;
                     treePendingDragNodeId = null;
+                    treePendingDragKind = null;
                     if (state.tree.dragState.sourceNodeId !== null) {
                         actions.endTreeDrag();
                     }
@@ -698,6 +735,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 treeTouchStartTarget = null;
                 treeTouchEndHandled = false;
                 treePendingDragNodeId = null;
+                treePendingDragKind = null;
                 clearTreeTouchStartPosition();
             },
         }, [
@@ -763,17 +801,50 @@ export const view: View<State, Actions> = (state, actions) => {
                                 comment,
                             });
                         },
-                        onHandleMouseDown: (nodeId, e) => {
-                            beginPendingMouseDrag(nodeId, e.clientX, e.clientY);
-                        },
-                        onHandleTouchStart: (nodeId, e) => {
-                            if (e.touches.length !== 1) return;
+                        onNodeTouchStart: (nodeId, e) => {
+                            if (e.touches.length !== 1 || state.tree.dragState.sourceNodeId !== null) {
+                                return;
+                            }
+
+                            cancelTreeLongPress();
                             setTreeTouchStartPosition({
                                 x: e.touches[0].clientX,
                                 y: e.touches[0].clientY,
                             });
                             registerTreeTouchStartTarget(e.target as EventTarget);
                             treePendingDragNodeId = nodeId;
+                            treePendingDragKind = 'longPress';
+
+                            const startX = e.touches[0].clientX;
+                            const startY = e.touches[0].clientY;
+                            treeLongPressTimer = window.setTimeout(() => {
+                                if (treePendingDragNodeId !== nodeId
+                                    || treePendingDragKind !== 'longPress') {
+                                    return;
+                                }
+
+                                treeLongPressTimer = null;
+                                treePendingDragNodeId = null;
+                                treePendingDragKind = null;
+                                treeTouchDragActive = true;
+                                actions.startTreeDrag({ sourceNodeId: nodeId });
+                                beginTreeAutoScroll();
+                                updateTreeAutoScrollPointer(startX, startY);
+                            }, TREE_LONG_PRESS_DELAY);
+                        },
+                        onHandleMouseDown: (nodeId, e) => {
+                            beginPendingMouseDrag(nodeId, e.clientX, e.clientY);
+                        },
+                        onHandleTouchStart: (nodeId, e) => {
+                            if (e.touches.length !== 1) return;
+                            cancelTreeLongPress();
+                            setTreeTouchStartPosition({
+                                x: e.touches[0].clientX,
+                                y: e.touches[0].clientY,
+                            });
+                            registerTreeTouchStartTarget(e.target as EventTarget);
+                            treePendingDragNodeId = nodeId;
+                            treePendingDragKind = 'handle';
                         },
                         onDragOverButton: (parentNodeId, buttonType) => {
                             if (state.tree.dragState.sourceNodeId !== null) {

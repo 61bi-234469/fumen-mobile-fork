@@ -160,6 +160,8 @@ export const memento = (() => {
 
 interface UserSettings {
     ghostVisible: boolean;
+    deleteSpawnMinoOnPaintDrag: boolean;
+    skipReaderMode: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
@@ -167,8 +169,10 @@ interface UserSettings {
     editShortcuts: string;  // JSON文字列で保存
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasMs: number;
+    pieceShortcutArrMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
+    noGrayAfterHardDrop: boolean;
 }
 
 interface ViewSettings {
@@ -234,6 +238,8 @@ export const localStorageWrapper = {
 
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
+            deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
+            skipReaderMode: safer.boolean(obj.skipReaderMode),
             loop: safer.boolean(obj.loop),
             shortcutLabelVisible: safer.boolean(obj.shortcutLabelVisible),
             gradient: safer.string(obj.gradient),
@@ -241,8 +247,10 @@ export const localStorageWrapper = {
             editShortcuts: safer.string(obj.editShortcuts),
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
+            pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
             rotationSystem: safer.rotationSystem(obj.rotationSystem),
+            noGrayAfterHardDrop: safer.boolean(obj.noGrayAfterHardDrop),
         };
     },
     saveViewSettings: (data: ViewSettings) => {

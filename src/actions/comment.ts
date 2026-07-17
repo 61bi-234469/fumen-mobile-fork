@@ -18,7 +18,7 @@ import { isQuizCommentResult, isTextCommentResult, Pages } from '../lib/pages';
 export interface CommentActions {
     updateCommentText: (data: { text?: string, pageIndex: number }) => action;
     commitCommentText: () => action;
-    setCommentText: (data: { text: string, pageIndex: number }) => action;
+    setCommentText: (data: { text: string, pageIndex: number, mergeKey?: string }) => action;
     resetCommentText: (data: { pageIndex: number }) => action;
 }
 
@@ -53,9 +53,9 @@ export const commentActions: Readonly<CommentActions> = {
             actions.setCommentText({ text, pageIndex }),
         ]);
     },
-    setCommentText: ({ text, pageIndex }) => (state): NextState => {
+    setCommentText: ({ text, pageIndex, mergeKey }) => (state): NextState => {
         return sequence(state, [
-            commitCommentText(pageIndex, text),
+            commitCommentText(pageIndex, text, mergeKey),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -67,16 +67,16 @@ export const commentActions: Readonly<CommentActions> = {
     },
 };
 
-const commitCommentText = (pageIndex: number, text: string) => (state: State): NextState => {
+const commitCommentText = (pageIndex: number, text: string, mergeKey?: string) => (state: State): NextState => {
     const page = state.fumen.pages[pageIndex];
     if (page === undefined || page.comment.text === text) {
         return undefined;
     }
 
     if (Quiz.isQuizComment(text)) {
-        return commitQuizCommentText(pageIndex, text)(state);
+        return commitQuizCommentText(pageIndex, text, mergeKey)(state);
     }
-    return commitRegularCommentText(pageIndex, text)(state);
+    return commitRegularCommentText(pageIndex, text, mergeKey)(state);
 };
 
 const findFirstComment = (pages: Page[], startIndex: number) => {
@@ -89,7 +89,7 @@ const findFirstComment = (pages: Page[], startIndex: number) => {
     return nextPageIndex;
 };
 
-const commitQuizCommentText = (pageIndex: number, text: string) => (state: State): NextState => {
+const commitQuizCommentText = (pageIndex: number, text: string, mergeKey?: string) => (state: State): NextState => {
     let pages = state.fumen.pages;
     const pagesObj = new Pages(pages);
 
@@ -159,11 +159,11 @@ const commitQuizCommentText = (pageIndex: number, text: string) => (state: State
                 pages,
             },
         }),
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
+        actions.registerHistoryTask({ mergeKey, task: toPageTaskStack(tasks, pageIndex) }),
     ]);
 };
 
-const commitRegularCommentText = (pageIndex: number, text: string) => (state: State): NextState => {
+const commitRegularCommentText = (pageIndex: number, text: string, mergeKey?: string) => (state: State): NextState => {
     let pages = state.fumen.pages;
     const pagesObj = new Pages(pages);
 
@@ -226,7 +226,7 @@ const commitRegularCommentText = (pageIndex: number, text: string) => (state: St
                 pages,
             },
         }),
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
+        actions.registerHistoryTask({ mergeKey, task: toPageTaskStack(tasks, pageIndex) }),
     ]);
 };
 

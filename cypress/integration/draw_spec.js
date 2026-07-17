@@ -311,6 +311,7 @@ describe('Drawing', () => {
         operations.mode.tools.nextPage();
         operations.mode.tools.home();
         operations.mode.tools.toRef();
+        operations.mode.flags.close();
 
         operations.mode.block.open();
         operations.mode.block.O();

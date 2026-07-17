@@ -11,13 +11,15 @@ import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { test180Rotation, testLeftRotationSrsPlus, testRightRotationSrsPlus } from '../lib/srs_plus';
 import { fillRowActions } from './fill_row';
-import { coldClearActions } from './cold_clear';
+import { coldClearActions, createRandomSevenBag, getCurrentColdClearQueueComment } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { State } from '../states';
-import { getBlockPositions } from '../lib/piece';
+import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 import { intermediateCellIndices } from '../lib/grid_line';
+import { legacyModeForPaintTool } from '../lib/editor_interaction';
+import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -60,6 +62,8 @@ export interface FieldEditorActions {
 
     clearPiece(): action;
 
+    resetPiece(): action;
+
     clearFieldAndPiece(): action;
 
     rotateToLeft(): action;
@@ -76,7 +80,11 @@ export interface FieldEditorActions {
 
     moveToRightEnd(): action;
 
+    softdrop(): action;
+
     harddrop(): action;
+
+    spawnNextPieceFromColdClearQueue(): action;
 }
 
 // Helper to determine right-click override mode based on current ModeType
@@ -101,8 +109,25 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
+const INFINITE_QUEUE_REFILL_THRESHOLD = 21;
+
+const appendInfiniteQueueBagIfNeeded = (queue: Piece[], currentQueueLength: number): Piece[] => {
+    if (currentQueueLength >= INFINITE_QUEUE_REFILL_THRESHOLD) {
+        return queue;
+    }
+    return queue.concat(createRandomSevenBag());
+};
 
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
+    if (state.editorUi?.primaryTool === 'paint'
+        && state.mode.deleteSpawnMinoOnPaintDrag
+        && state.mode.piece === Piece.Empty
+        && isSpawnMinoCell(state, index)) {
+        return actions.clearPiece()(state);
+    }
+    if (state.events.pieceDragFromPaint) {
+        return movePieceActions.ontouchMoveField({ index })(state);
+    }
     switch (state.mode.touch) {
     case TouchTypes.Drawing:
         return drawBlockActions.ontouchMoveField({ index })(state);
@@ -114,9 +139,44 @@ const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
         return fillRowActions.ontouchMoveField({ index })(state);
     case TouchTypes.Fill:
         return fillActions.ontouchMoveField({ index })(state);
+    case TouchTypes.Select:
+        return actions.moveRectSelection({ index })(state);
     }
     return undefined;
 };
+
+const isSpawnMinoCell = (state: State, index: number): boolean => {
+    const editorUi = (state as Partial<State>).editorUi;
+    if (editorUi?.primaryTool !== 'paint') {
+        return false;
+    }
+    const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
+    if (piece === undefined || !isMinoPiece(piece.type)) {
+        return false;
+    }
+    const rawField = new Pages(state.fumen.pages)
+        .getField(state.fumen.currentIndex, PageFieldOperation.Command);
+    if (rawField.getAtIndex(index, true) !== Piece.Empty) {
+        return false;
+    }
+    return getBlockPositions(
+        piece.type,
+        piece.rotation,
+        piece.coordinate.x,
+        piece.coordinate.y,
+    ).some(position => toPositionIndex(position) === index);
+};
+
+const restorePaintTouchState = (state: State): NextState => ({
+    mode: {
+        ...state.mode,
+        touch: legacyModeForPaintTool(state.editorUi.paintTool).touch,
+    },
+    events: {
+        ...state.events,
+        pieceDragFromPaint: false,
+    },
+});
 
 const dispatchTouchMoveSentLine = (index: number) => (state: State): NextState => {
     switch (state.mode.touch) {
@@ -194,14 +254,40 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.fixInferencePiece(),
             fieldEditorActions.resetInferencePiece(),
+            actions.cancelRectSelectionPreview(),
         ]);
     },
     ontouchStartField: ({ index }) => (state): NextState => {
         const dispatch = (newState: State): NextState => {
+            if (isSpawnMinoCell(newState, index)) {
+                if (newState.mode.piece === Piece.Empty) {
+                    return actions.clearPiece()(newState);
+                }
+                return movePieceActions.ontouchStartField({ index })({
+                    ...newState,
+                    mode: {
+                        ...newState.mode,
+                        touch: TouchTypes.MovePiece,
+                    },
+                    events: {
+                        ...newState.events,
+                        pieceDragFromPaint: true,
+                    },
+                });
+            }
             switch (newState.mode.touch) {
             case TouchTypes.Drawing:
                 return drawBlockActions.ontouchStartField({ index })(newState);
             case TouchTypes.Piece:
+                if (newState.editorUi.pieceAction === 'spawn') {
+                    return sequence(newState, [
+                        actions.spawnPiece({
+                            piece: newState.editorUi.lastMino,
+                            srs: newState.mode.rotationSystem !== 'classic',
+                        }),
+                        actions.changePieceAction({ pieceAction: 'drag' }),
+                    ]);
+                }
                 return putPieceActions.ontouchStartField({ index })(newState);
             case TouchTypes.MovePiece:
                 return movePieceActions.ontouchStartField({ index })(newState);
@@ -209,6 +295,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchStartField({ index })(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchStartField({ index })(newState);
+            case TouchTypes.Select:
+                return actions.startRectSelection({ index })(newState);
             }
             return undefined;
         };
@@ -241,6 +329,12 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     },
     ontouchEnd: () => (state): NextState => {
         const dispatch = (newState: State): NextState => {
+            if (newState.events.pieceDragFromPaint) {
+                return sequence(newState, [
+                    movePieceActions.ontouchEnd(),
+                    restorePaintTouchState,
+                ]);
+            }
             switch (newState.mode.touch) {
             case TouchTypes.Drawing:
                 return drawBlockActions.ontouchEnd()(newState);
@@ -252,6 +346,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 return fillRowActions.ontouchEnd()(newState);
             case TouchTypes.Fill:
                 return fillActions.ontouchEnd()(newState);
+            case TouchTypes.Select:
+                return actions.endRectSelection()(newState);
             }
             return undefined;
         };
@@ -304,6 +400,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return setTouchTrail(undefined, undefined)(state);
     },
     onrightStartField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return actions.cancelRectSelectionPreview()(state);
+        }
         // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
         // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
         // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
@@ -323,11 +422,17 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         });
     },
     onrightMoveField: ({ index }) => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchMoveField({ index })(patchedState);
         });
     },
     onrightEnd: () => (state): NextState => {
+        if (state.mode.touch === TouchTypes.Select) {
+            return undefined;
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchEnd()(patchedState);
         });
@@ -389,16 +494,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        let next;
-        if (srs) {
-            next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
-        } else if (piece === Piece.I) {
-            next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 21 } };
-        } else if (piece === Piece.O) {
-            next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 21 } };
-        } else {
-            next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 4, y: 21 } };
-        }
+        const next = createSpawnMove(piece, srs);
 
         const currentMove = page.piece;
         if (currentMove !== undefined
@@ -440,6 +536,26 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    resetPiece: () => (state): NextState => {
+        const page = state.fumen.pages[state.fumen.currentIndex];
+        const piece = page?.piece?.type;
+        const spawnPiece = piece !== undefined && piece !== Piece.Empty && piece !== Piece.Gray
+            ? piece
+            : state.editorUi.lastMino;
+        return sequence(state, [
+            actions.spawnPiece({
+                piece: spawnPiece,
+                srs: state.mode.rotationSystem !== 'classic',
+            }),
+            nextState => ({
+                editorUi: {
+                    ...nextState.editorUi,
+                    pieceAction: 'drag',
+                    lastMino: spawnPiece,
+                },
+            }),
         ]);
     },
     clearFieldAndPiece: () => (state): NextState => {
@@ -762,7 +878,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    harddrop: () => (state): NextState => {
+    softdrop: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -804,6 +920,115 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    harddrop: () => (state): NextState => {
+        return sequence(state, [
+            fieldEditorActions.softdrop(),
+            (nextState) => {
+                const pageIndex = nextState.fumen.currentIndex;
+                const page = nextState.fumen.pages[pageIndex];
+                if (page?.piece === undefined || !page.flags.lock) {
+                    return undefined;
+                }
+
+                const field = new Pages(nextState.fumen.pages)
+                    .getField(pageIndex, PageFieldOperation.Command);
+                const piece = page.piece;
+                if (!field.isOnGround(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)) {
+                    return undefined;
+                }
+
+                const nextPageIndex = pageIndex + 1;
+                return sequence(nextState, [
+                    actions.insertPage({
+                        index: nextPageIndex,
+                        skipGrayAfterLineClear: nextState.tree.grayAfterLineClear
+                            && nextState.mode.noGrayAfterHardDrop,
+                    }),
+                    actions.openPage({ index: nextPageIndex }),
+                    actions.spawnNextPieceFromColdClearQueue(),
+                ]);
+            },
+        ]);
+    },
+
+    spawnNextPieceFromColdClearQueue: () => (state): NextState => {
+        const currentComment = getCurrentColdClearQueueComment(state);
+        const parsed = currentComment === null ? null : parseQueueStateComment(currentComment);
+        if (!parsed) {
+            return actions.changePieceAction({ pieceAction: 'spawn' })(state);
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        // Quizページのrefコメントは取得時点で設置操作が反映済み。
+        // メタデータ付き等の非Quizコメントは、直前ページで設置したミノがカレントに残ったままのため
+        // ここでQuiz相当の進行 (Direct/Swap/Stock) を行う
+        const isAdvancedQuizComment = page !== undefined && page.flags.quiz && page.comment.text === undefined;
+
+        let hold = parsed.hold;
+        let current = parsed.current;
+        let queue = parsed.queue;
+        if (!isAdvancedQuizComment && current !== null) {
+            const prevPage = state.fumen.pages[pageIndex - 1];
+            const placedPiece = prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)
+                ? prevPage.piece.type
+                : undefined;
+            if (placedPiece !== undefined) {
+                if (placedPiece === current) {
+                    current = null;
+                } else if (placedPiece === hold) {
+                    hold = current;
+                    current = null;
+                } else if (hold === null && placedPiece === queue[0]) {
+                    hold = current;
+                    current = null;
+                    queue = queue.slice(1);
+                }
+            }
+        }
+
+        // カレントが空のときはNEXT先頭を取り出してカレントにする
+        if (current === null) {
+            if (queue.length === 0) {
+                // スポーンできなくても、進行後の状態はコメントに反映しておく
+                const advancedComment = buildQueueStateComment(
+                    hold, null, [], parsed.b2b, parsed.combo, parsed.suffix,
+                );
+                if (advancedComment !== currentComment) {
+                    return sequence(state, [
+                        actions.setCommentText({ pageIndex, text: advancedComment }),
+                        actions.changePieceAction({ pieceAction: 'spawn' }),
+                    ]);
+                }
+                return actions.changePieceAction({ pieceAction: 'spawn' })(state);
+            }
+            current = queue[0];
+            queue = queue.slice(1);
+        }
+
+        const spawnPiece = current;
+        // 既知ミノ数はカレントを含めて数える
+        const nextQueue = state.editorUi.infinitePieceQueue
+            ? appendInfiniteQueueBagIfNeeded(queue, queue.length + 1)
+            : queue;
+        const nextComment = buildQueueStateComment(
+            hold,
+            spawnPiece,
+            nextQueue,
+            parsed.b2b,
+            parsed.combo,
+            parsed.suffix,
+        );
+
+        return sequence(state, [
+            actions.setCommentText({ pageIndex, text: nextComment }),
+            actions.spawnPiece({
+                piece: spawnPiece,
+                srs: state.mode.rotationSystem !== 'classic',
+            }),
+            actions.changePieceAction({ pieceAction: 'drag' }),
         ]);
     },
 };

@@ -2,6 +2,15 @@ import { datatest, expectFumen, minoPosition, Piece, Rotation, visit } from '../
 import { operations } from '../support/operations';
 
 describe('Comments', () => {
+    it('focuses the comment text after selecting Comment from utilities', () => {
+        visit({ mode: 'edit' });
+
+        operations.mode.utils.open();
+        cy.get(datatest('btn-comment-mode')).click();
+
+        cy.get(datatest('text-comment')).should('have.focus');
+    });
+
     it('Should not apply comment to other pages', () => {
         visit({ mode: 'edit' });
 

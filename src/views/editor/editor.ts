@@ -1,4 +1,4 @@
-import { CommentType, GradientPattern, ModeTypes, Piece, Screens } from '../../lib/enums';
+import { CommentType, GradientPattern, Piece, Screens } from '../../lib/enums';
 import { Coordinate, getNavigatorHeight, Size } from '../commons';
 import { View } from 'hyperapp';
 import { resources, State } from '../../states';
@@ -12,19 +12,17 @@ import { div } from '@hyperapp/html';
 import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
-import { toolMode } from './tool_mode';
-import { pieceMode } from './piece_mode';
-import { fillMode } from './fill_mode';
-import { flagsMode } from './flags_mode';
-import { utilsMode } from './utils_mode';
-import { slideMode } from './slide_mode';
-import { fillRowMode } from './fill_row_mode';
-import { pieceSelectMode } from './piece_select_mode';
 import { navigatorElement } from '../navigator';
-import { commentMode } from './comment_mode';
-import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 import { getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
+import { editorRail } from './editor_rail';
+import { editorOverlay } from './editor_overlay';
+import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
+import { composeSelectionField } from '../../lib/rect_selection';
+import { SelectionOverlay } from '../../components/selection_overlay';
+import { getEditorBottomMetrics, getEditorRailConfig } from './responsive_layout';
+import { pieceQueueOverlays } from './piece_queue_overlay';
+import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -32,6 +30,8 @@ interface FieldLayout {
 }
 
 export interface EditorLayout {
+    // トレイを盤面下部の枠（せり上がり部と排他）に置けるか（右インスペクタ表示中などは不可）
+    trayInBottom: boolean;
     canvas: {
         topLeft: Coordinate;
         size: Size;
@@ -44,6 +44,12 @@ export interface EditorLayout {
     };
     buttons: {
         size: Size;
+        columns: 1 | 2;
+    };
+    pieceQueue: {
+        visible: boolean;
+        width: number;
+        gap: number;
     };
     comment: {
         topLeft: Coordinate;
@@ -60,8 +66,7 @@ export const getFieldLayout = (
         topLeftY: number, width: number, height: number, sidePanelWidth: number,
     },
 ): FieldLayout => {
-    const commentHeight = 35;
-    const toolsHeight = 50;
+    const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
     const borderWidthBottomField = 2.4;
 
     const canvasSize = {
@@ -71,7 +76,7 @@ export const getFieldLayout = (
 
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - 90) / 10.5,  // 横のスペ�Eスが最低でめE0pxは残るようにする
+        (canvasSize.width - 90) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -91,24 +96,52 @@ export const getFieldLayout = (
     };
 };
 
-const getLayout = (
-    { topLeftY, width, height, sidePanelWidth }: {
-        topLeftY: number, width: number, height: number, sidePanelWidth: number,
-    },
+interface LayoutParams {
+    topLeftY: number;
+    width: number;
+    height: number;
+    sidePanelWidth: number;
+    rightInspectorWidth: number;
+    trayInBottom: boolean;
+    pieceQueueVisible?: boolean;
+}
+
+export const getLayout = (
+    {
+        topLeftY,
+        width,
+        height,
+        sidePanelWidth,
+        rightInspectorWidth,
+        trayInBottom,
+        pieceQueueVisible = false,
+    }: LayoutParams,
 ): EditorLayout => {
-    const commentHeight = 35;
-    const toolsHeight = 50;
+    const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
     const borderWidthBottomField = 2.4;
 
     // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
+    // 盤面サイズは develop 時点の計算式と完全に一致させる（トレイは盤面下部に
+    // 「せり上がり部と同じ枠」を重ねて表示するだけで、盤面の大きさには影響しない）。
     const canvasSize = {
-        width: width - sidePanelWidth,
+        width: width - sidePanelWidth - rightInspectorWidth,
         height: height - (toolsHeight + commentHeight + topLeftY),
     };
 
+    const rail = getEditorRailConfig(canvasSize.height);
+    const pieceQueueWidth = pieceQueueVisible
+        ? Math.min(56, Math.max(34, canvasSize.width * .12))
+        : 0;
+    const pieceQueueGap = pieceQueueVisible
+        ? Math.min(6, Math.max(2, canvasSize.width * .012))
+        : 0;
+    const pieceQueueReserve = pieceQueueVisible
+        ? pieceQueueWidth * 2 + pieceQueueGap * 2
+        : 0;
+
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - 90) / 10.5,  // 横のスペ�Eスが最低でめE0pxは残るようにする
+        (canvasSize.width - rail.reserve - pieceQueueReserve) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -117,7 +150,8 @@ const getLayout = (
     };
 
     const pieceButtonsSize = {
-        width: Math.min((canvasSize.width - fieldSize.width) * 0.6, 80),
+        width: Math.min(Math.max((canvasSize.width - fieldSize.width) * rail.widthRatio, rail.minWidth),
+            rail.maxWidth),
         height: Math.min(
             fieldSize.height / (1.25 * 18 + 0.25),
             30,
@@ -125,6 +159,7 @@ const getLayout = (
     };
 
     return {
+        trayInBottom,
         canvas: {
             topLeft: {
                 x: 0,
@@ -149,6 +184,12 @@ const getLayout = (
         },
         buttons: {
             size: pieceButtonsSize,
+            columns: rail.columns,
+        },
+        pieceQueue: {
+            visible: pieceQueueVisible,
+            width: pieceQueueWidth,
+            gap: pieceQueueGap,
         },
         comment: {
             topLeft: {
@@ -191,15 +232,6 @@ export const toolStyle = (layout: EditorLayout) => {
 };
 
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
-    const pages = state.fumen.pages;
-    const page = pages[state.fumen.currentIndex];
-    const keyPage = page === undefined || page.field.obj !== undefined;
-
-    // テト譜の仕様により、最初のページのフラグが全体に反映される
-    const globalFlags = state.fumen.pages[0]?.flags;
-    const guideLineColor = globalFlags?.colorize ?? true;
-    const srsFlag = state.mode.rotationSystem !== 'classic';
-
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {
             return GradientPattern.None;
@@ -212,140 +244,101 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         return GradientPattern.None;
     };
 
+    // せり上がり部と同じ「枠」にトレイを重ねる（盤面(develop と同じサイズ)はズレない）。
+    // 枠の位置・高さは、Field コンポーネントがせり上がり行を描く座標と厳密に一致させる。
+    const bottomTrayVisible = layout.trayInBottom && state.editorUi.bottomSlot === 'tray';
+    const sentLineVisible = !bottomTrayVisible;
+    const bandTop = layout.field.topLeft.y + (layout.field.blockSize + 1) * 22.5 + 1
+        + layout.field.bottomBorderWidth;
+    const bandHeight = layout.field.bottomBorderWidth + layout.field.blockSize;
+    const pieceTrayAvailableHeight = layout.canvas.size.height - bandTop + layout.comment.size.height - 1;
+    const trayHeight = state.editorUi.primaryTool === 'piece'
+        ? Math.min(CONTEXT_TRAY_HEIGHT * 2, Math.max(bandHeight, pieceTrayAvailableHeight))
+        : bandHeight;
+    const queueState = layout.pieceQueue.visible
+        ? resolveCurrentColdClearMenuQueueState(state)
+        : null;
+    const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
+        queueState,
+        width: layout.pieceQueue.width,
+        gap: layout.pieceQueue.gap,
+        fieldHeight: layout.field.size.height,
+        guideLineColor: state.fumen.guideLineColor,
+        openSettings: ({ focus }) => actions.openPieceQueueModal({ focus }),
+    }) : null;
+
+    const fieldColumn = div({
+        key: 'field-column',
+        style: style({
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+            position: 'relative',
+            width: px(layout.field.size.width),
+        }),
+    }, [
+        KonvaCanvas({  // canvas空間�Eみ
+            actions,
+            canvas: layout.canvas.size,
+            hyperStage: resources.konva.stage,
+        }),
+
+        div({
+            key: 'editor-field-frame',
+            datatest: 'editor-field-frame',
+            style: style({
+                height: px(layout.field.size.height),
+                left: '0',
+                pointerEvents: 'none',
+                position: 'absolute',
+                top: px(layout.field.topLeft.y),
+                width: px(layout.field.size.width),
+            }),
+        }),
+
+        Field({
+            sentLineVisible,
+            getGradientPattern,
+            fieldMarginWidth: layout.field.bottomBorderWidth,
+            topLeft: layout.field.topLeft,
+            blockSize: layout.field.blockSize,
+            field: composeSelectionField(state),
+            sentLine: state.sentLine,
+            guideLineColor: state.fumen.guideLineColor,
+        }),
+
+        SelectionOverlay({
+            rect: resources.konva.selectionFrame,
+            selection: state.rectSelect,
+            topLeft: layout.field.topLeft,
+            blockSize: layout.field.blockSize,
+        }),
+
+        ...(bottomTrayVisible ? [div({
+            key: 'field-bottom-tray',
+            datatest: 'field-bottom-tray',
+            style: style({
+                height: px(bandHeight),
+                left: '0',
+                position: 'absolute',
+                right: '0',
+                top: px(bandTop),
+                zIndex: 5,
+            }),
+        }, [contextTray(state, actions, trayHeight)])] : []),
+    ]);
+
     const getChildren = () => {
-        const getMode = () => {
-            switch (state.mode.type) {
-            case ModeTypes.DrawingTool: {
-                return toolMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    modePiece: state.mode.piece,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    editShortcuts: state.mode.editShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    coldClear: state.coldClear,
-                });
-            }
-            case ModeTypes.Piece: {
-                const page = state.fumen.pages[state.fumen.currentIndex];
-                return pieceMode({
-                    layout,
-                    actions,
-                    move: page !== undefined ? page.piece : undefined,
-                    existInferences: 0 < state.events.inferences.length,
-                    rotationSystem: state.mode.rotationSystem,
-                    pages: state.fumen.pages,
-                    flags: page.flags,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    pieceShortcuts: state.mode.pieceShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
-                    coldClear: state.coldClear,
-                    canSwapCurrentPieceWithHoldQueue: canSwapCurrentPieceWithHoldQueue(state),
-                });
-            }
-            case ModeTypes.Flags: {
-                return flagsMode({
-                    layout,
-                    actions,
-                    keyPage,
-                    flags: page.flags,
-                    currentIndex: state.fumen.currentIndex,
-                });
-            }
-            case ModeTypes.Utils: {
-                return utilsMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                });
-            }
-            case ModeTypes.Comment: {
-                return commentMode({
-                    layout,
-                    actions,
-                    currentIndex: state.fumen.currentIndex,
-                });
-            }
-            case ModeTypes.Slide: {
-                return slideMode({
-                    layout,
-                    actions,
-                });
-            }
-            case ModeTypes.Fill: {
-                return fillMode({
-                    layout,
-                    actions,
-                    colorize: guideLineColor,
-                    modePiece: state.mode.piece,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            case ModeTypes.FillRow: {
-                return fillRowMode({
-                    layout,
-                    actions,
-                    colorize: guideLineColor,
-                    modePiece: state.mode.piece,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            case ModeTypes.SelectPiece: {
-                return pieceSelectMode({
-                    layout,
-                    actions,
-                    currentIndex: state.fumen.currentIndex,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                });
-            }
-            default: {
-                // ModeTypes.Drawing等�E未対応モード�EtoolModeにフォールバック
-                return toolMode({
-                    layout,
-                    actions,
-                    touchType: state.mode.touch,
-                    currentIndex: state.fumen.currentIndex,
-                    modePiece: state.mode.piece,
-                    colorize: guideLineColor,
-                    srs: srsFlag,
-                    paletteShortcuts: state.mode.paletteShortcuts,
-                    editShortcuts: state.mode.editShortcuts,
-                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    coldClear: state.coldClear,
-                });
-            }
-            }
-        };
-
         return [   // canvas:Field とのマッピング用仮想DOM
-            KonvaCanvas({  // canvas空間�Eみ
-                actions,
-                canvas: layout.canvas.size,
-                hyperStage: resources.konva.stage,
-            }),
+            ...(queueOverlays ? [queueOverlays.holdPanel] : []),
 
-            Field({
-                getGradientPattern,
-                fieldMarginWidth: layout.field.bottomBorderWidth,
-                topLeft: layout.field.topLeft,
-                blockSize: layout.field.blockSize,
-                field: state.field,
-                sentLine: state.sentLine,
-                guideLineColor: state.fumen.guideLineColor,
-            }),
+            fieldColumn,
 
-            getMode(),
+            ...(queueOverlays ? [queueOverlays.nextPanel] : []),
+
+            editorRail(state, actions, layout),
+
+            editorOverlay(state, actions, layout) as any,
         ];
     };
 
@@ -375,6 +368,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             outline: 'none', // フォーカス時�E枠線を消す
             flex: '1 1 auto',
             minWidth: '0',
+            position: 'relative',
         }),
         onclick: handleFieldClick,
     }, getChildren());
@@ -398,6 +392,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
     return EditorTools({
         height,
         palette,
+        width: state.display.width,
         editShortcuts: state.mode.editShortcuts,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         actions: {
@@ -414,13 +409,11 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             lastPage: actions.lastPage,
             duplicatePageOnly: actions.duplicatePageOnly,
             duplicatePageToGray: actions.duplicatePageToGray,
-            changeToDrawingToolMode: actions.changeToDrawingToolMode,
             undo: actions.undo,
             redo: actions.redo,
         },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
-        modeType: state.mode.type,
         undoCount: state.history.undoCount,
         redoCount: state.history.redoCount,
         inferenceCount: state.events.inferences.length,
@@ -487,10 +480,21 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
 export const view: View<State, Actions> = (state, actions) => {
     const navigatorHeight = getNavigatorHeight(state.platform);
     const sidePanelWidth = getSidePanelWidth(state);
+    // Keep the context tray in the bottom slot on every platform.
+    const rightInspectorWidth = 0;
 
+    const pageSliderVisible = state.mode.comment === CommentType.PageSlider;
+    // トレイを盤面下部（せり上がり部と同じ枠）に置くかどうか。
+    // ページスライダー表示中はコメント欄を優先してトレイを出さない。
+    const trayInBottom = !pageSliderVisible;
+    // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
+    // （盤面サイズは develop 時点の計算式と完全に一致させる）。
     // 初期匁E
     const layout = getLayout({
+        rightInspectorWidth,
         sidePanelWidth,
+        trayInBottom,
+        pieceQueueVisible: state.editorUi.primaryTool === 'piece',
         ...state.display,
         topLeftY: navigatorHeight,
     });
@@ -528,6 +532,7 @@ export const view: View<State, Actions> = (state, actions) => {
             })] : []),
 
             ScreenField(state, actions, layout),
+
         ]),
 
         div({

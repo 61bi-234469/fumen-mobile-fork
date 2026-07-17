@@ -38,6 +38,8 @@ import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
 import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
+import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
+import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -55,7 +57,9 @@ export type Actions = AnimationActions
     & ListViewActions
     & EditorPanelActions
     & TreeOperationActions
-    & ColdClearActions;
+    & ColdClearActions
+    & EditorInteractionActions
+    & RectSelectActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -73,6 +77,8 @@ export const actions: Readonly<Actions> = {
     ...editorPanelActions,
     ...treeOperationActions,
     ...coldClearActions,
+    ...editorInteractionActions,
+    ...rectSelectActions,
 };
 
 // Current state getter for shortcut handlers
@@ -264,6 +270,16 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.deleteSpawnMinoOnPaintDrag !== undefined) {
+        main.changeDeleteSpawnMinoOnPaintDrag({ enable: settings.deleteSpawnMinoOnPaintDrag });
+        updated = true;
+    }
+
+    if (settings.skipReaderMode !== undefined) {
+        main.changeSkipReaderMode({ enable: settings.skipReaderMode });
+        updated = true;
+    }
+
     if (settings.loop !== undefined) {
         main.changeLoop({ enable: settings.loop });
         updated = true;
@@ -368,6 +384,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.pieceShortcutArrMs !== undefined) {
+        main.changePieceShortcutArr({ arrMs: settings.pieceShortcutArrMs });
+        updated = true;
+    }
+
     if (settings.gifFrameDelayMs !== undefined) {
         main.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(settings.gifFrameDelayMs) });
         updated = true;
@@ -375,6 +396,11 @@ const loadUserSettings = () => {
 
     if (settings.rotationSystem !== undefined) {
         main.changeRotationSystem({ rotationSystem: settings.rotationSystem });
+        updated = true;
+    }
+
+    if (settings.noGrayAfterHardDrop !== undefined) {
+        main.changeNoGrayAfterHardDrop({ enable: settings.noGrayAfterHardDrop });
         updated = true;
     }
 

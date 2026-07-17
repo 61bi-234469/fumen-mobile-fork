@@ -69,9 +69,9 @@ export interface PageActions {
     reopenCurrentPage: () => action;
     openPage: (data: { index: number }) => action;
     openPageWhenChange: (data: { index: number }) => action;
-    insertPage: (data: { index: number }) => action;
+    insertPage: (data: { index: number; skipGrayAfterLineClear?: boolean }) => action;
     insertRefPage: (data: { index: number }) => action;
-    insertKeyPage: (data: { index: number }) => action;
+    insertKeyPage: (data: { index: number; skipGrayAfterLineClear?: boolean }) => action;
     insertNewPage: (data: { index: number }) => action;
     removePage: (data: { index: number }) => action;
     duplicatePage: (data: { index: number }) => action;
@@ -137,6 +137,8 @@ export const pageActions: Readonly<PageActions> = {
             state.play.status === AnimationState.Play ? actions.startAnimation() : undefined,
             state.fumen.currentIndex !== index ? actions.fixInferencePiece() : undefined,
             state.fumen.currentIndex !== index ? actions.clearInferencePiece() : undefined,
+            state.fumen.currentIndex !== index && actions.clearRectSelection !== undefined
+                ? actions.clearRectSelection() : undefined,
             state.fumen.currentIndex !== index ? actions.commitCommentText() : undefined,
             actions.setComment({ comment: text }),
             actions.setField({
@@ -162,7 +164,9 @@ export const pageActions: Readonly<PageActions> = {
                 },
             }),
             (newState) => {
-                if (!newState.tree.enabled) return undefined;
+                // ツリー無効中もデータが残っている限りactiveNodeIdを追従させる
+                // (insertKeyPageなどのページ操作はenabledに関係なくツリーを更新するため)
+                if (newState.tree.rootId === null || newState.tree.nodes.length === 0) return undefined;
                 const tree: SerializedTree = {
                     nodes: newState.tree.nodes,
                     rootId: newState.tree.rootId,
@@ -188,7 +192,7 @@ export const pageActions: Readonly<PageActions> = {
 
         return pageActions.openPage({ index })(state);
     },
-    insertPage: ({ index }) => (state): NextState => {
+    insertPage: ({ index, skipGrayAfterLineClear = false }) => (state): NextState => {
         const fumen = state.fumen;
         const pages = fumen.pages;
 
@@ -199,6 +203,9 @@ export const pageActions: Readonly<PageActions> = {
             ? pageActions.insertRefPage
             : pageActions.insertKeyPage;
 
+        if (skipGrayAfterLineClear) {
+            return pageActions.insertKeyPage({ index, skipGrayAfterLineClear })(state);
+        }
         return insert({ index })(state);
     },
     insertRefPage: ({ index }) => (state): NextState => {
@@ -215,7 +222,7 @@ export const pageActions: Readonly<PageActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    insertKeyPage: ({ index }) => (state): NextState => {
+    insertKeyPage: ({ index, skipGrayAfterLineClear = false }) => (state): NextState => {
         const fumen = state.fumen;
         const pages = fumen.pages;
         if (pages.length < index) {
@@ -225,7 +232,7 @@ export const pageActions: Readonly<PageActions> = {
         return sequence(state, [
             actions.removeUnsettledItems(),
             actions.commitCommentText(),
-            insertKeyPage({ index }),
+            insertKeyPage({ index, skipGrayAfterLineClear }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -284,7 +291,10 @@ export const pageActions: Readonly<PageActions> = {
         ]);
     },
     removeUnsettledItems: () => (state): NextState => {
-        return actions.removeUnsettledItemsInField()(state);
+        return sequence(state, [
+            actions.removeUnsettledItemsInField(),
+            actions.cancelRectSelectionPreview(),
+        ]);
     },
     backLoopPage: () => (state): NextState => {
         const index = (state.fumen.currentIndex - 1 + state.fumen.maxPage) % state.fumen.maxPage;
@@ -911,7 +921,10 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
     ]);
 };
 
-const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>): NextState => {
+const insertKeyPage = ({ index, skipGrayAfterLineClear = false }: {
+    index: number;
+    skipGrayAfterLineClear?: boolean;
+}) => (state: Readonly<State>): NextState => {
     // Check if tree data exists
     const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
 
@@ -931,7 +944,7 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
         pagesObj.insertKeyPage(index);
         const newPages = pagesObj.pages;
         const insertedPage = newPages[index];
-        if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
+        if (state.tree.grayAfterLineClear && !skipGrayAfterLineClear && insertedPage?.field.obj !== undefined) {
             insertedPage.field.obj.convertToGray();
         }
 
@@ -969,7 +982,7 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
     pagesObj.insertKeyPage(index);
     const newPages = pagesObj.pages;
     const insertedPage = newPages[index];
-    if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
+    if (state.tree.grayAfterLineClear && !skipGrayAfterLineClear && insertedPage?.field.obj !== undefined) {
         insertedPage.field.obj.convertToGray();
     }
 
@@ -1034,13 +1047,9 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
             pages = pagesObj.pages;
         }
 
-        // フィールドをリセットする（Gray有効時はグレー化）
+        // ADD always creates a blank page; gray-after-line-clear is unrelated to ADD.
         if (insertedPage.field.obj !== undefined) {
-            if (state.tree.grayAfterLineClear) {
-                insertedPage.field.obj.convertToGray();
-            } else {
-                insertedPage.field.obj = new Field({});
-            }
+            insertedPage.field.obj = new Field({});
         }
 
         // コメントをリセットする
@@ -1126,13 +1135,9 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const primitivePage = toPrimitivePage(insertedPage);
 
-    // フィールドをリセットする（Gray有効時はグレー化）
+    // ADD always creates a blank page; gray-after-line-clear is unrelated to ADD.
     if (insertedPage.field.obj !== undefined) {
-        if (state.tree.grayAfterLineClear) {
-            insertedPage.field.obj.convertToGray();
-        } else {
-            insertedPage.field.obj = new Field({});
-        }
+        insertedPage.field.obj = new Field({});
     }
 
     // コメントをリセットする

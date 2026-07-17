@@ -9,6 +9,16 @@ import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
 import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
 
+const focusCommentInput = () => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    setTimeout(() => {
+        const element = document.querySelector('[datatest="text-comment"]') as HTMLInputElement | null;
+        element?.focus();
+    }, 0);
+};
+
 export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
@@ -29,14 +39,18 @@ export interface ScreenActions {
     changeScreen: (data: { screen: Screens }) => action;
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
+    changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    changeSkipReaderMode: (data: { enable: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
     changeRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
+    changeNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
     changePieceShortcutDas: (data: { dasMs: number }) => action;
+    changePieceShortcutArr: (data: { arrMs: number }) => action;
     changeGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
@@ -120,73 +134,64 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Drawing }),
-        ]);
+        return actions.changePaintTool({ tool: 'pen' })(state);
     },
     changeToDrawingToolMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.DrawingTool }),
-        ]);
+        return actions.changePaintTool({ tool: 'pen' })(state);
     },
     changeToFlagsMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Flags }),
-        ]);
+        return actions.openEditorInspector({ inspector: 'flags' })(state);
     },
     changeToUtilsMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing }),
-            changeModeType({ type: ModeTypes.Utils }),
-        ]);
+        return actions.openEditorInspector({ inspector: 'utils' })(state);
     },
     changeToShiftMode: () => (state): NextState => {
         return sequence(state, [
-            changeTouchType({ type: TouchTypes.Drawing, clear: true }),
+            actions.clearRectSelection(),
+            changeTouchType({ type: TouchTypes.Select, clear: true }),
             changeModeType({ type: ModeTypes.Slide }),
+            newState => ({ editorUi: {
+                ...newState.editorUi,
+                primaryTool: 'paint',
+                inspector: 'none',
+                bottomSlot: 'tray',
+            } }),
+            actions.beginWholeFieldMove(),
         ]);
     },
     changeToFillRowMode: () => (state): NextState => {
         return sequence(state, [
-            changeTouchType({ type: TouchTypes.FillRow }),
-            changeModeType({ type: ModeTypes.FillRow }),
-            newState => ({
-                mode: {
-                    ...newState.mode,
-                    piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
-                },
-            }),
+            actions.changePaintTool({ tool: 'fillRow' }),
+            newState => ({ mode: {
+                ...newState.mode,
+                piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
+            } }),
         ]);
     },
     changeToPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePrimaryTool({ tool: 'piece' })(state);
     },
     changeToFillMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Fill }),
-            changeModeType({ type: ModeTypes.Fill }),
-        ]);
+        return actions.changePaintTool({ tool: 'fill' })(state);
     },
     changeToCommentMode: () => (state): NextState => {
+        focusCommentInput();
         return sequence(state, [
+            changeTouchType({ type: TouchTypes.Drawing, clear: true }),
             changeModeType({ type: ModeTypes.Comment }),
+            newState => ({ editorUi: {
+                ...newState.editorUi,
+                primaryTool: 'paint',
+                inspector: 'none',
+                bottomSlot: 'tray',
+            } }),
         ]);
     },
     changeToDrawPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.Piece }),
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePieceAction({ pieceAction: 'spawn' })(state);
     },
     changeToMovePieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeTouchType({ type: TouchTypes.MovePiece }),
-            changeModeType({ type: ModeTypes.Piece }),
-        ]);
+        return actions.changePieceAction({ pieceAction: 'drag' })(state);
     },
     changeToSelectPieceMode: () => (state): NextState => {
         return sequence(state, [
@@ -223,6 +228,23 @@ export const modeActions: Readonly<ScreenActions> = {
                 };
             },
         ]);
+    },
+    changeDeleteSpawnMinoOnPaintDrag: ({ enable }) => (state): NextState => {
+        if (state.mode.deleteSpawnMinoOnPaintDrag === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                deleteSpawnMinoOnPaintDrag: enable,
+            },
+        };
+    },
+    changeSkipReaderMode: ({ enable }) => (state): NextState => {
+        if (state.mode.skipReaderMode === enable) {
+            return undefined;
+        }
+        return { mode: { ...state.mode, skipReaderMode: enable } };
     },
     changeLoop: ({ enable }) => (state): NextState => {
         if (state.mode.loop === enable) {
@@ -296,6 +318,17 @@ export const modeActions: Readonly<ScreenActions> = {
             },
         };
     },
+    changeNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
+        if (state.mode.noGrayAfterHardDrop === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                noGrayAfterHardDrop: enable,
+            },
+        };
+    },
     changePaletteShortcuts: ({ paletteShortcuts }) => (state): NextState => {
         return {
             mode: {
@@ -325,6 +358,14 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 pieceShortcutDasMs: dasMs,
+            },
+        };
+    },
+    changePieceShortcutArr: ({ arrMs }) => (state): NextState => {
+        return {
+            mode: {
+                ...state.mode,
+                pieceShortcutArrMs: arrMs,
             },
         };
     },

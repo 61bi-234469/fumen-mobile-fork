@@ -50,7 +50,61 @@ export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
 
 export type EditorSidePanelTab = 'list' | 'tree';
 
+export type PrimaryTool = 'paint' | 'piece' | 'select';
+export type PaintTool = 'pen' | 'fill' | 'fillRow';
+export type PieceAction = 'spawn' | 'drag';
+export type EditorInspector = 'none' | 'utils' | 'flags';
+export type PaletteSelection = Piece | 'comp';
+export type PieceQueueFocus = 'hold' | 'current' | 'next';
+
+export interface SelectionRect {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+}
+
+export interface FloatingSelection {
+    cells: Piece[];
+    width: number;
+    height: number;
+    sourceRect: SelectionRect | null;
+    targetX: number;
+    targetY: number;
+    pointerOffsetX: number;
+    pointerOffsetY: number;
+    firstTapPending?: boolean;
+    firstTapInProgress?: boolean;
+    forceEmpty?: boolean;
+}
+
+export interface RectSelectState {
+    status: 'none' | 'selecting' | 'selected' | 'floating';
+    rect: SelectionRect | null;
+    anchorIndex: number | null;
+    floating: FloatingSelection | null;
+    reselectOnNextTouch?: boolean;
+}
+
+export interface EditorPart {
+    id: string;
+    slot: Piece;
+    width: number;
+    height: number;
+    cells: Piece[];
+    pinned: boolean;
+    createdAt: number;
+}
+
+export interface PartsState {
+    items: EditorPart[];
+    selectedId: string | null;
+    blackTransparent: boolean;
+}
+
 export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
+// 0のときはDAS経過後に端まで即移動する（従来動作）
+export const DEFAULT_PIECE_SHORTCUT_ARR_MS = 0;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
@@ -63,6 +117,7 @@ import konva from 'konva';
 import { Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
+import { loadBlackTransparentPaste, loadParts } from './lib/parts';
 
 const VERSION = PageEnv.Version;
 
@@ -78,7 +133,18 @@ const getInitialScreen = (): Screens => {
     if (screen === 'read' || screen === 'reader') {
         return Screens.Reader;
     }
-    return window.location.hash.includes('#/edit') ? Screens.Editor : Screens.Reader;
+    if (window.location.hash.includes('#/edit')) {
+        return Screens.Editor;
+    }
+    try {
+        const settings = JSON.parse(localStorage.getItem('user-settings@1') ?? '{}');
+        if (settings.skipReaderMode === true) {
+            return Screens.Editor;
+        }
+    } catch {
+        // Ignore malformed persisted settings.
+    }
+    return Screens.Reader;
 };
 
 // Immutableにする
@@ -122,10 +188,13 @@ export interface State {
         listViewMenu: boolean;
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
+        pieceQueue: boolean;
     };
     temporary: {
         userSettings: {
             ghostVisible: boolean;
+            deleteSpawnMinoOnPaintDrag: boolean;
+            skipReaderMode: boolean;
             loop: boolean;
             shortcutLabelVisible: boolean;
             gradient: string;
@@ -133,13 +202,16 @@ export interface State {
             editShortcuts: EditShortcuts;
             pieceShortcuts: PieceShortcuts;
             pieceShortcutDasMs: number;
+            pieceShortcutArrMs: number;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
+            noGrayAfterHardDrop: boolean;
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             editorSidePanel: boolean;
         };
         userSettingsTab: UserSettingsTab;
+        pieceQueueFocus: PieceQueueFocus;
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -147,6 +219,7 @@ export interface State {
     events: {
         piece?: Piece;
         drawing: boolean;
+        pieceDragFromPaint?: boolean;
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
@@ -161,6 +234,8 @@ export interface State {
         piece: Piece | undefined;
         comment: CommentType;
         ghostVisible: boolean;
+        deleteSpawnMinoOnPaintDrag: boolean;
+        skipReaderMode: boolean;
         loop: boolean;
         shortcutLabelVisible: boolean;
         gradient: {
@@ -170,8 +245,10 @@ export interface State {
         editShortcuts: EditShortcuts;
         pieceShortcuts: PieceShortcuts;
         pieceShortcutDasMs: number;
+        pieceShortcutArrMs: number;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
+        noGrayAfterHardDrop: boolean;
     };
     history: {
         undoCount: number;
@@ -193,6 +270,20 @@ export interface State {
         tab: EditorSidePanelTab;
         width: number | null;
     };
+    editorUi: {
+        primaryTool: PrimaryTool;
+        previousPrimaryTool?: Exclude<PrimaryTool, 'piece'>;
+        paintTool: PaintTool;
+        pieceAction: PieceAction;
+        inspector: EditorInspector;
+        paletteSelection: PaletteSelection;
+        previousPaletteSelection?: PaletteSelection;
+        lastMino: Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S;
+        infinitePieceQueue: boolean;
+        bottomSlot: 'sentLine' | 'tray';
+    };
+    rectSelect: RectSelectState;
+    parts: PartsState;
     tree: TreeState;
     coldClear: {
         isRunning: boolean;
@@ -207,7 +298,7 @@ export interface State {
         nextLimit: number | null;
         weightsPreset: number;
         thinkMs: number;
-        queuePreview: { pageIndex: number; text: string } | null;
+        queuePreview: { pageIndex: number; text: string; historyKey?: string } | null;
     };
     version: string;
     platform: Platforms;
@@ -272,10 +363,13 @@ export const initState: Readonly<State> = {
         listViewMenu: false,
         treeDisableConfirm: false,
         coldClearMenu: false,
+        pieceQueue: false,
     },
     temporary: {
         userSettings: {
             ghostVisible: true,
+            deleteSpawnMinoOnPaintDrag: true,
+            skipReaderMode: false,
             loop: false,
             shortcutLabelVisible: false,
             gradient: '0000000',
@@ -283,13 +377,16 @@ export const initState: Readonly<State> = {
             editShortcuts: { ...defaultEditShortcuts },
             pieceShortcuts: { ...defaultPieceShortcuts },
             pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+            pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
+            noGrayAfterHardDrop: false,
             grayAfterLineClear: false,
             trimTopBlank: false,
             editorSidePanel: false,
         },
         userSettingsTab: 'field',
+        pieceQueueFocus: 'next',
     },
     handlers: {
         animation: undefined,
@@ -297,6 +394,7 @@ export const initState: Readonly<State> = {
     events: {
         piece: undefined,  // 描画処理中のピースの種類
         drawing: false,
+        pieceDragFromPaint: false,
         inferences: [],
         prevPage: undefined,
         updated: false,
@@ -310,6 +408,8 @@ export const initState: Readonly<State> = {
         piece: undefined,  // UI上で選択されているのピースの種類
         comment: CommentType.Writable,
         ghostVisible: true,
+        deleteSpawnMinoOnPaintDrag: true,
+        skipReaderMode: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -317,8 +417,10 @@ export const initState: Readonly<State> = {
         editShortcuts: { ...defaultEditShortcuts },
         pieceShortcuts: { ...defaultPieceShortcuts },
         pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
+        pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
+        noGrayAfterHardDrop: false,
     },
     history: {
         undoCount: 0,
@@ -339,6 +441,29 @@ export const initState: Readonly<State> = {
         enabled: false,
         tab: 'list',
         width: null,
+    },
+    editorUi: {
+        primaryTool: 'paint',
+        previousPrimaryTool: undefined,
+        paintTool: 'pen',
+        pieceAction: 'spawn',
+        inspector: 'none',
+        paletteSelection: 'comp',
+        previousPaletteSelection: undefined,
+        lastMino: Piece.T,
+        infinitePieceQueue: false,
+        bottomSlot: 'tray',
+    },
+    rectSelect: {
+        status: 'none',
+        rect: null,
+        anchorIndex: null,
+        floating: null,
+    },
+    parts: {
+        items: loadParts(),
+        selectedId: null,
+        blackTransparent: loadBlackTransparentPaste(),
     },
     tree: initialTreeState,
     coldClear: {
@@ -371,6 +496,7 @@ export const resources = {
         listViewMenu: undefined as any,
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
+        pieceQueue: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),
@@ -390,6 +516,7 @@ function createKonvaObjects() {
         event: {} as konva.Rect,
         background: {} as konva.Rect,
         fieldMarginLine: {} as konva.Line,
+        selectionFrame: {} as konva.Rect,
         fieldBlocks: [] as konva.Rect[],
         sentBlocks: [] as konva.Rect[],
         hold: {} as Box,
@@ -511,6 +638,17 @@ function createKonvaObjects() {
     // Overlay
     // Event Layer
     {
+        const selectionFrame = new konva.Rect({
+            fillEnabled: false,
+            stroke: '#1976d2',
+            strokeWidth: 2,
+            dash: [6, 4],
+            listening: false,
+            visible: false,
+        });
+        obj.selectionFrame = selectionFrame;
+        layers.overlay.add(selectionFrame);
+
         const rect = new konva.Rect({
             fill: '#333',
             opacity: 0.0,  // 0 ほど透過

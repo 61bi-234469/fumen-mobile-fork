@@ -26,6 +26,105 @@ export function isQuizCommentResult(result: CommentResult): result is QuizCommen
     return (result as QuizCommentResult).quiz !== undefined;
 }
 
+/**
+ * Re-derive the quiz flag from the persisted comment/ref graph.
+ *
+ * quiz is not encoded independently in fumen; treating it as a second source
+ * of truth makes tree and storage round-trips drift. References inherit the
+ * validity of their referenced comment, including legacy multi-hop references.
+ */
+export const recomputeQuizFlags = (pages: Page[]): Page[] => {
+    const quizByIndex: boolean[] = [];
+    const resolving = new Set<number>();
+
+    const resolve = (index: number): boolean => {
+        if (index < 0 || index >= pages.length) {
+            return false;
+        }
+        if (quizByIndex[index] !== undefined) {
+            return quizByIndex[index];
+        }
+        if (resolving.has(index)) {
+            quizByIndex[index] = false;
+            return false;
+        }
+
+        resolving.add(index);
+        const page = pages[index];
+        let valid = false;
+        if (page.comment.text !== undefined) {
+            valid = Quiz.isQuizComment(page.comment.text);
+        } else if (page.comment.ref !== undefined && page.comment.ref < index) {
+            valid = resolve(page.comment.ref);
+        }
+        resolving.delete(index);
+        quizByIndex[index] = valid;
+        return valid;
+    };
+
+    return pages.map((page, index) => ({
+        ...page,
+        flags: {
+            ...page.flags,
+            quiz: resolve(index),
+        },
+    }));
+};
+
+export type PageCommentPhase = 'before' | 'after';
+
+/** Resolve the effective comment text at a page, including quiz operations. */
+export const resolvePageCommentSnapshot = (
+    pages: Page[],
+    pageIndex: number,
+    phase: PageCommentPhase = 'before',
+): string => {
+    try {
+        const result = new Pages(pages).getComment(pageIndex);
+        if (!isQuizCommentResult(result)) {
+            return result.text;
+        }
+        return phase === 'after' ? result.quizAfterOperation.format().toString() : result.quiz;
+    } catch (e) {
+        const visited = new Set<number>();
+        let currentIndex = pageIndex;
+        while (!visited.has(currentIndex) && 0 <= currentIndex && currentIndex < pages.length) {
+            visited.add(currentIndex);
+            const page = pages[currentIndex];
+            if (page.comment.text !== undefined) {
+                return page.comment.text;
+            }
+            if (page.comment.ref === undefined) {
+                break;
+            }
+            currentIndex = page.comment.ref;
+        }
+        return '';
+    }
+};
+
+export const resolvePageCommentText = (pages: Page[], pageIndex: number): string => {
+    return resolvePageCommentSnapshot(pages, pageIndex, 'before');
+};
+
+/** Materialize selected page comments before a tree operation changes context. */
+export const materializePageComments = (pages: Page[], pageIndices: Set<number>): Page[] => {
+    const pagesCopy = pages.map(page => ({ ...page, flags: { ...page.flags } }));
+    pageIndices.forEach((pageIndex) => {
+        const page = pagesCopy[pageIndex];
+        if (!page || !page.flags.quiz) {
+            return;
+        }
+        const text = resolvePageCommentText(pagesCopy, pageIndex);
+        pagesCopy[pageIndex] = {
+            ...page,
+            comment: { text },
+            flags: { ...page.flags, quiz: Quiz.isQuizComment(text) },
+        };
+    });
+    return pagesCopy;
+};
+
 // 必要があればCacheを作成しつつ、Pageを操作する
 export class Pages {
     // Shallow copy

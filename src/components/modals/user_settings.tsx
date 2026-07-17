@@ -11,6 +11,8 @@ declare const M: any;
 
 interface UserSettingsModalProps {
     ghostVisible: boolean;
+    deleteSpawnMinoOnPaintDrag: boolean;
+    skipReaderMode: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;
@@ -18,8 +20,10 @@ interface UserSettingsModalProps {
     editShortcuts: EditShortcuts;
     pieceShortcuts: PieceShortcuts;
     pieceShortcutDasMs: number;
+    pieceShortcutArrMs: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
+    noGrayAfterHardDrop: boolean;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
@@ -29,6 +33,8 @@ interface UserSettingsModalProps {
         commitUserSettings: () => void;
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
+        keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
+        keepSkipReaderMode: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
@@ -36,8 +42,10 @@ interface UserSettingsModalProps {
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
         keepPieceShortcutDas: (data: { dasMs: number }) => void;
+        keepPieceShortcutArr: (data: { arrMs: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
+        keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
@@ -101,6 +109,8 @@ const tabLabels: Record<UserSettingsTab, () => string> = {
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
+        deleteSpawnMinoOnPaintDrag,
+        skipReaderMode,
         loop,
         shortcutLabelVisible,
         gradient,
@@ -108,8 +118,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         editShortcuts,
         pieceShortcuts,
         pieceShortcutDasMs,
+        pieceShortcutArrMs,
         gifFrameDelayMs,
         rotationSystem,
+        noGrayAfterHardDrop,
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
@@ -151,7 +163,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange }: {
+    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange, disabled = false }: {
         key: string;
         datatest: string;
         title: string;
@@ -159,6 +171,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         offLabel: string;
         onLabel: string;
         onChange: (checked: boolean) => void;
+        disabled?: boolean;
     }) => {
         const onupdate = (e: HTMLInputElement) => {
             if (e.checked !== checked) {
@@ -178,7 +191,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                 <label>
                     {offLabel}
-                    <input type="checkbox" dataTest={datatest}
+                    <input type="checkbox" dataTest={datatest} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
                     {onLabel}
@@ -270,6 +283,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         }
     };
 
+    const onchangeArr = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value) && value >= 0 && value <= 1000) {
+            actions.keepPieceShortcutArr({ arrMs: value });
+        }
+    };
+
     const onchangeGifFrameDelay = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value, 10);
@@ -346,6 +367,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepGhostVisible({ visible: checked }),
                             })}
 
+                            {renderSwitch({
+                                key: 'switch-row-delete-spawn-mino-on-paint-drag',
+                                datatest: 'switch-delete-spawn-mino-on-paint-drag',
+                                title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
+                                checked: deleteSpawnMinoOnPaintDrag,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
+                            })}
+
                             <div>
                                 <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
 
@@ -370,6 +401,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-no-gray-after-hard-drop',
+                                datatest: 'switch-no-gray-after-hard-drop',
+                                title: i18n.TreeView.NoGrayAfterHardDrop(),
+                                checked: noGrayAfterHardDrop,
+                                disabled: !grayAfterLineClear,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepNoGrayAfterHardDrop({ enable: checked }),
                             })}
 
                             <div>
@@ -579,6 +621,28 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         })}
                                     />
                                 </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.ArrMs()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.ArrDescription()}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        datatest="input-piece-arr"
+                                        value={pieceShortcutArrMs}
+                                        min={0}
+                                        max={1000}
+                                        step={10}
+                                        onchange={onchangeArr}
+                                        style={style({
+                                            width: px(80),
+                                            textAlign: 'center',
+                                        })}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -592,6 +656,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: i18n.UserSettings.Loop.Off(),
                                 onLabel: i18n.UserSettings.Loop.On(),
                                 onChange: checked => actions.keepLoop({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-skip-reader-mode',
+                                datatest: 'switch-skip-reader-mode',
+                                title: i18n.UserSettings.SkipReaderMode.Title(),
+                                checked: skipReaderMode,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepSkipReaderMode({ enable: checked }),
                             })}
 
                             <div style={style({ marginTop: px(15), marginBottom: px(15) })}>

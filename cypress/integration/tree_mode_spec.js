@@ -264,6 +264,14 @@ describe('Tree mode in list view', () => {
             );
             expect(expandedInsert.getAttribute('r')).to.equal('18');
 
+            // The destructive controls disappear while moving, and the copy
+            // positions become blue-plus branch targets.
+            expect(win.document.querySelector('[datatest^="btn-tree-node-delete-"]'))
+                .to.equal(null);
+            expect(win.document.querySelector(
+                '[datatest^="btn-tree-copy-"] circle:nth-of-type(2)[r="18"]',
+            )).to.not.equal(null);
+
             fireTouch('touchmove', end);
             await wait(120);
             fireTouch('touchend', end);
@@ -276,6 +284,42 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
         cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('starts moving from a node body after a long press', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildThreeNodeChain();
+
+        cy.window().then(async (win) => {
+            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const nodes = win.document.querySelectorAll('[datatest^="tree-node-"]');
+            const source = nodes[2];
+            const rect = source.getBoundingClientRect();
+            const start = { x: rect.left + 40, y: rect.top + 60 };
+            const target = win.document.elementFromPoint(start.x, start.y) || source;
+            const fireTouch = createTouchDispatcher(win, target);
+
+            fireTouch('touchstart', start);
+            await wait(550);
+
+            expect(win.document.querySelector('[datatest="tree-drag-ghost"]'))
+                .to.not.equal(null);
+
+            const insertCircle = win.document.querySelector('svg circle[fill="#10B981"]');
+            const targetRect = insertCircle.getBoundingClientRect();
+            const end = {
+                x: targetRect.left + targetRect.width / 2,
+                y: targetRect.top + targetRect.height / 2,
+            };
+            fireTouch('touchmove', end);
+            await wait(120);
+            fireTouch('touchend', end);
+        });
+
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
     });
 
     it('hides the source parent insert button even when the parent is branched', () => {
@@ -363,6 +407,35 @@ describe('Tree mode in list view', () => {
         cy.get(datatest('list-view-tools')).should('exist');
         cy.get(datatest('btn-back-to-editor')).click();
         cy.get(datatest('tools')).should('exist');
+    });
+
+    it('opens UTIL without leaving list or tree view', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).find(datatest('btn-utils-mode')).click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('overlay-utils')).should('be.visible')
+            .find(datatest('btn-slide-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils')).find(datatest('btn-comment-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils'))
+            .find(datatest('btn-inspector-close')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Show pages in tree view"]').click();
+        cy.get(datatest('list-view-tools')).find(datatest('btn-utils-mode')).should('be.visible').click();
+        cy.get(datatest('list-view-tools')).should('exist');
+        cy.get(datatest('fumen-graph-container')).should('exist');
+
+        cy.get(datatest('overlay-utils')).should('be.visible')
+            .find(datatest('btn-slide-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils')).find(datatest('btn-comment-mode')).should('not.exist');
+        cy.get(datatest('overlay-utils'))
+            .find(datatest('btn-replace')).should('be.visible').click();
+        cy.get(datatest('mdl-list-view-replace')).should('be.visible')
+            .find(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-list-view-replace')).should('not.exist');
     });
 
     it('allows undo immediately after switching to list view, with no post-transition lock', () => {

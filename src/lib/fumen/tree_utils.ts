@@ -4,6 +4,7 @@
 
 import { generateKey } from '../random';
 import { Page } from './types';
+import { recomputeQuizFlags } from '../pages';
 import {
     TreeNodeId,
     TreeNode,
@@ -1645,5 +1646,5 @@ export const extractTreeFromPages = (
         return page;
     });
 
-    return { cleanedPages, tree };
+    return { tree, cleanedPages: recomputeQuizFlags(cleanedPages) };
 };

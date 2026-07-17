@@ -225,6 +225,7 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
                         actions.reopenCurrentPage();
                     }
                 },
+                onNodeTouchStart: () => undefined,
                 onPageClick: (nodeId: TreeNodeId) => {
                     // 画面遷移せず、エディタの盤面だけジャンプさせる
                     if (state.tree.dragState.sourceNodeId === null) {

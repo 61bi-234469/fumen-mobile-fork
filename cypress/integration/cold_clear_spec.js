@@ -86,4 +86,22 @@ describe('Cold Clear menu', () => {
 
         cy.get(datatest('input-cold-clear-top-branch-count')).should('be.disabled');
     });
+
+    it('respawns the current piece edited in the AI menu', () => {
+        visit({ mode: 'edit', lng: 'en' });
+        cy.get(datatest('text-comment')).clear().type('#Q=[Z](S)L').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.S();
+
+        cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('pane-cold-clear-current')).click();
+        cy.get(datatest('btn-cold-clear-queue-add-O')).click();
+        cy.get(datatest('btn-cold-clear-menu-close')).click();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](O)L');
+
+        operations.mode.tools.undo();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](S)L');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
+    });
 });

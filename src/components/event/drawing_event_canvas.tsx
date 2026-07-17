@@ -38,6 +38,8 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
         const flags = {
             mouseOnField: false,
             addBodyEvent: false,
+            fieldDragging: false,
+            sentLineDragging: false,
             rightDragging: false,
         };
 
@@ -45,13 +47,18 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
             rect.on('touchstart mousedown', (e: konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
                 if (e.evt && 'button' in e.evt && e.evt.button === 2) {
                     e.evt.preventDefault();
+                    flags.fieldDragging = true;
                     flags.rightDragging = true;
                     actions.onrightStartField({ index });
                     return;
                 }
+                flags.fieldDragging = true;
                 actions.ontouchStartField({ index });
             });
             rect.on('touchmove mouseenter', () => {
+                if (!flags.fieldDragging) {
+                    return;
+                }
                 if (flags.rightDragging) {
                     actions.onrightMoveField({ index });
                     return;
@@ -59,11 +66,16 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
                 actions.ontouchMoveField({ index });
             });
             rect.on('touchend mouseup', (e: konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+                if (!flags.fieldDragging && !flags.rightDragging) {
+                    return;
+                }
                 if (flags.rightDragging || (e.evt && 'button' in e.evt && e.evt.button === 2)) {
+                    flags.fieldDragging = false;
                     flags.rightDragging = false;
                     actions.onrightEnd();
                     return;
                 }
+                flags.fieldDragging = false;
                 actions.ontouchEnd();
             });
             rect.on('contextmenu', (e: konva.KonvaEventObject<MouseEvent>) => {
@@ -75,13 +87,18 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
             rect.on('touchstart mousedown', (e: konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
                 if (e.evt && 'button' in e.evt && e.evt.button === 2) {
                     e.evt.preventDefault();
+                    flags.sentLineDragging = true;
                     flags.rightDragging = true;
                     actions.onrightStartSentLine({ index });
                     return;
                 }
+                flags.sentLineDragging = true;
                 actions.ontouchStartSentLine({ index });
             });
             rect.on('touchmove mouseenter', () => {
+                if (!flags.sentLineDragging) {
+                    return;
+                }
                 if (flags.rightDragging) {
                     actions.onrightMoveSentLine({ index });
                     return;
@@ -89,11 +106,16 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
                 actions.ontouchMoveSentLine({ index });
             });
             rect.on('touchend mouseup', (e: konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+                if (!flags.sentLineDragging && !flags.rightDragging) {
+                    return;
+                }
                 if (flags.rightDragging || (e.evt && 'button' in e.evt && e.evt.button === 2)) {
+                    flags.sentLineDragging = false;
                     flags.rightDragging = false;
                     actions.onrightEnd();
                     return;
                 }
+                flags.sentLineDragging = false;
                 actions.ontouchEnd();
             });
             rect.on('contextmenu', (e: konva.KonvaEventObject<MouseEvent>) => {
@@ -112,9 +134,13 @@ export const DrawingEventCanvas: Component<Props> = ({ fieldBlocks, sentBlocks, 
                     flags.addBodyEvent = false;
                     if (!flags.mouseOnField) {
                         if (flags.rightDragging) {
+                            flags.fieldDragging = false;
+                            flags.sentLineDragging = false;
                             flags.rightDragging = false;
                             actions.onrightEnd();
-                        } else {
+                        } else if (flags.fieldDragging || flags.sentLineDragging) {
+                            flags.fieldDragging = false;
+                            flags.sentLineDragging = false;
                             actions.ontouchEnd();
                         }
                     }

@@ -15,8 +15,7 @@ interface Props {
     homeShortcutLabel?: string;
     actions: {
         changeToEditorFromListView: () => void;
-        convertAllToMirror: () => void;
-        openListViewReplaceModal: () => void;
+        openUtils: () => void;
         openListViewMenuModal: () => void;
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
@@ -90,28 +89,15 @@ export const ListViewTools: Component<Props> = (
 
                 <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(1) })}>
                     <ToolButton
-                        iconName="flip"
-                        datatest="btn-all-mirror"
+                        iconName="widgets"
+                        datatest="btn-utils-mode"
                         width={36}
                         height={height - 10}
-                        key="btn-all-mirror"
+                        key="btn-utils-mode"
                         fontSize={24}
                         colors={palette}
                         actions={{
-                            onclick: () => actions.convertAllToMirror(),
-                        }}
-                    />
-
-                    <ToolButton
-                        iconName="find_replace"
-                        datatest="btn-replace"
-                        width={36}
-                        height={height - 10}
-                        key="btn-replace"
-                        fontSize={24}
-                        colors={palette}
-                        actions={{
-                            onclick: () => actions.openListViewReplaceModal(),
+                            onclick: () => actions.openUtils(),
                         }}
                     />
 

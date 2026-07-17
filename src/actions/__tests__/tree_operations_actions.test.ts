@@ -1,5 +1,8 @@
 import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
+import { Piece } from '../../lib/enums';
+import { createSpawnMove } from '../../lib/piece';
+import { PageFieldOperation, Pages } from '../../lib/pages';
 import { AddMode, TreeOperationScope, TreeViewMode, initialTreeDragState } from '../../lib/fumen/tree_types';
 import { addBranchNode, createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
 
@@ -94,6 +97,57 @@ const createBaseState = () => {
     } as any;
 };
 
+const createQuizState = () => {
+    const pages: Page[] = [
+        {
+            index: 0,
+            field: { obj: new Field({}) },
+            comment: { text: '#Q=[](I)OT' },
+            flags: { ...defaultFlags, quiz: true },
+        },
+        {
+            index: 1,
+            field: { ref: 0 },
+            comment: { ref: 0 },
+            flags: { ...defaultFlags, quiz: true },
+        },
+    ];
+    const tree = createTreeFromPages(pages);
+    const p1Node = findNodeByPageIndex(tree, 1);
+
+    return {
+        fumen: {
+            pages,
+            currentIndex: 1,
+            maxPage: pages.length,
+            guideLineColor: true,
+        },
+        tree: {
+            enabled: true,
+            nodes: tree.nodes,
+            rootId: tree.rootId,
+            activeNodeId: p1Node!.id,
+            addMode: AddMode.Branch,
+            viewMode: TreeViewMode.Tree,
+            dragState: initialTreeDragState,
+            operationScope: 'node',
+            grayAfterLineClear: false,
+            scale: 1.0,
+            autoFocusPending: false,
+        },
+    } as any;
+};
+
+const createPlacedQuizState = () => {
+    const state = createQuizState();
+    state.fumen.pages[1] = {
+        ...state.fumen.pages[1],
+        flags: { ...state.fumen.pages[1].flags, lock: true },
+        piece: createSpawnMove(Piece.I, false),
+    };
+    return state;
+};
+
 describe('tree node navigation', () => {
     test('activates a node and synchronizes the current editor page', () => {
         const state = createBaseState();
@@ -133,6 +187,16 @@ describe('addBranchFromCurrentNode', () => {
         expect(newNode).toBeDefined();
         expect(next.tree.activeNodeId).toBe(newNode!.id);
     });
+
+    test('uses the quiz state after the current page operation', () => {
+        const state = createPlacedQuizState();
+        const next = treeOperationActions.addBranchFromCurrentNode()(state) as any;
+
+        expect(next.fumen.pages[2].comment).toEqual({ text: '#Q=[](O)T' });
+        expect(next.fumen.pages[2].flags.quiz).toBe(true);
+        const expectedField = new Pages(state.fumen.pages).getField(1, PageFieldOperation.All);
+        expect(next.fumen.pages[2].field.obj.equals(expectedField)).toBe(true);
+    });
 });
 
 describe('insertNodeAfterCurrent', () => {
@@ -155,6 +219,17 @@ describe('insertNodeAfterCurrent', () => {
         const shiftedP1 = findNode(nextTree, p1Node!.id);
         expect(shiftedP1!.pageIndex).toBe(2);
     });
+
+    test('uses the quiz state after the current page operation', () => {
+        const state = createPlacedQuizState();
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const p1Node = findNodeByPageIndex(tree, 1)!;
+
+        const next = treeOperationActions.insertNodeAfterCurrent({ parentNodeId: p1Node.id })(state) as any;
+
+        expect(next.fumen.pages[2].comment).toEqual({ text: '#Q=[](O)T' });
+        expect(next.fumen.pages[2].flags.quiz).toBe(true);
+    });
 });
 
 describe('copyTreeNode', () => {
@@ -176,6 +251,17 @@ describe('copyTreeNode', () => {
         expect(p0Node!.childrenIds[0]).toBe(p1Node!.id);
         expect(copiedNode).toBeDefined();
         expect(p0Node!.childrenIds[1]).toBe(copiedNode!.id);
+    });
+
+    test('materializes the effective quiz comment for a copied node', () => {
+        const state = createQuizState();
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const sourceNode = findNodeByPageIndex(tree, 1)!;
+
+        const next = treeOperationActions.copyTreeNode({ nodeId: sourceNode.id })(state) as any;
+
+        expect(next.fumen.pages[2].comment).toEqual({ text: '#Q=[](I)OT' });
+        expect(next.fumen.pages[2].flags.quiz).toBe(true);
     });
 });
 
@@ -260,6 +346,66 @@ const createThreeChainState = (operationScope: TreeOperationScope) => {
 };
 
 describe('removeTreeNode', () => {
+    test('materializes only quiz refs whose replay span crosses a removed page', () => {
+        const pages: Page[] = [
+            {
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: '#Q=[](I)OT' },
+                flags: { ...defaultFlags, quiz: true },
+            },
+            {
+                index: 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true, quiz: true },
+                piece: createSpawnMove(Piece.I, false),
+            },
+            {
+                index: 2,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true, quiz: true },
+                piece: createSpawnMove(Piece.O, false),
+            },
+            {
+                index: 3,
+                field: { ref: 0 },
+                comment: { text: '#Q=[](I)OT' },
+                flags: { ...defaultFlags, quiz: true },
+            },
+            {
+                index: 4,
+                field: { ref: 0 },
+                comment: { ref: 3 },
+                flags: { ...defaultFlags, quiz: true },
+            },
+        ];
+        const tree = createTreeFromPages(pages);
+        const p1Node = findNodeByPageIndex(tree, 1)!;
+        const state = {
+            fumen: { pages, currentIndex: 1, maxPage: pages.length, guideLineColor: true },
+            tree: {
+                enabled: true,
+                nodes: tree.nodes,
+                rootId: tree.rootId,
+                activeNodeId: p1Node.id,
+                addMode: AddMode.Branch,
+                viewMode: TreeViewMode.Tree,
+                dragState: initialTreeDragState,
+                operationScope: 'node',
+                grayAfterLineClear: false,
+                scale: 1.0,
+                autoFocusPending: false,
+            },
+        } as any;
+
+        const next = treeOperationActions.removeTreeNode({ nodeId: p1Node.id })(state) as any;
+
+        expect(next.fumen.pages[1].comment).toEqual({ text: '#Q=[](O)T' });
+        expect(next.fumen.pages[3].comment).toEqual({ ref: 2 });
+    });
+
     test('removes only the leaf node in subtree scope', () => {
         const state = createThreeChainState('subtree');
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };

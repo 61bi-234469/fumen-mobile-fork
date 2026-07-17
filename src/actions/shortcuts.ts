@@ -1,16 +1,12 @@
-import { ModeTypes, Piece, Screens } from '../lib/enums';
+import { Piece, Screens } from '../lib/enums';
 import { isModifierKey, matchShortcut } from '../lib/shortcuts';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { executePieceShortcut, PieceShortcutKey } from '../lib/piece_shortcut';
+import { endDasHold, startDasHold } from '../lib/piece_das';
 
 const LONG_PRESS_DURATION = 500;
-
-// 長押し状態管理
-let pressedKey: string | null = null;
-let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-let longPressExecuted = false;
 
 // アクティブなショートカット種別
 type ActiveShortcut = {
@@ -22,12 +18,19 @@ type ActiveShortcut = {
 } | {
     type: 'piece';
     key: PieceShortcutKey;
-} | null;
+};
 
-let activeShortcut: ActiveShortcut = null;
+// 押下中のキーごとの状態（同時押しに対応するためMapで管理）
+interface PressedKeyState {
+    shortcut: ActiveShortcut;
+    longPressTimer: ReturnType<typeof setTimeout> | null;
+    longPressExecuted: boolean;
+}
 
-// DASタイマー状態（PIECE用）
-let dasTimer: ReturnType<typeof setTimeout> | null = null;
+const pressedKeys = new Map<string, PressedKeyState>();
+
+// ピース移動ホールド（DAS/ARR）のID
+const keyboardHoldId = (code: string) => `keyboard:${code}`;
 
 // パレットキーの種類
 type PaletteKey = keyof PaletteShortcuts;
@@ -129,92 +132,16 @@ const paletteToPiece = (palette: PaletteKey): Piece | null => {
     }
 };
 
-// ミノかどうか判定
-const isMino = (palette: PaletteKey): boolean => {
-    return ['I', 'L', 'O', 'Z', 'T', 'J', 'S'].includes(palette);
-};
-
 // パレット短押し動作を実行
-const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Actions) => {
-    const modeType = state.mode.type;
-
-    // Comp の場合
-    if (palette === 'Comp') {
-        // Fill/FillRow/SelectPiece では DrawingToolMode に切り替えてから実行
-        if (modeType === ModeTypes.Fill || modeType === ModeTypes.FillRow || modeType === ModeTypes.SelectPiece) {
-            actions.changeToDrawingToolMode();
-            actions.selectInferencePieceColor();
-        } else {
-            actions.selectInferencePieceColor();
-        }
-        return;
-    }
-
+const executePaletteShortPress = (palette: PaletteKey, actions: Actions) => {
     const piece = paletteToPiece(palette);
-    if (piece === null) return;
-
-    switch (modeType) {
-    // DrawingTool/Utils/Flags/Comment/Slide モード: selectPieceColor
-    case ModeTypes.DrawingTool:
-    case ModeTypes.Utils:
-    case ModeTypes.Flags:
-    case ModeTypes.Comment:
-    case ModeTypes.Slide:
-    case ModeTypes.Drawing:
-    case ModeTypes.Piece:
-        actions.selectPieceColor({ piece });
-        break;
-
-    // Fill/FillRow モード: selectFillPieceColor
-    case ModeTypes.Fill:
-    case ModeTypes.FillRow:
-        actions.selectFillPieceColor({ piece });
-        break;
-
-    // SelectPiece モード: ミノは spawnPiece + changeToMovePieceMode + changeToPieceMode
-    // Empty/Gray は changeToDrawingToolMode + selectPieceColor
-    case ModeTypes.SelectPiece:
-        if (isMino(palette)) {
-            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
-            actions.changeToMovePieceMode();
-            actions.changeToPieceMode();
-        } else {
-            // Empty/Gray の場合は DrawingToolMode に切り替え
-            actions.changeToDrawingToolMode();
-            actions.selectPieceColor({ piece });
-        }
-        break;
-    }
+    actions.selectEditorPalette({ selection: piece === null ? 'comp' : piece });
 };
 
 // パレット長押し動作を実行
-const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
-    // Comp: convertToBlack
-    if (palette === 'Comp') {
-        actions.convertToBlack();
-        return;
-    }
-
-    // Empty: clearFieldAndPiece
-    if (palette === 'Empty') {
-        actions.clearFieldAndPiece();
-        return;
-    }
-
-    // Gray: convertToGray
-    if (palette === 'Gray') {
-        actions.convertToGray();
-        return;
-    }
-
-    // ミノ: spawnPiece + changeToMovePieceMode
-    if (isMino(palette)) {
-        const piece = paletteToPiece(palette);
-        if (piece !== null) {
-            actions.spawnPiece({ piece, srs: state.mode.rotationSystem !== 'classic' });
-            actions.changeToMovePieceMode();
-        }
-    }
+const executePaletteLongPress = (palette: PaletteKey, actions: Actions) => {
+    const piece = paletteToPiece(palette);
+    actions.executeEditorPaletteShortcut({ selection: piece === null ? 'comp' : piece });
 };
 
 // 編集用ショートカット短押し動作を実行
@@ -331,19 +258,35 @@ const currentPageHasPiece = (state: State): boolean => {
     return page?.piece !== undefined;
 };
 
-// ピースショートカット即時実行（keydown時）
-// ピースDAS実行（長押し時、端まで移動）
-const executePieceDas = (key: PieceShortcutKey, actions: Actions) => {
-    if (key === 'MoveLeft') {
-        actions.moveToLeftEnd();
-    } else if (key === 'MoveRight') {
-        actions.moveToRightEnd();
-    }
-};
-
-// DAS動作があるかどうか
+// DAS動作（移動ホールド）があるかどうか
 const hasPieceDas = (key: PieceShortcutKey): boolean => {
     return key === 'MoveLeft' || key === 'MoveRight';
+};
+
+// ピース移動ホールドを開始する（押下時に1回移動し、DAS後はARR設定に従いリピート）
+const startPieceMoveHold = (code: string, key: PieceShortcutKey, state: State) => {
+    const move = () => {
+        const actions = getActions!();
+        if (key === 'MoveLeft') {
+            actions.moveToLeft();
+        } else {
+            actions.moveToRight();
+        }
+    };
+    const moveToEnd = () => {
+        const actions = getActions!();
+        if (key === 'MoveLeft') {
+            actions.moveToLeftEnd();
+        } else {
+            actions.moveToRightEnd();
+        }
+    };
+    startDasHold(keyboardHoldId(code), {
+        move,
+        moveToEnd,
+        dasMs: state.mode.pieceShortcutDasMs,
+        arrMs: state.mode.pieceShortcutArrMs,
+    });
 };
 
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
@@ -375,30 +318,67 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 入力フォーカス中は無効
     if (isInputFocused()) return;
 
+    if (event.key === 'Escape') {
+        if (state.editorUi.inspector !== 'none') {
+            actions.closeEditorInspector();
+            event.preventDefault();
+            return;
+        }
+        if (state.rectSelect.status === 'selecting' || state.rectSelect.status === 'floating') {
+            actions.cancelRectSelectionPreview();
+            event.preventDefault();
+            return;
+        }
+    }
+
+    if (state.editorUi?.primaryTool === 'select'
+        && (event.key === 'Delete' || event.key === 'Backspace')
+        && (state.rectSelect?.status === 'selected' || state.rectSelect?.status === 'floating')) {
+        actions.deleteRectSelection();
+        event.preventDefault();
+        return;
+    }
+
     // 修飾キー自体は無視
     if (isModifierKey(event.code)) return;
 
     // リピート防止（event.code のみで判定）
-    if (pressedKey === event.code) return;
+    if (pressedKeys.has(event.code)) return;
 
     // 編集用ショートカットを検索（Mod+対応）
     const editShortcut = findEditShortcutByEvent(state.mode.editShortcuts, event);
     const allowedKeys = allowedEditShortcuts[screen];
 
+    if (state.editorUi?.primaryTool === 'select' && editShortcut !== undefined) {
+        if (editShortcut === 'Copy' && state.rectSelect?.status === 'selected') {
+            actions.copyRectSelection();
+            event.preventDefault();
+            return;
+        }
+        if (editShortcut === 'Cut' && state.rectSelect?.status === 'selected') {
+            actions.cutRectSelection();
+            event.preventDefault();
+            return;
+        }
+    }
+
     if (editShortcut && allowedKeys.includes(editShortcut)) {
         event.preventDefault();
-        pressedKey = event.code;
-        longPressExecuted = false;
-        activeShortcut = { type: 'edit', key: editShortcut };
+        const pressState: PressedKeyState = {
+            shortcut: { type: 'edit', key: editShortcut },
+            longPressTimer: null,
+            longPressExecuted: false,
+        };
 
         // 長押しタイマー開始（長押し動作がある場合のみ）
         if (hasEditLongPress(editShortcut)) {
-            longPressTimer = setTimeout(() => {
+            pressState.longPressTimer = setTimeout(() => {
                 executeEditLongPress(editShortcut, getState!(), getActions!());
-                longPressExecuted = true;
-                longPressTimer = null;
+                pressState.longPressExecuted = true;
+                pressState.longPressTimer = null;
             }, LONG_PRESS_DURATION);
         }
+        pressedKeys.set(event.code, pressState);
         return;
     }
 
@@ -413,18 +393,18 @@ const handleKeyDown = (event: KeyboardEvent) => {
         const pieceShortcut = findPieceShortcutByCode(state.mode.pieceShortcuts, event.code);
         if (pieceShortcut) {
             event.preventDefault();
-            pressedKey = event.code;
-            activeShortcut = { type: 'piece', key: pieceShortcut };
+            pressedKeys.set(event.code, {
+                shortcut: { type: 'piece', key: pieceShortcut },
+                longPressTimer: null,
+                longPressExecuted: false,
+            });
 
-            // 即時実行（keydownで発火）
-            executePieceShortcut(pieceShortcut, actions);
-
-            // DASタイマー開始（MoveLeft/MoveRightのみ）
             if (hasPieceDas(pieceShortcut)) {
-                dasTimer = setTimeout(() => {
-                    executePieceDas(pieceShortcut, getActions!());
-                    dasTimer = null;
-                }, state.mode.pieceShortcutDasMs);
+                // 移動系はDAS/ARRホールド（押下時の1回移動もホールド側で実行）
+                startPieceMoveHold(event.code, pieceShortcut, state);
+            } else {
+                // 即時実行（keydownで発火）
+                executePieceShortcut(pieceShortcut, actions);
             }
             return;
         }
@@ -435,82 +415,75 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (!palette) return;
 
     event.preventDefault();
-    pressedKey = event.code;
-    longPressExecuted = false;
-    activeShortcut = { type: 'palette', key: palette };
+    const palettePressState: PressedKeyState = {
+        shortcut: { type: 'palette', key: palette },
+        longPressTimer: null,
+        longPressExecuted: false,
+    };
 
     // 長押しタイマー開始
-    longPressTimer = setTimeout(() => {
-        executePaletteLongPress(palette, getState!(), getActions!());
-        longPressExecuted = true;
-        longPressTimer = null;
+    palettePressState.longPressTimer = setTimeout(() => {
+        executePaletteLongPress(palette, getActions!());
+        palettePressState.longPressExecuted = true;
+        palettePressState.longPressTimer = null;
     }, LONG_PRESS_DURATION);
+    pressedKeys.set(event.code, palettePressState);
 };
 
 const handleKeyUp = (event: KeyboardEvent) => {
-    if (pressedKey !== event.code) return;
+    const pressState = pressedKeys.get(event.code);
+    if (pressState === undefined) return;
+    pressedKeys.delete(event.code);
 
-    // DASタイマーをクリア
-    if (dasTimer) {
-        clearTimeout(dasTimer);
-        dasTimer = null;
-    }
+    // 移動ホールド（DAS/ARR）を停止
+    endDasHold(keyboardHoldId(event.code));
+
     if (!getState || !getActions) {
-        pressedKey = null;
-        activeShortcut = null;
+        if (pressState.longPressTimer !== null) {
+            clearTimeout(pressState.longPressTimer);
+        }
         return;
     }
 
     const state = getState();
     const actions = getActions();
+    const shortcut = pressState.shortcut;
 
     // ピースショートカットはkeydownで実行済み、keyupでは何もしない
-    if (activeShortcut?.type === 'piece') {
-        pressedKey = null;
-        activeShortcut = null;
+    if (shortcut.type === 'piece') {
         return;
     }
 
     // 長押しタイマーが残っていれば短押し
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
+    if (pressState.longPressTimer !== null) {
+        clearTimeout(pressState.longPressTimer);
+        pressState.longPressTimer = null;
 
-        if (activeShortcut) {
-            if (activeShortcut.type === 'edit') {
-                // 非Editor画面では Cut の短押しを無効化（長押しのみ有効）
-                // Copy/Insert は Reader/ListView で短押し有効
-                const screen = state.mode.screen;
-                const isCutShortcut = activeShortcut.key === 'Cut';
-                if (!(screen !== Screens.Editor && isCutShortcut)) {
-                    executeEditShortPress(activeShortcut.key, state, actions);
-                }
-            } else if (activeShortcut.type === 'palette') {
-                executePaletteShortPress(activeShortcut.key, state, actions);
+        if (shortcut.type === 'edit') {
+            // 非Editor画面では Cut の短押しを無効化（長押しのみ有効）
+            // Copy/Insert は Reader/ListView で短押し有効
+            const screen = state.mode.screen;
+            const isCutShortcut = shortcut.key === 'Cut';
+            if (!(screen !== Screens.Editor && isCutShortcut)) {
+                executeEditShortPress(shortcut.key, state, actions);
             }
+        } else if (shortcut.type === 'palette') {
+            executePaletteShortPress(shortcut.key, actions);
         }
-    } else if (!longPressExecuted && activeShortcut) {
+    } else if (!pressState.longPressExecuted) {
         // 長押し動作がなかった場合（タイマー設定されない編集ショートカット）
-        if (activeShortcut.type === 'edit' && !hasEditLongPress(activeShortcut.key)) {
-            executeEditShortPress(activeShortcut.key, state, actions);
+        if (shortcut.type === 'edit' && !hasEditLongPress(shortcut.key)) {
+            executeEditShortPress(shortcut.key, state, actions);
         }
     }
-
-    pressedKey = null;
-    activeShortcut = null;
-    longPressExecuted = false;
 };
 
 const handleBlur = () => {
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
+    for (const [code, pressState] of Array.from(pressedKeys.entries())) {
+        if (pressState.longPressTimer !== null) {
+            clearTimeout(pressState.longPressTimer);
+        }
+        endDasHold(keyboardHoldId(code));
     }
-    if (dasTimer) {
-        clearTimeout(dasTimer);
-        dasTimer = null;
-    }
-    pressedKey = null;
-    activeShortcut = null;
-    longPressExecuted = false;
+    pressedKeys.clear();
 };

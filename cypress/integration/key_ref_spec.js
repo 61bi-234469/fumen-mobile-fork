@@ -63,10 +63,12 @@ describe('Key/Ref', () => {
 
         operations.mode.tools.home();
         operations.mode.tools.toRef();
+        operations.mode.flags.close();
 
         // 戻るページ
         operations.mode.tools.backPage();
         operations.mode.tools.toRef();
+        operations.mode.flags.close();
 
         // 戻るページ
         operations.mode.tools.backPage();

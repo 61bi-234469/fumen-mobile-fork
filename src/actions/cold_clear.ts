@@ -5,10 +5,10 @@ import { NextState, sequence } from './commons';
 import { State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
-import { PageFieldOperation, Pages } from '../lib/pages';
-import { getBlockPositions } from '../lib/piece';
+import { Quiz } from '../lib/fumen/quiz';
+import { isQuizCommentResult, PageFieldOperation, Pages } from '../lib/pages';
+import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import {
-    parseQueueComment,
     parseQueueStateComment,
     buildQueueComment,
     buildQueueStateComment,
@@ -37,7 +37,11 @@ import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
 import type { FieldEditorActions } from './field_editor';
+import type { EditorInteractionActions } from './editor_interaction';
+import type { MementoActions } from './memento';
+import type { PageActions } from './pages';
 import { persistViewSettings } from './view_settings';
+import { toPrimitivePage, toSinglePageTask } from '../history_task';
 
 declare const M: any;
 
@@ -49,6 +53,7 @@ interface SessionBase {
     wrapper: ColdClearWrapper;
     weightsPreset: number;
     thinkMs: number;
+    queueSuffix?: string;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -57,6 +62,7 @@ interface SingleRunSession extends SessionBase {
     resultPages: Page[];
     field: Field;
     hold: Piece | null;
+    current: Piece;
     queue: Piece[];
     b2b: boolean;
     combo: number;
@@ -72,6 +78,7 @@ interface Top3RunSession extends SessionBase {
     targetNodeId: TreeNodeId;
     field: Field;
     hold: Piece | null;
+    current: Piece;
     queue: Piece[];
     b2b: boolean;
     combo: number;
@@ -92,11 +99,10 @@ interface PlacedRunSession extends SessionBase {
     requestedCandidateCount: number;
     retryCount: number;
     hold: Piece | null;
+    current: Piece;
     queue: Piece[];
     b2b: boolean;
     combo: number;
-    searchHold: Piece | null;
-    searchQueue: Piece[];
     holdAllowed: boolean;
     speculate: boolean;
     nextLimit: number | null;
@@ -108,7 +114,10 @@ type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
     & Pick<CommentActions, 'setCommentText'>
-    & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>;
+    & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>
+    & Pick<EditorInteractionActions, 'changePieceAction'>
+    & Pick<MementoActions, 'registerHistoryTask'>
+    & Pick<PageActions, 'reopenCurrentPage'>;
 
 let currentSession: RunSession | null = null;
 
@@ -147,14 +156,18 @@ export interface ColdClearActions {
     setColdClearThinkMs: (data: { thinkMs: number }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
+    toggleInfinitePieceQueue: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
     returnCurrentPieceToQueue: () => action;
     previewColdClearQueueComment: (data: {
         hold: Piece | null;
+        current: Piece | null;
         queue: Piece[];
         b2b: boolean;
         combo: number;
+        syncCurrentPiece?: boolean;
     }) => action;
+    seedQueuePreviewFromSpawnedPiece: () => action;
     commitColdClearQueueComment: () => action;
     clearCommentForColdClearQueue: () => action;
     stopColdClearSearch: () => action;
@@ -251,9 +264,12 @@ const resolveTargetNode = (
     tree = getTreeForState(state),
 ): { nodeId: TreeNodeId; pageIndex: number } | null => {
 
+    // activeNodeIdはツリー無効中のページ移動に追従しないことがあるため、
+    // 現在表示中のページと一致する場合のみ信頼する
     if (state.tree.activeNodeId) {
         const activeNode = findNode(tree, state.tree.activeNodeId);
-        if (activeNode && !isVirtualNode(activeNode)) {
+        if (activeNode && !isVirtualNode(activeNode)
+            && activeNode.pageIndex === state.fumen.currentIndex) {
             return { nodeId: activeNode.id, pageIndex: activeNode.pageIndex };
         }
     }
@@ -270,32 +286,55 @@ const isPageSupported = (page?: Page): page is Page => {
     if (!page) {
         return false;
     }
-    return page.flags.lock && !page.flags.mirror && !page.flags.rise && !page.flags.quiz;
+    return page.flags.lock && !page.flags.mirror && !page.flags.rise;
+};
+
+type CommentResolutionError = 'invalidQuizChain' | 'emptyComment';
+
+type CommentResolution = {
+    text: string | null;
+    kind: 'ok' | CommentResolutionError;
+};
+
+const resolveCommentFromPage = (pages: Page[], pageIndex: number): CommentResolution => {
+    if (!pages[pageIndex]) {
+        return { text: null, kind: 'emptyComment' };
+    }
+
+    // Quizページのrefコメントは操作リプレイ後の文字列に解決されるため、Pages経由で取得する
+    try {
+        const comment = new Pages(pages).getComment(pageIndex);
+        const text = isQuizCommentResult(comment) ? comment.quiz : comment.text;
+        return text === '' ? { text, kind: 'emptyComment' } : { text, kind: 'ok' };
+    } catch (e) {
+        // Keep an invalid quiz chain distinct from a genuinely empty comment.
+        return { text: null, kind: 'invalidQuizChain' };
+    }
 };
 
 const resolveCommentTextFromPage = (pages: Page[], pageIndex: number): string | null => {
-    const visited = new Set<number>();
-    let currentIndex: number | undefined = pageIndex;
+    return resolveCommentFromPage(pages, pageIndex).text;
+};
 
-    while (currentIndex !== undefined) {
-        if (visited.has(currentIndex)) {
-            return null;
-        }
-        visited.add(currentIndex);
+const resolveCommentWithPreview = (
+    pages: Page[],
+    pageIndex: number,
+    preview: Readonly<State>['coldClear']['queuePreview'],
+): CommentResolution => {
+    if (preview && preview.pageIndex === pageIndex) {
+        return { text: preview.text, kind: preview.text === '' ? 'emptyComment' : 'ok' };
+    }
+    return resolveCommentFromPage(pages, pageIndex);
+};
 
-        const page: Page | undefined = pages[currentIndex];
-        if (!page) {
-            return null;
-        }
-
-        if (page.comment.text !== undefined) {
-            return page.comment.text;
-        }
-
-        currentIndex = page.comment.ref;
+const reportCommentResolutionError = (resolution: CommentResolution, pageIndex: number): void => {
+    if (resolution.kind !== 'invalidQuizChain') {
+        return;
     }
 
-    return '';
+    // tslint:disable-next-line:no-console
+    console.warn(`Cold Clear: invalid quiz comment reference chain at page ${pageIndex}`);
+    M.toast({ html: i18n.ColdClear.InvalidQuizChain(), classes: 'top-toast', displayLength: 1800 });
 };
 
 const resolveCommentTextWithPreview = (
@@ -303,10 +342,25 @@ const resolveCommentTextWithPreview = (
     pageIndex: number,
     preview: Readonly<State>['coldClear']['queuePreview'],
 ): string | null => {
-    if (preview && preview.pageIndex === pageIndex) {
-        return preview.text;
+    return resolveCommentWithPreview(pages, pageIndex, preview).text;
+};
+
+export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+    return resolveCommentTextWithPreview(
+        state.fumen.pages,
+        state.fumen.currentIndex,
+        state.coldClear.queuePreview,
+    );
+};
+
+export const createRandomSevenBag = (): Piece[] => shufflePieces(ONE_BAG_PIECES);
+
+export const createRandomSevenBags = (count: number): Piece[] => {
+    const queue: Piece[] = [];
+    for (let i = 0; i < count; i += 1) {
+        queue.push(...createRandomSevenBag());
     }
-    return resolveCommentTextFromPage(pages, pageIndex);
+    return queue;
 };
 
 const parseQueueCommentFromPage = (
@@ -314,11 +368,27 @@ const parseQueueCommentFromPage = (
     pageIndex: number,
     preview: Readonly<State>['coldClear']['queuePreview'] = null,
 ) => {
-    const commentText = resolveCommentTextWithPreview(pages, pageIndex, preview);
-    if (commentText === null) {
-        return null;
+    return parseQueueCommentResultFromPage(pages, pageIndex, preview).parsed;
+};
+
+type QueueCommentResolution = {
+    parsed: ReturnType<typeof parseQueueStateComment>;
+    error?: CommentResolutionError;
+};
+
+const parseQueueCommentResultFromPage = (
+    pages: Page[],
+    pageIndex: number,
+    preview: Readonly<State>['coldClear']['queuePreview'] = null,
+): QueueCommentResolution => {
+    const resolution = resolveCommentWithPreview(pages, pageIndex, preview);
+    if (resolution.kind === 'invalidQuizChain') {
+        return { parsed: null, error: resolution.kind };
     }
-    return parseQueueStateComment(commentText);
+    if (resolution.text === null) {
+        return { parsed: null, error: 'emptyComment' };
+    }
+    return { parsed: parseQueueStateComment(resolution.text) };
 };
 
 const parseScoreFromComment = (commentText: string): number | null => {
@@ -345,20 +415,63 @@ const commitQueuePreviewIfNeeded = (state: Readonly<State>): void => {
         return;
     }
 
-    const currentComment = resolveCommentTextFromPage(state.fumen.pages, preview.pageIndex);
-    if (currentComment === null || currentComment === preview.text) {
+    const resolution = resolveCommentFromPage(state.fumen.pages, preview.pageIndex);
+    if (resolution.kind === 'invalidQuizChain') {
+        reportCommentResolutionError(resolution, preview.pageIndex);
+        return;
+    }
+    if (resolution.text === null || resolution.text === preview.text) {
         return;
     }
 
     appActions.setCommentText({
         pageIndex: preview.pageIndex,
         text: preview.text,
+        ...(preview.historyKey ? { mergeKey: preview.historyKey } : {}),
     });
+};
+
+const syncSpawnedPieceFromQueueCurrent = (
+    state: State,
+    current: Piece | null,
+    mergeKey?: string,
+): string | undefined => {
+    if (!appActions) {
+        return mergeKey;
+    }
+
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (!page) {
+        return mergeKey;
+    }
+
+    if (current === null) {
+        if (page.piece === undefined) {
+            return mergeKey;
+        }
+    } else if (page.piece !== undefined && page.piece.type === current) {
+        return mergeKey;
+    }
+
+    const prevPage = toPrimitivePage(page);
+    page.piece = current === null
+        ? undefined
+        : createSpawnMove(current, state.mode.rotationSystem !== 'classic');
+    const task = toSinglePageTask(pageIndex, prevPage, page);
+
+    appActions.registerHistoryTask({
+        task,
+        ...(mergeKey ? { mergeKey } : {}),
+    });
+    appActions.reopenCurrentPage();
+    return mergeKey ?? task.key;
 };
 
 export interface ColdClearMenuQueueState {
     pageIndex: number;
     hold: Piece | null;
+    current: Piece | null;
     queue: Piece[];
     b2b: boolean;
     combo: number;
@@ -397,6 +510,7 @@ export const resolveCurrentColdClearMenuQueueState = (
         return {
             pageIndex,
             hold: null,
+            current: null,
             queue: [],
             b2b: false,
             combo: 0,
@@ -412,6 +526,7 @@ export const resolveCurrentColdClearMenuQueueState = (
     return {
         pageIndex,
         hold: parsed.hold,
+        current: parsed.current,
         queue: parsed.queue.slice(),
         b2b: parsed.b2b,
         combo: parsed.combo,
@@ -422,12 +537,42 @@ export const resolveCurrentColdClearMenuQueueState = (
 type SearchInputError =
     | 'targetNotFound'
     | 'unsupportedPageFlags'
-    | 'invalidQueueComment';
+    | 'invalidQueueComment'
+    | 'invalidQuizChain'
+    | 'currentPieceMismatch';
+
+// 探索開始時のキュー状態。カレントミノが未指定のときはNEXT先頭を取り出してカレントにする
+export interface SearchQueueState {
+    hold: Piece | null;
+    current: Piece;
+    queue: Piece[];
+}
+
+const resolveSearchQueueState = (
+    parsed: { hold: Piece | null; current: Piece | null; queue: Piece[] },
+): SearchQueueState | null => {
+    if (parsed.current !== null) {
+        return {
+            hold: parsed.hold,
+            current: parsed.current,
+            queue: parsed.queue.slice(),
+        };
+    }
+    if (parsed.queue.length === 0) {
+        return null;
+    }
+    return {
+        hold: parsed.hold,
+        current: parsed.queue[0],
+        queue: parsed.queue.slice(1),
+    };
+};
 
 type SearchInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
     parsed: NonNullable<ReturnType<typeof parseQueueStateComment>>;
+    searchQueue: SearchQueueState;
     target: { nodeId: TreeNodeId; pageIndex: number };
 };
 
@@ -450,13 +595,27 @@ const resolveSingleSearchInput = (
         return { error: 'unsupportedPageFlags' };
     }
 
-    const parsed = parseQueueCommentFromPage(
+    const parsedResult = parseQueueCommentResultFromPage(
         state.fumen.pages,
         target.pageIndex,
         state.coldClear.queuePreview,
     );
-    if (!parsed || parsed.queue.length === 0) {
+    if (parsedResult.error === 'invalidQuizChain') {
+        return { error: 'invalidQuizChain' };
+    }
+    const parsed = parsedResult.parsed;
+    if (!parsed) {
         return { error: 'invalidQueueComment' };
+    }
+
+    const searchQueue = resolveSearchQueueState(parsed);
+    if (!searchQueue) {
+        return { error: 'invalidQueueComment' };
+    }
+    if (page.piece !== undefined
+        && isMinoPiece(page.piece.type)
+        && page.piece.type !== searchQueue.current) {
+        return { error: 'currentPieceMismatch' };
     }
 
     return {
@@ -465,6 +624,7 @@ const resolveSingleSearchInput = (
             target,
             page,
             parsed,
+            searchQueue,
         },
     };
 };
@@ -477,8 +637,11 @@ type PlacedSpawnInputError =
     | 'targetNotFound'
     | 'unsupportedPageFlags'
     | 'invalidQueueComment'
+    | 'invalidQuizChain'
     | 'missingPlacedPiece'
     | 'invalidPlacedPiece'
+    | 'missingCurrentPiece'
+    | 'currentPieceMismatch'
     | 'invalidPlacement'
     | 'floatingPiece';
 
@@ -510,11 +673,15 @@ const resolvePlacedSpawnInput = (
         return { error: 'unsupportedPageFlags' };
     }
 
-    const parsed = parseQueueCommentFromPage(
+    const parsedResult = parseQueueCommentResultFromPage(
         state.fumen.pages,
         target.pageIndex,
         state.coldClear.queuePreview,
     );
+    if (parsedResult.error === 'invalidQuizChain') {
+        return { error: 'invalidQuizChain' };
+    }
+    const parsed = parsedResult.parsed;
     if (!parsed) {
         return { error: 'invalidQueueComment' };
     }
@@ -524,6 +691,14 @@ const resolvePlacedSpawnInput = (
     }
     if (!isMinoPiece(page.piece.type)) {
         return { error: 'invalidPlacedPiece' };
+    }
+
+    // スコア評価はカレントミノを必須とし、置いたミノと一致していることを求める
+    if (parsed.current === null) {
+        return { error: 'missingCurrentPiece' };
+    }
+    if (parsed.current !== page.piece.type) {
+        return { error: 'currentPieceMismatch' };
     }
 
     const pages = new Pages(state.fumen.pages);
@@ -550,17 +725,6 @@ const resolvePlacedSpawnInput = (
     };
 };
 
-const buildPlacedSpawnSearchState = (
-    hold: Piece | null,
-    queue: Piece[],
-    placedPiece: Piece,
-): { hold: Piece | null; queue: Piece[] } => {
-    return {
-        hold,
-        queue: [placedPiece, ...queue],
-    };
-};
-
 export const canStartColdClearSequenceSearch = (state: Readonly<State>): boolean => {
     return resolveSingleSearchInput(state).input !== undefined;
 };
@@ -583,13 +747,22 @@ export const isColdClearSearchBlockedByHoldQueue = (
     return queueState !== null && queueState.hold === null;
 };
 
+// pieceモードのホールドボタン用。AI探索のHold使用設定 (holdAllowed) とは独立して判定する
 export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
-    if (!state.coldClear.holdAllowed) {
-        return false;
-    }
     const pageIndex = state.fumen.currentIndex;
     const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
-    return parsed !== null && parsed.queue.length > 0;
+    if (parsed === null) {
+        return false;
+    }
+
+    const page = state.fumen.pages[pageIndex];
+    const hasSpawnedPiece = page?.piece !== undefined && isMinoPiece(page.piece.type);
+    if (hasSpawnedPiece) {
+        // スポーンミノとホールド (未設定ならNEXT先頭) を入れ替えられるか
+        return parsed.hold !== null || parsed.queue.length > 0;
+    }
+    // カレント (未設定ならNEXT先頭) をスポーンできるか
+    return parsed.current !== null || parsed.queue.length > 0;
 };
 
 const toMove = (result: CCMove): Move | null => {
@@ -610,39 +783,60 @@ const toMove = (result: CCMove): Move | null => {
     };
 };
 
-const applyQueueAfterMove = (
+interface MoveQueueTransition {
+    placement: { hold: Piece | null; current: Piece; queue: Piece[] };
+    next: { hold: Piece | null; current: Piece | null; queue: Piece[] };
+}
+
+// ホールド操作後・設置直前の状態と、設置後の状態をまとめて返す
+const resolveMoveQueueTransition = (
     hold: Piece | null,
+    current: Piece,
     queue: Piece[],
     usedHold: boolean,
-): { hold: Piece | null; queue: Piece[] } | null => {
+): MoveQueueTransition | null => {
     if (usedHold) {
         if (hold === null) {
-            if (queue.length < 2) {
+            // カレントがホールドへ入り、NEXT先頭が設置される
+            if (queue.length < 1) {
                 return null;
             }
             return {
-                hold: queue[0],
-                queue: queue.slice(2),
+                placement: {
+                    hold: current,
+                    current: queue[0],
+                    queue: queue.slice(1),
+                },
+                next: {
+                    hold: current,
+                    current: 2 <= queue.length ? queue[1] : null,
+                    queue: queue.slice(2),
+                },
             };
         }
 
-        if (queue.length < 1) {
-            return null;
-        }
-
+        // ホールドとカレントが入れ替わり、旧ホールドが設置される
         return {
-            hold: queue[0],
-            queue: queue.slice(1),
+            placement: {
+                hold: current,
+                current: hold,
+                queue: queue.slice(),
+            },
+            next: {
+                hold: current,
+                current: 1 <= queue.length ? queue[0] : null,
+                queue: queue.slice(1),
+            },
         };
     }
 
-    if (queue.length < 1) {
-        return null;
-    }
-
     return {
-        hold,
-        queue: queue.slice(1),
+        placement: { hold, current, queue: queue.slice() },
+        next: {
+            hold,
+            current: 1 <= queue.length ? queue[0] : null,
+            queue: queue.slice(1),
+        },
     };
 };
 
@@ -695,9 +889,21 @@ const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
     case 'invalidQueueComment':
         message = i18n.ColdClear.InvalidQueueComment();
         break;
+    case 'invalidQuizChain':
+        message = i18n.ColdClear.InvalidQuizChain();
+        break;
+    case 'currentPieceMismatch':
+        message = i18n.ColdClear.CurrentPieceMismatch();
+        break;
     case 'missingPlacedPiece':
     case 'invalidPlacedPiece':
         message = i18n.ColdClear.PlacedPieceRequired();
+        break;
+    case 'missingCurrentPiece':
+        message = i18n.ColdClear.CurrentPieceRequired();
+        break;
+    case 'currentPieceMismatch':
+        message = i18n.ColdClear.CurrentPieceMismatch();
         break;
     case 'floatingPiece':
         message = i18n.ColdClear.FloatingPieceUnsupported();
@@ -718,6 +924,9 @@ const showSearchValidationError = (error: SearchInputError) => {
         break;
     case 'invalidQueueComment':
         message = i18n.ColdClear.InvalidQueueComment();
+        break;
+    case 'invalidQuizChain':
+        message = i18n.ColdClear.InvalidQuizChain();
         break;
     default:
         break;
@@ -749,11 +958,13 @@ const formatScore = (score: number): string => {
 const buildScoredQueueComment = (
     score: number | undefined,
     hold: Piece | null,
+    current: Piece | null,
     queue: Piece[],
     b2b: boolean,
     combo: number,
+    suffix: string = '',
 ): string => {
-    const queueStateComment = buildQueueStateComment(hold, queue, b2b, combo);
+    const queueStateComment = buildQueueStateComment(hold, current, queue, b2b, combo, suffix);
     if (!isScorePrintable(score)) {
         return queueStateComment;
     }
@@ -769,15 +980,17 @@ const buildScoredQueueComment = (
 const buildPlacedSpawnScoredQueueComment = (
     score: number | undefined,
     hold: Piece | null,
+    current: Piece | null,
     queue: Piece[],
     b2b: boolean,
     combo: number,
+    suffix: string = '',
 ): string | null => {
     if (!isScorePrintable(score)) {
         return null;
     }
 
-    const queueComment = buildQueueStateComment(hold, queue, b2b, combo);
+    const queueComment = buildQueueStateComment(hold, current, queue, b2b, combo, suffix);
     const scoreComment = `score=${formatScore(score)}`;
     if (!queueComment) {
         return scoreComment;
@@ -788,9 +1001,11 @@ const buildPlacedSpawnScoredQueueComment = (
 const buildOutsideTopCandidatesQueueComment = (
     candidateCount: number,
     hold: Piece | null,
+    current: Piece | null,
     queue: Piece[],
+    suffix: string = '',
 ): string => {
-    const queueComment = buildQueueComment(hold, queue);
+    const queueComment = buildQueueComment(hold, current, queue, suffix);
     const normalizedCandidateCount = Math.max(0, Math.floor(candidateCount));
     const outsideTopComment = `${OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX}=${normalizedCandidateCount}`;
     if (!queueComment) {
@@ -812,14 +1027,22 @@ const shufflePieces = (pieces: Piece[]): Piece[] => {
 };
 
 const buildCommentWithAppendedOneBag = (currentComment: string): string => {
-    const parsed = parseQueueComment(currentComment);
+    const parsed = parseQueueStateComment(currentComment);
     const oneBag = shufflePieces(ONE_BAG_PIECES);
 
     if (parsed) {
-        return buildQueueComment(parsed.hold, parsed.queue.concat(oneBag));
+        return buildScoredQueueComment(
+            parseScoreFromComment(currentComment) ?? undefined,
+            parsed.hold,
+            parsed.current,
+            parsed.queue.concat(oneBag),
+            parsed.b2b,
+            parsed.combo,
+            parsed.suffix,
+        );
     }
 
-    return buildQueueComment(null, oneBag);
+    return buildQueueComment(null, null, oneBag);
 };
 
 const emitFinish = (runId: number) => {
@@ -897,10 +1120,11 @@ function finishPlacedSpawnEvaluation(
 
 const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage => {
     const ccField = fieldToCC(session.field);
-    const ccHold = session.searchHold !== null ? PIECE_TO_CC[session.searchHold] : CC_HOLD_NONE;
+    const ccHold = session.hold !== null ? PIECE_TO_CC[session.hold] : CC_HOLD_NONE;
+    const fullQueue = [session.current, ...session.queue];
     const initQueue = session.nextLimit === null
-        ? session.searchQueue
-        : session.searchQueue.slice(0, session.nextLimit + 1);
+        ? fullQueue
+        : fullQueue.slice(0, session.nextLimit + 1);
     const ccQueue = initQueue.map(piece => PIECE_TO_CC[piece]);
     return {
         type: 'init',
@@ -919,9 +1143,10 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
 const buildSingleInitMessage = (session: SingleRunSession): CCInitMessage => {
     const ccField = fieldToCC(session.field);
     const ccHold = session.hold !== null ? PIECE_TO_CC[session.hold] : CC_HOLD_NONE;
+    const fullQueue = [session.current, ...session.queue];
     const initQueue = session.nextLimit === null
-        ? session.queue
-        : session.queue.slice(0, session.nextLimit + 1);
+        ? fullQueue
+        : fullQueue.slice(0, session.nextLimit + 1);
     const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
     return {
         type: 'init',
@@ -1035,7 +1260,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
             return clearQueuePreviewIfNeeded(state);
         }
-        const { page, parsed, target, tree } = resolved.input;
+        const { page, parsed, searchQueue, target, tree } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -1046,22 +1271,26 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
+        // スポーン中のミノ (page.piece) はカレントミノとして扱うため、フィールドには固定しない
         const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(target.pageIndex, PageFieldOperation.All);
+        const field = pages.getField(target.pageIndex, PageFieldOperation.Command);
+        const totalPieces = 1 + searchQueue.queue.length;
         const session: SingleRunSession = {
             runId,
             field,
             runType: 'single',
+            queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             targetNodeId: target.nodeId,
             resultPages: [],
-            hold: parsed.hold,
-            queue: parsed.queue.slice(),
+            hold: searchQueue.hold,
+            current: searchQueue.current,
+            queue: searchQueue.queue,
             b2b: parsed.b2b,
             combo: normalizeCombo(parsed.combo),
-            totalMoves: (state.coldClear.holdAllowed && parsed.hold === null)
-                ? Math.max(0, parsed.queue.length - 1)
-                : parsed.queue.length,
+            totalMoves: (state.coldClear.holdAllowed && searchQueue.hold === null)
+                ? Math.max(0, totalPieces - 1)
+                : totalPieces,
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
             nextLimit: state.coldClear.nextLimit,
@@ -1111,7 +1340,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
             return clearQueuePreviewIfNeeded(state);
         }
-        const { page, parsed, tree, target } = resolved.input;
+        const { page, parsed, searchQueue, tree, target } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -1122,8 +1351,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
+        // スポーン中のミノ (page.piece) はカレントミノとして扱うため、フィールドには固定しない
         const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(target.pageIndex, PageFieldOperation.All);
+        const field = pages.getField(target.pageIndex, PageFieldOperation.Command);
         const topBranchCount = normalizeTopBranchCount(state.coldClear.topBranchCount);
 
         const session: Top3RunSession = {
@@ -1131,10 +1361,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             field,
             topBranchCount,
             runType: 'top3',
+            queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             targetNodeId: target.nodeId,
-            hold: parsed.hold,
-            queue: parsed.queue.slice(),
+            hold: searchQueue.hold,
+            current: searchQueue.current,
+            queue: searchQueue.queue,
             b2b: parsed.b2b,
             combo: normalizeCombo(parsed.combo),
             holdAllowed: state.coldClear.holdAllowed,
@@ -1146,10 +1378,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         currentSession = session;
 
         const ccField = fieldToCC(field);
-        const ccHold = parsed.hold !== null ? PIECE_TO_CC[parsed.hold] : CC_HOLD_NONE;
+        const ccHold = searchQueue.hold !== null ? PIECE_TO_CC[searchQueue.hold] : CC_HOLD_NONE;
+        const fullQueue = [searchQueue.current, ...searchQueue.queue];
         const initQueue = state.coldClear.nextLimit === null
-            ? parsed.queue
-            : parsed.queue.slice(0, state.coldClear.nextLimit + 1);
+            ? fullQueue
+            : fullQueue.slice(0, state.coldClear.nextLimit + 1);
         const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
 
         const initMsg: CCInitMessage = {
@@ -1335,16 +1568,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
-        const searchState = buildPlacedSpawnSearchState(
-            parsed.hold,
-            parsed.queue,
-            placedPiece.type,
-        );
-
         const session: PlacedRunSession = {
             runId,
             placedPiece,
             runType: 'placed',
+            queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
@@ -1354,11 +1582,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             requestedCandidateCount: PLACED_SCORE_INITIAL_CANDIDATE_COUNT,
             retryCount: 0,
             hold: parsed.hold,
+            // resolvePlacedSpawnInput で placedPiece.type と一致することを検証済み
+            current: placedPiece.type,
             queue: parsed.queue.slice(),
             b2b: parsed.b2b,
             combo: normalizeCombo(parsed.combo),
-            searchHold: searchState.hold,
-            searchQueue: searchState.queue,
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
             nextLimit: state.coldClear.nextLimit,
@@ -1402,16 +1630,20 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         commitQueuePreviewIfNeeded(state);
 
         const pageIndex = state.fumen.currentIndex;
-        const currentComment = resolveCommentTextWithPreview(
+        const resolution = resolveCommentWithPreview(
             state.fumen.pages,
             pageIndex,
             state.coldClear.queuePreview,
         );
-        if (currentComment === null) {
+        if (resolution.kind === 'invalidQuizChain') {
+            reportCommentResolutionError(resolution, pageIndex);
+            return clearQueuePreviewIfNeeded(state);
+        }
+        if (resolution.text === null) {
             return clearQueuePreviewIfNeeded(state);
         }
 
-        const nextComment = buildCommentWithAppendedOneBag(currentComment);
+        const nextComment = buildCommentWithAppendedOneBag(resolution.text);
 
         M.toast({
             html: i18n.ColdClear.OneBagAdded(),
@@ -1438,38 +1670,153 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         ]);
     },
 
+    toggleInfinitePieceQueue: () => (state): NextState => {
+        const enabled = !state.editorUi.infinitePieceQueue;
+        if (!enabled) {
+            return {
+                editorUi: {
+                    ...state.editorUi,
+                    infinitePieceQueue: false,
+                    paletteSelection: 'comp',
+                },
+            };
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        const spawnedPiece = page?.piece !== undefined && isMinoPiece(page.piece.type)
+            ? page.piece.type
+            : undefined;
+        const currentComment = getCurrentColdClearQueueComment(state) ?? '';
+        const parsed = parseQueueStateComment(currentComment);
+
+        if (currentComment.trim() !== '' && parsed === null) {
+            M.toast({
+                html: i18n.ColdClear.InfiniteBagNonQueueWarning(),
+                classes: 'top-toast',
+                displayLength: 1800,
+            });
+        }
+
+        const queueWithInitialBags = (parsed !== null ? parsed.queue : []).concat(createRandomSevenBags(3));
+
+        // カレントの決定: スポーンミノ > コメントのカレント > NEXT先頭 (取り出してスポーン)
+        let nextCurrent: Piece;
+        let initialSpawnPiece: Piece | undefined;
+        let nextQueue: Piece[];
+        if (spawnedPiece !== undefined) {
+            nextCurrent = spawnedPiece;
+            initialSpawnPiece = undefined;
+            nextQueue = queueWithInitialBags;
+        } else if (parsed !== null && parsed.current !== null) {
+            nextCurrent = parsed.current;
+            initialSpawnPiece = parsed.current;
+            nextQueue = queueWithInitialBags;
+        } else {
+            nextCurrent = queueWithInitialBags[0];
+            initialSpawnPiece = nextCurrent;
+            nextQueue = queueWithInitialBags.slice(1);
+        }
+
+        const nextComment = parsed === null
+            ? buildQueueStateComment(null, nextCurrent, nextQueue, false, 0)
+            : buildScoredQueueComment(
+                parseScoreFromComment(currentComment) ?? undefined,
+                parsed.hold,
+                nextCurrent,
+                nextQueue,
+                parsed.b2b,
+                parsed.combo,
+                parsed.suffix,
+            );
+        const nextEditorUi = (nextState: State): NextState => ({
+            editorUi: {
+                ...nextState.editorUi,
+                infinitePieceQueue: true,
+                paletteSelection: 'comp',
+            },
+        });
+
+        if (!appActions) {
+            return nextEditorUi(state);
+        }
+
+        const runtimeActions = appActions;
+        return sequence(state, [
+            () => {
+                runtimeActions.setCommentText({ pageIndex, text: nextComment });
+                if (initialSpawnPiece !== undefined) {
+                    runtimeActions.spawnPiece({
+                        piece: initialSpawnPiece,
+                        srs: state.mode.rotationSystem !== 'classic',
+                    });
+                    runtimeActions.changePieceAction({ pieceAction: 'drag' });
+                }
+                return undefined;
+            },
+            nextEditorUi,
+        ]);
+    },
+
     swapCurrentPieceWithHoldQueue: () => (state): NextState => {
         if (state.coldClear.isRunning) {
-            return undefined;
-        }
-        if (!state.coldClear.holdAllowed) {
             return undefined;
         }
 
         const pageIndex = state.fumen.currentIndex;
         const page = state.fumen.pages[pageIndex];
-        const hasCurrentPiece = page && page.piece && isMinoPiece(page.piece.type);
+        const hasSpawnedPiece = page && page.piece && isMinoPiece(page.piece.type);
 
         const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
-        if (!parsed || parsed.queue.length === 0) {
-            showSwapValidationError(hasCurrentPiece ? 'missingQueue' : 'missingCurrentPiece');
+        if (!parsed) {
+            showSwapValidationError(hasSpawnedPiece ? 'missingQueue' : 'missingCurrentPiece');
             return undefined;
         }
 
         let nextSpawnPiece: Piece;
         let nextComment: string;
 
-        if (!hasCurrentPiece) {
-            // No current piece: pop the leftmost queue piece and spawn it
-            nextSpawnPiece = parsed.queue[0];
-            const remainingQueue = parsed.queue.slice(1);
-            nextComment = buildQueueComment(parsed.hold, remainingQueue);
+        if (!hasSpawnedPiece) {
+            // スポーンミノなし: カレント (未設定ならNEXT先頭を取り出して) をスポーンする
+            if (parsed.current !== null) {
+                nextSpawnPiece = parsed.current;
+                nextComment = buildScoredQueueComment(
+                    parseScoreFromComment(resolveCommentTextWithPreview(
+                        state.fumen.pages, pageIndex, state.coldClear.queuePreview,
+                    ) ?? '') ?? undefined,
+                    parsed.hold, parsed.current, parsed.queue, parsed.b2b, parsed.combo, parsed.suffix);
+            } else if (0 < parsed.queue.length) {
+                nextSpawnPiece = parsed.queue[0];
+                nextComment = buildScoredQueueComment(
+                    parseScoreFromComment(resolveCommentTextWithPreview(
+                        state.fumen.pages, pageIndex, state.coldClear.queuePreview,
+                    ) ?? '') ?? undefined,
+                    parsed.hold, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo, parsed.suffix);
+            } else {
+                showSwapValidationError('missingCurrentPiece');
+                return undefined;
+            }
         } else {
-            // Current piece exists: swap current with hold (existing behavior)
-            const currentPiece = page!.piece!.type;
-            nextSpawnPiece = parsed.hold !== null ? parsed.hold : parsed.queue[0];
-            const nextQueue = parsed.hold !== null ? parsed.queue.slice() : parsed.queue.slice(1);
-            nextComment = buildQueueComment(currentPiece, nextQueue);
+            // スポーンミノあり: ホールド (未設定ならNEXT先頭) と入れ替える
+            const spawnedPiece = page!.piece!.type;
+            if (parsed.hold !== null) {
+                nextSpawnPiece = parsed.hold;
+                nextComment = buildScoredQueueComment(
+                    parseScoreFromComment(resolveCommentTextWithPreview(
+                        state.fumen.pages, pageIndex, state.coldClear.queuePreview,
+                    ) ?? '') ?? undefined,
+                    spawnedPiece, nextSpawnPiece, parsed.queue, parsed.b2b, parsed.combo, parsed.suffix);
+            } else if (0 < parsed.queue.length) {
+                nextSpawnPiece = parsed.queue[0];
+                nextComment = buildScoredQueueComment(
+                    parseScoreFromComment(resolveCommentTextWithPreview(
+                        state.fumen.pages, pageIndex, state.coldClear.queuePreview,
+                    ) ?? '') ?? undefined,
+                    spawnedPiece, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo, parsed.suffix);
+            } else {
+                showSwapValidationError('missingQueue');
+                return undefined;
+            }
         }
 
         if (!appActions) {
@@ -1499,16 +1846,26 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const pieceType = page.piece.type;
         const commentText = resolveCommentTextFromPage(state.fumen.pages, pageIndex);
-        const parsed = commentText ? parseQueueComment(commentText) : null;
+        const parsed = commentText ? parseQueueStateComment(commentText) : null;
 
         if (!appActions) {
             return undefined;
         }
         const runtimeActions = appActions;
 
-        if (parsed) {
+        if (parsed && (parsed.hold !== null || parsed.current !== null || 0 < parsed.queue.length)) {
+            // カレント枠を空にして、戻したミノをNEXT先頭に置く
+            const newCurrent = parsed.current === pieceType ? null : parsed.current;
             const newQueue = [pieceType, ...parsed.queue];
-            const newComment = buildQueueComment(parsed.hold, newQueue);
+            const newComment = buildScoredQueueComment(
+                parseScoreFromComment(commentText ?? '') ?? undefined,
+                parsed.hold,
+                newCurrent,
+                newQueue,
+                parsed.b2b,
+                parsed.combo,
+                parsed.suffix,
+            );
             return sequence(state, [
                 () => {
                     runtimeActions.clearPiece();
@@ -1525,7 +1882,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         return undefined;
     },
 
-    previewColdClearQueueComment: ({ hold, queue, b2b, combo }) => (state): NextState => {
+    previewColdClearQueueComment: (
+        { hold, current, queue, b2b, combo, syncCurrentPiece = false },
+    ) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1541,27 +1900,72 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         }
 
         const score = parseScoreFromComment(currentComment);
+        const parsedCurrentComment = parseQueueStateComment(currentComment);
         const nextText = buildScoredQueueComment(
             score === null ? undefined : score,
             hold,
+            current,
             queue,
             b2b,
             combo,
+            parsedCurrentComment?.suffix,
         );
+        const currentPreview = state.coldClear.queuePreview;
+        const previewHistoryKey = currentPreview?.pageIndex === pageIndex
+            ? currentPreview.historyKey
+            : undefined;
+        const historyKey = syncCurrentPiece
+            ? syncSpawnedPieceFromQueueCurrent(state, current, previewHistoryKey)
+            : previewHistoryKey;
         if (
-            state.coldClear.queuePreview
-            && state.coldClear.queuePreview.pageIndex === pageIndex
-            && state.coldClear.queuePreview.text === nextText
+            currentPreview
+            && currentPreview.pageIndex === pageIndex
+            && currentPreview.text === nextText
+            && currentPreview.historyKey === historyKey
         ) {
+            return undefined;
+        }
+
+        if (!currentPreview && nextText === currentComment && historyKey === undefined) {
             return undefined;
         }
 
         return {
             coldClear: {
                 ...state.coldClear,
-                queuePreview: { pageIndex, text: nextText },
+                queuePreview: {
+                    pageIndex,
+                    text: nextText,
+                    ...(historyKey ? { historyKey } : {}),
+                },
             },
         };
+    },
+
+    // フィールドにスポーンミノがあるとき、キューのカレント枠に反映する (モーダル表示時に使用)
+    seedQueuePreviewFromSpawnedPiece: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (!page?.piece || !isMinoPiece(page.piece.type)) {
+            return undefined;
+        }
+
+        const queueState = resolveCurrentColdClearMenuQueueState(state);
+        if (queueState === null || queueState.current === page.piece.type) {
+            return undefined;
+        }
+
+        return coldClearActions.previewColdClearQueueComment({
+            hold: queueState.hold,
+            current: page.piece.type,
+            queue: queueState.queue,
+            b2b: queueState.b2b,
+            combo: queueState.combo,
+        })(state);
     },
 
     commitColdClearQueueComment: () => (state): NextState => {
@@ -1574,15 +1978,21 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const currentComment = resolveCommentTextFromPage(state.fumen.pages, preview.pageIndex);
+        const resolution = resolveCommentFromPage(state.fumen.pages, preview.pageIndex);
+        if (resolution.kind === 'invalidQuizChain') {
+            reportCommentResolutionError(resolution, preview.pageIndex);
+        }
         if (!appActions) {
             return undefined;
         }
 
-        if (currentComment !== null && currentComment !== preview.text) {
+        if (resolution.kind !== 'invalidQuizChain'
+            && resolution.text !== null
+            && resolution.text !== preview.text) {
             appActions.setCommentText({
                 pageIndex: preview.pageIndex,
                 text: preview.text,
+                ...(preview.historyKey ? { mergeKey: preview.historyKey } : {}),
             });
         }
 
@@ -1604,7 +2014,14 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        appActions.setCommentText({ pageIndex, text: '' });
+        const historyKey = state.coldClear.queuePreview?.pageIndex === pageIndex
+            ? state.coldClear.queuePreview.historyKey
+            : undefined;
+        appActions.setCommentText({
+            pageIndex,
+            text: '',
+            ...(historyKey ? { mergeKey: historyKey } : {}),
+        });
 
         return {
             coldClear: {
@@ -1686,36 +2103,35 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const queueState = applyQueueAfterMove(session.hold, session.queue, result.hold);
-        if (!queueState) {
+        const queueTransition = resolveMoveQueueTransition(
+            session.hold, session.current, session.queue, result.hold);
+        if (!queueTransition || queueTransition.placement.current !== move.type) {
             finishSingleSearch(runId);
             return undefined;
         }
 
-        session.hold = queueState.hold;
-        session.queue = queueState.queue;
-        session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
-        session.combo = normalizeCombo(result.combo);
-
-        const nextComment = buildScoredQueueComment(
+        // 結果ページには設置前のキュー状態を書き込む (page.piece がそのページのカレントミノに対応する)
+        const pageComment = buildScoredQueueComment(
             result.score,
-            session.hold,
-            session.queue,
+            queueTransition.placement.hold,
+            queueTransition.placement.current,
+            queueTransition.placement.queue,
             session.b2b,
             session.combo,
+            session.queueSuffix,
         );
 
         const resultPage: Page = {
             index: session.resultPages.length,
             field: { obj: session.field.copy() },
             piece: move,
-            comment: { text: nextComment },
+            comment: { text: pageComment },
             flags: {
                 lock: true,
                 colorize: session.colorize,
                 mirror: false,
                 rise: false,
-                quiz: false,
+                quiz: Quiz.isQuizComment(pageComment),
             },
         };
 
@@ -1724,10 +2140,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         session.field.put(move);
         session.field.clearLine();
 
-        if (session.queue.length === 0 || session.resultPages.length >= session.totalMoves) {
+        session.hold = queueTransition.next.hold;
+        session.queue = queueTransition.next.queue;
+        session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
+        session.combo = normalizeCombo(result.combo);
+
+        if (queueTransition.next.current === null || session.resultPages.length >= session.totalMoves) {
             finishSingleSearch(runId);
             return undefined;
         }
+        session.current = queueTransition.next.current;
 
         if (session.nextLimit !== null) {
             terminateSession(session);
@@ -1772,7 +2194,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 const outsideTopComment = buildOutsideTopCandidatesQueueComment(
                     session.requestedCandidateCount,
                     session.hold,
+                    session.current,
                     session.queue,
+                    session.queueSuffix,
                 );
 
                 terminateSession(session);
@@ -1807,9 +2231,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             const nextComment = buildPlacedSpawnScoredQueueComment(
                 exactResult.score,
                 session.hold,
+                session.current,
                 session.queue,
                 session.b2b,
                 session.combo,
+                session.queueSuffix,
             );
             if (nextComment === null) {
                 finishPlacedSpawnEvaluation(runId, true);
@@ -1877,8 +2303,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return;
             }
 
-            const queueState = applyQueueAfterMove(session.hold, session.queue, result.hold);
-            if (!queueState) {
+            // ホールド消費に必要なミノが足りない候補は除外する
+            const queueTransition = resolveMoveQueueTransition(
+                session.hold, session.current, session.queue, result.hold);
+            if (!queueTransition || queueTransition.placement.current !== move.type) {
                 return;
             }
 
@@ -1891,22 +2319,24 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return;
             }
 
+            // 各分岐ページには設置前のキュー状態を書き込む (page.piece がカレントミノに対応する)
+            const candidateComment = buildScoredQueueComment(
+                result.score,
+                queueTransition.placement.hold,
+                queueTransition.placement.current,
+                queueTransition.placement.queue,
+                session.b2b,
+                session.combo,
+                session.queueSuffix,
+            );
             candidatePages.push({
                 index: 0,
                 field: { obj: displayField },
                 piece: move,
-                comment: {
-                    text: buildScoredQueueComment(
-                        result.score,
-                        queueState.hold,
-                        queueState.queue,
-                        result.b2b === true,
-                        normalizeCombo(result.combo),
-                    ),
-                },
+                comment: { text: candidateComment },
                 flags: {
                     ...parentPage.flags,
-                    quiz: false,
+                    quiz: Quiz.isQuizComment(candidateComment),
                 },
             });
         });

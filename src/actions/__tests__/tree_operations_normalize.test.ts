@@ -16,7 +16,7 @@ import {
     moveSubtreeToParent,
 } from '../../lib/fumen/tree_utils';
 import { PageFieldOperation, Pages, isTextCommentResult } from '../../lib/pages';
-import { normalizeTreeAndPages } from '../tree_operations';
+import { normalizeTreeAndPages, rebuildPageRefsForOrder } from '../tree_operations';
 
 jest.mock('../../actions', () => ({
     actions: {},
@@ -148,6 +148,34 @@ describe('normalizeTreeAndPages', () => {
     afterEach(() => {
         warnSpy.mockRestore();
         logSpy.mockRestore();
+    });
+
+    test('materializes a quiz ref when reordering changes its replay span', () => {
+        const pages: Page[] = [
+            {
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: '#Q=[](I)OT' },
+                flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: true },
+            },
+            {
+                index: 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: true },
+            },
+            {
+                index: 2,
+                field: { ref: 0 },
+                comment: { text: 'middle' },
+                flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+            },
+        ];
+        const reorderedPages = [pages[0], pages[2], pages[1]];
+        const normalized = rebuildPageRefsForOrder(reorderedPages, pages, true);
+
+        expect(normalized[2].comment).toEqual({ text: '#Q=[](I)OT' });
+        expect(normalized[2].flags.quiz).toBe(true);
     });
 
     test.each([

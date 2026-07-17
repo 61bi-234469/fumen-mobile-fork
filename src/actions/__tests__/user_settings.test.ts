@@ -24,6 +24,8 @@ const { userSettingsActions } = require('../user_settings');
 
 const baseUserSettings = {
     ghostVisible: true,
+    deleteSpawnMinoOnPaintDrag: true,
+    skipReaderMode: false,
     loop: false,
     shortcutLabelVisible: false,
     gradient: '0000000',
@@ -31,8 +33,10 @@ const baseUserSettings = {
     editShortcuts: {},
     pieceShortcuts: {},
     pieceShortcutDasMs: 167,
+    pieceShortcutArrMs: 0,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
+    noGrayAfterHardDrop: false,
     grayAfterLineClear: false,
     trimTopBlank: false,
     editorSidePanel: false,
@@ -41,6 +45,8 @@ const baseUserSettings = {
 const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
+        deleteSpawnMinoOnPaintDrag: true,
+        skipReaderMode: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -48,8 +54,10 @@ const createState = (override: any = {}) => ({
         editShortcuts: {},
         pieceShortcuts: {},
         pieceShortcutDasMs: 167,
+        pieceShortcutArrMs: 0,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
+        noGrayAfterHardDrop: false,
     },
     tree: {
         grayAfterLineClear: true,
@@ -104,6 +112,31 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepNoGrayAfterHardDrop', () => {
+        test('updates temporary when line-clear graying is enabled', () => {
+            const state = createState();
+            state.temporary.userSettings.grayAfterLineClear = true;
+            const next = userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state);
+
+            expect(next.temporary.userSettings.noGrayAfterHardDrop).toBe(true);
+        });
+
+        test('does nothing when line-clear graying is disabled', () => {
+            const state = createState({ tree: { grayAfterLineClear: false } });
+
+            expect(userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
+    describe('keepDeleteSpawnMinoOnPaintDrag', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepDeleteSpawnMinoOnPaintDrag({ enable: false })(state);
+
+            expect(next.temporary.userSettings.deleteSpawnMinoOnPaintDrag).toBe(false);
+        });
+    });
+
     describe('keepTrimTopBlank', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
@@ -135,6 +168,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepPieceShortcutArr', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state);
+
+            expect(next.temporary.userSettings.pieceShortcutArrMs).toBe(33);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state)).toBeUndefined();
+        });
+    });
+
     describe('setUserSettingsTab', () => {
         test('switches the active tab', () => {
             const state = createState();
@@ -155,8 +203,11 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
+                'changeDeleteSpawnMinoOnPaintDrag',
+                'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
-                'changePieceShortcutDas', 'changeGifFrameDelay', 'changeRotationSystem',
+                'changePieceShortcutDas', 'changePieceShortcutArr', 'changeGifFrameDelay', 'changeRotationSystem',
+                'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {
@@ -168,6 +219,7 @@ describe('userSettingsActions', () => {
             const state = createState();
             state.temporary.userSettings = {
                 ...baseUserSettings,
+                pieceShortcutArrMs: 33,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
@@ -175,6 +227,7 @@ describe('userSettingsActions', () => {
 
             userSettingsActions.commitUserSettings()(state);
 
+            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrMs: 33 });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

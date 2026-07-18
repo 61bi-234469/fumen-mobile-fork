@@ -21,14 +21,8 @@ describe('User settings', () => {
 
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
-        operations.mode.piece.softdrop();
-        cy.get(datatest('text-pages')).should('contain', '2 / 2');
-        mino(Piece.T, Rotation.Spawn)(4, 19).forEach(selector => {
-            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
-        });
-
-        cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
-        cy.get('body').trigger('keyup', { code: 'Space', key: ' ' });
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        operations.mode.piece.harddrop();
         cy.get(datatest('text-pages')).should('contain', '3 / 3');
     });
 

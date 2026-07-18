@@ -221,7 +221,7 @@ describe('Editor side panel', () => {
             .should('have.text', 'Node only ▼')
             .and('not.contain', 'Target:')
             .click();
-        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Target');
+        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Move/Delete');
         cy.get(datatest('tree-scope-option-node')).click();
 
         // INSERT ボタンでノードを 2 つ追加

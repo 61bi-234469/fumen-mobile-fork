@@ -11,7 +11,7 @@ describe('Utils', () => {
         cy.get(datatest('overlay-utils')).find(datatest('btn-fill-row-mode')).should('not.exist');
         cy.get(datatest('btn-inspector-close')).click();
 
-        cy.get(datatest('btn-paint-mode')).click();
+        operations.mode.tools.home();
         cy.get(datatest('tray-paint-fill')).should('be.visible');
         cy.get(datatest('tray-paint-fill-row')).should('be.visible');
     });

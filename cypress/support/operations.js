@@ -353,8 +353,37 @@ export const operations = {
             moveToLeftEndByTrayLongPress: () => {
                 longPress('tray-piece-move-left');
             },
+            softdrop: () => {
+                cy.get(datatest('tray-piece-softdrop')).click();
+            },
             harddrop: () => {
                 cy.get(datatest('tray-piece-harddrop')).click();
+            },
+            place: (piece, rotation, x, y) => {
+                operations.mode.piece.open();
+                const pieceButton = {
+                    '1': 'i',
+                    '2': 'l',
+                    '3': 'o',
+                    '4': 'z',
+                    '5': 't',
+                    '6': 'j',
+                    '7': 's',
+                }[piece];
+                spawnPieceForScenario(`btn-piece-${pieceButton}`);
+
+                if (rotation === 'Left') {
+                    operations.mode.piece.rotateToLeft();
+                } else if (rotation === 'Right') {
+                    operations.mode.piece.rotateToRight();
+                } else if (rotation === 'Reverse') {
+                    operations.mode.piece.rotateTo180();
+                }
+
+                // PIECE mode moves the current mino to the coordinate under the
+                // pointer.  Start from the spawn area so the helper exercises
+                // the same drag path as a user placing a piece on the field.
+                operations.mode.block.drag({ x: 4, y: 20 }, { x, y });
             },
             lockToOn: () => {
                 operations.mode.flags.open({ home: false });

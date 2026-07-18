@@ -14,6 +14,14 @@ const buildThreeNodeChain = () => {
     cy.get('[datatest^="tree-node-"]').should('have.length', 3);
 };
 
+const buildWideTree = () => {
+    buildThreeNodeChain();
+    for (let count = 0; count < 3; count += 1) {
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', count + 4);
+    }
+};
+
 const createTouchDispatcher = (win, target) => (type, point) => {
     const touch = new win.Touch({
         identifier: 987,
@@ -131,7 +139,7 @@ describe('Tree mode in list view', () => {
             .should('have.text', 'Descendants only ▼')
             .and('not.contain', 'Target:');
         cy.get(datatest('btn-tree-scope-chip')).click();
-        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Target');
+        cy.get(datatest('tree-scope-popover-title')).should('have.text', 'Move/Delete');
         cy.get(datatest('tree-scope-option-descendants')).click();
 
         // The middle node remains while its child is removed.
@@ -367,9 +375,10 @@ describe('Tree mode in list view', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 
         enterTreeGraphView();
-        buildThreeNodeChain();
+        buildWideTree();
 
         cy.get('[datatest="fumen-graph-container"]').then(($container) => {
+            expect($container[0].scrollWidth).to.be.greaterThan($container[0].clientWidth);
             expect($container[0].scrollLeft).to.equal(0);
         });
 

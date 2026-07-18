@@ -220,15 +220,12 @@ describe('coldClearActions run isolation', () => {
         expect(initMsg.field[0]).toBe(1);
     });
 
-    test('startColdClearSearch does not bake spawned piece into field (treated as current mino)', () => {
-        const state = makeColdClearState({ commentText: '#Q=[](I)' });
-        for (let x = 0; x < 6; x += 1) {
-            state.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
-        }
+    test('startColdClearSearch locks a grounded current piece and advances to next', () => {
+        const state = makeColdClearState({ commentText: 'score=12.34 | #Q=[](T)SILZJO' });
         state.fumen.pages[0].piece = {
-            type: Piece.I,
+            type: Piece.T,
             rotation: Rotation.Spawn,
-            coordinate: { x: 7, y: 0 },
+            coordinate: { x: 4, y: 0 },
         };
 
         const result = coldClearActions.startColdClearSearch()(state);
@@ -238,9 +235,8 @@ describe('coldClearActions run isolation', () => {
         const wrapperInstance = wrapperCtor.mock.results[0].value;
         const initMsg = wrapperInstance.start.mock.calls[0][0];
 
-        // The spawned piece stays out of the field; the pre-lock blocks remain.
-        expect(initMsg.field[0]).toBe(1);
-        expect(initMsg.queue).toEqual([0]);
+        expect(Array.from(initMsg.field as Uint8Array).reduce((sum, cell) => sum + cell, 0)).toBe(4);
+        expect(initMsg.queue).toEqual([5, 0, 3, 6, 4, 1]);
     });
 
     test('startColdClearSearch passes spawned current exactly once after hold', () => {
@@ -258,6 +254,50 @@ describe('coldClearActions run isolation', () => {
         const initMsg = wrapperInstance.start.mock.calls[0][0];
         expect(initMsg.hold).toBe(6);
         expect(initMsg.queue).toEqual([5, 3, 0]);
+    });
+
+    test('sequence search adds next after a grounded current piece', () => {
+        const state = makeColdClearState({
+            treeEnabled: true,
+            holdAllowed: false,
+            commentText: 'score=99.00 | #Q=[](T)S',
+        });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            holdAllowed: false,
+            commentText: 'score=99.00 | #Q=[](T)S',
+        });
+        runningState.fumen.pages[0].piece = state.fumen.pages[0].piece;
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 5, rotation: 0, x: 7, y: 0, score: 7 },
+        })(runningState);
+
+        const page = mockActions.addColdClearBranches.mock.calls[0][0].pages[0];
+        expect(page.piece.type).toBe(Piece.S);
+        expect(page.comment.text).toBe('score=7.00 | #Q=[](S)');
+        expect(page.field.obj.canPut(Piece.T, Rotation.Spawn, 4, 0)).toBe(false);
     });
 
     test('startColdClearSearch pops next front as current when current is empty', () => {
@@ -969,6 +1009,48 @@ describe('coldClearActions run isolation', () => {
         // 分岐ページは設置前のキュー状態を持つ (page.piece がカレントミノ)
         const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('score=1.20 | #Q=[](I)OTL');
+    });
+
+    test('top branch search adds next branches after a grounded current piece', () => {
+        const state = makeColdClearState({
+            treeEnabled: true,
+            commentText: 'score=99.00 | #Q=[](T)SILZJO',
+        });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'score=99.00 | #Q=[](T)SILZJO',
+        });
+        runningState.fumen.pages[0].piece = state.fumen.pages[0].piece;
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 5, rotation: 0, x: 7, y: 0, score: 8 }],
+        })(runningState);
+
+        const page = mockActions.addColdClearBranches.mock.calls[0][0].pages[0];
+        expect(page.piece.type).toBe(Piece.S);
+        expect(page.comment.text).toBe('score=8.00 | #Q=[](S)ILZJO');
+        expect(page.field.obj.canPut(Piece.T, Rotation.Spawn, 4, 0)).toBe(false);
     });
 
     test('top branch comment reflects hold swap before placing the held piece', () => {

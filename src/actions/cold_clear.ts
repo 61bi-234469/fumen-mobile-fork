@@ -571,6 +571,7 @@ const resolveSearchQueueState = (
 type SearchInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
+    field: Field;
     parsed: NonNullable<ReturnType<typeof parseQueueStateComment>>;
     searchQueue: SearchQueueState;
     target: { nodeId: TreeNodeId; pageIndex: number };
@@ -579,6 +580,35 @@ type SearchInput = {
 type SearchInputResult = {
     input?: SearchInput;
     error?: SearchInputError;
+};
+
+const resolveSearchStartState = (
+    pages: Pages,
+    pageIndex: number,
+    page: Page,
+    searchQueue: SearchQueueState,
+): { field: Field; searchQueue: SearchQueueState } | null => {
+    const field = pages.getField(pageIndex, PageFieldOperation.Command);
+    const piece = page.piece;
+    if (piece === undefined
+        || !isMinoPiece(piece.type)
+        || !field.canPut(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)
+        || !field.isOnGround(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)) {
+        return { field, searchQueue };
+    }
+
+    if (searchQueue.queue.length === 0) {
+        return null;
+    }
+
+    return {
+        field: pages.getField(pageIndex, PageFieldOperation.All),
+        searchQueue: {
+            hold: searchQueue.hold,
+            current: searchQueue.queue[0],
+            queue: searchQueue.queue.slice(1),
+        },
+    };
 };
 
 const resolveSingleSearchInput = (
@@ -608,21 +638,33 @@ const resolveSingleSearchInput = (
         return { error: 'invalidQueueComment' };
     }
 
-    const searchQueue = resolveSearchQueueState(parsed);
-    if (!searchQueue) {
+    const parsedSearchQueue = resolveSearchQueueState(parsed);
+    if (!parsedSearchQueue) {
         return { error: 'invalidQueueComment' };
     }
     if (page.piece !== undefined
         && isMinoPiece(page.piece.type)
-        && page.piece.type !== searchQueue.current) {
+        && page.piece.type !== parsedSearchQueue.current) {
         return { error: 'currentPieceMismatch' };
     }
+
+    const searchStart = resolveSearchStartState(
+        new Pages(state.fumen.pages),
+        target.pageIndex,
+        page,
+        parsedSearchQueue,
+    );
+    if (!searchStart) {
+        return { error: 'invalidQueueComment' };
+    }
+    const { field, searchQueue } = searchStart;
 
     return {
         input: {
             tree,
             target,
             page,
+            field,
             parsed,
             searchQueue,
         },
@@ -1260,7 +1302,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
             return clearQueuePreviewIfNeeded(state);
         }
-        const { page, parsed, searchQueue, target, tree } = resolved.input;
+        const { field, page, parsed, searchQueue, target, tree } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -1271,9 +1313,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
-        // スポーン中のミノ (page.piece) はカレントミノとして扱うため、フィールドには固定しない
-        const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(target.pageIndex, PageFieldOperation.Command);
         const totalPieces = 1 + searchQueue.queue.length;
         const session: SingleRunSession = {
             runId,
@@ -1340,7 +1379,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
             return clearQueuePreviewIfNeeded(state);
         }
-        const { page, parsed, searchQueue, tree, target } = resolved.input;
+        const { field, page, parsed, searchQueue, tree, target } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -1351,9 +1390,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
-        // スポーン中のミノ (page.piece) はカレントミノとして扱うため、フィールドには固定しない
-        const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(target.pageIndex, PageFieldOperation.Command);
         const topBranchCount = normalizeTopBranchCount(state.coldClear.topBranchCount);
 
         const session: Top3RunSession = {

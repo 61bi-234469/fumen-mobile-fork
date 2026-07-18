@@ -642,6 +642,10 @@ export const operations = {
             }
 
             cy.get(datatest('btn-clipboard-cancel')).click();
+            // The clipboard action runs asynchronously after the modal is closed. Wait for its
+            // result and for the toast to disappear so it cannot cover the next editor action.
+            cy.get('.toast.top-toast').should('contain.text', 'Copied to clipboard');
+            cy.get('.toast.top-toast').should('not.exist');
         },
         firstPage: () => {
             operations.menu.open();

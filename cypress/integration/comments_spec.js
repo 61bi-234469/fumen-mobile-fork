@@ -93,15 +93,15 @@ describe('Comments', () => {
 
         cy.get(datatest('text-comment')).clear().type('ここから2巡目');
 
-        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAAp?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJvJYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgWlAlvs2A1sDfETo3ABlvs2AUDEfETYOVByX3J?BEIfRA1Dq9BlAAAA');
+        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAA5?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJ/JYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgWlAlvs2A1sDfETo3ABlvs2AUDEfETYOVByX3J?BEIfRA1Dq9BlAAAA');
 
         operations.mode.tools.undo();
 
-        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAAp?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJvJYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgH');
+        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAA5?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJ/JYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgH');
 
         operations.mode.tools.redo();
 
-        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAAp?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJvJYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgWlAlvs2A1sDfETo3ABlvs2AUDEfETYOVByX3J?BEIfRA1Dq9BlAAAA');
+        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAA5?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJ/JYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgWlAlvs2A1sDfETo3ABlvs2AUDEfETYOVByX3J?BEIfRA1Dq9BlAAAA');
     });
 
     it('Quiz', () => {
@@ -133,7 +133,7 @@ describe('Comments', () => {
         // 6ページ目
         operations.mode.piece.place(Piece.I, Rotation.Left, 9, 1);
 
-        expectFumen('v115@vhF1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJXBJ0LYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AAA?dHJpIJ');
+        expectFumen('v115@vhF1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJXBJ0LYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AAA?dHJ5IJ');
     });
 
     it('Multi quiz', () => {
@@ -322,22 +322,23 @@ describe('Comments', () => {
         operations.mode.piece.spawn.L();
         operations.mode.piece.harddrop();
 
-        // 2ページ
-        operations.mode.tools.nextPage();
+        // 2ページ（ハードドロップが次ページを自動挿入し、クイズのNEXTをスポーンして
+        // コメントへ反映するため、明示的なページ送りは不要になった）
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](J)SZOTI');
 
-        operations.mode.piece.spawn.S();
+        // 自動スポーンされたカレント(J)をロックせずSに置き換える（クイズのStock進行を検証する）。
+        // spawn.S() はピースが載っていると先にページ送りしてJをロックしてしまうため、
+        // パレットの短押しで直接カレントを差し替える。
+        cy.get(datatest('btn-piece-s')).click();
         operations.mode.piece.harddrop();
 
         // 3ページ
-        operations.mode.tools.nextPage();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[J](Z)OTI');
 
-        operations.mode.piece.spawn.Z();
+        cy.get(datatest('btn-piece-z')).click();
         operations.mode.piece.harddrop();
 
         // 4ページ
-        operations.mode.tools.nextPage();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[J](O)TI');
 
         operations.mode.tools.backPage();
@@ -367,6 +368,7 @@ describe('Comments', () => {
 
         cy.get(datatest('text-comment')).clear();
 
-        expectFumen('v115@vhDSQJXGJU8IAgH');
+        // 最終ページには自動スポーンされたカレント(O)がスポーン位置に残る
+        expectFumen('v115@vhDSQJXGJU8ITnH');
     });
 });

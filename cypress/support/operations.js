@@ -33,11 +33,25 @@ const ensureSentLineVisible = () => {
         }
     });
 };
+// インスペクタ（utils/flags）のバックドロップはエディタ全面を覆う（z-index 20）ため、開いたままだと
+// モードボタンやレール操作のクリックが「covered by another element」で失敗する。トグル操作だけして
+// 閉じずに次の操作へ進むスペック（例: flags.lockToOff 直後の home()）を許容するため、
+// モード切替前に開いているインスペクタを明示的に閉じる。
+const closeInspectorIfOpen = () => {
+    cy.get('body').then(($body) => {
+        const close = $body.find('[datatest="btn-inspector-close"]');
+        if (close.length > 0) {
+            cy.get(datatest('btn-inspector-close')).click();
+            cy.get(datatest('btn-inspector-close')).should('not.exist');
+        }
+    });
+};
 // モードボタンは「選択中に再度押すとトレイを閉じる」トグル動作になったため、事前に「既に選択中か」を
 // 判定して押下をスキップする方式は使わない（インスペクタ（utils/flags）がトレイの上に被さっている場合、
 // トレイの DOM 自体は残っているため誤って「表示中」と判定してしまう）。必ず一度押し、
 // その結果トレイが閉じてしまっていたら（インスペクタも必ず閉じているはずなので）もう一度押して開き直す。
 const ensureModeActive = (selector) => {
+    closeInspectorIfOpen();
     cy.get(datatest(selector)).click();
     cy.get('body').then(($body) => {
         const nowActive = $body.find(`[datatest="${selector}"][aria-pressed="true"]`).length > 0
@@ -50,6 +64,7 @@ const ensureModeActive = (selector) => {
 // PAINT はスライド/コメントモードでも primaryTool:'paint' のまま aria-pressed が true になるため、
 // 汎用の ensureModeActive では区別できない。PAINT のペントレイが出ているかで直接判定する。
 const ensurePaintPenHome = () => {
+    closeInspectorIfOpen();
     cy.get(datatest('btn-paint-mode')).click();
     cy.get('body').then(($body) => {
         if ($body.find('[datatest="tray-paint-pen"]').length === 0) {
@@ -333,7 +348,11 @@ export const operations = {
                 cy.get(datatest('tray-piece-rotate-left')).click();
             },
             rotateTo180: () => {
-                pressPieceShortcut('KeyA');
+                // Rotate180ショートカット(KeyA)は rotationSystem が SRS+ のときだけ有効
+                // (src/actions/field_editor.ts rotateTo180)。デフォルト(SRS)では無反応になるため、
+                // E2Eでは右回転2回で180回転相当を行う（スポーン直後の空中ではキック差は生じない）。
+                operations.mode.piece.rotateToRight();
+                operations.mode.piece.rotateToRight();
             },
             moveToRight: () => {
                 pressPieceShortcut('ArrowRight');

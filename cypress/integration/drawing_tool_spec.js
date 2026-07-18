@@ -50,7 +50,9 @@ describe('Drawing Tools', () => {
         operations.mode.tools.home();
         operations.mode.tools.duplicatePage();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhIAgH3rBzkBAAAsqBifBVtBAAAAAA');
+        // 新挙動: rotateTo180が実際に反映されT(Reverse)となり、ハードドロップが次ページを
+        // 自動挿入してクイズのNEXT(I)をスポーンするため、ページ数とピースが旧期待値から変わる。
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhJAgH3rBzkBAAAsqBifBFtBRMAAAAAAA');
     });
 
     it('Update by lock flag', () => {

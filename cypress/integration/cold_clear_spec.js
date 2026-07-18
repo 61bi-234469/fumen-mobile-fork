@@ -59,6 +59,9 @@ describe('Cold Clear menu', () => {
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
         operations.mode.piece.harddrop();
+        // ハードドロップは次ページを自動挿入してそちらへ移動するため、
+        // 設置済みピースのあるページへ戻ってから配置スコアを評価する。
+        operations.mode.tools.backPage();
 
         ensureTreeGraphView();
         cy.get(datatest('btn-tree-ai-menu')).click();

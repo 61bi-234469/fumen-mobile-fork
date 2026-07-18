@@ -186,6 +186,35 @@ export const setterActions: Readonly<SetterActions> = {
                     markable: isMarkablePiece(piece),
                 };
             }
+
+            // 完成したInferencePieceにもゴーストを表示する（ミノ操作時と同じ挙動）。
+            // 判定時はInferenceセル自身を空きマスとして扱う（移動中ミノのゴースト計算と同じ前提）。
+            if (ghost && move === undefined && inferredResult && inferredResult.coordinate) {
+                const { x: inferX, y: inferY } = inferredResult.coordinate;
+                let inferGhostY: number | undefined = undefined;
+                for (let pieceY = inferY - 1; 0 <= pieceY; pieceY -= 1) {
+                    const positions = getBlockPositions(piece, inferredResult.rotate, inferX, pieceY);
+                    const canPut = positions.every(
+                        ([x, y]) => isInPlayField(x, y) && (
+                            inferences.indexOf(x + y * 10) >= 0
+                            || drawnField[x + y * 10].piece === Piece.Empty
+                        ),
+                    );
+                    if (!canPut) {
+                        break;
+                    }
+                    inferGhostY = pieceY;
+                }
+                if (inferGhostY !== undefined) {
+                    const positions = getBlockPositions(piece, inferredResult.rotate, inferX, inferGhostY);
+                    for (const [x, y] of positions) {
+                        const currentBlock = drawnField[x + y * 10];
+                        if (currentBlock === undefined || currentBlock.piece === Piece.Empty) {
+                            drawnField[x + y * 10] = { piece, highlight: HighlightType.Lighter };
+                        }
+                    }
+                }
+            }
         } else {
             // InferencePieceが揃っていないとき
             for (const inference of inferences) {

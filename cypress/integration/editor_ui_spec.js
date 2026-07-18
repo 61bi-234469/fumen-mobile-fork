@@ -379,7 +379,9 @@ describe('Editor UI final concept', () => {
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         operations.mode.block.click(5, 5);
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
-        operations.mode.block.click(5, 5);
+        // 移動したプレビューは「外側クリック」で初めてフィールドへ確定される仕様のため、
+        // 範囲外をクリックしてコミットしてから undo で取り消せることを確認する。
+        operations.mode.block.click(0, 10);
         cy.get('[datatest^="tray-part-"]').should('not.exist');
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);

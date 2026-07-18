@@ -284,8 +284,8 @@ const startPieceMoveHold = (code: string, key: PieceShortcutKey, state: State) =
     startDasHold(keyboardHoldId(code), {
         move,
         moveToEnd,
-        dasMs: state.mode.pieceShortcutDasMs,
-        arrMs: state.mode.pieceShortcutArrMs,
+        dasFrames: state.mode.pieceShortcutDasFrames,
+        arrFrames: state.mode.pieceShortcutArrFrames,
     });
 };
 
@@ -345,6 +345,27 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // リピート防止（event.code のみで判定）
     if (pressedKeys.has(event.code)) return;
 
+    const pieceModeShortcut = screen === Screens.Editor
+        && state.editorUi?.primaryTool === 'piece'
+        && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+        ? findPieceShortcutByCode(state.mode.pieceShortcuts, event.code) : null;
+    if (pieceModeShortcut) {
+        event.preventDefault();
+        pressedKeys.set(event.code, {
+            shortcut: { type: 'piece', key: pieceModeShortcut },
+            longPressTimer: null,
+            longPressExecuted: false,
+        });
+        if (currentPageHasPiece(state)) {
+            if (hasPieceDas(pieceModeShortcut)) {
+                startPieceMoveHold(event.code, pieceModeShortcut, state);
+            } else {
+                executePieceShortcut(pieceModeShortcut, actions);
+            }
+        }
+        return;
+    }
+
     // 編集用ショートカットを検索（Mod+対応）
     const editShortcut = findEditShortcutByEvent(state.mode.editShortcuts, event);
     const allowedKeys = allowedEditShortcuts[screen];
@@ -387,28 +408,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
     // エディタ画面以外はパレット/ピースショートカット無効
     if (screen !== Screens.Editor) return;
-
-    // ピースショートカット：修飾キーなし、Shiftも無効
-    if (!event.shiftKey && currentPageHasPiece(state)) {
-        const pieceShortcut = findPieceShortcutByCode(state.mode.pieceShortcuts, event.code);
-        if (pieceShortcut) {
-            event.preventDefault();
-            pressedKeys.set(event.code, {
-                shortcut: { type: 'piece', key: pieceShortcut },
-                longPressTimer: null,
-                longPressExecuted: false,
-            });
-
-            if (hasPieceDas(pieceShortcut)) {
-                // 移動系はDAS/ARRホールド（押下時の1回移動もホールド側で実行）
-                startPieceMoveHold(event.code, pieceShortcut, state);
-            } else {
-                // 即時実行（keydownで発火）
-                executePieceShortcut(pieceShortcut, actions);
-            }
-            return;
-        }
-    }
 
     // パレットショートカットを検索
     const palette = findPaletteByCode(state.mode.paletteShortcuts, event.code);

@@ -32,8 +32,8 @@ const baseUserSettings = {
     paletteShortcuts: {},
     editShortcuts: {},
     pieceShortcuts: {},
-    pieceShortcutDasMs: 167,
-    pieceShortcutArrMs: 0,
+    pieceShortcutDasFrames: 10,
+    pieceShortcutArrFrames: 1,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     noGrayAfterHardDrop: false,
@@ -53,8 +53,8 @@ const createState = (override: any = {}) => ({
         paletteShortcuts: {},
         editShortcuts: {},
         pieceShortcuts: {},
-        pieceShortcutDasMs: 167,
-        pieceShortcutArrMs: 0,
+        pieceShortcutDasFrames: 10,
+        pieceShortcutArrFrames: 1,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,
@@ -171,16 +171,53 @@ describe('userSettingsActions', () => {
     describe('keepPieceShortcutArr', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
-            const next = userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state);
+            const next = userSettingsActions.keepPieceShortcutArr({ arrFrames: 2 })(state);
 
-            expect(next.temporary.userSettings.pieceShortcutArrMs).toBe(33);
+            expect(next.temporary.userSettings.pieceShortcutArrFrames).toBe(2);
         });
 
         test('does nothing when the modal is closed', () => {
             const state = createState({ modal: { userSettings: false } });
 
-            expect(userSettingsActions.keepPieceShortcutArr({ arrMs: 33 })(state)).toBeUndefined();
+            expect(userSettingsActions.keepPieceShortcutArr({ arrFrames: 2 })(state)).toBeUndefined();
         });
+    });
+
+    describe('shared Space shortcut', () => {
+        test('keeps page insertion when assigning Space to hard drop', () => {
+            const state = createState();
+            state.temporary.userSettings.editShortcuts = { InsertPage: 'Space' };
+            state.temporary.userSettings.pieceShortcuts = { HardDrop: '' };
+
+            const next = userSettingsActions.keepPieceShortcut({ shortcut: 'HardDrop', code: 'Space' })(state);
+
+            expect(next.temporary.userSettings.editShortcuts.InsertPage).toBe('Space');
+            expect(next.temporary.userSettings.pieceShortcuts.HardDrop).toBe('Space');
+        });
+
+        test('keeps hard drop when assigning Space to page insertion', () => {
+            const state = createState();
+            state.temporary.userSettings.editShortcuts = { InsertPage: '' };
+            state.temporary.userSettings.pieceShortcuts = { HardDrop: 'Space' };
+
+            const next = userSettingsActions.keepEditShortcut({ shortcut: 'InsertPage', code: 'Space' })(state);
+
+            expect(next.temporary.userSettings.editShortcuts.InsertPage).toBe('Space');
+            expect(next.temporary.userSettings.pieceShortcuts.HardDrop).toBe('Space');
+        });
+    });
+
+    test('keeps palette and edit assignments when assigning a piece shortcut', () => {
+        const state = createState();
+        state.temporary.userSettings.paletteShortcuts = { Comp: 'KeyC' };
+        state.temporary.userSettings.editShortcuts = { Add: 'KeyN' };
+        state.temporary.userSettings.pieceShortcuts = { Hold: '' };
+
+        const next = userSettingsActions.keepPieceShortcut({ shortcut: 'Hold', code: 'KeyC' })(state);
+
+        expect(next.temporary.userSettings.paletteShortcuts).toEqual({ Comp: 'KeyC' });
+        expect(next.temporary.userSettings.editShortcuts).toEqual({ Add: 'KeyN' });
+        expect(next.temporary.userSettings.pieceShortcuts.Hold).toBe('KeyC');
     });
 
     describe('setUserSettingsTab', () => {
@@ -219,7 +256,7 @@ describe('userSettingsActions', () => {
             const state = createState();
             state.temporary.userSettings = {
                 ...baseUserSettings,
-                pieceShortcutArrMs: 33,
+                pieceShortcutArrFrames: 2,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
@@ -227,7 +264,7 @@ describe('userSettingsActions', () => {
 
             userSettingsActions.commitUserSettings()(state);
 
-            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrMs: 33 });
+            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 2 });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

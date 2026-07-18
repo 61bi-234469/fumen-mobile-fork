@@ -19,8 +19,8 @@ interface UserSettingsModalProps {
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
     pieceShortcuts: PieceShortcuts;
-    pieceShortcutDasMs: number;
-    pieceShortcutArrMs: number;
+    pieceShortcutDasFrames: number;
+    pieceShortcutArrFrames: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -41,8 +41,8 @@ interface UserSettingsModalProps {
         keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => void;
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
-        keepPieceShortcutDas: (data: { dasMs: number }) => void;
-        keepPieceShortcutArr: (data: { arrMs: number }) => void;
+        keepPieceShortcutDas: (data: { dasFrames: number }) => void;
+        keepPieceShortcutArr: (data: { arrFrames: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
@@ -76,17 +76,19 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
-    'MoveLeft', 'MoveRight', 'Drop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Reset',
+    'MoveLeft', 'MoveRight', 'SoftDrop', 'HardDrop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Reset', 'Hold',
 ];
 
 const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
     MoveLeft: i18n.UserSettings.PieceShortcuts.MoveLeft,
     MoveRight: i18n.UserSettings.PieceShortcuts.MoveRight,
-    Drop: i18n.UserSettings.PieceShortcuts.Drop,
+    SoftDrop: i18n.UserSettings.PieceShortcuts.SoftDrop,
+    HardDrop: i18n.UserSettings.PieceShortcuts.HardDrop,
     RotateLeft: i18n.UserSettings.PieceShortcuts.RotateLeft,
     RotateRight: i18n.UserSettings.PieceShortcuts.RotateRight,
     Rotate180: i18n.UserSettings.PieceShortcuts.Rotate180,
     Reset: i18n.UserSettings.PieceShortcuts.Reset,
+    Hold: i18n.UserSettings.PieceShortcuts.Hold,
 };
 
 const rotationSystemValues: RotationSystem[] = ['classic', 'srs', 'srsPlus'];
@@ -117,8 +119,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         paletteShortcuts,
         editShortcuts,
         pieceShortcuts,
-        pieceShortcutDasMs,
-        pieceShortcutArrMs,
+        pieceShortcutDasFrames,
+        pieceShortcutArrFrames,
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
@@ -278,16 +280,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     const onchangeDas = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value, 10);
-        if (!isNaN(value) && value >= 50 && value <= 1000) {
-            actions.keepPieceShortcutDas({ dasMs: value });
+        if (!isNaN(value) && value >= 1 && value <= 60) {
+            actions.keepPieceShortcutDas({ dasFrames: value });
         }
     };
 
     const onchangeArr = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value, 10);
-        if (!isNaN(value) && value >= 0 && value <= 1000) {
-            actions.keepPieceShortcutArr({ arrMs: value });
+        if (!isNaN(value) && value >= 0 && value <= 60) {
+            actions.keepPieceShortcutArr({ arrFrames: value });
         }
     };
 
@@ -586,6 +588,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             </div>,
                                             <input
                                                 type="text"
+                                                datatest={`input-piece-shortcut-${shortcut}`}
                                                 readonly
                                                 value={display}
                                                 onkeydown={(e: KeyboardEvent) => onkeydownPieceShortcut(shortcut, e)}
@@ -603,17 +606,18 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                                 <div style={style({ marginTop: px(15) })}>
                                     <div style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasMs()}
+                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
                                     </div>
                                     <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
                                         {i18n.UserSettings.PieceShortcuts.DasDescription()}
                                     </div>
                                     <input
                                         type="number"
-                                        value={pieceShortcutDasMs}
-                                        min={50}
-                                        max={1000}
-                                        step={10}
+                                        datatest="input-piece-das"
+                                        value={pieceShortcutDasFrames}
+                                        min={1}
+                                        max={60}
+                                        step={1}
                                         onchange={onchangeDas}
                                         style={style({
                                             width: px(80),
@@ -624,7 +628,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                                 <div style={style({ marginTop: px(15) })}>
                                     <div style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.ArrMs()}
+                                        {i18n.UserSettings.PieceShortcuts.ArrFrames()}
                                     </div>
                                     <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
                                         {i18n.UserSettings.PieceShortcuts.ArrDescription()}
@@ -632,10 +636,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     <input
                                         type="number"
                                         datatest="input-piece-arr"
-                                        value={pieceShortcutArrMs}
+                                        value={pieceShortcutArrFrames}
                                         min={0}
-                                        max={1000}
-                                        step={10}
+                                        max={60}
+                                        step={1}
                                         onchange={onchangeArr}
                                         style={style({
                                             width: px(80),

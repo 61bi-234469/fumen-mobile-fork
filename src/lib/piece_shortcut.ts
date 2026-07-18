@@ -1,4 +1,4 @@
-import { PieceShortcuts } from '../states';
+import type { PieceShortcuts } from '../states';
 
 export type PieceShortcutKey = keyof PieceShortcuts;
 
@@ -7,6 +7,8 @@ type PieceShortcutActions = {
     moveToRight?: () => void;
     softdrop?: () => void;
     harddrop?: () => void;
+    hold?: () => void;
+    swapCurrentPieceWithHoldQueue?: () => void;
     rotateToLeft?: () => void;
     rotateToRight?: () => void;
     rotateTo180?: () => void;
@@ -24,8 +26,14 @@ export const executePieceShortcut = (
     case 'MoveRight':
         actions.moveToRight?.();
         break;
-    case 'Drop':
-        (actions.softdrop ?? actions.harddrop)?.();
+    case 'SoftDrop':
+        actions.softdrop?.();
+        break;
+    case 'HardDrop':
+        actions.harddrop?.();
+        break;
+    case 'Hold':
+        (actions.hold ?? actions.swapCurrentPieceWithHoldQueue)?.();
         break;
     case 'RotateLeft':
         actions.rotateToLeft?.();

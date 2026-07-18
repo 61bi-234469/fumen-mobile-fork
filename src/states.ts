@@ -31,17 +31,20 @@ export const defaultEditShortcuts: EditShortcuts = {
 };
 
 export type PieceShortcuts = {
-    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Rotate180' | 'Reset']: string;
+    [key in 'MoveLeft' | 'MoveRight' | 'SoftDrop' | 'HardDrop'
+        | 'RotateLeft' | 'RotateRight' | 'Rotate180' | 'Reset' | 'Hold']: string;
 };
 
 export const defaultPieceShortcuts: PieceShortcuts = {
     MoveLeft: 'ArrowLeft',
     MoveRight: 'ArrowRight',
-    Drop: 'ArrowDown',
+    SoftDrop: 'ArrowDown',
+    HardDrop: 'Space',
     RotateLeft: 'KeyZ',
     RotateRight: 'KeyX',
     Rotate180: 'KeyA',
     Reset: 'Escape',
+    Hold: 'KeyC',
 };
 
 export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
@@ -102,9 +105,9 @@ export interface PartsState {
     blackTransparent: boolean;
 }
 
-export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
+export const DEFAULT_PIECE_SHORTCUT_DAS_FRAMES = 10;
 // 0のときはDAS経過後に端まで即移動する（従来動作）
-export const DEFAULT_PIECE_SHORTCUT_ARR_MS = 0;
+export const DEFAULT_PIECE_SHORTCUT_ARR_FRAMES = 1;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
@@ -201,8 +204,8 @@ export interface State {
             paletteShortcuts: PaletteShortcuts;
             editShortcuts: EditShortcuts;
             pieceShortcuts: PieceShortcuts;
-            pieceShortcutDasMs: number;
-            pieceShortcutArrMs: number;
+            pieceShortcutDasFrames: number;
+            pieceShortcutArrFrames: number;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
             noGrayAfterHardDrop: boolean;
@@ -244,8 +247,8 @@ export interface State {
         paletteShortcuts: PaletteShortcuts;
         editShortcuts: EditShortcuts;
         pieceShortcuts: PieceShortcuts;
-        pieceShortcutDasMs: number;
-        pieceShortcutArrMs: number;
+        pieceShortcutDasFrames: number;
+        pieceShortcutArrFrames: number;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
         noGrayAfterHardDrop: boolean;
@@ -376,8 +379,8 @@ export const initState: Readonly<State> = {
             paletteShortcuts: { ...defaultPaletteShortcuts },
             editShortcuts: { ...defaultEditShortcuts },
             pieceShortcuts: { ...defaultPieceShortcuts },
-            pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
-            pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
+            pieceShortcutDasFrames: DEFAULT_PIECE_SHORTCUT_DAS_FRAMES,
+            pieceShortcutArrFrames: DEFAULT_PIECE_SHORTCUT_ARR_FRAMES,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
             noGrayAfterHardDrop: false,
@@ -416,8 +419,8 @@ export const initState: Readonly<State> = {
         paletteShortcuts: { ...defaultPaletteShortcuts },
         editShortcuts: { ...defaultEditShortcuts },
         pieceShortcuts: { ...defaultPieceShortcuts },
-        pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
-        pieceShortcutArrMs: DEFAULT_PIECE_SHORTCUT_ARR_MS,
+        pieceShortcutDasFrames: DEFAULT_PIECE_SHORTCUT_DAS_FRAMES,
+        pieceShortcutArrFrames: DEFAULT_PIECE_SHORTCUT_ARR_FRAMES,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,

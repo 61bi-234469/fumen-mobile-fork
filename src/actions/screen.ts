@@ -49,8 +49,8 @@ export interface ScreenActions {
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
-    changePieceShortcutDas: (data: { dasMs: number }) => action;
-    changePieceShortcutArr: (data: { arrMs: number }) => action;
+    changePieceShortcutDas: (data: { dasFrames: number }) => action;
+    changePieceShortcutArr: (data: { arrFrames: number }) => action;
     changeGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
@@ -353,19 +353,19 @@ export const modeActions: Readonly<ScreenActions> = {
             },
         };
     },
-    changePieceShortcutDas: ({ dasMs }) => (state): NextState => {
+    changePieceShortcutDas: ({ dasFrames }) => (state): NextState => {
         return {
             mode: {
                 ...state.mode,
-                pieceShortcutDasMs: dasMs,
+                pieceShortcutDasFrames: dasFrames,
             },
         };
     },
-    changePieceShortcutArr: ({ arrMs }) => (state): NextState => {
+    changePieceShortcutArr: ({ arrFrames }) => (state): NextState => {
         return {
             mode: {
                 ...state.mode,
-                pieceShortcutArrMs: arrMs,
+                pieceShortcutArrFrames: arrFrames,
             },
         };
     },

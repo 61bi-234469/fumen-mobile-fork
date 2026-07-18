@@ -10,9 +10,9 @@ interface DasHoldCallbacks {
     moveToEnd: () => void;
 }
 
-interface DasHoldOptions extends DasHoldCallbacks {
-    dasMs: number;
-    arrMs: number;
+export interface DasHoldOptions extends DasHoldCallbacks {
+    dasFrames: number;
+    arrFrames: number;
 }
 
 interface HoldState {
@@ -22,10 +22,20 @@ interface HoldState {
 
 const holds = new Map<string, HoldState>();
 
+export const FRAME_DURATION_MS = 1000 / 60;
+
+export const framesToMilliseconds = (frames: number): number => {
+    return Math.max(0, frames) * FRAME_DURATION_MS;
+};
+
+export const millisecondsToFrames = (milliseconds: number): number => {
+    return Math.max(0, Math.round(milliseconds / FRAME_DURATION_MS));
+};
+
 export const startDasHold = (id: string, options: DasHoldOptions) => {
     endDasHold(id);
 
-    const { dasMs, arrMs, move, moveToEnd } = options;
+    const { dasFrames, arrFrames, move, moveToEnd } = options;
 
     // 押下した瞬間に1回移動（レスポンス優先）
     move();
@@ -33,13 +43,13 @@ export const startDasHold = (id: string, options: DasHoldOptions) => {
     const hold: HoldState = { dasTimer: null, arrTimer: null };
     hold.dasTimer = setTimeout(() => {
         hold.dasTimer = null;
-        if (arrMs <= 0) {
+        if (arrFrames <= 0) {
             moveToEnd();
         } else {
             move();
-            hold.arrTimer = setInterval(move, arrMs);
+            hold.arrTimer = setInterval(move, framesToMilliseconds(arrFrames));
         }
-    }, dasMs);
+    }, framesToMilliseconds(dasFrames));
     holds.set(id, hold);
 };
 

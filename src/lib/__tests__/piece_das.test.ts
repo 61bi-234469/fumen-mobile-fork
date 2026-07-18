@@ -1,6 +1,22 @@
-import { endAllDasHolds, endDasHold, isDasHoldActive, startDasHold } from '../piece_das';
+import {
+    endAllDasHolds,
+    endDasHold,
+    FRAME_DURATION_MS,
+    isDasHoldActive,
+    millisecondsToFrames,
+    startDasHold,
+} from '../piece_das';
+
+const DAS_FRAMES = 10;
+const ARR_FRAMES = 2;
 
 describe('piece_das', () => {
+    test('converts legacy millisecond settings to 60 fps frame values', () => {
+        expect(millisecondsToFrames(167)).toBe(10);
+        expect(millisecondsToFrames(33)).toBe(2);
+        expect(millisecondsToFrames(0)).toBe(0);
+    });
+
     beforeEach(() => {
         jest.useFakeTimers();
     });
@@ -14,7 +30,7 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { move, moveToEnd, dasMs: 167, arrMs: 0 });
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
 
         expect(move).toHaveBeenCalledTimes(1);
         expect(moveToEnd).not.toHaveBeenCalled();
@@ -24,8 +40,8 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { move, moveToEnd, dasMs: 167, arrMs: 0 });
-        jest.advanceTimersByTime(166);
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES - 1);
         expect(moveToEnd).not.toHaveBeenCalled();
 
         jest.advanceTimersByTime(1);
@@ -42,14 +58,14 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { move, moveToEnd, dasMs: 167, arrMs: 33 });
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
         expect(move).toHaveBeenCalledTimes(1);
 
         // DAS経過時に1回、その後はARR間隔でリピート
-        jest.advanceTimersByTime(167);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
         expect(move).toHaveBeenCalledTimes(2);
 
-        jest.advanceTimersByTime(33 * 3);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * ARR_FRAMES * 3);
         expect(move).toHaveBeenCalledTimes(5);
         expect(moveToEnd).not.toHaveBeenCalled();
     });
@@ -58,8 +74,8 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { move, moveToEnd, dasMs: 167, arrMs: 33 });
-        jest.advanceTimersByTime(100);
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 6);
         endDasHold('test');
 
         jest.advanceTimersByTime(1000);
@@ -72,8 +88,8 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { move, moveToEnd, dasMs: 167, arrMs: 33 });
-        jest.advanceTimersByTime(167 + 33 * 2);
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * (DAS_FRAMES + ARR_FRAMES * 2));
         expect(move).toHaveBeenCalledTimes(4);
 
         endDasHold('test');
@@ -86,21 +102,21 @@ describe('piece_das', () => {
         const moveRight = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('left', { moveToEnd, move: moveLeft, dasMs: 167, arrMs: 33 });
-        jest.advanceTimersByTime(50);
-        startDasHold('right', { moveToEnd, move: moveRight, dasMs: 167, arrMs: 33 });
+        startDasHold('left', { moveToEnd, move: moveLeft, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        startDasHold('right', { moveToEnd, move: moveRight, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
 
         expect(moveLeft).toHaveBeenCalledTimes(1);
         expect(moveRight).toHaveBeenCalledTimes(1);
 
         // leftのDASはrightの押下に影響されず経過する
-        jest.advanceTimersByTime(117);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 7);
         expect(moveLeft).toHaveBeenCalledTimes(2);
         expect(moveRight).toHaveBeenCalledTimes(1);
 
         // 片方を離してももう片方は継続する
         endDasHold('left');
-        jest.advanceTimersByTime(50 + 33);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 5);
         expect(moveRight).toHaveBeenCalledTimes(3);
         expect(moveLeft).toHaveBeenCalledTimes(2);
     });
@@ -110,10 +126,10 @@ describe('piece_das', () => {
         const move2 = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('test', { moveToEnd, move: move1, dasMs: 167, arrMs: 33 });
-        startDasHold('test', { moveToEnd, move: move2, dasMs: 167, arrMs: 33 });
+        startDasHold('test', { moveToEnd, move: move1, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        startDasHold('test', { moveToEnd, move: move2, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
 
-        jest.advanceTimersByTime(167);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
         expect(move1).toHaveBeenCalledTimes(1);
         expect(move2).toHaveBeenCalledTimes(2);
     });
@@ -122,8 +138,8 @@ describe('piece_das', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
-        startDasHold('left', { move, moveToEnd, dasMs: 167, arrMs: 33 });
-        startDasHold('right', { move, moveToEnd, dasMs: 167, arrMs: 33 });
+        startDasHold('left', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        startDasHold('right', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
         endAllDasHolds();
 
         expect(isDasHoldActive('left')).toBe(false);

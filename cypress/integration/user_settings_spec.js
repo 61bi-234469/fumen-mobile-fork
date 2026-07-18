@@ -2,6 +2,37 @@ import { Color, datatest, leftTap, mino, Piece, rightTap, Rotation, visit } from
 import { operations } from '../support/operations';
 
 describe('User settings', () => {
+    it('separates soft and hard drop shortcuts and configures DAS/ARR in frames', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-shortcuts')).click();
+        cy.get(datatest('input-piece-shortcut-SoftDrop')).should('have.value', '↓');
+        cy.get(datatest('input-piece-shortcut-HardDrop')).should('have.value', 'Space');
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
+        cy.get(datatest('input-piece-das')).should('have.value', '10').clear().type('5').blur();
+        cy.get(datatest('input-piece-arr')).should('have.value', '1');
+        cy.get(datatest('btn-save')).click();
+
+        cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
+        cy.get('body').trigger('keyup', { code: 'Space', key: ' ' });
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        cy.get('body').trigger('keydown', { code: 'ArrowDown', key: 'ArrowDown' });
+        cy.get('body').trigger('keyup', { code: 'ArrowDown', key: 'ArrowDown' });
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        mino(Piece.T, Rotation.Spawn)(4, 19).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
+        cy.get('body').trigger('keyup', { code: 'Space', key: ' ' });
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+    });
+
     it('Ghost visible', () => {
         cy.clearLocalStorage();
 

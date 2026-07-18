@@ -3,7 +3,7 @@ import { VNode } from 'hyperapp';
 import { Actions } from '../../actions';
 import { ModeTypes, Piece, Rotation } from '../../lib/enums';
 import { px, style } from '../../lib/types';
-import { EditorPart, State } from '../../states';
+import { EditorPart, PieceShortcuts, State } from '../../states';
 import { BlockIcon } from '../../components/atomics/icons';
 import { i18n } from '../../locales/keys';
 import { rectHeight, rectWidth } from '../../lib/rect_selection';
@@ -11,11 +11,13 @@ import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 import { endDasHold, startDasHold } from '../../lib/piece_das';
+import { displayShortcut } from '../../lib/shortcuts';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
 
 const trayButtonView = ({
     key, datatest, label, iconName, active = false, disabled = false, iconOnly = false, touchActionNone = false,
+    shortcutLabel,
     handlers,
 }: {
     key: string;
@@ -26,6 +28,7 @@ const trayButtonView = ({
     disabled?: boolean;
     iconOnly?: boolean;
     touchActionNone?: boolean;
+    shortcutLabel?: string;
     handlers: object;
 }) => {
     return button({
@@ -54,6 +57,7 @@ const trayButtonView = ({
             minWidth: iconOnly ? '0' : px(56),
             outlineOffset: '-3px',
             padding: iconOnly ? '0' : '0 4px',
+            position: shortcutLabel ? 'relative' : undefined,
             touchAction: touchActionNone ? 'none' : undefined,
             transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
         }),
@@ -66,6 +70,13 @@ const trayButtonView = ({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }),
         }, label),
+        ...(shortcutLabel ? [span({
+            key: `${key}-shortcut`,
+            style: style({
+                bottom: px(1), fontSize: px(8), lineHeight: '1', opacity: .72,
+                position: 'absolute', right: px(2),
+            }),
+        }, shortcutLabel)] : []),
     ]);
 };
 
@@ -98,7 +109,7 @@ const trayButton = ({
 // - ボタンごとに独立したポインタ処理のため、複数ボタンの同時押しが可能
 // - hold指定時はDAS/ARRエンジンで押しっぱなしのリピート移動に対応
 const pieceActionButton = ({
-    key, datatest, label, iconName, disabled = false, onpress, hold,
+    key, datatest, label, iconName, disabled = false, onpress, hold, shortcutLabel,
 }: {
     key: string;
     datatest: string;
@@ -106,9 +117,10 @@ const pieceActionButton = ({
     iconName: string;
     disabled?: boolean;
     onpress: () => void;
+    shortcutLabel?: string;
     hold?: {
-        dasMs: number;
-        arrMs: number;
+        dasFrames: number;
+        arrFrames: number;
         move: () => void;
         moveToEnd: () => void;
     };
@@ -141,7 +153,7 @@ const pieceActionButton = ({
         event.preventDefault();
     };
     return trayButtonView({
-        key, datatest, label, iconName, disabled,
+        key, datatest, label, iconName, disabled, shortcutLabel,
         iconOnly: true,
         touchActionNone: true,
         handlers: {
@@ -284,13 +296,14 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         style: style({ background: '#fff', borderLeft: '1px solid #ddd', minWidth: '0' }),
     });
     const pieceButton = ({
-        key, label, iconName, disabled = false, onpress, hold,
+        key, label, iconName, disabled = false, onpress, hold, shortcut,
     }: {
         key: string;
         label: string;
         iconName: string;
         disabled?: boolean;
         onpress: () => void;
+        shortcut?: keyof PieceShortcuts;
         hold?: {
             move: () => void;
             moveToEnd: () => void;
@@ -301,10 +314,12 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         iconName,
         disabled,
         onpress,
+        shortcutLabel: shortcut !== undefined && state.mode.shortcutLabelVisible
+            ? displayShortcut(state.mode.pieceShortcuts[shortcut]) : undefined,
         hold: hold === undefined ? undefined : {
             ...hold,
-            dasMs: state.mode.pieceShortcutDasMs,
-            arrMs: state.mode.pieceShortcutArrMs,
+            dasFrames: state.mode.pieceShortcutDasFrames,
+            arrFrames: state.mode.pieceShortcutArrFrames,
         },
         datatest: key,
     });
@@ -325,39 +340,41 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         state.mode.rotationSystem === 'srsPlus'
             ? pieceButton({
                 key: 'tray-piece-rotate-180', label: i18n.EditorUi.Rotate180(), iconName: 'refresh',
-                disabled: !canOperate, onpress: actions.rotateTo180,
+                disabled: !canOperate, onpress: actions.rotateTo180, shortcut: 'Rotate180',
             })
             : placeholder('tray-piece-empty-180'),
         pieceButton({
             key: 'tray-piece-hold', label: i18n.EditorUi.Hold(), iconName: 'swap_horiz',
-            disabled: !canHold, onpress: actions.swapCurrentPieceWithHoldQueue,
+            disabled: !canHold, onpress: actions.swapCurrentPieceWithHoldQueue, shortcut: 'Hold',
         }),
         pieceButton({
             key: 'tray-piece-harddrop', label: i18n.EditorUi.HardDrop(), iconName: 'vertical_align_bottom',
-            disabled: !canOperate, onpress: actions.harddrop,
+            disabled: !canOperate, onpress: actions.harddrop, shortcut: 'HardDrop',
         }),
         placeholder('tray-piece-empty-top-end'),
         pieceButton({
             key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
             disabled: !canOperate, onpress: actions.moveToLeft,
+            shortcut: 'MoveLeft',
             hold: { move: actions.moveToLeft, moveToEnd: actions.moveToLeftEnd },
         }),
         pieceButton({
             key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
             disabled: !canOperate, onpress: actions.moveToRight,
+            shortcut: 'MoveRight',
             hold: { move: actions.moveToRight, moveToEnd: actions.moveToRightEnd },
         }),
         pieceButton({
             key: 'tray-piece-softdrop', label: i18n.EditorUi.SoftDrop(), iconName: 'keyboard_arrow_down',
-            disabled: !canOperate, onpress: actions.softdrop,
+            disabled: !canOperate, onpress: actions.softdrop, shortcut: 'SoftDrop',
         }),
         pieceButton({
             key: 'tray-piece-rotate-left', label: i18n.EditorUi.RotateLeft(), iconName: 'rotate_left',
-            disabled: !canOperate, onpress: actions.rotateToLeft,
+            disabled: !canOperate, onpress: actions.rotateToLeft, shortcut: 'RotateLeft',
         }),
         pieceButton({
             key: 'tray-piece-rotate-right', label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
-            disabled: !canOperate, onpress: actions.rotateToRight,
+            disabled: !canOperate, onpress: actions.rotateToRight, shortcut: 'RotateRight',
         }),
         div({
             key: `img-rotation-${rotationName}`,

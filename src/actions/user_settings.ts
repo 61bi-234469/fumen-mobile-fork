@@ -17,8 +17,8 @@ export interface UserSettingsActions {
     keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => action;
     keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => action;
     keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
-    keepPieceShortcutDas: (data: { dasMs: number }) => action;
-    keepPieceShortcutArr: (data: { arrMs: number }) => action;
+    keepPieceShortcutDas: (data: { dasFrames: number }) => action;
+    keepPieceShortcutArr: (data: { arrFrames: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
@@ -43,8 +43,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     paletteShortcuts: { ...state.mode.paletteShortcuts },
                     editShortcuts: { ...state.mode.editShortcuts },
                     pieceShortcuts: { ...state.mode.pieceShortcuts },
-                    pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
-                    pieceShortcutArrMs: state.mode.pieceShortcutArrMs,
+                    pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
+                    pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
@@ -75,10 +75,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
             }),
             actions.changePieceShortcutDas({
-                dasMs: state.temporary.userSettings.pieceShortcutDasMs,
+                dasFrames: state.temporary.userSettings.pieceShortcutDasFrames,
             }),
             actions.changePieceShortcutArr({
-                arrMs: state.temporary.userSettings.pieceShortcutArrMs,
+                arrFrames: state.temporary.userSettings.pieceShortcutArrFrames,
             }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
@@ -197,7 +197,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             return undefined;
         }
 
-        // Cross-category deduplication: clear from all categories
+        // Deduplicate palette and edit shortcuts; piece shortcuts are independent.
         const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
         const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
         const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
@@ -213,12 +213,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
                 if (newEditShortcuts[key] === code) {
                     newEditShortcuts[key] = '';
-                }
-            }
-            // Clear from Piece
-            for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
-                if (newPieceShortcuts[key] === code) {
-                    newPieceShortcuts[key] = '';
                 }
             }
         }
@@ -241,7 +235,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             return undefined;
         }
 
-        // Cross-category deduplication: clear from all categories
+        // Deduplicate palette and edit shortcuts; piece shortcuts are independent.
         const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
         const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
         const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
@@ -257,12 +251,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
                 if (newEditShortcuts[key] === code && key !== shortcut) {
                     newEditShortcuts[key] = '';
-                }
-            }
-            // Clear from Piece
-            for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
-                if (newPieceShortcuts[key] === code) {
-                    newPieceShortcuts[key] = '';
                 }
             }
         }
@@ -285,24 +273,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             return undefined;
         }
 
-        // Cross-category deduplication: clear from all categories
-        const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
-        const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
+        // Piece shortcuts are independent from palette and edit shortcuts.
         const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
 
         if (code) {
-            // Clear from Palette
-            for (const key of Object.keys(newPaletteShortcuts) as (keyof PaletteShortcuts)[]) {
-                if (newPaletteShortcuts[key] === code) {
-                    newPaletteShortcuts[key] = '';
-                }
-            }
-            // Clear from Edit
-            for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
-                if (newEditShortcuts[key] === code) {
-                    newEditShortcuts[key] = '';
-                }
-            }
             // Clear from Piece (except current)
             for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
                 if (newPieceShortcuts[key] === code && key !== shortcut) {
@@ -317,14 +291,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 ...state.temporary,
                 userSettings: {
                     ...state.temporary.userSettings,
-                    paletteShortcuts: newPaletteShortcuts,
-                    editShortcuts: newEditShortcuts,
                     pieceShortcuts: newPieceShortcuts,
                 },
             },
         };
     },
-    keepPieceShortcutDas: ({ dasMs }) => (state): NextState => {
+    keepPieceShortcutDas: ({ dasFrames }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
         }
@@ -334,12 +306,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 ...state.temporary,
                 userSettings: {
                     ...state.temporary.userSettings,
-                    pieceShortcutDasMs: dasMs,
+                    pieceShortcutDasFrames: dasFrames,
                 },
             },
         };
     },
-    keepPieceShortcutArr: ({ arrMs }) => (state): NextState => {
+    keepPieceShortcutArr: ({ arrFrames }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
         }
@@ -349,7 +321,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 ...state.temporary,
                 userSettings: {
                     ...state.temporary.userSettings,
-                    pieceShortcutArrMs: arrMs,
+                    pieceShortcutArrFrames: arrFrames,
                 },
             },
         };
@@ -469,8 +441,8 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         paletteShortcuts: JSON.stringify(state.mode.paletteShortcuts),
         editShortcuts: JSON.stringify(state.mode.editShortcuts),
         pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
-        pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
-        pieceShortcutArrMs: state.mode.pieceShortcutArrMs,
+        pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
+        pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,

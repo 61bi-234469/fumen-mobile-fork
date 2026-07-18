@@ -40,6 +40,7 @@ import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
+import { millisecondsToFrames } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -327,7 +328,7 @@ const loadUserSettings = () => {
         }
     }
 
-    // Load piece shortcuts with normalization (Edit/Palette take priority over PIECE defaults)
+    // Load piece shortcuts independently from palette and edit shortcuts.
     if (settings.pieceShortcuts !== undefined) {
         try {
             const parsed = JSON.parse(settings.pieceShortcuts) as Partial<PieceShortcuts>;
@@ -337,39 +338,9 @@ const loadUserSettings = () => {
                     shortcuts[key] = parsed[key]!;
                 }
             }
-
-            // Normalize: clear PIECE shortcuts that conflict with existing Palette/Edit shortcuts
-            const usedCodes = new Set<string>();
-
-            // Collect codes from Palette shortcuts
-            if (settings.paletteShortcuts !== undefined) {
-                try {
-                    const paletteShortcuts = JSON.parse(settings.paletteShortcuts) as Partial<PaletteShortcuts>;
-                    for (const code of Object.values(paletteShortcuts)) {
-                        if (code) usedCodes.add(code);
-                    }
-                } catch {
-                    // Ignore parse errors
-                }
-            }
-
-            // Collect codes from Edit shortcuts
-            if (settings.editShortcuts !== undefined) {
-                try {
-                    const editShortcuts = JSON.parse(settings.editShortcuts) as Partial<EditShortcuts>;
-                    for (const code of Object.values(editShortcuts)) {
-                        if (code) usedCodes.add(code);
-                    }
-                } catch {
-                    // Ignore parse errors
-                }
-            }
-
-            // Clear conflicts from PIECE shortcuts
-            for (const key of Object.keys(shortcuts) as (keyof PieceShortcuts)[]) {
-                if (shortcuts[key] && usedCodes.has(shortcuts[key])) {
-                    shortcuts[key] = '';
-                }
+            const legacyDrop = (parsed as Partial<PieceShortcuts> & { Drop?: string }).Drop;
+            if (parsed.SoftDrop === undefined && legacyDrop !== undefined) {
+                shortcuts.SoftDrop = legacyDrop;
             }
 
             main.changePieceShortcuts({ pieceShortcuts: shortcuts });
@@ -379,13 +350,19 @@ const loadUserSettings = () => {
         }
     }
 
-    if (settings.pieceShortcutDasMs !== undefined) {
-        main.changePieceShortcutDas({ dasMs: settings.pieceShortcutDasMs });
+    const dasFrames = settings.pieceShortcutDasFrames
+        ?? (settings.pieceShortcutDasMs === undefined ? undefined
+            : millisecondsToFrames(settings.pieceShortcutDasMs));
+    if (dasFrames !== undefined) {
+        main.changePieceShortcutDas({ dasFrames });
         updated = true;
     }
 
-    if (settings.pieceShortcutArrMs !== undefined) {
-        main.changePieceShortcutArr({ arrMs: settings.pieceShortcutArrMs });
+    const arrFrames = settings.pieceShortcutArrFrames
+        ?? (settings.pieceShortcutArrMs === undefined ? undefined
+            : millisecondsToFrames(settings.pieceShortcutArrMs));
+    if (arrFrames !== undefined) {
+        main.changePieceShortcutArr({ arrFrames });
         updated = true;
     }
 

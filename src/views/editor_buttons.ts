@@ -4,6 +4,7 @@ import { EditorLayout } from './editor/editor';
 import { VNode } from 'hyperapp';
 import { parsePieceName, parseRotationName, Piece, Rotation } from '../lib/enums';
 import { BlockIcon } from '../components/atomics/icons';
+import { DasHoldOptions, endDasHold, startDasHold } from '../lib/piece_das';
 
 export const colorButton = ({ layout, piece, highlight, colorize, srs, onclick, onlongpress, shortcutLabel }: {
     layout: EditorLayout,
@@ -252,7 +253,7 @@ const longPressState: {
 export const toolButton = (
     {
         width, backgroundColorClass, textColor, borderColor, borderWidth = 1, borderType = 'solid',
-        datatest, key, onclick, onlongpress, flexGrow, margin, enable = true, position,
+        datatest, key, onclick, onlongpress, hold, flexGrow, margin, enable = true, position,
         shortcutLabel, shortcutLabelColor = '#666', longPressDurationMs = LONG_PRESS_DURATION,
     }: {
         flexGrow?: number;
@@ -268,6 +269,7 @@ export const toolButton = (
         enable?: boolean;
         onclick?: (event: MouseEvent) => void;
         onlongpress?: () => void;
+        hold?: DasHoldOptions;
         position?: 'relative' | 'absolute';
         shortcutLabel?: string;
         shortcutLabelColor?: string;
@@ -330,13 +332,41 @@ export const toolButton = (
 
     const handleContextMenu = (event: Event) => {
         // 長押しでコンテキストメニューが出ないようにする
-        if (onlongpress) {
+        if (onlongpress || hold) {
             event.preventDefault();
         }
     };
 
+    const holdId = `tool:${key}`;
+    const handleHoldPointerDown = (event: PointerEvent) => {
+        if (!enable || hold === undefined) return;
+        const target = event.currentTarget as HTMLElement;
+        try {
+            target.setPointerCapture?.(event.pointerId);
+        } catch (e) {
+            // Synthetic pointer events may not have a capturable pointer ID.
+        }
+        startDasHold(holdId, hold);
+        event.stopPropagation();
+        event.preventDefault();
+    };
+    const handleHoldPointerEnd = (event: PointerEvent) => {
+        endDasHold(holdId);
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
     // 長押しがある場合はpointerイベントを使用、ない場合は従来のonclick
-    const eventHandlers = onlongpress ? {
+    const eventHandlers = hold ? {
+        onpointerdown: handleHoldPointerDown,
+        onpointerup: handleHoldPointerEnd,
+        onpointercancel: handleHoldPointerEnd,
+        oncontextmenu: handleContextMenu,
+        onclick: (event: MouseEvent) => {
+            event.stopPropagation();
+            event.preventDefault();
+        },
+    } : onlongpress ? {
         onpointerdown: handlePointerDown,
         onpointerup: handlePointerUp,
         onpointercancel: handlePointerCancel,
@@ -370,7 +400,7 @@ export const toolButton = (
         datatest,
         key,
         href: '#',
-        class: `${onclick !== undefined || onlongpress !== undefined ? 'waves-effect ' : ''}`
+        class: `${onclick !== undefined || onlongpress !== undefined || hold !== undefined ? 'waves-effect ' : ''}`
             + `z-depth-0 btn ${backgroundColorClass} ${enable ? '' : 'disabled'}`,
         style: style({
             flexGrow,

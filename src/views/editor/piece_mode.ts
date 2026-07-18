@@ -29,7 +29,8 @@ export const pieceMode = ({
     flags,
     pieceShortcuts,
     shortcutLabelVisible,
-    pieceShortcutDasMs,
+    pieceShortcutDasFrames,
+    pieceShortcutArrFrames,
     coldClear,
     canSwapCurrentPieceWithHoldQueue,
     actions,
@@ -46,7 +47,8 @@ export const pieceMode = ({
     },
     pieceShortcuts: PieceShortcuts;
     shortcutLabelVisible: boolean;
-    pieceShortcutDasMs: number;
+    pieceShortcutDasFrames: number;
+    pieceShortcutArrFrames: number;
     coldClear: State['coldClear'];
     canSwapCurrentPieceWithHoldQueue: boolean;
     actions: {
@@ -63,6 +65,7 @@ export const pieceMode = ({
         moveToLeftEnd: () => void;
         moveToRight: () => void;
         moveToRightEnd: () => void;
+        softdrop: () => void;
         harddrop: () => void;
         changeLockFlag: (data: { index: number, enable: boolean }) => void;
         openPage: (data: { index: number }) => void;
@@ -131,6 +134,8 @@ export const pieceMode = ({
                 onclick: () => {
                     actions.swapCurrentPieceWithHoldQueue();
                 },
+                shortcutLabel: getShortcutLabel('Hold'),
+                shortcutLabelColor: '#666',
             }, iconContents({
                 description: i18n.ColdClear.HoldSwapLabel(),
                 iconSize: 18,
@@ -206,8 +211,12 @@ export const pieceMode = ({
                 key: 'btn-move-to-left',
                 enable: operate,
                 onclick: () => actions.moveToLeft(),
-                onlongpress: () => actions.moveToLeftEnd(),
-                longPressDurationMs: pieceShortcutDasMs,
+                hold: {
+                    move: actions.moveToLeft,
+                    moveToEnd: actions.moveToLeftEnd,
+                    dasFrames: pieceShortcutDasFrames,
+                    arrFrames: pieceShortcutArrFrames,
+                },
                 shortcutLabel: getShortcutLabel('MoveLeft'),
                 shortcutLabelColor: '#666',
             }, iconContents({
@@ -226,8 +235,12 @@ export const pieceMode = ({
                 key: 'btn-move-to-right',
                 enable: operate,
                 onclick: () => actions.moveToRight(),
-                onlongpress: () => actions.moveToRightEnd(),
-                longPressDurationMs: pieceShortcutDasMs,
+                hold: {
+                    move: actions.moveToRight,
+                    moveToEnd: actions.moveToRightEnd,
+                    dasFrames: pieceShortcutDasFrames,
+                    arrFrames: pieceShortcutArrFrames,
+                },
                 shortcutLabel: getShortcutLabel('MoveRight'),
                 shortcutLabelColor: '#666',
             }, iconContents({
@@ -315,11 +328,29 @@ export const pieceMode = ({
             backgroundColorClass: 'white',
             textColor: '#333',
             borderColor: '#333',
+            datatest: 'btn-softdrop',
+            key: 'btn-softdrop',
+            enable: operate,
+            onclick: () => actions.softdrop(),
+            shortcutLabel: getShortcutLabel('SoftDrop'),
+            shortcutLabelColor: '#666',
+        }, iconContents({
+            description: 'soft drop',
+            iconSize: 22,
+            iconName: 'keyboard_arrow_down',
+        })),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: 'white',
+            textColor: '#333',
+            borderColor: '#333',
             datatest: 'btn-harddrop',
             key: 'btn-harddrop',
             enable: operate,
             onclick: () => actions.harddrop(),
-            shortcutLabel: getShortcutLabel('Drop'),
+            shortcutLabel: getShortcutLabel('HardDrop'),
             shortcutLabelColor: '#666',
         }, iconContents({
             description: 'drop',

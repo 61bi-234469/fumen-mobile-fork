@@ -1,4 +1,4 @@
-import { datatest, expectFumen, minoPosition, Piece, Rotation, visit } from '../support/common';
+import { datatest, expectFumen, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('Comments', () => {
@@ -50,52 +50,35 @@ describe('Comments', () => {
     it('Write comments', () => {
         visit({ mode: 'edit' });
 
-        operations.mode.piece.open();
-
         // 1ページ目
-        minoPosition(Piece.O, Rotation.Spawn)(3, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.O, Rotation.Spawn, 3, 0);
 
         cy.get(datatest('text-comment')).type('hello');
 
         // 2ページ目
-        minoPosition(Piece.L, Rotation.Reverse)(6, 1).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.L, Rotation.Reverse, 6, 1);
 
         // 3ページ目
-        minoPosition(Piece.J, Rotation.Reverse)(7, 2).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.J, Rotation.Reverse, 7, 2);
 
         cy.get(datatest('text-comment')).type('world');
 
         // 4ページ目
-        minoPosition(Piece.I, Rotation.Left)(9, 1).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.I, Rotation.Left, 9, 1);
 
         cy.get(datatest('text-comment')).type('!!!');
 
         // 5ページ目
-        minoPosition(Piece.Z, Rotation.Spawn)(4, 2).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.Z, Rotation.Spawn, 4, 2);
 
         // 6ページ目
-        minoPosition(Piece.S, Rotation.Left)(1, 1).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.S, Rotation.Left, 1, 1);
 
         cy.get(datatest('text-comment')).clear().type('ここまで1巡目');
 
         // 7ページ目
-        minoPosition(Piece.T, Rotation.Left)(2, 20).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
-
-        operations.mode.piece.harddrop();
+        operations.mode.piece.place(Piece.T, Rotation.Left, 2, 20);
+        operations.mode.piece.softdrop();
         operations.mode.piece.rotateToLeft();
 
         cy.get(datatest('text-comment')).clear().type('TSD');
@@ -124,45 +107,31 @@ describe('Comments', () => {
     it('Quiz', () => {
         visit({ mode: 'edit' });
 
-        operations.mode.piece.open();
-
         // 1ページ目
-        minoPosition(Piece.T, Rotation.Spawn)(1, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.T, Rotation.Spawn, 1, 0);
 
         cy.get(datatest('text-comment')).type('#Q=[](T)ZSIOLJ');
 
         operations.mode.tools.nextPage();
 
         // 2ページ目
-        minoPosition(Piece.Z, Rotation.Spawn)(3, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.Z, Rotation.Spawn, 3, 0);
 
         // 3ページ目
-        minoPosition(Piece.S, Rotation.Spawn)(4, 2).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.S, Rotation.Spawn, 4, 2);
 
         expectFumen('v115@vhC1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJXBJ');
 
         // 4ページ目
-        minoPosition(Piece.Z, Rotation.Spawn)(5, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.Z, Rotation.Spawn, 5, 0);
 
         cy.get(datatest('text-comment')).clear().type('#Q=[](T)ZSIOLJ');
 
         // 5ページ目
-        minoPosition(Piece.T, Rotation.Left)(6, 2).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.T, Rotation.Left, 6, 2);
 
         // 6ページ目
-        minoPosition(Piece.I, Rotation.Left)(9, 1).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.I, Rotation.Left, 9, 1);
 
         expectFumen('v115@vhF1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJXBJ0LYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AAA?dHJpIJ');
     });
@@ -172,8 +141,6 @@ describe('Comments', () => {
             mode: 'edit',
             fumen: 'v115@vhGyOY3AFLDmClcJSAVjiSAVG88AYS88AZPUABCowA?BR4K6Bl/UtClfJSASE7SAyltSATzarDMjzCATEJm/I3LJtK?JUBJAgH'
         });
-
-        operations.mode.piece.open();
 
         // 1ページ目
         cy.get(datatest('text-comment')).should('have.value', '#Q=[O](L)J;#Q=[S](Z)T;hello');
@@ -220,27 +187,21 @@ describe('Comments', () => {
         cy.get(datatest('text-comment')).type('#Q=[](T)OZASLJ');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
-        minoPosition(Piece.T, Rotation.Spawn)(1, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.T, Rotation.Spawn, 1, 0);
 
         operations.mode.tools.nextPage();
 
         // 2ページ目
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
-        minoPosition(Piece.Z, Rotation.Spawn)(3, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.Z, Rotation.Spawn, 3, 0);
 
         operations.mode.tools.nextPage();
 
         // 3ページ目
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
-        minoPosition(Piece.O, Rotation.Spawn)(8, 0).forEach(([x, y]) => {
-            operations.mode.block.click(x, y);
-        });
+        operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 0);
 
         cy.get(datatest('text-comment')).clear().type('#Q=[O](S)LJ');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[O](S)LJ');

@@ -403,7 +403,7 @@ describe('Editor UI final concept', () => {
         cy.wait(600);
         cy.get(datatest('btn-piece-i')).trigger('pointerup', { pointerId: 1, button: 0 });
 
-        cy.get(datatest('btn-piece-i-pin')).should('have.attr', 'aria-label', 'Unpin');
+        cy.get(datatest('btn-piece-gray-pin')).should('have.attr', 'aria-label', 'Unpin');
         cy.get(datatest('btn-piece-inference')).should('have.attr', 'data-active', 'true');
         cy.get(datatest('btn-select-mode')).should('have.attr', 'data-active', 'true');
     });

@@ -66,8 +66,13 @@ describe('Cold Clear menu', () => {
 
         cy.get(datatest('btn-cold-clear-evaluate-placed-spawn-score')).click();
 
-        cy.get(datatest('mdl-cold-clear-menu')).should('not.exist');
-        cy.get(datatest('btn-tree-ai-menu')).should('be.visible');
+        // Observe the persistent tree control's running state before waiting
+        // for the modal component to be removed.
+        cy.get(datatest('btn-tree-ai-menu'), { timeout: 15000 })
+            .should('have.attr', 'data-cold-clear-running', '1');
+        cy.get(datatest('btn-tree-ai-menu'), { timeout: 15000 })
+            .should('have.attr', 'data-cold-clear-running', '0');
+        cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
     });
 
     it('allows editing top branch count and disables it while search runs', () => {

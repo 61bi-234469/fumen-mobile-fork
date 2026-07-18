@@ -1,4 +1,4 @@
-import { datatest, expectFumen, minoPosition, Piece, Rotation, visit } from '../support/common';
+import { datatest, expectFumen, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('History', () => {
@@ -73,30 +73,21 @@ describe('History', () => {
         const testCases = [
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.I, Rotation.Spawn)(4, 0).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.I, Rotation.Spawn, 4, 0);
                 },
                 fumen: 'v115@vhARQJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.Z, Rotation.Spawn)(4, 1).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.Z, Rotation.Spawn, 4, 1);
                 },
                 fumen: 'v115@vhBRQJUGJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.L, Rotation.Right)(0, 1).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.L, Rotation.Right, 0, 1);
                 },
                 fumen: 'v115@vhCRQJUGJKJJ',
                 count: 1,
@@ -117,10 +108,7 @@ describe('History', () => {
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.O, Rotation.Spawn)(8, 0).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 0);
                 },
                 fumen: 'v115@vhERQJUGJKJJAgHTNJ',
                 count: 1,
@@ -159,10 +147,7 @@ describe('History', () => {
         const testCases = [
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.I, Rotation.Left)(9, 3).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.I, Rotation.Left, 9, 3);
                 },
                 fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhBp+I6WB',
                 count: 1,
@@ -170,10 +155,7 @@ describe('History', () => {
             {
                 callback: () => {
                     operations.menu.lastPage();
-                    operations.mode.piece.open();
-                    minoPosition(Piece.T, Rotation.Reverse)(2, 2).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 2);
                 },
                 fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhCp+I6WBFlB',
                 count: 1,
@@ -219,30 +201,21 @@ describe('History', () => {
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.O, Rotation.Spawn)(1, 0).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.O, Rotation.Spawn, 1, 0);
                 },
                 fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?A',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.J, Rotation.Right)(0, 1).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.J, Rotation.Right, 0, 1);
                 },
                 fumen: 'v115@vhBzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.I, Rotation.Spawn)(1, 3).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.I, Rotation.Spawn, 1, 3);
                 },
                 fumen: 'v115@vhCzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/I',
                 count: 1,
@@ -256,30 +229,21 @@ describe('History', () => {
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.T, Rotation.Left)(9, 1).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.T, Rotation.Left, 9, 1);
                 },
                 fumen: 'v115@vhDzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.Z, Rotation.Spawn)(7, 0).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.Z, Rotation.Spawn, 7, 0);
                 },
                 fumen: 'v115@vhEzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.S, Rotation.Spawn)(8, 2).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.S, Rotation.Spawn, 8, 2);
                 },
                 fumen: 'v115@vhFzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?J',
                 count: 1,
@@ -316,10 +280,7 @@ describe('History', () => {
         const testCases = [
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.I, Rotation.Spawn)(4, 0).forEach((block) => {
-                        operations.mode.block.click(block[0], block[1]);
-                    });
+                    operations.mode.piece.place(Piece.I, Rotation.Spawn, 4, 0);
                 },
                 fumen: 'v115@hlFexhhlFexh9gRpFeBtRpFeBtg0HewwRQJ',
                 count: 1,
@@ -445,30 +406,21 @@ describe('History', () => {
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.O, Rotation.Spawn)(8, 1).forEach((block) => {
-                        operations.mode.block.click(block[0], block[1]);
-                    });
+                    operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 1);
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhATIJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.T, Rotation.Reverse)(2, 1).forEach((block) => {
-                        operations.mode.block.click(block[0], block[1]);
-                    });
+                    operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 1);
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-                    minoPosition(Piece.S, Rotation.Right)(5, 1).forEach((block) => {
-                        operations.mode.block.click(block[0], block[1]);
-                    });
+                    operations.mode.piece.place(Piece.S, Rotation.Right, 5, 1);
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhCTIJFKJPMJ',
                 count: 1,
@@ -594,27 +546,19 @@ describe('History', () => {
             },
             {
                 callback: () => {
-                    operations.mode.piece.open();
-
                     operations.mode.tools.nextPage();
 
                     cy.get(datatest('text-comment')).clear().type('#Q=[](O)LTS');
 
-                    minoPosition(Piece.O, Rotation.Spawn)(0, 0).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.O, Rotation.Spawn, 0, 0);
 
                     operations.mode.tools.nextPage();
 
-                    minoPosition(Piece.T, Rotation.Left)(9, 1).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.T, Rotation.Left, 9, 1);
 
                     operations.mode.tools.nextPage();
 
-                    minoPosition(Piece.S, Rotation.Spawn)(8, 2).forEach(([x, y]) => {
-                        operations.mode.block.click(x, y);
-                    });
+                    operations.mode.piece.place(Piece.S, Rotation.Spawn, 8, 2);
                 },
                 fumen: 'v115@vhCAgWFA0YceERAAAAAgWFAooMDEPBAAATJYXAFLDm?ClcJSAVDEHBEooRBPoAVBs+zBARhxSHexSRe9NJQhQLHeRL?IeQLJeXDJFhxDGexDeeAgHvhAAgWFA0YceETAAAA',
                 count: 4,

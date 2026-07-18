@@ -1063,6 +1063,7 @@ export const view: View<State, Actions> = (state, actions) => {
         ...(isTreeView ? [h('button', {
             key: 'tree-ai-menu',
             datatest: 'btn-tree-ai-menu',
+            'data-cold-clear-running': state.coldClear.isRunning ? '1' : '0',
             className: 'corner-fab',
             style: treeAiButtonStyle,
             onclick: () => actions.openColdClearMenuModal(),

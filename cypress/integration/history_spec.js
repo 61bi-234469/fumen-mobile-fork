@@ -392,7 +392,10 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.fillRow.open();
                     operations.mode.fillRow.Empty();
-                    operations.mode.block.dragToUp(9, { from: -1, to: 10 });
+                    // Sent-line and field blocks use separate Konva drag state. Clear the
+                    // sent line with its own gesture, then sweep the field rows.
+                    operations.mode.block.click(9, -1);
+                    operations.mode.block.dragToUp(9, { from: 0, to: 10 });
                 },
                 fumen: 'v115@vhAAgH',
                 count: 1,

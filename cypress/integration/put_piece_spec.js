@@ -88,7 +88,9 @@ describe('Put pieces', () => {
         cy.get(datatest('text-comment')).invoke('val').then(comment => {
             const matched = /^#Q=\[T\]\([IOTLJSZ]\)([IOTLJSZ]+)$/.exec(comment);
             expect(matched).to.not.equal(null);
-            expect(matched[1]).to.have.length(19);
+            // The input has 21 NEXT pieces. Hard drop consumes one, leaving 20;
+            // the infinite queue must not append another bag while seven are known.
+            expect(matched[1]).to.have.length(20);
         });
     });
 

@@ -264,7 +264,8 @@ describe('Editor UI final concept', () => {
 
     it('preserves the active tool while opening and closing inspectors', () => {
         visit({ mode: 'edit' });
-        cy.get(datatest('btn-piece-mode')).click().should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
 
         cy.get(datatest('btn-utils-mode')).click();
         cy.get(datatest('overlay-utils')).should('be.visible');

@@ -336,6 +336,7 @@ describe('Comments', () => {
         cy.get(datatest('text-comment')).type('#Q=[](L)JSZOTI');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](L)JSZOTI');
 
+        operations.mode.piece.open();
         operations.mode.piece.spawn.L();
         operations.mode.piece.harddrop();
 

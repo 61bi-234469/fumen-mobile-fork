@@ -215,6 +215,11 @@ export const disableModalAnimations = (win) => {
         modal.defaults.inDuration = 0;
         modal.defaults.outDuration = 0;
     }
+    const toast = win.M && win.M.Toast;
+    if (toast && toast.defaults) {
+        toast.defaults.inDuration = 0;
+        toast.defaults.outDuration = 0;
+    }
 };
 
 export const visit = (

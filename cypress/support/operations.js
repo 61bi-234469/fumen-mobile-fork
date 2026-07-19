@@ -673,7 +673,13 @@ export const operations = {
             // The fumen data marker is the deterministic completion signal. The toast is
             // transient and can expire before Cypress observes it on a busy CI runner.
             cy.get(datatest('copied-fumen-data')).should('exist');
-            // Do not let either a success or failure toast cover the next editor action.
+            // Dismiss the app toast before the next editor action. Materialize's timer can
+            // be delayed by a busy CI browser, so waiting for its natural expiry is flaky.
+            cy.window().then((win) => {
+                if (win.M && win.M.Toast && typeof win.M.Toast.dismissAll === 'function') {
+                    win.M.Toast.dismissAll();
+                }
+            });
             cy.get('.toast.top-toast').should('not.exist');
         },
         firstPage: () => {

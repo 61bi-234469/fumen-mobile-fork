@@ -45,7 +45,10 @@ describe('User settings', () => {
         cy.get(datatest('gradient-piece-options')).should('not.be.visible');
         cy.get(datatest('summary-user-settings-gradient')).click();
         cy.get(datatest('details-user-settings-gradient')).should('have.attr', 'open');
-        cy.get(datatest('gradient-piece-options')).should('be.visible')
+        // The expanded panel can extend below the fixed modal viewport at the
+        // default mobile size. Its display state is the behavior under test;
+        // force the radio interaction after that structural assertion.
+        cy.get(datatest('gradient-piece-options')).should('have.css', 'display', 'block')
             .find('input[type="radio"]').eq(1).check({ force: true }).should('be.checked');
         cy.get(datatest('btn-cancel')).click();
     });

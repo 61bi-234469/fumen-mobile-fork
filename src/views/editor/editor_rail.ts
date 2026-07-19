@@ -176,6 +176,19 @@ const row = (key: string, columns: VNode<{}>[]) => div({
     }),
 }, columns);
 
+const emptyPaletteCell = (height: number) => div({
+    key: 'piece-palette-empty',
+    datatest: 'piece-palette-empty',
+    'aria-hidden': 'true',
+    style: style({
+        background: '#fff',
+        boxSizing: 'border-box',
+        height: px(height),
+        minHeight: px(height),
+        width: '100%',
+    }),
+});
+
 const icon = (name: string, size: number) => BlockIcon({ key: `icon-${name}`, iconSize: size }, name);
 
 const minoPaletteSwatch = (selection: Piece, height: number, guideLineColor: boolean) => {
@@ -560,7 +573,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const visibleSelections = state.editorUi.primaryTool === 'piece'
         ? selections.filter(selection => selection !== 'comp')
         : selections;
-    const paletteCells = visibleSelections.map((selection) => {
+    const paletteCells: VNode<{}>[] = visibleSelections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
         const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
         const label = state.editorUi.primaryTool === 'piece' && selection === Piece.Empty
@@ -605,6 +618,11 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 compact ? undefined : getPaletteShortcut(state, selection)),
         });
     });
+    if (pieceModeVisible) {
+        // The infinite queue moved to the NEXT panel, but its former palette slot
+        // remains as an empty cell so PIECE and PAINT keep the same frame count.
+        paletteCells.push(emptyPaletteCell(cellHeight));
+    }
     const paletteGroup = toolGroup('rail-palette', twoColumns
         ? [0, 1, 2, 3, 4].map(index => row(`rail-palette-row-${index + 1}`,
             paletteCells.slice(index * 2, index * 2 + 2)))

@@ -187,6 +187,9 @@ describe('Editor UI final concept', () => {
     it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
         visit({ mode: 'edit' });
 
+        const paletteFrames = `${datatest('editor-rail')} [datatest^="btn-piece-"]:not(${datatest('btn-piece-mode')})`;
+        cy.get(paletteFrames).should('have.length', 10);
+
         cy.get(datatest('btn-paint-mode'))
             .should('have.css', 'background-color', 'rgb(232, 241, 251)')
             .and('have.css', 'color', 'rgb(21, 101, 192)');
@@ -205,6 +208,10 @@ describe('Editor UI final concept', () => {
             .should('contain', 'COMP');
 
         cy.get(datatest('btn-piece-mode')).click();
+        cy.get(paletteFrames).should('have.length', 9);
+        cy.get(datatest('piece-palette-empty')).should('be.visible');
+        cy.get(`${paletteFrames},${datatest('piece-palette-empty')}`)
+            .should('have.length', 10);
         cy.get(datatest('btn-piece-i')).find('img').should('exist');
 
         cy.get(datatest('btn-select-mode')).click();

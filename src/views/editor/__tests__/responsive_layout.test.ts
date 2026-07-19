@@ -49,10 +49,10 @@ describe('editor responsive layout', () => {
     });
 
     test('sizes the PIECE queue and vertically stacked rail for representative fields', () => {
-        expect(PIECE_RAIL_CELL_COUNT).toBe(15);
+        expect(PIECE_RAIL_CELL_COUNT).toBe(16);
         const metrics = getPieceRailMetrics(340, 38);
-        expect(metrics.nextMinoHeight).toBe(12);
-        expect(metrics.nextPanelHeight).toBe(116);
+        expect(metrics.nextMinoHeight).toBe(10);
+        expect(metrics.nextPanelHeight).toBe(106);
         expect(metrics.railCellHeight).toBe(12);
         expect(metrics.nextPanelHeight + metrics.railCellHeight * PIECE_RAIL_CELL_COUNT + 41).toBeLessThanOrEqual(340);
     });

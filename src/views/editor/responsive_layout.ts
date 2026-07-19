@@ -4,8 +4,8 @@ const MIN_RAIL_CELL_HEIGHT = 18;
 const MAX_RAIL_CELL_HEIGHT = 32;
 const RAIL_GROUP_GAPS_HEIGHT = 16;
 
-// PIECE時の右列は共有・設定、PIECE・AI、SELECT・PAINT、パレット9セルを縦に重ねる
-export const PIECE_RAIL_CELL_COUNT = 15;
+// PIECE時の右列は共有・設定、PIECE・AI、SELECT・PAINT、パレット10セルを縦に重ねる
+export const PIECE_RAIL_CELL_COUNT = 16;
 const MIN_PIECE_RAIL_CELL_HEIGHT = 12;
 // 4グループの枠線、セル間の区切り、グループ間gap、NEXT下の余白
 const PIECE_RAIL_CHROME_HEIGHT = 41;

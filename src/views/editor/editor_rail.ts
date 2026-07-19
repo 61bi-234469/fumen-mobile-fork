@@ -12,7 +12,7 @@ import { BlockIcon } from '../../components/atomics/icons';
 import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
-import { getResponsiveRailCellHeight } from './responsive_layout';
+import { getPieceRailMetrics, getResponsiveRailCellHeight } from './responsive_layout';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
 const LONG_PRESS_DURATION = 500;
@@ -388,11 +388,16 @@ const getPaletteShortcut = (state: State, selection: PaletteSelection): string |
     return code ? displayShortcut(code) : undefined;
 };
 
-export const getRailCellHeight = (layout: EditorLayout): number =>
-    getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns);
+export const getRailCellHeight = (layout: EditorLayout, pieceModeVisible = layout.pieceQueue.visible): number => (
+    pieceModeVisible
+        ? layout.pieceQueue.railCellHeight
+            || getPieceRailMetrics(layout.field.size.height, layout.pieceQueue.width).railCellHeight
+        : getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns)
+);
 
 export const editorRail = (state: State, actions: Actions, layout: EditorLayout) => {
-    const cellHeight = getRailCellHeight(layout);
+    const pieceModeVisible = state.editorUi.primaryTool === 'piece';
+    const cellHeight = getRailCellHeight(layout, pieceModeVisible);
     const twoColumns = layout.buttons.columns === 2;
     const compact = twoColumns || layout.canvas.size.height < 560 || layout.buttons.size.width < 72;
     const text = (label: string) => compact ? '' : label;
@@ -432,7 +437,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         ], editShortcut(shortcut)),
     });
 
-    const systemGroup = toolGroup('rail-system', [row('rail-system-row', [
+    const systemCells = [
         toolCell({
             key: 'btn-editor-share', datatest: 'btn-editor-share',
             label: i18n.EditorUi.ImportExport(), height: cellHeight,
@@ -445,7 +450,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             height: cellHeight,
             onpress: () => actions.openUserSettingsModal({ initialTab: 'field' }), children: icon('settings', iconSize),
         }),
-    ])]);
+    ];
+    const systemGroup = toolGroup(pieceModeVisible ? 'rail-system-piece' : 'rail-system', pieceModeVisible
+        ? systemCells
+        : [row('rail-system-row', systemCells)]);
 
     const pageCells = [
         pageCell('btn-insert-new-page', i18n.EditorUi.Add() || 'ADD', 'note_add', 'Add',
@@ -487,36 +495,35 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('P'))])],
     });
 
-    const aiAndPieceGroup = toolGroup('rail-ai-piece', [
-        row('rail-ai-piece-row', [
-            pieceModeCell,
-            toolCell({
-                key: 'btn-cold-clear', datatest: 'btn-cold-clear', label: i18n.ColdClear.MenuButtonLabel(),
-                height: cellHeight, status: state.coldClear.isRunning,
-                onpress: actions.openColdClearMenuModal,
-                children: [
-                    icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
-                    ...(compact ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
-                    ...(state.coldClear.progress ? [span({
-                        key: 'progress-badge',
-                        style: style({
-                            background: '#333', borderRadius: '8px', color: '#fff', fontSize: px(7),
-                            lineHeight: '11px', minWidth: '18px', padding: '0 2px', position: 'absolute',
-                            right: '2px', top: '2px',
-                        }),
-                    }, `${state.coldClear.progress.current}/${state.coldClear.progress.total}`)] : []),
-                    span({
-                        key: 'progress-live', 'aria-live': 'polite',
-                        style: style({ clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', height: '1px', overflow: 'hidden',
-                            position: 'absolute', whiteSpace: 'nowrap', width: '1px' }),
-                    }, state.coldClear.progress ? i18n.ColdClear.Progress(
-                        state.coldClear.progress.current,
-                        state.coldClear.progress.total,
-                    ) : ''),
-                ],
-            }),
-        ]),
-    ]);
+    const coldClearCell = toolCell({
+        key: 'btn-cold-clear', datatest: 'btn-cold-clear', label: i18n.ColdClear.MenuButtonLabel(),
+        height: cellHeight, status: state.coldClear.isRunning,
+        onpress: actions.openColdClearMenuModal,
+        children: [
+            icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
+            ...(compact ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
+            ...(state.coldClear.progress ? [span({
+                key: 'progress-badge',
+                style: style({
+                    background: '#333', borderRadius: '8px', color: '#fff', fontSize: px(7),
+                    lineHeight: '11px', minWidth: '18px', padding: '0 2px', position: 'absolute',
+                    right: '2px', top: '2px',
+                }),
+            }, `${state.coldClear.progress.current}/${state.coldClear.progress.total}`)] : []),
+            span({
+                key: 'progress-live', 'aria-live': 'polite',
+                style: style({ clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', height: '1px', overflow: 'hidden',
+                    position: 'absolute', whiteSpace: 'nowrap', width: '1px' }),
+            }, state.coldClear.progress ? i18n.ColdClear.Progress(
+                state.coldClear.progress.current,
+                state.coldClear.progress.total,
+            ) : ''),
+        ],
+    });
+    const aiAndPieceCells = [pieceModeCell, coldClearCell];
+    const aiAndPieceGroup = toolGroup(pieceModeVisible ? 'rail-ai-piece-piece' : 'rail-ai-piece', pieceModeVisible
+        ? aiAndPieceCells
+        : [row('rail-ai-piece-row', aiAndPieceCells)]);
     const auxiliaryAndAiGroup = div({
         key: 'rail-auxiliary-ai',
         style: style({
@@ -549,7 +556,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const selections: PaletteSelection[] = [
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
     ];
-    const paletteCells = selections.map((selection) => {
+    const visibleSelections = state.editorUi.primaryTool === 'piece'
+        ? selections.filter(selection => selection !== 'comp')
+        : selections;
+    const paletteCells = visibleSelections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
         const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
         const label = state.editorUi.primaryTool === 'piece' && selection === Piece.Empty
@@ -599,20 +609,41 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             paletteCells.slice(index * 2, index * 2 + 2)))
         : paletteCells);
 
+    // PIECE時は「↑↓（共有）〜切り取り」までの共有・設定・ページ操作セルを描画しない
+    const railGroups = pieceModeVisible
+        ? [systemGroup, aiAndPieceGroup, modeGroup, paletteGroup]
+        : [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup];
+
+    // PIECE時はNEXT枠の下（同じ右列）へ詰めて並べ、余りは最下部の空白として残す
+    const railStyle = pieceModeVisible ? style({
+        boxSizing: 'border-box',
+        display: 'flex',
+        flex: '1 1 auto',
+        flexDirection: 'column',
+        gap: px(6),
+        marginTop: px(4),
+        minHeight: '0',
+        overflow: 'hidden',
+        width: '100%',
+    }) : style({
+        alignSelf: 'center',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        height: px(layout.field.size.height),
+        justifyContent: 'space-between',
+        marginLeft: '8px',
+        minWidth: px(layout.buttons.size.width),
+        overflow: 'hidden',
+        width: px(layout.buttons.size.width),
+    });
+
     return div({
-        key: 'editor-rail',
+        // PIECE切替時は子構造（縦積み／通常レスポンシブ）が変わるため、
+        // Hyperappに同じDOMを再利用させずレール全体を置き換える。
+        key: pieceModeVisible ? 'editor-rail-piece' : 'editor-rail',
         datatest: 'editor-rail',
         'data-columns': String(layout.buttons.columns),
-        style: style({
-            alignSelf: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            height: px(layout.field.size.height),
-            justifyContent: 'space-between',
-            marginLeft: '8px',
-            minWidth: px(layout.buttons.size.width),
-            overflow: 'hidden',
-            width: px(layout.buttons.size.width),
-        }),
-    }, [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup]);
+        style: railStyle,
+    }, railGroups);
 };

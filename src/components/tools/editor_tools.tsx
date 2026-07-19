@@ -17,6 +17,7 @@ interface Props {
     inferenceCount: number;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
+    loop: boolean;
     actions: {
         openFumenModal: () => void;
         openMenuModal: () => void;
@@ -48,6 +49,7 @@ export const EditorTools: Component<Props> = (
         inferenceCount,
         editShortcuts,
         shortcutLabelVisible,
+        loop,
         actions,
     },
 ) => {
@@ -124,9 +126,9 @@ export const EditorTools: Component<Props> = (
                             key="btn-back-page" fontSize={iconSize} marginRight={itemGap} colors={colors}
                             shortcutLabel={getLabel('PrevPage')}
                             actions={{
-                                onclick: () => actions.backPage({ loop: false }),
+                                onclick: () => actions.backPage({ loop }),
                                 onlongpress: () => actions.firstPage(),
-                            }} enable={1 < currentPage}/>
+                            }} enable={loop || 1 < currentPage}/>
 
                 <ToolText datatest="text-pages" height={buttonHeight}
                           minWidth={pageWidth} fontSize={compact ? 15 : 18} marginRight={itemGap}>
@@ -138,10 +140,10 @@ export const EditorTools: Component<Props> = (
                             key="btn-next-page" fontSize={iconSize} marginRight={compact ? 1 : 4} colors={colors}
                             shortcutLabel={getLabel('NextPage')}
                             actions={{
-                                onclick: () => actions.nextPage({ loop: false }),
+                                onclick: () => actions.nextPage({ loop }),
                                 onlongpress: () => actions.lastPage(),
                             }}
-                            enable={currentPage < maxPage}/>
+                            enable={loop || currentPage < maxPage}/>
 
                 <ToolButton iconName="add" datatest="btn-insert-page" width={addWidth} height={buttonHeight}
                             key="btn-insert-page" fontSize={edgeIconSize} marginRight={itemGap} colors={colors}

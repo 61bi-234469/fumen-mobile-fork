@@ -46,7 +46,7 @@ export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = 
         'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut',
     ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome', 'Insert', 'Copy', 'Cut'],
-    [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
+    [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Menu', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
 };
 
 // モーダルが開いているかチェック
@@ -154,12 +154,10 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
         actions.duplicatePageOnly({ index: state.fumen.currentIndex + 1 });
         break;
     case 'PrevPage':
-        // Editor は loop:false、Reader は loop設定に従う
-        actions.backPage({ loop: screen === Screens.Reader ? loop : false });
+        actions.backPage({ loop });
         break;
     case 'NextPage':
-        // Editor は loop:false、Reader は loop設定に従う
-        actions.nextPage({ loop: screen === Screens.Reader ? loop : false });
+        actions.nextPage({ loop });
         break;
     case 'Menu':
         actions.openMenuModal();

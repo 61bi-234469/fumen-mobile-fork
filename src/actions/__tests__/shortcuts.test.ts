@@ -23,6 +23,8 @@ describe('clipboard insert shortcut', () => {
     let hold: jest.Mock;
     let moveToRight: jest.Mock;
     let selectEditorPalette: jest.Mock;
+    let backPage: jest.Mock;
+    let nextPage: jest.Mock;
 
     beforeAll(() => {
         initShortcutHandlers(() => state, () => actions);
@@ -38,6 +40,8 @@ describe('clipboard insert shortcut', () => {
         hold = jest.fn();
         moveToRight = jest.fn();
         selectEditorPalette = jest.fn();
+        backPage = jest.fn();
+        nextPage = jest.fn();
         state = {
             modal: {
                 append: false,
@@ -89,12 +93,14 @@ describe('clipboard insert shortcut', () => {
             },
         } as State;
         actions = {
+            backPage,
             duplicatePageOnly,
             harddrop,
             hold,
             importPagesFromClipboard,
             insertPageFromClipboard,
             moveToRight,
+            nextPage,
             replaceAllFromClipboard,
             selectEditorPalette,
         } as unknown as Actions;
@@ -121,6 +127,29 @@ describe('clipboard insert shortcut', () => {
             key: ' ',
         }));
     };
+
+    const dispatchPageShortcut = (code: 'Digit1' | 'Digit2') => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+    };
+
+    test('editor page shortcuts pass loop false when disabled', () => {
+        dispatchPageShortcut('Digit1');
+        dispatchPageShortcut('Digit2');
+
+        expect(backPage).toHaveBeenCalledWith({ loop: false });
+        expect(nextPage).toHaveBeenCalledWith({ loop: false });
+    });
+
+    test('editor page shortcuts pass loop true when enabled', () => {
+        state.mode.loop = true;
+
+        dispatchPageShortcut('Digit1');
+        dispatchPageShortcut('Digit2');
+
+        expect(backPage).toHaveBeenCalledWith({ loop: true });
+        expect(nextPage).toHaveBeenCalledWith({ loop: true });
+    });
 
     test('short press uses the same add import as the modal', () => {
         dispatchPasteShortcut('keydown');

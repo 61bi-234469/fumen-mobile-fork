@@ -667,6 +667,7 @@ describe('Open fumen', () => {
         });
 
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 2');
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](S)A');
 
         // Quizが間違っていても、操作はできること

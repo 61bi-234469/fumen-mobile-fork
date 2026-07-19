@@ -1,4 +1,4 @@
-import { Piece, isMinoPiece } from '../lib/enums';
+import { FieldConstants, Piece, isMinoPiece } from '../lib/enums';
 import type { action } from '../actions';
 import type { TreeOperationActions } from './tree_operations';
 import { NextState, sequence } from './commons';
@@ -363,6 +363,18 @@ export const createRandomSevenBags = (count: number): Piece[] => {
     return queue;
 };
 
+export const fillInfiniteQueueToMinimum = (
+    queue: Piece[], currentQueueLength: number, minimumLength = 7,
+): Piece[] => {
+    const filled = queue.slice();
+    let knownLength = currentQueueLength;
+    while (knownLength < minimumLength) {
+        filled.push(...createRandomSevenBag());
+        knownLength += ONE_BAG_PIECES.length;
+    }
+    return filled;
+};
+
 const parseQueueCommentFromPage = (
     pages: Page[],
     pageIndex: number,
@@ -537,6 +549,7 @@ export const resolveCurrentColdClearMenuQueueState = (
 type SearchInputError =
     | 'targetNotFound'
     | 'unsupportedPageFlags'
+    | 'fieldContainsCompleteLine'
     | 'invalidQueueComment'
     | 'invalidQuizChain'
     | 'currentPieceMismatch';
@@ -611,6 +624,22 @@ const resolveSearchStartState = (
     };
 };
 
+const fieldContainsCompleteLine = (field: Field): boolean => {
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        let complete = true;
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            if (field.get(x, y) === Piece.Empty) {
+                complete = false;
+                break;
+            }
+        }
+        if (complete) {
+            return true;
+        }
+    }
+    return false;
+};
+
 const resolveSingleSearchInput = (
     state: Readonly<State>,
 ): SearchInputResult => {
@@ -657,6 +686,9 @@ const resolveSingleSearchInput = (
     if (!searchStart) {
         return { error: 'invalidQueueComment' };
     }
+    if (fieldContainsCompleteLine(searchStart.field)) {
+        return { error: 'fieldContainsCompleteLine' };
+    }
     const { field, searchQueue } = searchStart;
 
     return {
@@ -678,6 +710,7 @@ const resolveTopBranchSearchInput = (
 type PlacedSpawnInputError =
     | 'targetNotFound'
     | 'unsupportedPageFlags'
+    | 'fieldContainsCompleteLine'
     | 'invalidQueueComment'
     | 'invalidQuizChain'
     | 'missingPlacedPiece'
@@ -745,6 +778,9 @@ const resolvePlacedSpawnInput = (
 
     const pages = new Pages(state.fumen.pages);
     const preLockField = pages.getField(target.pageIndex, PageFieldOperation.Command);
+    if (fieldContainsCompleteLine(preLockField)) {
+        return { error: 'fieldContainsCompleteLine' };
+    }
     const placedPiece = page.piece;
     const x = placedPiece.coordinate.x;
     const y = placedPiece.coordinate.y;
@@ -928,6 +964,9 @@ const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
     case 'unsupportedPageFlags':
         message = i18n.ColdClear.InvalidPageFlags();
         break;
+    case 'fieldContainsCompleteLine':
+        message = i18n.ColdClear.FieldContainsCompleteLine();
+        break;
     case 'invalidQueueComment':
         message = i18n.ColdClear.InvalidQueueComment();
         break;
@@ -963,6 +1002,9 @@ const showSearchValidationError = (error: SearchInputError) => {
     switch (error) {
     case 'unsupportedPageFlags':
         message = i18n.ColdClear.InvalidPageFlags();
+        break;
+    case 'fieldContainsCompleteLine':
+        message = i18n.ColdClear.FieldContainsCompleteLine();
         break;
     case 'invalidQueueComment':
         message = i18n.ColdClear.InvalidQueueComment();
@@ -1734,7 +1776,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             });
         }
 
-        const queueWithInitialBags = (parsed !== null ? parsed.queue : []).concat(createRandomSevenBags(3));
+        const existingQueue = parsed !== null ? parsed.queue : [];
 
         // カレントの決定: スポーンミノ > コメントのカレント > NEXT先頭 (取り出してスポーン)
         let nextCurrent: Piece;
@@ -1743,15 +1785,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (spawnedPiece !== undefined) {
             nextCurrent = spawnedPiece;
             initialSpawnPiece = undefined;
-            nextQueue = queueWithInitialBags;
+            nextQueue = fillInfiniteQueueToMinimum(existingQueue, existingQueue.length + 1);
         } else if (parsed !== null && parsed.current !== null) {
             nextCurrent = parsed.current;
             initialSpawnPiece = parsed.current;
-            nextQueue = queueWithInitialBags;
+            nextQueue = fillInfiniteQueueToMinimum(existingQueue, existingQueue.length + 1);
         } else {
-            nextCurrent = queueWithInitialBags[0];
+            const filledQueue = fillInfiniteQueueToMinimum(existingQueue, existingQueue.length);
+            nextCurrent = filledQueue[0];
             initialSpawnPiece = nextCurrent;
-            nextQueue = queueWithInitialBags.slice(1);
+            nextQueue = filledQueue.slice(1);
         }
 
         const nextComment = parsed === null

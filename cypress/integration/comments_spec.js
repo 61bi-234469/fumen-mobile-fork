@@ -13,6 +13,7 @@ describe('Comments', () => {
 
     it('Should not apply comment to other pages', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
 
         operations.mode.tools.nextPage();
         operations.mode.tools.nextPage();
@@ -36,6 +37,7 @@ describe('Comments', () => {
 
         operations.mode.piece.open();
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('hello');
 
         operations.menu.commentReadonly();
@@ -53,6 +55,7 @@ describe('Comments', () => {
         // 1ページ目
         operations.mode.piece.place(Piece.O, Rotation.Spawn, 3, 0);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('hello');
 
         // 2ページ目
@@ -61,11 +64,13 @@ describe('Comments', () => {
         // 3ページ目
         operations.mode.piece.place(Piece.J, Rotation.Reverse, 7, 2);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('world');
 
         // 4ページ目
         operations.mode.piece.place(Piece.I, Rotation.Left, 9, 1);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('!!!');
 
         // 5ページ目
@@ -74,6 +79,7 @@ describe('Comments', () => {
         // 6ページ目
         operations.mode.piece.place(Piece.S, Rotation.Left, 1, 1);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('ここまで1巡目');
 
         // 7ページ目
@@ -81,6 +87,7 @@ describe('Comments', () => {
         operations.mode.piece.softdrop();
         operations.mode.piece.rotateToLeft();
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TSD');
 
         // 8ページ目
@@ -110,6 +117,7 @@ describe('Comments', () => {
         // 1ページ目
         operations.mode.piece.place(Piece.T, Rotation.Spawn, 1, 0);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('#Q=[](T)ZSIOLJ');
 
         operations.mode.tools.nextPage();
@@ -125,6 +133,7 @@ describe('Comments', () => {
         // 4ページ目
         operations.mode.piece.place(Piece.Z, Rotation.Spawn, 5, 0);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('#Q=[](T)ZSIOLJ');
 
         // 5ページ目
@@ -141,6 +150,7 @@ describe('Comments', () => {
             mode: 'edit',
             fumen: 'v115@vhGyOY3AFLDmClcJSAVjiSAVG88AYS88AZPUABCowA?BR4K6Bl/UtClfJSASE7SAyltSATzarDMjzCATEJm/I3LJtK?JUBJAgH'
         });
+        operations.mode.comment.open();
 
         // 1ページ目
         cy.get(datatest('text-comment')).should('have.value', '#Q=[O](L)J;#Q=[S](Z)T;hello');
@@ -184,6 +194,7 @@ describe('Comments', () => {
         operations.mode.piece.open();
 
         // 1ページ目
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('#Q=[](T)OZASLJ');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
@@ -192,6 +203,7 @@ describe('Comments', () => {
         operations.mode.tools.nextPage();
 
         // 2ページ目
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
         operations.mode.piece.place(Piece.Z, Rotation.Spawn, 3, 0);
@@ -199,10 +211,12 @@ describe('Comments', () => {
         operations.mode.tools.nextPage();
 
         // 3ページ目
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](T)OZASLJ');
 
         operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 0);
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('#Q=[O](S)LJ');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[O](S)LJ');
 
@@ -215,6 +229,7 @@ describe('Comments', () => {
 
     it('merge comment1', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
 
         operations.mode.tools.nextPage();
         operations.mode.tools.nextPage();
@@ -241,6 +256,7 @@ describe('Comments', () => {
 
     it('merge comment2', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
 
         // 1ページ
         cy.get(datatest('text-comment')).type('こんにちは');
@@ -316,6 +332,7 @@ describe('Comments', () => {
         operations.mode.piece.open();
 
         // 1ページ
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).type('#Q=[](L)JSZOTI');
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](L)JSZOTI');
 
@@ -324,21 +341,26 @@ describe('Comments', () => {
 
         // 2ページ（ハードドロップが次ページを自動挿入し、クイズのNEXTをスポーンして
         // コメントへ反映するため、明示的なページ送りは不要になった）
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](J)SZOTI');
 
         // 自動スポーンされたカレント(J)をロックせずSに置き換える（クイズのStock進行を検証する）。
         // spawn.S() はピースが載っていると先にページ送りしてJをロックしてしまうため、
         // パレットの短押しで直接カレントを差し替える。
+        operations.mode.piece.open();
         cy.get(datatest('btn-piece-s')).click();
         operations.mode.piece.harddrop();
 
         // 3ページ
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[J](Z)OTI');
 
+        operations.mode.piece.open();
         cy.get(datatest('btn-piece-z')).click();
         operations.mode.piece.harddrop();
 
         // 4ページ
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[J](O)TI');
 
         operations.mode.tools.backPage();

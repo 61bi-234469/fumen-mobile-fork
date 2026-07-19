@@ -33,6 +33,43 @@ const assertRailArrangement = () => {
     });
 };
 
+const assertPieceRailSingleColumn = () => {
+    const selectors = ['btn-editor-share', 'btn-editor-user-settings', 'btn-piece-mode', 'btn-cold-clear'];
+    cy.get(selectors.map(datatest).join(',')).then(elements => {
+        const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+        const cells = selectors.map(rect);
+        cells.slice(1).forEach(cell => {
+            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
+            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        });
+        expect(rect('btn-editor-share').bottom).to.be.at.most(rect('btn-editor-user-settings').top);
+        expect(rect('btn-piece-mode').bottom).to.be.at.most(rect('btn-cold-clear').top);
+    });
+    cy.get(`${datatest('editor-rail')} button`).then(buttons => {
+        const cells = Array.from(buttons).map(button => button.getBoundingClientRect());
+        cells.slice(1).forEach(cell => {
+            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
+            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        });
+    });
+    cy.get(`${datatest('editor-rail')},${datatest('btn-piece-gray')}`).then(elements => {
+        const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
+        const lastCell = elements.filter(datatest('btn-piece-gray'))[0].getBoundingClientRect();
+        expect(rail.bottom - lastCell.bottom).to.be.at.least(3);
+    });
+};
+
+const assertInfiniteToggleFits = () => {
+    cy.get(datatest('piece-queue-infinite')).then(toggle => {
+        const toggleRect = toggle[0].getBoundingClientRect();
+        const checkboxRect = toggle.find(datatest('piece-queue-infinite-checkbox'))[0].getBoundingClientRect();
+        const textRect = toggle.find(datatest('piece-queue-infinite-text'))[0].getBoundingClientRect();
+        expect(checkboxRect.left).to.be.at.least(toggleRect.left);
+        expect(textRect.right).to.be.at.most(toggleRect.right);
+        expect(toggle[0].scrollWidth).to.be.at.most(Math.ceil(toggleRect.width));
+    });
+};
+
 describe('Editor UI final concept', () => {
     beforeEach(() => cy.clearLocalStorage());
 
@@ -70,16 +107,36 @@ describe('Editor UI final concept', () => {
     });
 
     [
-        [320, 568],
-        [375, 667],
-        [390, 844],
-        [844, 390],
-    ].forEach(([width, height]) => {
+        [320, 568, true],
+        [375, 667, true],
+        [390, 844, true],
+        [844, 390, true],
+        [1024, 768, false],
+        [1920, 1080, false],
+    ].forEach(([width, height, mobile]) => {
         it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
             cy.viewport(width, height);
-            visit({ mode: 'edit' });
+            visit({ mode: 'edit', mobile });
             cy.get(datatest('btn-piece-mode')).click();
 
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '1');
+            cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
+            assertPieceRailSingleColumn();
+            assertInfiniteToggleFits();
+            ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
+                'btn-utils-mode', 'btn-flags-mode', 'btn-piece-inference'].forEach(selector => {
+                cy.get(datatest(selector)).should('not.exist');
+            });
+            cy.get([
+                datatest('piece-queue-hold'),
+                datatest('piece-queue-next'),
+                datatest('editor-field-frame'),
+                datatest('editor-rail'),
+            ].join(',')).each(element => {
+                const rect = element[0].getBoundingClientRect();
+                expect(rect.left).to.be.at.least(0);
+                expect(rect.right).to.be.at.most(width);
+            });
             cy.get(datatest('tray-context')).then(tray => {
                 cy.get(datatest('tools')).then(tools => {
                     expect(tray[0].getBoundingClientRect().bottom)
@@ -228,11 +285,11 @@ describe('Editor UI final concept', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
-        // Default: paint mode active, context tray occupies the bottom band, comment stays visible.
+        // Default: paint mode active, context tray occupies the bottom band, comment is hidden.
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray--compact');
-        cy.get(datatest('text-comment')).should('exist');
+        cy.get(datatest('text-comment')).should('not.exist');
         cy.get(datatest('field-bottom-tray')).then(tray => {
             const trayRect = tray[0].getBoundingClientRect();
             cy.get(datatest('editor-field-frame')).then(field => {

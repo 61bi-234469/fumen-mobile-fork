@@ -622,6 +622,9 @@ export const view: View<State, Actions> = (state, actions) => {
             homeShortcutLabel: showShortcutLabel && state.mode.editShortcuts.EditHome
                 ? displayShortcut(state.mode.editShortcuts.EditHome)
                 : undefined,
+            menuShortcutLabel: showShortcutLabel && state.mode.editShortcuts.Menu
+                ? displayShortcut(state.mode.editShortcuts.Menu)
+                : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 openUtils: () => actions.openEditorInspector({ inspector: 'utils' }),
@@ -631,6 +634,8 @@ export const view: View<State, Actions> = (state, actions) => {
                     ? actions.openTreeDisableConfirmModal()
                     : actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
+                openMenuModal: () => actions.openMenuModal(),
+                executeNewFumen: () => actions.executeNewFumen(),
             },
             height: TOOLS_HEIGHT,
         }),

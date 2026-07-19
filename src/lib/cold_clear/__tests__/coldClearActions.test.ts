@@ -3,6 +3,8 @@ import {
     canStartColdClearSequenceSearch,
     canSwapCurrentPieceWithHoldQueue,
     coldClearActions,
+    createRandomSevenBags,
+    fillInfiniteQueueToMinimum,
     initColdClearActions,
     resolveCurrentColdClearMenuQueueState,
     resetForTesting,
@@ -63,6 +65,7 @@ jest.mock('../../../locales/keys', () => ({
             EvaluatePlacedSpawnScoreLabel: () => 'Placed Score',
             EvaluatePlacedSpawnScoreDescription: () => 'Evaluate placed piece',
             InvalidPageFlags: () => 'Invalid page flags',
+            FieldContainsCompleteLine: () => 'Field contains a complete line',
             InvalidQueueComment: () => 'Invalid queue comment',
             PlacedPieceRequired: () => 'Placed piece required',
             CurrentPieceRequired: () => 'Current piece required for score',
@@ -163,6 +166,24 @@ function makeColdClearState(overrides: {
 }
 
 describe('coldClearActions run isolation', () => {
+    test('creates independent seven-bags containing each mino exactly once', () => {
+        const pieces = createRandomSevenBags(2);
+        const expected = [Piece.I, Piece.J, Piece.L, Piece.O, Piece.S, Piece.T, Piece.Z].sort();
+
+        expect(pieces).toHaveLength(14);
+        expect(pieces.slice(0, 7).sort()).toEqual(expected);
+        expect(pieces.slice(7, 14).sort()).toEqual(expected);
+    });
+
+    test('refills an infinite queue by a whole bag only when fewer than seven pieces are known', () => {
+        const fullQueue = [Piece.I, Piece.J, Piece.L, Piece.O, Piece.S, Piece.T, Piece.Z];
+        expect(fillInfiniteQueueToMinimum(fullQueue, 7)).toEqual(fullQueue);
+
+        const refilled = fillInfiniteQueueToMinimum(fullQueue.slice(0, 6), 6);
+        expect(refilled).toHaveLength(13);
+        expect(refilled.slice(6).sort()).toEqual(fullQueue.slice().sort());
+    });
+
     beforeEach(() => {
         jest.useFakeTimers();
         resetForTesting();
@@ -357,6 +378,20 @@ describe('coldClearActions run isolation', () => {
         const state = makeColdClearState({ commentText: 'hello' });
         const result = coldClearActions.startColdClearSearch()(state);
         expect(result).toBeUndefined();
+    });
+
+    test('startColdClearSearch rejects a field with a complete line', () => {
+        const state = makeColdClearState();
+        for (let x = 0; x < 10; x += 1) {
+            state.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
+        }
+
+        const result = coldClearActions.startColdClearSearch()(state);
+
+        expect(result).toBeUndefined();
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Field contains a complete line',
+        }));
     });
 
     test('notifies when the quiz comment reference chain is invalid', () => {
@@ -1826,7 +1861,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
 
         expect(setCommentText).toHaveBeenCalledWith({
-            text: '#Q=[](O)TJLSZIOTJLSZIOTJLSZI',
+            text: '#Q=[](O)TJLSZI',
             pageIndex: 0,
         });
         expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.O, srs: true });
@@ -1847,7 +1882,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
 
         expect(setCommentText).toHaveBeenCalledWith({
-            text: '#Q=[](O)TJLSZIOTJLSZIOTJLSZI',
+            text: '#Q=[](O)TJLSZI',
             pageIndex: 0,
         });
         expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.O, srs: true });
@@ -1860,7 +1895,7 @@ describe('coldClearActions run isolation', () => {
         randomSpy.mockRestore();
     });
 
-    test('toggleInfinitePieceQueue appends three bags before spawning the existing queue front', () => {
+    test('toggleInfinitePieceQueue appends one whole bag when the existing queue is below seven', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const spawnPiece = jest.fn().mockReturnValue(() => ({}));
@@ -1871,7 +1906,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
 
         expect(setCommentText).toHaveBeenCalledWith({
-            text: '#Q=[](I)OTJLSZIOTJLSZIOTJLSZI',
+            text: '#Q=[](I)OTJLSZI',
             pageIndex: 0,
         });
         expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.I, srs: true });

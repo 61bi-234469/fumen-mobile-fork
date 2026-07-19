@@ -11,7 +11,7 @@ import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { test180Rotation, testLeftRotationSrsPlus, testRightRotationSrsPlus } from '../lib/srs_plus';
 import { fillRowActions } from './fill_row';
-import { coldClearActions, createRandomSevenBag, getCurrentColdClearQueueComment } from './cold_clear';
+import { coldClearActions, fillInfiniteQueueToMinimum, getCurrentColdClearQueueComment } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { State } from '../states';
@@ -109,15 +109,6 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
-const INFINITE_QUEUE_REFILL_THRESHOLD = 21;
-
-const appendInfiniteQueueBagIfNeeded = (queue: Piece[], currentQueueLength: number): Piece[] => {
-    if (currentQueueLength >= INFINITE_QUEUE_REFILL_THRESHOLD) {
-        return queue;
-    }
-    return queue.concat(createRandomSevenBag());
-};
-
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
     if (state.editorUi?.primaryTool === 'paint'
         && state.mode.deleteSpawnMinoOnPaintDrag
@@ -1011,7 +1002,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const spawnPiece = current;
         // 既知ミノ数はカレントを含めて数える
         const nextQueue = state.editorUi.infinitePieceQueue
-            ? appendInfiniteQueueBagIfNeeded(queue, queue.length + 1)
+            ? fillInfiniteQueueToMinimum(queue, queue.length + 1)
             : queue;
         const nextComment = buildQueueStateComment(
             hold,

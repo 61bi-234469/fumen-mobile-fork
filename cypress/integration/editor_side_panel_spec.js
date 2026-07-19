@@ -185,6 +185,7 @@ describe('Editor side panel', () => {
             .should('have.css', 'border-top-color', 'rgb(37, 99, 235)');
 
         // 現在ページのコメント編集がエディタ下部のコメント欄に反映される
+        operations.mode.comment.open();
         cy.get(datatest('list-view-item-2')).find('textarea').type('hello', { force: true });
         cy.get(datatest('text-comment')).should('have.value', 'hello');
 

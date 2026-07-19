@@ -28,6 +28,7 @@ export const resources = {
             Field: 'フィールド',
             View: 'リスト/ツリービュー',
             Shortcuts: 'ショートカット',
+            Piece: 'ピース',
             Misc: 'その他',
         },
         Switch: {
@@ -46,7 +47,7 @@ export const resources = {
             Title: 'アクセス時にReaderモードをスキップ',
         },
         Loop: {
-            Title: 'ページ移動のループ [Reader]',
+            Title: 'ページ移動のループ',
             Off: () => '無効',
             On: () => '有効',
         },
@@ -99,10 +100,10 @@ export const resources = {
             RotateRight: '右回転',
             Rotate180: '180°回転',
             Reset: 'ピースリセット',
-            DasFrames: 'DAS(F)',
-            DasDescription: '左右移動の長押しでリピート開始までのフレーム数',
-            ArrFrames: 'ARR(F)',
-            ArrDescription: 'DAS後のリピート間隔（フレーム数）。0にするとDAS後に端まで即移動',
+            DasFrames: 'DAS',
+            DasDescription: 'ARR開始までのフレーム数',
+            ArrFrames: 'ARR',
+            ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
@@ -125,6 +126,7 @@ export const resources = {
         RotateLeft: '左回転', RotateRight: '右回転', Drop: '落下', Move: '移動', Stamp: 'スタンプ',
         Deselect: '選択解除', Once: '1回', Continuous: '連続', Rotate: '回転', Mirror: '反転', End: '終了',
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
+        UtilsPages: 'ページ削除',
         AllMirror: '全ページ反転', ToGray: 'グレー化', Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
         KeyPage: 'キーページ', ReferencePage: '参照ページ', Lock: '固定', Rise: 'せり上がり', MirrorFlag: '反転フラグ',
         UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',
@@ -166,6 +168,12 @@ export const resources = {
         },
     },
     Menu: {
+        Sections: {
+            Mode: 'モード切替',
+            Page: 'ページ',
+            General: 'その他',
+            Legacy: 'レガシー',
+        },
         Buttons: {
             ImportExport: 'Import/Export',
         },
@@ -276,6 +284,7 @@ export const resources = {
     },
     ColdClear: {
         MenuTitle: 'ColdClear',
+        FieldContainsCompleteLine: 'AI: フィールドに消去されていない完成した行があります。先にラインを消去してからColdClearを実行してください',
         MenuButtonLabel: 'AI',
         SequenceSearchLabel: '連続探索',
         SequenceSearchDescription: '現在のキューを最後まで探索',

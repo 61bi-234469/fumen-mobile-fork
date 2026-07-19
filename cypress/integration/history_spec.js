@@ -214,6 +214,7 @@ describe('History', () => {
         const testCases = [
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).type('#Q=[](I)OJLSTZ');
                 },
                 fumen: 'v115@vhAAgWaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?A',
@@ -242,6 +243,7 @@ describe('History', () => {
             },
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[](T)S');
                 },
                 fumen: 'v115@vhCzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
@@ -277,6 +279,7 @@ describe('History', () => {
             },
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('hello world');
                 },
                 fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?JAgWNAooMDEvoo2A3XaDEEBAAA',
@@ -286,6 +289,7 @@ describe('History', () => {
                 callback: () => {
                     operations.menu.firstPage();
                     operations.mode.tools.nextPage();
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('こんにちは');
                 },
                 fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJYeAlvs2A1sDfEToABBlvs2AWDEfET4J6Alvs2AW5AAAx?/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXDJAgWN?AooMDEvoo2A3XaDEEBAAA',
@@ -405,14 +409,14 @@ describe('History', () => {
                     operations.mode.tools.nextPage();
                     operations.mode.tools.nextPage();
                     operations.mode.tools.nextPage();
-                    operations.menu.clearPast();
+                    operations.mode.utils.clearPast();
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYFAooMDEPBAAAv?hBToQFA3XaDEEBAAAPnB',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.menu.clearToEnd();
+                    operations.mode.utils.clearToEnd();
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYFAooMDEPBAAA',
                 count: 1,
@@ -420,6 +424,7 @@ describe('History', () => {
             {
                 callback: () => {
                     operations.menu.firstPage();
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[](O)TS');
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAA',
@@ -449,14 +454,14 @@ describe('History', () => {
             {
                 callback: () => {
                     operations.mode.tools.backPage();
-                    operations.menu.clearToEnd();
+                    operations.mode.utils.clearToEnd();
                 },
                 fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
                 count: 1,
             },
             {
                 callback: () => {
-                    operations.menu.clearPast();
+                    operations.mode.utils.clearPast();
                 },
                 fumen: 'v115@HhglBeBtCeRpglCeBtAeg0RphlAezhi0JeFKYVAFLD?mClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
@@ -532,6 +537,7 @@ describe('History', () => {
         const testCases = [
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('test1');
 
                     operations.mode.tools.nextPage();
@@ -556,6 +562,7 @@ describe('History', () => {
                     operations.mode.tools.backPage();
                     operations.mode.tools.backPage();
 
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('test1');
 
                     operations.mode.tools.backPage();
@@ -569,6 +576,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.tools.nextPage();
 
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[](O)LTS');
 
                     operations.mode.piece.place(Piece.O, Rotation.Spawn, 0, 0);
@@ -586,6 +594,7 @@ describe('History', () => {
             },
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[](I)SZO');
                 },
                 fumen: 'v115@vhCAgWFA0YceERAAAAAgWFAooMDEPBAAATJYXAFLDm?ClcJSAVDEHBEooRBPoAVBs+zBARhxSHexSRe9NJQhQLHeRL?IeQLJeXDYXAFLDmClcJSAVDEHBEooRBJoAVBzHrBAFhxDGe?xDeeAgHvhAAgWFA0YceETAAAA',
@@ -593,6 +602,7 @@ describe('History', () => {
             },
             {
                 callback: () => {
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[L](S)');
                 },
                 fumen: 'v115@vhCAgWFA0YceERAAAAAgWFAooMDEPBAAATJYXAFLDm?ClcJSAVDEHBEooRBPoAVBs+zBARhxSHexSRe9NJQhQLHeRL?IeQLJeXDJFhxDGexDeeAgHvhAAgWFA0YceETAAAA',
@@ -602,6 +612,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.tools.backPage();
 
+                    operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('world');
                 },
                 fumen: 'v115@vhCAgWFA0YceERAAAAAgWFAooMDEPBAAATJYXAFLDm?ClcJSAVDEHBEooRBPoAVBs+zBARhxSHexSRe9NYFA3XaDEE?BAAAQhQLHeRLIeQLJeXDJFhxDGexDeeAgHvhAAgWFA0YceE?TAAAA',

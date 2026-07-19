@@ -508,10 +508,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.firstPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -519,10 +521,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.lastPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('not.have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -530,10 +534,12 @@ describe('Drawing Tools', () => {
         {
             operations.mode.tools.backPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('not.have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -541,10 +547,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.newPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
     });
 });

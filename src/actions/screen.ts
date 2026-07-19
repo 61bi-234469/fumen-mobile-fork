@@ -56,10 +56,18 @@ export interface ScreenActions {
 
 export const modeActions: Readonly<ScreenActions> = {
     changeToReaderScreen: () => (state): NextState => {
-        resources.konva.stage.reload((done) => {
-            main.changeScreen({ screen: Screens.Reader });
-            done();
-        });
+        if (resources.konva.stage.isReady) {
+            resources.konva.stage.reload((done) => {
+                main.changeScreen({ screen: Screens.Reader });
+                done();
+            });
+        } else {
+            // Deferred so this dispatch always lands after the outer reducer's own return
+            // value has been merged; dispatching synchronously here races with that merge
+            // (a nested dispatch applies first, then the outer merge - built from a state
+            // snapshot captured before this ran - can clobber mode.screen back).
+            setTimeout(() => main.changeScreen({ screen: Screens.Reader }), 0);
+        }
         return sequence(state, [
             actions.setListViewSettingsOpened({ opened: false }),
             actions.fixInferencePiece(),
@@ -67,10 +75,15 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeToDrawerScreen: ({ refresh }) => (state): NextState => {
-        resources.konva.stage.reload((done) => {
-            main.changeScreen({ screen: Screens.Editor });
-            done();
-        });
+        if (resources.konva.stage.isReady) {
+            resources.konva.stage.reload((done) => {
+                main.changeScreen({ screen: Screens.Editor });
+                done();
+            });
+        } else {
+            // See changeToReaderScreen: deferred to avoid racing the outer reducer's own merge.
+            setTimeout(() => main.changeScreen({ screen: Screens.Editor }), 0);
+        }
         return sequence(state, [
             actions.setListViewSettingsOpened({ opened: false }),
             animationActions.pauseAnimation(),

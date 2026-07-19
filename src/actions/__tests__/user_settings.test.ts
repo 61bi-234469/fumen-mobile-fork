@@ -94,6 +94,17 @@ describe('userSettingsActions', () => {
             expect(next.temporary.userSettings.trimTopBlank).toBe(true);
             expect(next.temporary.userSettings.editorSidePanel).toBe(true);
         });
+
+        test('preserves fractional DAS and ARR frame values', () => {
+            const state = createState();
+            state.mode.pieceShortcutDasFrames = 5.5;
+            state.mode.pieceShortcutArrFrames = 1.5;
+
+            const next = userSettingsActions.copyUserSettingsToTemporary()(state);
+
+            expect(next.temporary.userSettings.pieceShortcutDasFrames).toBe(5.5);
+            expect(next.temporary.userSettings.pieceShortcutArrFrames).toBe(1.5);
+        });
     });
 
     describe('keepGrayAfterLineClear', () => {
@@ -228,6 +239,13 @@ describe('userSettingsActions', () => {
             expect(next.temporary.userSettingsTab).toBe('view');
         });
 
+        test('switches to the piece tab', () => {
+            const state = createState();
+            const next = userSettingsActions.setUserSettingsTab({ tab: 'piece' })(state);
+
+            expect(next.temporary.userSettingsTab).toBe('piece');
+        });
+
         test('does nothing when the tab is unchanged', () => {
             const state = createState();
             const next = userSettingsActions.setUserSettingsTab({ tab: 'field' })(state);
@@ -256,7 +274,8 @@ describe('userSettingsActions', () => {
             const state = createState();
             state.temporary.userSettings = {
                 ...baseUserSettings,
-                pieceShortcutArrFrames: 2,
+                pieceShortcutDasFrames: 5.5,
+                pieceShortcutArrFrames: 1.5,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
@@ -264,7 +283,8 @@ describe('userSettingsActions', () => {
 
             userSettingsActions.commitUserSettings()(state);
 
-            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 2 });
+            expect(mockActions.changePieceShortcutDas).toHaveBeenCalledWith({ dasFrames: 5.5 });
+            expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

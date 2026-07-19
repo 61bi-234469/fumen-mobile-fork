@@ -42,6 +42,7 @@ describe('Cold Clear menu', () => {
     it('fails fast with toast when no placed piece exists', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         ensureTreeGraphView();
 
@@ -55,6 +56,7 @@ describe('Cold Clear menu', () => {
     it('closes modal after placed-score evaluation completes', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
@@ -81,6 +83,7 @@ describe('Cold Clear menu', () => {
     it('allows editing top branch count and disables it while search runs', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         ensureTreeGraphView();
 
@@ -97,6 +100,7 @@ describe('Cold Clear menu', () => {
 
     it('respawns the current piece edited in the AI menu', () => {
         visit({ mode: 'edit', lng: 'en' });
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('#Q=[Z](S)L').blur();
         operations.mode.piece.open();
         operations.mode.piece.spawn.S();
@@ -105,11 +109,14 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('pane-cold-clear-current')).click();
         cy.get(datatest('btn-cold-clear-queue-add-O')).click();
         cy.get(datatest('btn-cold-clear-menu-close')).click();
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](O)L');
 
         operations.mode.tools.undo();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](S)L');
+        operations.mode.piece.open();
         operations.mode.piece.harddrop();
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
     });
 });

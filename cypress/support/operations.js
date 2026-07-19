@@ -296,6 +296,18 @@ export const operations = {
                 cy.get(datatest('overlay-utils')).find(datatest('btn-inspector-close')).click();
                 cy.get(datatest('overlay-utils')).should('not.exist');
             },
+            clearToEnd: () => {
+                operations.mode.utils.open();
+                cy.get(datatest('btn-clear-to-end')).click();
+                operations.mode.utils.close();
+                cy.wait(100);
+            },
+            clearPast: () => {
+                operations.mode.utils.open();
+                cy.get(datatest('btn-clear-past')).click();
+                operations.mode.utils.close();
+                cy.wait(100);
+            },
         },
         flags: {
             open: ({ home = true } = {}) => {
@@ -331,6 +343,10 @@ export const operations = {
         piece: {
             open: () => {
                 ensureModeActive('btn-piece-mode');
+            },
+            toggleInfiniteQueue: () => {
+                cy.get(datatest('piece-queue-infinite-checkbox')).click();
+                cy.wait(100);
             },
             resetPiece: () => {
                 cy.get(datatest('btn-piece-gray')).click();
@@ -436,6 +452,15 @@ export const operations = {
                 J: () => {
                     spawnPieceForScenario('btn-piece-j');
                 },
+            },
+        },
+        comment: {
+            open: ({ home = true } = {}) => {
+                if (home) {
+                    operations.mode.utils.open();
+                }
+                cy.get(datatest('btn-comment-mode')).click();
+                cy.get(datatest('text-comment')).should('be.visible');
             },
         },
         tools: {
@@ -665,16 +690,6 @@ export const operations = {
         commentWritable: () => {
             operations.menu.open();
             cy.get(datatest('btn-comment-writable')).click();
-            cy.wait(100);
-        },
-        clearToEnd: () => {
-            operations.menu.open();
-            cy.get(datatest('btn-clear-to-end')).click();
-            cy.wait(100);
-        },
-        clearPast: () => {
-            operations.menu.open();
-            cy.get(datatest('btn-clear-past')).click();
             cy.wait(100);
         },
         pageSlider: () => {

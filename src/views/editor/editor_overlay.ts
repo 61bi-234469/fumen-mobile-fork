@@ -10,7 +10,7 @@ import { editorControlStateStyle, EditorControlState } from './editor_control_st
 import { Screens } from '../../lib/enums';
 
 const overlayButton = ({
-    key, datatest, label, iconName, active = false, danger = false, checkbox = false, onclick,
+    key, datatest, label, iconName, active = false, danger = false, checkbox = false, disabled = false, onclick,
 }: {
     key: string;
     datatest: string;
@@ -19,6 +19,7 @@ const overlayButton = ({
     active?: boolean;
     danger?: boolean;
     checkbox?: boolean;
+    disabled?: boolean;
     onclick: () => void;
 }) => {
     const controlState: EditorControlState = active ? 'active' : danger ? 'danger' : 'idle';
@@ -46,24 +47,27 @@ const overlayButton = ({
     return button({
         key,
         datatest,
+        disabled,
         type: 'button',
-        className: 'editor-control',
+        className: `editor-control${disabled ? ' disabled' : ''}`,
         'data-active': active ? 'true' : 'false',
         'aria-label': label,
         'aria-pressed': active ? 'true' : 'false',
         onclick: (event: MouseEvent) => {
-            onclick();
+            if (!disabled) {
+                onclick();
+            }
             event.preventDefault();
             event.stopPropagation();
         },
         style: style({
             alignItems: 'center',
             background: stateStyle.background,
-            border: '1px solid #333',
+            border: `1px solid ${disabled ? '#bdbdbd' : '#333'}`,
             borderRadius: '0',
             boxShadow: stateStyle.boxShadow,
-            color: stateStyle.color,
-            cursor: 'pointer',
+            color: disabled ? '#bdbdbd' : stateStyle.color,
+            cursor: disabled ? 'default' : 'pointer',
             display: 'flex',
             fontFamily: 'inherit',
             fontSize: px(11),
@@ -227,6 +231,27 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                 overlayButton({
                     key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
                     onclick: () => closeAndRun(actions.openListViewReplaceModal),
+                }),
+            ],
+        }),
+        overlaySection({
+            key: 'utils-pages',
+            datatest: 'utils-scope-pages',
+            label: i18n.EditorUi.UtilsPages(),
+            children: [
+                overlayButton({
+                    key: 'btn-clear-past', datatest: 'btn-clear-past',
+                    label: i18n.Menu.Buttons.ClearPast(), iconName: 'arrow_back',
+                    danger: true,
+                    disabled: state.fumen.currentIndex <= 0,
+                    onclick: actions.clearPast,
+                }),
+                overlayButton({
+                    key: 'btn-clear-to-end', datatest: 'btn-clear-to-end',
+                    label: i18n.Menu.Buttons.ClearToEnd(), iconName: 'arrow_forward',
+                    danger: true,
+                    disabled: state.fumen.maxPage - 1 <= state.fumen.currentIndex,
+                    onclick: actions.clearToEnd,
                 }),
             ],
         }),

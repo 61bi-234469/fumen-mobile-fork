@@ -722,13 +722,13 @@ export const operations = {
         },
         ghostOn: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest('switch-ghost-visible')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         ghostOff: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
             cy.get(datatest('btn-save')).click();
         },
@@ -740,7 +740,7 @@ export const operations = {
         },
         setRotationSystem: (value) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },

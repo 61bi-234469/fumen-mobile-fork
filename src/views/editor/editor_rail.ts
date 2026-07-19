@@ -21,13 +21,42 @@ const pressState: {
     key: string | null;
     timer: ReturnType<typeof setTimeout> | null;
     triggered: boolean;
-} = { key: null, timer: null, triggered: false };
+    suppressNextClick: boolean;
+    suppressClickTimer: ReturnType<typeof setTimeout> | null;
+} = { key: null, timer: null, triggered: false, suppressNextClick: false, suppressClickTimer: null };
 
 const clearPress = () => {
     if (pressState.timer !== null) {
         clearTimeout(pressState.timer);
         pressState.timer = null;
     }
+};
+
+const clearSuppressedClick = () => {
+    if (pressState.suppressClickTimer !== null) {
+        clearTimeout(pressState.suppressClickTimer);
+        pressState.suppressClickTimer = null;
+    }
+    pressState.suppressNextClick = false;
+};
+
+const suppressNextClick = () => {
+    clearSuppressedClick();
+    pressState.suppressNextClick = true;
+    pressState.suppressClickTimer = setTimeout(() => {
+        pressState.suppressNextClick = false;
+        pressState.suppressClickTimer = null;
+    }, 500);
+};
+
+const consumeSuppressedClick = (event: MouseEvent) => {
+    if (!pressState.suppressNextClick) {
+        return false;
+    }
+    clearSuppressedClick();
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
 };
 
 interface CellOptions {
@@ -65,6 +94,7 @@ const toolCell = ({
         if (disabled || onlongpress === undefined) {
             return;
         }
+        clearSuppressedClick();
         clearPress();
         pressState.key = key;
         pressState.triggered = false;
@@ -86,23 +116,39 @@ const toolCell = ({
         if (disabled || onlongpress === undefined || pressState.key !== key) {
             return;
         }
+        const triggered = pressState.triggered;
         clearPress();
-        if (!pressState.triggered) {
-            onpress();
-        }
         pressState.key = null;
         pressState.triggered = false;
+        // The short-press action changes the rail layout immediately. Suppress
+        // the synthetic click that may otherwise land on the settings button
+        // after that layout shift on mobile browsers.
+        suppressNextClick();
+        if (!triggered) {
+            onpress();
+        }
         event.preventDefault();
         event.stopPropagation();
     };
 
     const pointerHandlers = onlongpress === undefined ? {
         onclick: (event: MouseEvent) => {
+            if (consumeSuppressedClick(event)) {
+                return;
+            }
             onpress();
             event.preventDefault();
             event.stopPropagation();
         },
     } : {
+        onclick: (event: MouseEvent) => {
+            if (consumeSuppressedClick(event)) {
+                return;
+            }
+            onpress();
+            event.preventDefault();
+            event.stopPropagation();
+        },
         onpointerdown: handlePointerDown,
         onpointerup: handlePointerUp,
         onpointercancel: cancelPointer,
@@ -594,6 +640,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             selected: selection === 'comp'
                 ? state.editorUi.primaryTool === 'piece' && state.editorUi.infinitePieceQueue
                     || state.editorUi.primaryTool === 'select' && state.parts.blackTransparent
+                    || state.editorUi.primaryTool === 'paint' && state.editorUi.paletteSelection === selection
                 : state.editorUi.primaryTool === 'select' && part !== undefined
                     ? state.parts.selectedId === part.id
                     : state.editorUi.primaryTool === 'piece'

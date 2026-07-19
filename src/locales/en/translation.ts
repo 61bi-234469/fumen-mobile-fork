@@ -30,7 +30,7 @@
         Notice: 'Clearing the browser cache will initialize the settings.',
         Tabs: {
             Field: 'Field',
-            View: 'List & Tree View',
+            View: 'List & Tree',
             Shortcuts: 'Shortcuts',
             Piece: 'Piece',
             Misc: 'Others',

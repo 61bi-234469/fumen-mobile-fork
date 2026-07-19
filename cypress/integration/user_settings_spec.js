@@ -8,6 +8,20 @@ describe('User settings', () => {
 
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('tab-user-settings-piece')).click();
+        cy.get(datatest('panel-user-settings-piece')).then(panel => {
+            const expectedOrder = [
+                'input-piece-shortcut-Hold',
+                'input-piece-shortcut-Reset',
+                'switch-ghost-visible',
+                'radio-rotation-system-classic',
+                'input-piece-arr',
+                'input-piece-das',
+            ];
+            const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
+            const indexes = expectedOrder.map(value => datatests.findIndex(element =>
+                element.getAttribute('datatest') === value));
+            expect(indexes).to.deep.equal([...indexes].sort((left, right) => left - right));
+        });
         cy.get(datatest('input-piece-shortcut-SoftDrop')).should('have.value', '↓');
         cy.get(datatest('input-piece-shortcut-HardDrop')).should('have.value', 'Space');
         cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
@@ -60,18 +74,21 @@ describe('User settings', () => {
 
         // visible -> hidden
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
         cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // cancel
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-cancel')).click();
 
         // reload
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
 
@@ -79,12 +96,14 @@ describe('User settings', () => {
 
         // hidden -> visible
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // verify
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
     });
 

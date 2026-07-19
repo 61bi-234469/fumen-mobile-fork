@@ -26,7 +26,7 @@ export const resources = {
         Notice: 'ブラウザのキャッシュを削除すると、これらの設定は初期化されます。',
         Tabs: {
             Field: 'フィールド',
-            View: 'リスト/ツリービュー',
+            View: 'リスト/ツリー',
             Shortcuts: 'ショートカット',
             Piece: 'ピース',
             Misc: 'その他',

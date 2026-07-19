@@ -206,6 +206,10 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-inference'))
             .find('[data-palette-swatch="comp"]')
             .should('contain', 'COMP');
+        cy.get(datatest('btn-piece-inference'))
+            .should('have.attr', 'aria-pressed', 'true')
+            .and('have.css', 'box-shadow')
+            .and('include', 'rgb(25, 118, 210)');
 
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(paletteFrames).should('have.length', 9);
@@ -223,6 +227,17 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-i')).click()
             .should('have.css', 'background-color', 'rgb(244, 248, 253)')
             .and('have.css', 'color', 'rgb(51, 51, 51)');
+    });
+
+    it('opens the PIECE tray instead of settings on a phone tap', () => {
+        cy.viewport(375, 667);
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-piece-mode')).click();
+
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-grid')).should('be.visible');
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
     });
 
     it('keeps the PAINT tray hidden when selecting another palette entry', () => {

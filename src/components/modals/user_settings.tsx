@@ -76,7 +76,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
-    'MoveLeft', 'MoveRight', 'SoftDrop', 'HardDrop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Reset', 'Hold',
+    'MoveLeft', 'MoveRight', 'SoftDrop', 'HardDrop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Hold', 'Reset',
 ];
 
 const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
@@ -361,16 +361,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         <div key="panel-user-settings-field" datatest="panel-user-settings-field"
                              style={panelStyle('field')}>
                             {renderSwitch({
-                                key: 'switch-row-ghost-visible',
-                                datatest: 'switch-ghost-visible',
-                                title: i18n.UserSettings.Ghost.Title(),
-                                checked: ghostVisible,
-                                offLabel: i18n.UserSettings.Ghost.Off(),
-                                onLabel: i18n.UserSettings.Ghost.On(),
-                                onChange: checked => actions.keepGhostVisible({ visible: checked }),
-                            })}
-
-                            {renderSwitch({
                                 key: 'switch-row-delete-spawn-mino-on-paint-drag',
                                 datatest: 'switch-delete-spawn-mino-on-paint-drag',
                                 title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
@@ -379,22 +369,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
                             })}
-
-                            <div>
-                                <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
-
-                                {rotationSystemValues.map((value) => {
-                                    return <label>
-                                        <input name="rotation-system" type="radio"
-                                               checked={value === rotationSystem}
-                                               dataTest={`radio-rotation-system-${value}`}
-                                               onchange={() => onchangeRotationSystem(value)}/>
-                                        <span style={style({ marginRight: px(20) })}>
-                                            {rotationSystemLabels[value]()}
-                                        </span>
-                                    </label>;
-                                })}
-                            </div>
 
                             {renderSwitch({
                                 key: 'switch-row-gray-after-line-clear-field',
@@ -612,29 +586,30 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     })}
                                 </div>
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-das"
-                                            value={pieceShortcutDasFrames}
-                                            min={1}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeDas}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-das">F</span>
-                                    </div>
+                                {renderSwitch({
+                                    key: 'switch-row-ghost-visible',
+                                    datatest: 'switch-ghost-visible',
+                                    title: i18n.UserSettings.Ghost.Title(),
+                                    checked: ghostVisible,
+                                    offLabel: i18n.UserSettings.Ghost.Off(),
+                                    onLabel: i18n.UserSettings.Ghost.On(),
+                                    onChange: checked => actions.keepGhostVisible({ visible: checked }),
+                                })}
+
+                                <div>
+                                    <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
+
+                                    {rotationSystemValues.map((value) => {
+                                        return <label>
+                                            <input name="rotation-system" type="radio"
+                                                   checked={value === rotationSystem}
+                                                   dataTest={`radio-rotation-system-${value}`}
+                                                   onchange={() => onchangeRotationSystem(value)}/>
+                                            <span style={style({ marginRight: px(20) })}>
+                                                {rotationSystemLabels[value]()}
+                                            </span>
+                                        </label>;
+                                    })}
                                 </div>
 
                                 <div style={style({ marginTop: px(15) })}>
@@ -659,6 +634,31 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             })}
                                         />
                                         <span datatest="unit-piece-arr">F</span>
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                    </div>
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-das"
+                                            value={pieceShortcutDasFrames}
+                                            min={1}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeDas}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-das">F</span>
                                     </div>
                                 </div>
                             </div>

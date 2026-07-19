@@ -12,7 +12,7 @@ import { BlockIcon } from '../../components/atomics/icons';
 import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
-import { getPieceRailMetrics, getResponsiveRailCellHeight } from './responsive_layout';
+import { getPieceRailMetrics, getResponsiveRailCellHeight, shouldUseCompactEditorRail } from './responsive_layout';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
 const LONG_PRESS_DURATION = 500;
@@ -399,7 +399,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const pieceModeVisible = state.editorUi.primaryTool === 'piece';
     const cellHeight = getRailCellHeight(layout, pieceModeVisible);
     const twoColumns = layout.buttons.columns === 2;
-    const compact = twoColumns || layout.canvas.size.height < 560 || layout.buttons.size.width < 72;
+    const compact = shouldUseCompactEditorRail(layout.canvas.size.height, layout.buttons.columns);
     const text = (label: string) => compact ? '' : label;
     const iconSize = Math.max(14, Math.min(21, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {

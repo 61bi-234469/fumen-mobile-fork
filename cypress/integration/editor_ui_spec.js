@@ -146,6 +146,20 @@ describe('Editor UI final concept', () => {
         });
     });
 
+    it('keeps the production field size and text labels on a phone display', () => {
+        cy.viewport(412, 844);
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('editor-field-frame')).then(field => {
+            expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
+        });
+        ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
+            'btn-utils-mode', 'btn-flags-mode', 'btn-piece-mode', 'btn-cold-clear',
+            'btn-select-mode', 'btn-paint-mode'].forEach(selector => {
+            cy.get(datatest(selector)).invoke('text').should('not.be.empty');
+        });
+    });
+
     it('shows SELECT and keeps spawn actions from appearing selected', () => {
         cy.viewport(1000, 800);
         visit({ mode: 'edit' });

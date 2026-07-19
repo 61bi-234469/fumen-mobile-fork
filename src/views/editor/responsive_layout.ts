@@ -38,6 +38,10 @@ export const getEditorRailConfig = (canvasHeight: number, forceSingleColumn = fa
     };
 };
 
+export const shouldUseCompactEditorRail = (canvasHeight: number, columns: 1 | 2): boolean => (
+    columns === 2 || canvasHeight < 560
+);
+
 export const getPieceRailMetrics = (fieldHeight: number, nextWidth: number) => {
     const railNeedHeight = PIECE_RAIL_CELL_COUNT * MIN_PIECE_RAIL_CELL_HEIGHT + PIECE_RAIL_CHROME_HEIGHT;
     const maxMinoHeight = Math.min(38, Math.floor(nextWidth * .72));

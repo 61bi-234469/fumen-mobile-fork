@@ -5,25 +5,77 @@ on:
       - main
   workflow_dispatch:
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20.x
+          cache: 'yarn'
       - run: yarn install --frozen-lockfile
+        env:
+          CYPRESS_INSTALL_BINARY: '0'
       - run: yarn test-ci
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [history, slow, rest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.x
+          cache: 'yarn'
+      - name: Cache Cypress binary
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+      - run: yarn install --frozen-lockfile
       - run: yarn webpack-prod
         env:
           DEBUG_ON: false
       - run: mkdir -p logs
       - run: yarn serve > logs/serve.log 2> logs/serve.err.log &
-      - run: yarn cy-run-ci
+      - name: Select specs for shard
+        id: specs
+        run: |
+          # Slow specs (per-spec CI timings from run 29652557446) get their own
+          # shard so the dynamically enumerated "rest" shard stays balanced.
+          SLOW="cypress/integration/comments_spec.js,cypress/integration/drawing_tool_spec.js,cypress/integration/open_spec.js,cypress/integration/quiz_spec.js"
+          case "${{ matrix.shard }}" in
+            history)
+              SPECS="cypress/integration/history_spec.js"
+              ;;
+            slow)
+              SPECS="$SLOW"
+              ;;
+            rest)
+              SPECS=$(find cypress/integration -name '*.js' ! -name 'history_spec.js' \
+                | sort | grep -vxF -f <(echo "$SLOW" | tr ',' '\n') | paste -sd, -)
+              ;;
+          esac
+          if [ -z "$SPECS" ]; then
+            echo "no specs enumerated for shard '${{ matrix.shard }}'" >&2
+            exit 1
+          fi
+          for f in $(echo "$SPECS" | tr ',' ' '); do
+            if [ ! -f "$f" ]; then
+              echo "missing spec file: $f" >&2
+              exit 1
+            fi
+          done
+          echo "shard '${{ matrix.shard }}' specs ($(echo "$SPECS" | tr ',' '\n' | wc -l)):"
+          echo "$SPECS" | tr ',' '\n'
+          echo "specs=$SPECS" >> "$GITHUB_OUTPUT"
+      - run: yarn cy-run-ci --spec "${{ steps.specs.outputs.specs }}"
       - uses: actions/upload-artifact@v5
         if: ${{ failure() }}
         with:
-          name: cypress-debug-artifacts
+          name: cypress-debug-artifacts-${{ matrix.shard }}
           path: |
             cypress/screenshots/
             logs/

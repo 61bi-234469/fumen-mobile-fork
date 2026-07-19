@@ -364,6 +364,55 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('tray-context')).should('be.visible');
     });
 
+    it('keeps PAINT and SELECT at one tray layout without covering COMP', () => {
+        cy.viewport(320, 568);
+        visit({ mode: 'edit' });
+
+        const readGeometry = () => cy.get(`${datatest('editor-field-frame')},${datatest('editor-rail')}`)
+            .then(elements => {
+                const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+                const copyRect = value => ({ bottom: value.bottom, height: value.height,
+                    left: value.left, right: value.right, top: value.top, width: value.width });
+                return { field: copyRect(rect('editor-field-frame')), rail: copyRect(rect('editor-rail')) };
+            });
+        const assertSameGeometry = (expected, actual) => {
+            ['field', 'rail'].forEach(area => {
+                ['bottom', 'height', 'left', 'right', 'top', 'width'].forEach(property => {
+                    expect(actual[area][property]).to.be.closeTo(expected[area][property], 0.5);
+                });
+            });
+        };
+        const assertCommentDoesNotCoverComp = () => cy.get(`${datatest('text-comment')},${datatest('btn-piece-inference')}`)
+            .then(elements => {
+                const comment = elements.filter(datatest('text-comment'))[0].getBoundingClientRect();
+                const comp = elements.filter(datatest('btn-piece-inference'))[0].getBoundingClientRect();
+                expect(comp.bottom).to.be.at.most(comment.top);
+            });
+
+        let trayGeometry;
+        readGeometry().then(geometry => {
+            trayGeometry = geometry;
+        });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).should('exist');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        assertCommentDoesNotCoverComp();
+
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('tray-context')).should('be.visible');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('text-comment')).should('exist');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        assertCommentDoesNotCoverComp();
+    });
+
     it('spawns from PIECE palette clicks and keeps PIECE active for reset/delete', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-mode')).click();

@@ -207,13 +207,19 @@ export const operations = {
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], x, from);
                     const end = fieldPoint(canvas[0], x, to);
-                    let body = cy.get('#canvas-container .konvajs-content').trigger('mousedown', start.x, start.y);
+                    const contentSelector = '#canvas-container .konvajs-content';
+                    cy.get(contentSelector).trigger('mousedown', start.x, start.y);
                     const maxCount = 10;
                     for (let count = 0; count <= maxCount; count++) {
                         const ratio = count / maxCount;
-                        body = body.trigger('mousemove', start.x, start.y + (end.y - start.y) * ratio);
+                        // Field actions reopen the current page and can replace the
+                        // Konva content node. Re-query it for every event so a drag
+                        // crossing the sent-line/field boundary is not truncated.
+                        cy.get(contentSelector).trigger(
+                            'mousemove', start.x, start.y + (end.y - start.y) * ratio,
+                        );
                     }
-                    body.trigger('mouseup', end.x, end.y);
+                    cy.get(contentSelector).trigger('mouseup', end.x, end.y);
                 });
             },
             // 高速ポインタの再現: 開始セルと終了セルのイベントだけを発火する。

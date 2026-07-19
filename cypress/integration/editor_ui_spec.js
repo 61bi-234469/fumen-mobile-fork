@@ -264,21 +264,20 @@ describe('Editor UI final concept', () => {
 
     it('preserves the active tool while opening and closing inspectors', () => {
         visit({ mode: 'edit' });
-        cy.get(datatest('btn-piece-mode')).click();
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
 
         cy.get(datatest('btn-utils-mode')).click();
         cy.get(datatest('overlay-utils')).should('be.visible');
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('btn-inspector-close')).click();
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('btn-utils-mode')).should('be.focused');
 
         cy.get(datatest('btn-flags-mode')).click();
         cy.get(datatest('overlay-flags')).should('be.visible');
         cy.get('body').type('{esc}');
         cy.get(datatest('overlay-flags')).should('not.exist');
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
     });
 
     it('drags inspectors by their heading and shows flag checkboxes', () => {

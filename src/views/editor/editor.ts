@@ -108,7 +108,6 @@ interface LayoutParams {
     trayInBottom: boolean;
     pieceQueueVisible?: boolean;
     commentVisible?: boolean;
-    reserveCommentHeight?: boolean;
 }
 
 export const getLayout = (
@@ -121,12 +120,10 @@ export const getLayout = (
         trayInBottom,
         pieceQueueVisible = false,
         commentVisible = true,
-        reserveCommentHeight = commentVisible,
     }: LayoutParams,
 ): EditorLayout => {
     const bottomMetrics = getEditorBottomMetrics(height);
-    const visibleCommentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
-    const commentHeight = reserveCommentHeight ? visibleCommentHeight : 0;
+    const commentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
     const { toolsHeight } = bottomMetrics;
     const borderWidthBottomField = 2.4;
 
@@ -212,11 +209,11 @@ export const getLayout = (
         comment: {
             topLeft: {
                 x: 0,
-                y: height - visibleCommentHeight - toolsHeight,
+                y: height - commentHeight - toolsHeight,
             },
             size: {
                 width,
-                height: visibleCommentHeight,
+                height: commentHeight,
             },
         },
         tools: {
@@ -532,13 +529,6 @@ export const view: View<State, Actions> = (state, actions) => {
     const trayInBottom = !pageSliderVisible;
     const contextTrayVisible = trayInBottom && state.editorUi.bottomSlot === 'tray';
     const commentVisible = !contextTrayVisible || state.mode.type === ModeTypes.Comment;
-    // PAINT/SELECT use the tray-sized field even when the comment bar replaces the tray.
-    // Comment mode keeps its existing reserved comment area so the comment tray and input
-    // do not overlap. PIECE also keeps the queue layout's existing height calculation.
-    const useTrayLayout = !pageSliderVisible
-        && state.editorUi.primaryTool !== 'piece'
-        && state.mode.type !== ModeTypes.Comment;
-    const reserveCommentHeight = !useTrayLayout;
     // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
     // （盤面サイズは develop 時点の計算式と完全に一致させる）。
     // 初期匁E
@@ -547,7 +537,6 @@ export const view: View<State, Actions> = (state, actions) => {
         sidePanelWidth,
         trayInBottom,
         commentVisible,
-        reserveCommentHeight,
         pieceQueueVisible: state.editorUi.primaryTool === 'piece',
         ...state.display,
         topLeftY: navigatorHeight,
@@ -591,13 +580,6 @@ export const view: View<State, Actions> = (state, actions) => {
 
         div({
             key: 'menu-top',
-            style: useTrayLayout && commentVisible ? style({
-                bottom: '0',
-                left: '0',
-                position: 'absolute',
-                right: '0',
-                zIndex: 10,
-            }) : undefined,
         }, [
             commentVisible ? getComment(state, actions, layout) : undefined as any,
 

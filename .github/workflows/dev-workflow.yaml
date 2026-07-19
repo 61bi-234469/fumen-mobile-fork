@@ -29,8 +29,9 @@ jobs:
         with:
           node-version: 20.x
           cache: 'yarn'
-      - name: Cache Cypress binary
-        uses: actions/cache@v6
+      - name: Restore Cypress binary cache
+        id: cypress-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/Cypress
           key: cypress-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
@@ -80,3 +81,9 @@ jobs:
             cypress/screenshots/
             logs/
           if-no-files-found: warn
+      - name: Save Cypress binary cache
+        if: ${{ always() && steps.cypress-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}

@@ -176,7 +176,7 @@
     <p class="lead">PCではEditを開いたまま、左側にListまたはTreeを表示できます。盤面を編集しながらページ全体や分岐を確認したいときに便利です。</p>
       <figure class="shot"><img src="./images/editor-side-panel.png" alt="Editの左側に3ノードのTreeサイドパネル、右側にPAINTの編集レールを表示した画面。"><figcaption>Treeサイドパネル。分岐を確認しながら、右側のEditで盤面を編集できます。</figcaption></figure>
     <ol class="steps">
-      <li>画面最上部の <strong>サイドパネルを表示</strong> を選ぶ。ユーザー設定の「リスト/ツリービュー」→「サイドパネルを表示（PC）」からも切り替えられます。</li>
+      <li>画面最上部の <strong>サイドパネルを表示</strong> を選ぶ。ユーザー設定の「リスト/ツリー」→「サイドパネルを表示（PC）」からも切り替えられます。</li>
       <li><strong>リスト</strong>または<strong>ツリー</strong>タブを選ぶ。</li>
       <li>カードやノードを選び、右側の盤面を編集する。コメントと現在ページも相互に同期します。</li>
     </ol>
@@ -273,18 +273,20 @@
       <table>
         <thead><tr><th>タブ</th><th>主な設定</th></tr></thead>
         <tbody>
-          <tr><td>フィールド</td><td><strong>ゴースト表示</strong>、<strong>黒ペイントドラッグでスポーンミノを通過削除</strong>、<strong>キックテーブル</strong>、<strong>+ボタンでグレー化</strong>、<strong>ハードドロップではグレー化しない</strong>、<strong>ブロック表面のマーク</strong></td></tr>
-          <tr><td>リスト/ツリービュー</td><td><strong>上部の空白行を省略</strong>、<strong>+ボタンでグレー化</strong>、<strong>サイドパネルを表示（PC）</strong></td></tr>
-          <tr><td>ショートカット</td><td><strong>ショートカットラベル表示</strong>、パレット・編集用・ピースショートカット、左右長押しの<strong>DAS(ms)</strong></td></tr>
+          <tr><td>フィールド</td><td><strong>黒ペイントドラッグでスポーンミノを通過削除</strong>、<strong>+ボタンでグレー化</strong>、<strong>ハードドロップではグレー化しない</strong>、<strong>ブロック表面のマーク</strong></td></tr>
+          <tr><td>リスト/ツリー</td><td><strong>上部の空白行を省略</strong>、<strong>+ボタンでグレー化</strong>、<strong>サイドパネルを表示（PC）</strong></td></tr>
+          <tr><td>ショートカット</td><td><strong>ショートカットラベル表示</strong>、パレットショートカット、編集用ショートカット</td></tr>
+          <tr><td>ピース</td><td><strong>ピースショートカット</strong>、<strong>ゴースト表示</strong>、<strong>キックテーブル</strong>、左右移動の<strong>ARR</strong>・<strong>DAS</strong></td></tr>
           <tr><td>その他</td><td><strong>ページ移動のループ [Reader]</strong>、<strong>アクセス時にReaderモードをスキップ</strong>、<strong>GIFページ送り間隔</strong></td></tr>
         </tbody>
       </table>
     </div>
     <ul>
       <li><strong>ショートカットラベル表示：</strong>各ボタンの右下に割り当てキーを表示します。</li>
-      <li><strong>キーの変更：</strong>対象欄を選んでキーを押します。Backspaceで割り当てを解除できます。</li>
-      <li><strong>キックテーブル：</strong>「クラシック」「SRS」「SRS+」から回転法則を選びます。SRS+では180度回転も利用できます。</li>
-      <li><strong>+ボタンでグレー化：</strong>フィールドとリスト/ツリービューのどちらのタブから変更しても同じ設定へ反映されます。</li>
+      <li><strong>キーの変更：</strong>対象欄を選んでキーを押します。Backspaceで割り当てを解除できます。ピース操作の割り当ては<strong>ピース</strong>タブで変更します。</li>
+      <li><strong>ピースの移動感：</strong><strong>ARR</strong>はDAS後のリピート間隔、<strong>DAS</strong>はARR開始までのフレーム数です。ARRを0にすると端まで即移動します。</li>
+      <li><strong>ゴースト表示とキックテーブル：</strong><strong>ピース</strong>タブで、ゴーストの表示と「クラシック」「SRS」「SRS+」の回転法則を選びます。SRS+では180度回転も利用できます。</li>
+      <li><strong>+ボタンでグレー化：</strong>フィールドとリスト/ツリーのどちらのタブから変更しても同じ設定へ反映されます。</li>
       <li><strong>サイドパネル：</strong>「サイドパネルを表示（PC）」でEdit左側のList/Treeパネルを有効にします。</li>
       <li><strong>設定の保存：</strong>ブラウザ内に保存されます。ブラウザデータを削除すると初期化されます。</li>
     </ul>

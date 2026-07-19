@@ -146,6 +146,7 @@ const toolCell = ({
             touchAction: 'none',
             transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
             userSelect: 'none',
+            whiteSpace: 'nowrap',
             width: '100%',
         }),
         ...pointerHandlers,

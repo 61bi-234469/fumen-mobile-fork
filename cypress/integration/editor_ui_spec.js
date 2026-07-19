@@ -153,10 +153,19 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('editor-field-frame')).then(field => {
             expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
         });
-        ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
-            'btn-utils-mode', 'btn-flags-mode', 'btn-piece-mode', 'btn-cold-clear',
-            'btn-select-mode', 'btn-paint-mode'].forEach(selector => {
-            cy.get(datatest(selector)).invoke('text').should('not.be.empty');
+        [
+            ['btn-insert-new-page', 'Add'],
+            ['btn-insert-from-clipboard', 'Insert'],
+            ['btn-copy-to-clipboard', 'Copy'],
+            ['btn-cut-page', 'Cut'],
+            ['btn-utils-mode', 'U'],
+            ['btn-flags-mode', 'F'],
+            ['btn-piece-mode', 'P'],
+            ['btn-cold-clear', 'AI'],
+            ['btn-select-mode', 'SELECT'],
+            ['btn-paint-mode', 'PAINT'],
+        ].forEach(([selector, label]) => {
+            cy.get(datatest(selector)).should('contain.text', label);
         });
     });
 

@@ -50,7 +50,9 @@ describe('Drawing Tools', () => {
         operations.mode.tools.home();
         operations.mode.tools.duplicatePage();
 
-        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhIAgH3rBzkBAAAsqBifBVtBAAAAAA');
+        // 新挙動: rotateTo180が実際に反映されT(Reverse)となり、ハードドロップが次ページを
+        // 自動挿入してクイズのNEXT(I)をスポーンするため、ページ数とピースが旧期待値から変わる。
+        expectFumen('v115@khA8Je2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDs?OBAAvhJAgH3rBzkBAAAsqBifBFtBRMAAAAAAA');
     });
 
     it('Update by lock flag', () => {
@@ -506,10 +508,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.firstPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -517,10 +521,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.lastPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('not.have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -528,10 +534,12 @@ describe('Drawing Tools', () => {
         {
             operations.mode.tools.backPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('not.have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
 
         rightTap();
@@ -539,10 +547,12 @@ describe('Drawing Tools', () => {
         {
             operations.menu.newPage();
 
-            operations.menu.open();
+            operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('have.class', 'disabled');
             cy.get(datatest('btn-clear-past')).should('have.class', 'disabled');
+
+            operations.mode.utils.close();
         }
     });
 });

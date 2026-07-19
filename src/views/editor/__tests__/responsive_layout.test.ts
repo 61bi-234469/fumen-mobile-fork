@@ -1,7 +1,9 @@
 import {
     getEditorBottomMetrics,
     getEditorRailConfig,
+    getPieceRailMetrics,
     getResponsiveRailCellHeight,
+    PIECE_RAIL_CELL_COUNT,
 } from '../responsive_layout';
 
 describe('editor responsive layout', () => {
@@ -30,9 +32,28 @@ describe('editor responsive layout', () => {
         });
     });
 
+    test('forces a single rail column when the PIECE queue is visible', () => {
+        expect(getEditorRailConfig(300, true)).toEqual({
+            columns: 1,
+            reserve: 90,
+            minWidth: 56,
+            maxWidth: 80,
+            widthRatio: 0.6,
+        });
+    });
+
     test('keeps usable rail cell heights for representative field sizes', () => {
         expect(getResponsiveRailCellHeight(676, 1)).toBe(32);
         expect(getResponsiveRailCellHeight(456, 1)).toBe(21);
         expect(getResponsiveRailCellHeight(282, 2)).toBe(20);
+    });
+
+    test('sizes the PIECE queue and vertically stacked rail for representative fields', () => {
+        expect(PIECE_RAIL_CELL_COUNT).toBe(16);
+        const metrics = getPieceRailMetrics(340, 38);
+        expect(metrics.nextMinoHeight).toBe(10);
+        expect(metrics.nextPanelHeight).toBe(106);
+        expect(metrics.railCellHeight).toBe(12);
+        expect(metrics.nextPanelHeight + metrics.railCellHeight * PIECE_RAIL_CELL_COUNT + 41).toBeLessThanOrEqual(340);
     });
 });

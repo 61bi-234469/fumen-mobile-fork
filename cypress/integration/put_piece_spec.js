@@ -19,6 +19,7 @@ describe('Put pieces', () => {
 
     it('spawns the first configured next piece after hard drop', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('T:JIOTSL');
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
@@ -26,58 +27,70 @@ describe('Put pieces', () => {
         operations.mode.piece.harddrop();
 
         cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[T](J)IOTSL');
         mino(Piece.J, Rotation.Spawn)(4, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
         });
     });
 
-    it('seeds three 7bags when enabling infinite queue with an existing queue', () => {
+    it('adds one 7bag when enabling infinite queue with a short existing queue', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('T:I');
         operations.mode.piece.open();
 
-        cy.get(datatest('btn-piece-inference')).click()
-            .should('have.attr', 'aria-pressed', 'true');
+        operations.mode.piece.toggleInfiniteQueue();
+        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
-        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\(I\)[IOTLJSZ]{21}$/);
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\(I\)[IOTLJSZ]{7}$/);
+        operations.mode.piece.open();
         operations.mode.piece.harddrop();
 
-        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\([IOTLJSZ]\)[IOTLJSZ]{20}$/);
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\([IOTLJSZ]\)[IOTLJSZ]{6}$/);
     });
 
-    it('seeds 21 pieces and spawns the first one when the queue is empty', () => {
+    it('seeds one 7bag and spawns the first one when the queue is empty', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();
 
-        cy.get(datatest('btn-piece-inference')).click()
-            .should('have.attr', 'aria-pressed', 'true');
+        operations.mode.piece.toggleInfiniteQueue();
+        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val')
-            .should('match', /^#Q=\[\]\([IOTLJSZ]\)[IOTLJSZ]{20}$/);
+            .should('match', /^#Q=\[\]\([IOTLJSZ]\)[IOTLJSZ]{6}$/);
 
+        operations.mode.piece.open();
         operations.mode.piece.harddrop();
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val').then(comment => {
             const matched = /^#Q=\[\]\([IOTLJSZ]\)([IOTLJSZ]+)$/.exec(comment);
             expect(matched).to.not.equal(null);
-            expect(matched[1]).to.have.length(26);
+            expect(matched[1]).to.have.length(12);
             expect(matched[1].slice(-7).split('').sort().join('')).to.equal('IJLOSTZ');
         });
     });
 
-    it('does not replenish an infinite queue while at least 21 pieces remain', () => {
+    it('does not replenish an infinite queue while at least seven pieces are known', () => {
         visit({ mode: 'edit' });
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('T:IOTLJSZIOTLJSZIOTLJSZ');
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
-        cy.get(datatest('btn-piece-inference')).click()
-            .should('have.attr', 'aria-pressed', 'true');
+        operations.mode.piece.toggleInfiniteQueue();
+        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
         operations.mode.piece.harddrop();
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val').then(comment => {
             const matched = /^#Q=\[T\]\([IOTLJSZ]\)([IOTLJSZ]+)$/.exec(comment);
             expect(matched).to.not.equal(null);
-            expect(matched[1]).to.have.length(41);
+            // The input has 21 NEXT pieces. Hard drop consumes one, leaving 20;
+            // the infinite queue must not append another bag while seven are known.
+            expect(matched[1]).to.have.length(20);
         });
     });
 

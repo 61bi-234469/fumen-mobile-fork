@@ -13,6 +13,7 @@ interface Props {
     listShortcutLabel?: string;
     treeShortcutLabel?: string;
     homeShortcutLabel?: string;
+    menuShortcutLabel?: string;
     actions: {
         changeToEditorFromListView: () => void;
         openUtils: () => void;
@@ -20,13 +21,15 @@ interface Props {
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
+        openMenuModal: () => void;
+        executeNewFumen: () => void;
     };
 }
 
 export const ListViewTools: Component<Props> = (
     {
         height, palette, treeEnabled, treeViewMode,
-        listShortcutLabel, treeShortcutLabel, homeShortcutLabel, actions,
+        listShortcutLabel, treeShortcutLabel, homeShortcutLabel, menuShortcutLabel, actions,
     },
 ) => {
     const navProperties = style({
@@ -108,7 +111,6 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-menu"
                         fontSize={24}
-                        marginRight={41}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewMenuModal(),
@@ -122,11 +124,27 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-list-view-user-settings"
                         fontSize={24}
-                        sticky={true}
-                        stickyOffset={3}
+                        marginRight={41}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openUserSettingsModal(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="menu"
+                        datatest="btn-open-menu"
+                        width={36}
+                        height={height - 10}
+                        key="btn-open-menu"
+                        fontSize={24}
+                        sticky={true}
+                        stickyOffset={3}
+                        colors={palette}
+                        shortcutLabel={menuShortcutLabel}
+                        actions={{
+                            onclick: () => actions.openMenuModal(),
+                            onlongpress: () => actions.executeNewFumen(),
                         }}
                     />
                 </div>

@@ -33,11 +33,25 @@ const ensureSentLineVisible = () => {
         }
     });
 };
+// インスペクタ（utils/flags）のバックドロップはエディタ全面を覆う（z-index 20）ため、開いたままだと
+// モードボタンやレール操作のクリックが「covered by another element」で失敗する。トグル操作だけして
+// 閉じずに次の操作へ進むスペック（例: flags.lockToOff 直後の home()）を許容するため、
+// モード切替前に開いているインスペクタを明示的に閉じる。
+const closeInspectorIfOpen = () => {
+    cy.get('body').then(($body) => {
+        const close = $body.find('[datatest="btn-inspector-close"]');
+        if (close.length > 0) {
+            cy.get(datatest('btn-inspector-close')).click();
+            cy.get(datatest('btn-inspector-close')).should('not.exist');
+        }
+    });
+};
 // モードボタンは「選択中に再度押すとトレイを閉じる」トグル動作になったため、事前に「既に選択中か」を
 // 判定して押下をスキップする方式は使わない（インスペクタ（utils/flags）がトレイの上に被さっている場合、
 // トレイの DOM 自体は残っているため誤って「表示中」と判定してしまう）。必ず一度押し、
 // その結果トレイが閉じてしまっていたら（インスペクタも必ず閉じているはずなので）もう一度押して開き直す。
 const ensureModeActive = (selector) => {
+    closeInspectorIfOpen();
     cy.get(datatest(selector)).click();
     cy.get('body').then(($body) => {
         const nowActive = $body.find(`[datatest="${selector}"][aria-pressed="true"]`).length > 0
@@ -50,6 +64,7 @@ const ensureModeActive = (selector) => {
 // PAINT はスライド/コメントモードでも primaryTool:'paint' のまま aria-pressed が true になるため、
 // 汎用の ensureModeActive では区別できない。PAINT のペントレイが出ているかで直接判定する。
 const ensurePaintPenHome = () => {
+    closeInspectorIfOpen();
     cy.get(datatest('btn-paint-mode')).click();
     cy.get('body').then(($body) => {
         if ($body.find('[datatest="tray-paint-pen"]').length === 0) {
@@ -192,13 +207,19 @@ export const operations = {
                 cy.get('#canvas-container').then(canvas => {
                     const start = fieldPoint(canvas[0], x, from);
                     const end = fieldPoint(canvas[0], x, to);
-                    let body = cy.get('#canvas-container .konvajs-content').trigger('mousedown', start.x, start.y);
+                    const contentSelector = '#canvas-container .konvajs-content';
+                    cy.get(contentSelector).trigger('mousedown', start.x, start.y);
                     const maxCount = 10;
                     for (let count = 0; count <= maxCount; count++) {
                         const ratio = count / maxCount;
-                        body = body.trigger('mousemove', start.x, start.y + (end.y - start.y) * ratio);
+                        // Field actions reopen the current page and can replace the
+                        // Konva content node. Re-query it for every event so a drag
+                        // crossing the sent-line/field boundary is not truncated.
+                        cy.get(contentSelector).trigger(
+                            'mousemove', start.x, start.y + (end.y - start.y) * ratio,
+                        );
                     }
-                    body.trigger('mouseup', end.x, end.y);
+                    cy.get(contentSelector).trigger('mouseup', end.x, end.y);
                 });
             },
             // 高速ポインタの再現: 開始セルと終了セルのイベントだけを発火する。
@@ -281,6 +302,18 @@ export const operations = {
                 cy.get(datatest('overlay-utils')).find(datatest('btn-inspector-close')).click();
                 cy.get(datatest('overlay-utils')).should('not.exist');
             },
+            clearToEnd: () => {
+                operations.mode.utils.open();
+                cy.get(datatest('btn-clear-to-end')).click();
+                operations.mode.utils.close();
+                cy.wait(100);
+            },
+            clearPast: () => {
+                operations.mode.utils.open();
+                cy.get(datatest('btn-clear-past')).click();
+                operations.mode.utils.close();
+                cy.wait(100);
+            },
         },
         flags: {
             open: ({ home = true } = {}) => {
@@ -317,6 +350,10 @@ export const operations = {
             open: () => {
                 ensureModeActive('btn-piece-mode');
             },
+            toggleInfiniteQueue: () => {
+                cy.get(datatest('piece-queue-infinite-checkbox')).click();
+                cy.wait(100);
+            },
             resetPiece: () => {
                 cy.get(datatest('btn-piece-gray')).click();
             },
@@ -333,7 +370,11 @@ export const operations = {
                 cy.get(datatest('tray-piece-rotate-left')).click();
             },
             rotateTo180: () => {
-                pressPieceShortcut('KeyA');
+                // Rotate180ショートカット(KeyA)は rotationSystem が SRS+ のときだけ有効
+                // (src/actions/field_editor.ts rotateTo180)。デフォルト(SRS)では無反応になるため、
+                // E2Eでは右回転2回で180回転相当を行う（スポーン直後の空中ではキック差は生じない）。
+                operations.mode.piece.rotateToRight();
+                operations.mode.piece.rotateToRight();
             },
             moveToRight: () => {
                 pressPieceShortcut('ArrowRight');
@@ -417,6 +458,15 @@ export const operations = {
                 J: () => {
                     spawnPieceForScenario('btn-piece-j');
                 },
+            },
+        },
+        comment: {
+            open: ({ home = true } = {}) => {
+                if (home) {
+                    operations.mode.utils.open();
+                }
+                cy.get(datatest('btn-comment-mode')).click();
+                cy.get(datatest('text-comment')).should('be.visible');
             },
         },
         tools: {
@@ -599,6 +649,9 @@ export const operations = {
             cy.get(datatest('btn-list-menu')).click();
         },
         copyToClipboard: () => {
+            // Avoid treating a marker from an earlier copy in the same test as this copy's
+            // completion signal.
+            cy.get('body').invoke('removeAttr', 'datatest').invoke('removeAttr', 'data');
             operations.menu.open();
             cy.get(datatest('btn-copy-fumen')).click();
             // Clicking btn-raw-fumen waits for the clipboard modal to render and finish animating
@@ -623,6 +676,17 @@ export const operations = {
             }
 
             cy.get(datatest('btn-clipboard-cancel')).click();
+            // The fumen data marker is the deterministic completion signal. The toast is
+            // transient and can expire before Cypress observes it on a busy CI runner.
+            cy.get(datatest('copied-fumen-data')).should('exist');
+            // Dismiss the app toast before the next editor action. Materialize's timer can
+            // be delayed by a busy CI browser, so waiting for its natural expiry is flaky.
+            cy.window().then((win) => {
+                if (win.M && win.M.Toast && typeof win.M.Toast.dismissAll === 'function') {
+                    win.M.Toast.dismissAll();
+                }
+            });
+            cy.get('.toast.top-toast').should('not.exist');
         },
         firstPage: () => {
             operations.menu.open();
@@ -644,16 +708,6 @@ export const operations = {
             cy.get(datatest('btn-comment-writable')).click();
             cy.wait(100);
         },
-        clearToEnd: () => {
-            operations.menu.open();
-            cy.get(datatest('btn-clear-to-end')).click();
-            cy.wait(100);
-        },
-        clearPast: () => {
-            operations.menu.open();
-            cy.get(datatest('btn-clear-past')).click();
-            cy.wait(100);
-        },
         pageSlider: () => {
             operations.menu.open();
             cy.get(datatest('btn-page-slider')).click();
@@ -668,13 +722,13 @@ export const operations = {
         },
         ghostOn: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest('switch-ghost-visible')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         ghostOff: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
             cy.get(datatest('btn-save')).click();
         },
@@ -686,7 +740,7 @@ export const operations = {
         },
         setRotationSystem: (value) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },

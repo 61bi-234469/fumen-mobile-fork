@@ -174,13 +174,32 @@ const getPieces = (piece) => {
 // succeed so the app takes its normal "Copied to clipboard" path. Tests that need the real failure
 // can pass `stubClipboard: false` to visit().
 export const stubClipboardCopy = (win) => {
-    const originalExecCommand = win.document.execCommand.bind(win.document);
-    win.document.execCommand = (commandId, ...args) => {
+    const document = win.document;
+    if (document.execCommand && document.execCommand.__fumenClipboardStub) {
+        return;
+    }
+
+    const originalExecCommand = document.execCommand.bind(document);
+    const execCommand = (commandId, ...args) => {
         if (typeof commandId === 'string' && /^(copy|cut)$/i.test(commandId)) {
             return true;
         }
         return originalExecCommand(commandId, ...args);
     };
+
+    // Use an own property so the stub also replaces the browser's prototype method in
+    // Electron, where a plain assignment can be ignored for some document implementations.
+    Object.defineProperty(execCommand, '__fumenClipboardStub', { value: true });
+    try {
+        Object.defineProperty(document, 'execCommand', {
+            configurable: true,
+            value: execCommand,
+        });
+    } catch (error) {
+        // Keep compatibility with browsers that expose execCommand as an assignable
+        // property only, while the normal Electron path uses defineProperty above.
+        document.execCommand = execCommand;
+    }
 };
 
 // The side menu and every dialog (clipboard, append, open, ...) are Materialize M.Modal instances,
@@ -195,6 +214,11 @@ export const disableModalAnimations = (win) => {
     if (modal && modal.defaults) {
         modal.defaults.inDuration = 0;
         modal.defaults.outDuration = 0;
+    }
+    const toast = win.M && win.M.Toast;
+    if (toast && toast.defaults) {
+        toast.defaults.inDuration = 0;
+        toast.defaults.outDuration = 0;
     }
 };
 
@@ -221,25 +245,39 @@ export const visit = (
         params.mobile = 1;
     }
 
-    // Register before visiting so the stub is applied on the initial load and on any cy.reload()
-    // below (window:before:load fires for both). Scoped to the current test, so opting out is just
-    // a matter of passing stubClipboard: false.
+    // Keep direct cy.reload() calls covered as well; onBeforeLoad below handles the initial
+    // visit explicitly, and the idempotent stub makes the two hooks safe together.
     if (stubClipboard) {
         cy.on('window:before:load', stubClipboardCopy);
     }
 
     if (params) {
         const query = Object.entries(params).map(value => value[0] + '=' + value[1]).join('&');
-        cy.visit(baseUrl + '?' + query);
+        if (stubClipboard) {
+            cy.visit(baseUrl + '?' + query, { onBeforeLoad: stubClipboardCopy });
+        } else {
+            cy.visit(baseUrl + '?' + query);
+        }
     } else {
-        cy.visit(baseUrl);
+        if (stubClipboard) {
+            cy.visit(baseUrl, { onBeforeLoad: stubClipboardCopy });
+        } else {
+            cy.visit(baseUrl);
+        }
     }
 
     if (reload) {
         cy.reload();
     }
 
-    cy.window().then(disableModalAnimations);
+    cy.window().then((win) => {
+        if (stubClipboard) {
+            // Apply again after cy.reload(), and keep the setup deterministic even if the
+            // browser does not deliver window:before:load to the spec event listener.
+            stubClipboardCopy(win);
+        }
+        disableModalAnimations(win);
+    });
 
     cy.wait(sleepInMill);
 };

@@ -10,7 +10,7 @@
     "test": "jest",
     "cy-run": "node scripts/cypress_wrapper.js run",
     "cy-open": "node scripts/cypress_wrapper.js open",
-    "test-ci": "yarn test",
+    "test-ci": "jest --coverage=false",
     "cy-run-ci": "node scripts/cypress_wrapper.js run",
     "dev": "concurrently \"webpack --mode development --watch\" \"node serve.js\""
   },

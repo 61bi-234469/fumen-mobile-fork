@@ -37,6 +37,7 @@ export const i18n = {
             Field: () => t('UserSettings.Tabs.Field'),
             View: () => t('UserSettings.Tabs.View'),
             Shortcuts: () => t('UserSettings.Tabs.Shortcuts'),
+            Piece: () => t('UserSettings.Tabs.Piece'),
             Misc: () => t('UserSettings.Tabs.Misc'),
         },
         Switch: {
@@ -149,6 +150,7 @@ export const i18n = {
         UtilsCurrentPage: () => t('EditorUi.UtilsCurrentPage'),
         UtilsAllPages: () => t('EditorUi.UtilsAllPages'),
         UtilsModes: () => t('EditorUi.UtilsModes'),
+        UtilsPages: () => t('EditorUi.UtilsPages'),
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         Clear: () => t('EditorUi.Clear'), Slide: () => t('EditorUi.Slide'), Comment: () => t('EditorUi.Comment'),
         KeyPage: () => t('EditorUi.KeyPage'), ReferencePage: () => t('EditorUi.ReferencePage'),
@@ -188,7 +190,15 @@ export const i18n = {
     Menu: {
         Title: () => t('Menu.Title'),
         Build: (version: string) => t('Menu.Build', { version }),
+        Sections: {
+            Mode: () => t('Menu.Sections.Mode'),
+            Page: () => t('Menu.Sections.Page'),
+            General: () => t('Menu.Sections.General'),
+            Legacy: () => t('Menu.Sections.Legacy'),
+        },
         Buttons: {
+            List: () => t('Menu.Buttons.List'),
+            Tree: () => t('Menu.Buttons.Tree'),
             Readonly: () => t('Menu.Buttons.Readonly'),
             Writable: () => t('Menu.Buttons.Writable'),
             Clipboard: () => t('Menu.Buttons.Clipboard'),
@@ -373,6 +383,7 @@ export const i18n = {
         EvaluatePlacedSpawnScoreLabel: () => t('ColdClear.EvaluatePlacedSpawnScoreLabel'),
         EvaluatePlacedSpawnScoreDescription: () => t('ColdClear.EvaluatePlacedSpawnScoreDescription'),
         InvalidPageFlags: () => t('ColdClear.InvalidPageFlags'),
+        FieldContainsCompleteLine: () => t('ColdClear.FieldContainsCompleteLine'),
         InvalidQueueComment: () => t('ColdClear.InvalidQueueComment'),
         PlacedPieceRequired: () => t('ColdClear.PlacedPieceRequired'),
         CurrentPieceRequired: () => t('ColdClear.CurrentPieceRequired'),

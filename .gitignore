@@ -4,8 +4,7 @@ dist/
 yarn-*.log
 docs/
 .tmp_compare/
-AGENTS.md
-CLAUDE.md
+AGENTS.local.md
 .claude/
 .vscode/
 package-lock.json

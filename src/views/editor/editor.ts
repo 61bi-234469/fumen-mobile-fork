@@ -1,4 +1,4 @@
-import { CommentType, GradientPattern, Piece, Screens } from '../../lib/enums';
+import { CommentType, GradientPattern, ModeTypes, Piece, Screens } from '../../lib/enums';
 import { Coordinate, getNavigatorHeight, Size } from '../commons';
 import { View } from 'hyperapp';
 import { resources, State } from '../../states';
@@ -20,7 +20,7 @@ import { editorOverlay } from './editor_overlay';
 import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
-import { getEditorBottomMetrics, getEditorRailConfig } from './responsive_layout';
+import { getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
 
@@ -50,6 +50,9 @@ export interface EditorLayout {
         visible: boolean;
         width: number;
         gap: number;
+        nextMinoHeight: number;
+        nextPanelHeight: number;
+        railCellHeight: number;
     };
     comment: {
         topLeft: Coordinate;
@@ -104,6 +107,7 @@ interface LayoutParams {
     rightInspectorWidth: number;
     trayInBottom: boolean;
     pieceQueueVisible?: boolean;
+    commentVisible?: boolean;
 }
 
 export const getLayout = (
@@ -115,9 +119,12 @@ export const getLayout = (
         rightInspectorWidth,
         trayInBottom,
         pieceQueueVisible = false,
+        commentVisible = true,
     }: LayoutParams,
 ): EditorLayout => {
-    const { commentHeight, toolsHeight } = getEditorBottomMetrics(height);
+    const bottomMetrics = getEditorBottomMetrics(height);
+    const commentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
+    const { toolsHeight } = bottomMetrics;
     const borderWidthBottomField = 2.4;
 
     // パネル表示中は盤面領域だけ狭める（コメント欄・ツールバーは全幅のまま）
@@ -128,15 +135,16 @@ export const getLayout = (
         height: height - (toolsHeight + commentHeight + topLeftY),
     };
 
-    const rail = getEditorRailConfig(canvasSize.height);
+    const rail = getEditorRailConfig(canvasSize.height, pieceQueueVisible);
     const pieceQueueWidth = pieceQueueVisible
         ? Math.min(56, Math.max(34, canvasSize.width * .12))
         : 0;
     const pieceQueueGap = pieceQueueVisible
         ? Math.min(6, Math.max(2, canvasSize.width * .012))
         : 0;
+    // NEXT枠は右レールと同じ列に縦積みするため、横方向の追加確保はHold列ぶんだけでよい
     const pieceQueueReserve = pieceQueueVisible
-        ? pieceQueueWidth * 2 + pieceQueueGap * 2
+        ? pieceQueueWidth + pieceQueueGap * 2
         : 0;
 
     const blockSize = Math.min(
@@ -148,6 +156,10 @@ export const getLayout = (
         width: (blockSize + 1) * 10 + 1,
         height: (blockSize + 1) * 23.5 + 1 + borderWidthBottomField + 1,
     };
+
+    const pieceRailMetrics = pieceQueueVisible
+        ? getPieceRailMetrics(fieldSize.height, pieceQueueWidth)
+        : { nextMinoHeight: 0, nextPanelHeight: 0, railCellHeight: 0 };
 
     const pieceButtonsSize = {
         width: Math.min(Math.max((canvasSize.width - fieldSize.width) * rail.widthRatio, rail.minWidth),
@@ -190,6 +202,9 @@ export const getLayout = (
             visible: pieceQueueVisible,
             width: pieceQueueWidth,
             gap: pieceQueueGap,
+            nextMinoHeight: pieceRailMetrics.nextMinoHeight,
+            nextPanelHeight: pieceRailMetrics.nextPanelHeight,
+            railCellHeight: pieceRailMetrics.railCellHeight,
         },
         comment: {
             topLeft: {
@@ -263,8 +278,14 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         width: layout.pieceQueue.width,
         gap: layout.pieceQueue.gap,
         fieldHeight: layout.field.size.height,
+        nextMinoHeight: layout.pieceQueue.nextMinoHeight,
         guideLineColor: state.fumen.guideLineColor,
+        infinitePieceQueue: state.editorUi.infinitePieceQueue,
         openSettings: ({ focus }) => actions.openPieceQueueModal({ focus }),
+        toggleInfinitePieceQueue: () => {
+            actions.commitCommentText();
+            actions.toggleInfinitePieceQueue();
+        },
     }) : null;
 
     const fieldColumn = div({
@@ -328,15 +349,33 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         }, [contextTray(state, actions, trayHeight)])] : []),
     ]);
 
+    // PIECE時はNEXT枠・∞7bag・レールを右側の1列にまとめる
+    const rightColumn = queueOverlays === null
+        ? editorRail(state, actions, layout)
+        : div({
+            key: 'piece-right-column',
+            style: style({
+                alignSelf: 'center',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                height: px(layout.field.size.height),
+                marginLeft: '8px',
+                width: px(layout.buttons.size.width),
+            }),
+        }, [
+            queueOverlays.nextPanel,
+            editorRail(state, actions, layout),
+        ]);
+
     const getChildren = () => {
         return [   // canvas:Field とのマッピング用仮想DOM
             ...(queueOverlays ? [queueOverlays.holdPanel] : []),
 
             fieldColumn,
 
-            ...(queueOverlays ? [queueOverlays.nextPanel] : []),
-
-            editorRail(state, actions, layout),
+            rightColumn,
 
             editorOverlay(state, actions, layout) as any,
         ];
@@ -395,6 +434,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         width: state.display.width,
         editShortcuts: state.mode.editShortcuts,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
+        loop: state.mode.loop,
         actions: {
             openFumenModal: actions.openFumenModal,
             openMenuModal: actions.openMenuModal,
@@ -487,6 +527,8 @@ export const view: View<State, Actions> = (state, actions) => {
     // トレイを盤面下部（せり上がり部と同じ枠）に置くかどうか。
     // ページスライダー表示中はコメント欄を優先してトレイを出さない。
     const trayInBottom = !pageSliderVisible;
+    const contextTrayVisible = trayInBottom && state.editorUi.bottomSlot === 'tray';
+    const commentVisible = !contextTrayVisible || state.mode.type === ModeTypes.Comment;
     // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
     // （盤面サイズは develop 時点の計算式と完全に一致させる）。
     // 初期匁E
@@ -494,6 +536,7 @@ export const view: View<State, Actions> = (state, actions) => {
         rightInspectorWidth,
         sidePanelWidth,
         trayInBottom,
+        commentVisible,
         pieceQueueVisible: state.editorUi.primaryTool === 'piece',
         ...state.display,
         topLeftY: navigatorHeight,
@@ -538,7 +581,7 @@ export const view: View<State, Actions> = (state, actions) => {
         div({
             key: 'menu-top',
         }, [
-            getComment(state, actions, layout),
+            commentVisible ? getComment(state, actions, layout) : undefined as any,
 
             Tools(state, actions, layout.tools.size.height, palette),
         ]),

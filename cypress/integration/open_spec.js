@@ -594,8 +594,12 @@ describe('Open fumen', () => {
             });
         }
 
-        operations.mode.tools.home();
+        // 新UIのPIECEモードではフィールドクリックがカレントピースの移動になるため、
+        // カレント(I)を削除(btn-piece-empty)してからPAINTモードの補完(inference)ボタンで描画する。
         operations.mode.piece.open();
+        cy.get(datatest('btn-piece-empty')).click();
+        operations.mode.tools.home();
+        operations.mode.block.Completion();
 
         operations.mode.block.click(5, 11);
 
@@ -611,6 +615,8 @@ describe('Open fumen', () => {
             cy.get(block).should('have.attr', 'color', Color.O.Lighter);
         });
 
+        // スポーン操作はPIECEモードのトレイに依存するため、モードを切り替えてから行う
+        operations.mode.piece.open();
         operations.mode.piece.spawn.Z();
 
         operations.mode.block.click(4, 18);
@@ -626,7 +632,8 @@ describe('Open fumen', () => {
         cy.get(block(4, 11)).should('have.attr', 'color', Color.Z.Lighter);
         cy.get(block(5, 11)).should('have.attr', 'color', Color.Z.Lighter);
 
-        operations.mode.piece.resetPiece();
+        // 新UIでは btn-piece-gray は直前ミノの再スポーンになるため、削除ボタンでピースを消す
+        cy.get(datatest('btn-piece-empty')).click();
 
         mino(Piece.Z, Rotation.Spawn)(4, 11).forEach((block) => {
             cy.get(block).should('not.have.attr', 'color', Color.Z.Lighter);
@@ -660,6 +667,7 @@ describe('Open fumen', () => {
         });
 
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 2');
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[](S)A');
 
         // Quizが間違っていても、操作はできること

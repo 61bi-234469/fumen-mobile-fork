@@ -33,6 +33,43 @@ const assertRailArrangement = () => {
     });
 };
 
+const assertPieceRailSingleColumn = () => {
+    const selectors = ['btn-editor-share', 'btn-editor-user-settings', 'btn-piece-mode', 'btn-cold-clear'];
+    cy.get(selectors.map(datatest).join(',')).then(elements => {
+        const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+        const cells = selectors.map(rect);
+        cells.slice(1).forEach(cell => {
+            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
+            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        });
+        expect(rect('btn-editor-share').bottom).to.be.at.most(rect('btn-editor-user-settings').top);
+        expect(rect('btn-piece-mode').bottom).to.be.at.most(rect('btn-cold-clear').top);
+    });
+    cy.get(`${datatest('editor-rail')} button`).then(buttons => {
+        const cells = Array.from(buttons).map(button => button.getBoundingClientRect());
+        cells.slice(1).forEach(cell => {
+            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
+            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        });
+    });
+    cy.get(`${datatest('editor-rail')},${datatest('btn-piece-gray')}`).then(elements => {
+        const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
+        const lastCell = elements.filter(datatest('btn-piece-gray'))[0].getBoundingClientRect();
+        expect(rail.bottom - lastCell.bottom).to.be.at.least(3);
+    });
+};
+
+const assertInfiniteToggleFits = () => {
+    cy.get(datatest('piece-queue-infinite')).then(toggle => {
+        const toggleRect = toggle[0].getBoundingClientRect();
+        const checkboxRect = toggle.find(datatest('piece-queue-infinite-checkbox'))[0].getBoundingClientRect();
+        const textRect = toggle.find(datatest('piece-queue-infinite-text'))[0].getBoundingClientRect();
+        expect(checkboxRect.left).to.be.at.least(toggleRect.left);
+        expect(textRect.right).to.be.at.most(toggleRect.right);
+        expect(toggle[0].scrollWidth).to.be.at.most(Math.ceil(toggleRect.width));
+    });
+};
+
 describe('Editor UI final concept', () => {
     beforeEach(() => cy.clearLocalStorage());
 
@@ -70,22 +107,65 @@ describe('Editor UI final concept', () => {
     });
 
     [
-        [320, 568],
-        [375, 667],
-        [390, 844],
-        [844, 390],
-    ].forEach(([width, height]) => {
+        [320, 568, true],
+        [375, 667, true],
+        [390, 844, true],
+        [844, 390, true],
+        [1024, 768, false],
+        [1920, 1080, false],
+    ].forEach(([width, height, mobile]) => {
         it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
             cy.viewport(width, height);
-            visit({ mode: 'edit' });
+            visit({ mode: 'edit', mobile });
             cy.get(datatest('btn-piece-mode')).click();
 
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '1');
+            cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
+            assertPieceRailSingleColumn();
+            assertInfiniteToggleFits();
+            ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
+                'btn-utils-mode', 'btn-flags-mode', 'btn-piece-inference'].forEach(selector => {
+                cy.get(datatest(selector)).should('not.exist');
+            });
+            cy.get([
+                datatest('piece-queue-hold'),
+                datatest('piece-queue-next'),
+                datatest('editor-field-frame'),
+                datatest('editor-rail'),
+            ].join(',')).each(element => {
+                const rect = element[0].getBoundingClientRect();
+                expect(rect.left).to.be.at.least(0);
+                expect(rect.right).to.be.at.most(width);
+            });
             cy.get(datatest('tray-context')).then(tray => {
                 cy.get(datatest('tools')).then(tools => {
                     expect(tray[0].getBoundingClientRect().bottom)
                         .to.be.at.most(tools[0].getBoundingClientRect().top);
                 });
             });
+        });
+    });
+
+    it('keeps the production field size and text labels on a phone display', () => {
+        cy.viewport(412, 844);
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('editor-field-frame')).then(field => {
+            expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
+        });
+        [
+            ['btn-insert-new-page', 'Add'],
+            ['btn-insert-from-clipboard', 'Insert'],
+            ['btn-copy-to-clipboard', 'Copy'],
+            ['btn-cut-page', 'Cut'],
+            ['btn-utils-mode', 'U'],
+            ['btn-flags-mode', 'F'],
+            ['btn-piece-mode', 'P'],
+            ['btn-cold-clear', 'AI'],
+            ['btn-select-mode', 'SELECT'],
+            ['btn-paint-mode', 'PAINT'],
+        ].forEach(([selector, label]) => {
+            cy.get(datatest(selector)).should('contain.text', label);
         });
     });
 
@@ -107,6 +187,9 @@ describe('Editor UI final concept', () => {
     it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
         visit({ mode: 'edit' });
 
+        const paletteFrames = `${datatest('editor-rail')} [datatest^="btn-piece-"]:not(${datatest('btn-piece-mode')})`;
+        cy.get(paletteFrames).should('have.length', 10);
+
         cy.get(datatest('btn-paint-mode'))
             .should('have.css', 'background-color', 'rgb(232, 241, 251)')
             .and('have.css', 'color', 'rgb(21, 101, 192)');
@@ -123,8 +206,16 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-inference'))
             .find('[data-palette-swatch="comp"]')
             .should('contain', 'COMP');
+        cy.get(datatest('btn-piece-inference'))
+            .should('have.attr', 'aria-pressed', 'true')
+            .and('have.css', 'box-shadow')
+            .and('include', 'rgb(25, 118, 210)');
 
         cy.get(datatest('btn-piece-mode')).click();
+        cy.get(paletteFrames).should('have.length', 9);
+        cy.get(datatest('piece-palette-empty')).should('be.visible');
+        cy.get(`${paletteFrames},${datatest('piece-palette-empty')}`)
+            .should('have.length', 10);
         cy.get(datatest('btn-piece-i')).find('img').should('exist');
 
         cy.get(datatest('btn-select-mode')).click();
@@ -136,6 +227,17 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-i')).click()
             .should('have.css', 'background-color', 'rgb(244, 248, 253)')
             .and('have.css', 'color', 'rgb(51, 51, 51)');
+    });
+
+    it('opens the PIECE tray instead of settings on a phone tap', () => {
+        cy.viewport(375, 667);
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-piece-mode')).click();
+
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-grid')).should('be.visible');
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
     });
 
     it('keeps the PAINT tray hidden when selecting another palette entry', () => {
@@ -177,20 +279,20 @@ describe('Editor UI final concept', () => {
 
     it('preserves the active tool while opening and closing inspectors', () => {
         visit({ mode: 'edit' });
-        cy.get(datatest('btn-piece-mode')).click().should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
 
         cy.get(datatest('btn-utils-mode')).click();
         cy.get(datatest('overlay-utils')).should('be.visible');
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('btn-inspector-close')).click();
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('btn-utils-mode')).should('be.focused');
 
         cy.get(datatest('btn-flags-mode')).click();
         cy.get(datatest('overlay-flags')).should('be.visible');
         cy.get('body').type('{esc}');
         cy.get(datatest('overlay-flags')).should('not.exist');
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
     });
 
     it('drags inspectors by their heading and shows flag checkboxes', () => {
@@ -228,11 +330,11 @@ describe('Editor UI final concept', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
-        // Default: paint mode active, context tray occupies the bottom band, comment stays visible.
+        // Default: paint mode active, context tray occupies the bottom band, comment is hidden.
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray--compact');
-        cy.get(datatest('text-comment')).should('exist');
+        cy.get(datatest('text-comment')).should('not.exist');
         cy.get(datatest('field-bottom-tray')).then(tray => {
             const trayRect = tray[0].getBoundingClientRect();
             cy.get(datatest('editor-field-frame')).then(field => {
@@ -379,7 +481,9 @@ describe('Editor UI final concept', () => {
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         operations.mode.block.click(5, 5);
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
-        operations.mode.block.click(5, 5);
+        // 移動したプレビューは「外側クリック」で初めてフィールドへ確定される仕様のため、
+        // 範囲外をクリックしてコミットしてから undo で取り消せることを確認する。
+        operations.mode.block.click(0, 10);
         cy.get('[datatest^="tray-part-"]').should('not.exist');
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);

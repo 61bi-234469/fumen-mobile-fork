@@ -2,6 +2,7 @@ import {
     endAllDasHolds,
     endDasHold,
     FRAME_DURATION_MS,
+    framesToMilliseconds,
     isDasHoldActive,
     millisecondsToFrames,
     startDasHold,
@@ -15,6 +16,11 @@ describe('piece_das', () => {
         expect(millisecondsToFrames(167)).toBe(10);
         expect(millisecondsToFrames(33)).toBe(2);
         expect(millisecondsToFrames(0)).toBe(0);
+    });
+
+    test('converts fractional frames without rounding', () => {
+        expect(framesToMilliseconds(5.5)).toBeCloseTo(FRAME_DURATION_MS * 5.5);
+        expect(framesToMilliseconds(1.5)).toBeCloseTo(FRAME_DURATION_MS * 1.5);
     });
 
     beforeEach(() => {

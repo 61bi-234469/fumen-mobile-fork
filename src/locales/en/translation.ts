@@ -30,8 +30,9 @@
         Notice: 'Clearing the browser cache will initialize the settings.',
         Tabs: {
             Field: 'Field',
-            View: 'List & Tree View',
+            View: 'List & Tree',
             Shortcuts: 'Shortcuts',
+            Piece: 'Piece',
             Misc: 'Others',
         },
         Switch: {
@@ -50,7 +51,7 @@
             Title: 'Skip Reader mode on startup',
         },
         Loop: {
-            Title: 'Loop on page navigation [Reader]',
+            Title: 'Loop on page navigation',
             Off: () => 'Off',
             On: () => 'On',
         },
@@ -104,10 +105,10 @@
             Rotate180: 'Rotate 180°',
             Reset: 'Reset Piece',
             Hold: 'Hold',
-            DasFrames: 'DAS (F)',
-            DasDescription: 'Frames before auto-repeat when holding left/right',
-            ArrFrames: 'ARR (F)',
-            ArrDescription: 'Auto-repeat interval in frames after DAS. 0 moves to the edge instantly',
+            DasFrames: 'DAS',
+            DasDescription: 'Frames before ARR starts when holding left/right',
+            ArrFrames: 'ARR',
+            ArrDescription: 'Repeat interval after DAS. 0 moves to the edge instantly',
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
@@ -130,6 +131,7 @@
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right', Drop: 'Drop', Move: 'Move', Stamp: 'Stamp',
         Deselect: 'Deselect', Once: 'Once', Continuous: 'Continuous', Rotate: 'Rotate', Mirror: 'Mirror', End: 'End',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
+        UtilsPages: 'Delete pages',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
         KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',
@@ -173,7 +175,15 @@
     Menu: {
         Title: 'Menu',
         Build: 'build {{version}}',
+        Sections: {
+            Mode: 'Mode',
+            Page: 'Page',
+            General: 'General',
+            Legacy: 'Legacy',
+        },
         Buttons: {
+            List: 'List',
+            Tree: 'Tree',
             Readonly: 'Readonly',
             Writable: 'Edit',
             Clipboard: 'Clipboard',
@@ -358,6 +368,7 @@
         EvaluatePlacedSpawnScoreLabel: 'Get Score',
         EvaluatePlacedSpawnScoreDescription: 'Get the score for the currently placed piece',
         InvalidPageFlags: 'AI: Unsupported page flags for this action',
+        FieldContainsCompleteLine: 'AI: The field contains a complete line. Clear it before using ColdClear.',
         InvalidQueueComment: 'AI: Queue comment is required',
         PlacedPieceRequired: 'AI: Place a piece before running this action',
         CurrentPieceRequired: 'AI: Set the current piece before evaluating the score',

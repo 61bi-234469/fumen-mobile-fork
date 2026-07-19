@@ -7,12 +7,36 @@ describe('User settings', () => {
         visit({ mode: 'edit' });
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-shortcuts')).click();
+        cy.get(datatest('tab-user-settings-piece')).click();
+        cy.get(datatest('panel-user-settings-piece')).then(panel => {
+            const expectedOrder = [
+                'input-piece-shortcut-Hold',
+                'input-piece-shortcut-Reset',
+                'switch-ghost-visible',
+                'radio-rotation-system-classic',
+                'input-piece-arr',
+                'input-piece-das',
+            ];
+            const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
+            const indexes = expectedOrder.map(value => datatests.findIndex(element =>
+                element.getAttribute('datatest') === value));
+            expect(indexes).to.deep.equal([...indexes].sort((left, right) => left - right));
+        });
         cy.get(datatest('input-piece-shortcut-SoftDrop')).should('have.value', '↓');
         cy.get(datatest('input-piece-shortcut-HardDrop')).should('have.value', 'Space');
         cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
-        cy.get(datatest('input-piece-das')).should('have.value', '10').clear().type('5').blur();
-        cy.get(datatest('input-piece-arr')).should('have.value', '1');
+        cy.get(datatest('input-piece-das')).should('have.value', '10').clear().type('5.5').blur();
+        cy.get(datatest('input-piece-arr')).should('have.value', '1').clear().type('1.5').blur();
+        cy.get(datatest('unit-piece-das')).should('have.text', 'F');
+        cy.get(datatest('unit-piece-arr')).should('have.text', 'F');
+        cy.get(datatest('label-piece-das')).should('have.text', 'DAS');
+        cy.get(datatest('label-piece-arr')).should('have.text', 'ARR');
+        cy.get(datatest('btn-save')).click();
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-piece')).click();
+        cy.get(datatest('input-piece-das')).should('have.value', '5.5');
+        cy.get(datatest('input-piece-arr')).should('have.value', '1.5');
         cy.get(datatest('btn-save')).click();
 
         cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
@@ -26,6 +50,23 @@ describe('User settings', () => {
         cy.get(datatest('text-pages')).should('contain', '3 / 3');
     });
 
+    it('collapses gradient options by default and expands them on demand', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('details-user-settings-gradient')).should('not.have.attr', 'open');
+        cy.get(datatest('gradient-piece-options')).should('not.be.visible');
+        cy.get(datatest('summary-user-settings-gradient')).click();
+        cy.get(datatest('details-user-settings-gradient')).should('have.attr', 'open');
+        // The expanded panel can extend below the fixed modal viewport at the
+        // default mobile size. Its display state is the behavior under test;
+        // force the radio interaction after that structural assertion.
+        cy.get(datatest('gradient-piece-options')).should('have.css', 'display', 'block')
+            .find('input[type="radio"]').eq(1).check({ force: true }).should('be.checked');
+        cy.get(datatest('btn-cancel')).click();
+    });
+
     it('Ghost visible', () => {
         cy.clearLocalStorage();
 
@@ -33,18 +74,21 @@ describe('User settings', () => {
 
         // visible -> hidden
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
         cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // cancel
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-cancel')).click();
 
         // reload
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
 
@@ -52,12 +96,14 @@ describe('User settings', () => {
 
         // hidden -> visible
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // verify
         operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
     });
 
@@ -100,6 +146,7 @@ describe('User settings', () => {
         // disable -> enable
         operations.menu.openUserSettings();
         operations.menu.selectUserSettingsTab('misc');
+        cy.get(datatest('switch-loop')).parents('.switch').should('not.contain', '[Reader]');
         cy.get(datatest('switch-loop')).should('not.be.checked');
         cy.get(datatest('switch-loop')).check({ force: true });
         cy.get(datatest('btn-save')).click();
@@ -144,16 +191,24 @@ describe('User settings', () => {
 
         visit({ fumen: 'v115@vhF0MJ9NJXDJ2OJzEJi/I', mode: 'edit' });
 
-        // 移動しないことの確認
+        // ループ無効時は端で停止
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
         cy.get(datatest('btn-back-page')).click();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
 
         operations.menu.loopOn();
 
-        // 移動しないことの確認
-        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
+        // ループ有効時はボタンとショートカットの両方で端から端へ移動
         cy.get(datatest('btn-back-page')).click();
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
+
+        cy.get('body').trigger('keydown', { code: 'Digit1', key: '1' });
+        cy.get('body').trigger('keyup', { code: 'Digit1', key: '1' });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');
+        cy.get('body').trigger('keydown', { code: 'Digit2', key: '2' });
+        cy.get('body').trigger('keyup', { code: 'Digit2', key: '2' });
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
     });
 
@@ -168,10 +223,11 @@ describe('User settings', () => {
         cy.get(datatest('mdl-user-settings')).should('be.visible');
         cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
+        cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'none');
 
         // タブ切替
-        cy.get(datatest('tab-user-settings-misc')).click();
-        cy.get(datatest('panel-user-settings-misc')).should('have.css', 'display', 'block');
+        cy.get(datatest('tab-user-settings-piece')).click();
+        cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
 
         cy.get(datatest('btn-cancel')).click();

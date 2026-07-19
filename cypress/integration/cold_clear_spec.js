@@ -42,6 +42,7 @@ describe('Cold Clear menu', () => {
     it('fails fast with toast when no placed piece exists', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         ensureTreeGraphView();
 
@@ -55,10 +56,14 @@ describe('Cold Clear menu', () => {
     it('closes modal after placed-score evaluation completes', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
         operations.mode.piece.harddrop();
+        // ハードドロップは次ページを自動挿入してそちらへ移動するため、
+        // 設置済みピースのあるページへ戻ってから配置スコアを評価する。
+        operations.mode.tools.backPage();
 
         ensureTreeGraphView();
         cy.get(datatest('btn-tree-ai-menu')).click();
@@ -70,14 +75,18 @@ describe('Cold Clear menu', () => {
         // for the modal component to be removed.
         cy.get(datatest('btn-tree-ai-menu'), { timeout: 15000 })
             .should('have.attr', 'data-cold-clear-running', '1');
-        cy.get(datatest('btn-tree-ai-menu'), { timeout: 15000 })
-            .should('have.attr', 'data-cold-clear-running', '0');
         cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
+        // A placed-score run returns to the editor PIECE tray when it finishes,
+        // so the tree-only control is intentionally no longer rendered.
+        cy.get(datatest('btn-piece-mode'), { timeout: 15000 })
+            .should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('tray-piece-harddrop'), { timeout: 15000 }).should('exist');
     });
 
     it('allows editing top branch count and disables it while search runs', () => {
         visit({ mode: 'edit', lng: 'en' });
 
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
         ensureTreeGraphView();
 
@@ -94,19 +103,24 @@ describe('Cold Clear menu', () => {
 
     it('respawns the current piece edited in the AI menu', () => {
         visit({ mode: 'edit', lng: 'en' });
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('#Q=[Z](S)L').blur();
         operations.mode.piece.open();
         operations.mode.piece.spawn.S();
 
         cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
         cy.get(datatest('pane-cold-clear-current')).click();
         cy.get(datatest('btn-cold-clear-queue-add-O')).click();
         cy.get(datatest('btn-cold-clear-menu-close')).click();
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](O)L');
 
         operations.mode.tools.undo();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](S)L');
+        operations.mode.piece.open();
         operations.mode.piece.harddrop();
+        operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
     });
 });

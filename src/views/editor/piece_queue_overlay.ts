@@ -1,4 +1,4 @@
-import { button, div, span } from '@hyperapp/html';
+import { button, div, input, label, small, span } from '@hyperapp/html';
 import { VNode } from 'hyperapp';
 import { ColdClearMenuQueueState } from '../../actions/cold_clear';
 import { decidePieceColor } from '../../lib/colors';
@@ -12,8 +12,10 @@ import { PieceQueueFocus } from '../../states';
 
 const NEXT_COUNT = 5;
 
-const mino = (piece: Piece | undefined, width: number, key: string, guideLineColor: boolean) => {
-    const height = Math.max(24, Math.min(38, width * .72));
+const mino = (
+    piece: Piece | undefined, width: number, key: string, guideLineColor: boolean, minoHeight?: number,
+) => {
+    const height = minoHeight ?? Math.max(24, Math.min(38, width * .72));
     if (piece === undefined) {
         return div({
             key,
@@ -130,19 +132,27 @@ export const pieceQueueOverlays = ({
     width,
     gap,
     fieldHeight,
+    nextMinoHeight,
     guideLineColor,
+    infinitePieceQueue,
     openSettings,
+    toggleInfinitePieceQueue,
 }: {
     queueState: ColdClearMenuQueueState | null;
     width: number;
     gap: number;
     fieldHeight: number;
+    nextMinoHeight: number;
     guideLineColor: boolean;
+    infinitePieceQueue: boolean;
     openSettings: (data: { focus: PieceQueueFocus }) => void;
+    toggleInfinitePieceQueue: () => void;
 }) => {
     const hold = queueState?.hold ?? undefined;
     const nexts = queueState?.queue.slice(0, NEXT_COUNT) ?? [];
     const openLabel = i18n.PieceQueue.OpenSettings();
+    const compactInfiniteToggle = width < 44;
+    const infiniteCheckboxSize = compactInfiniteToggle ? 10 : 13;
 
     const holdPanel = div({
         key: 'piece-queue-hold-column',
@@ -166,6 +176,41 @@ export const pieceQueueOverlays = ({
         ],
     })]);
 
+    const infiniteToggle = label({
+        key: 'piece-queue-infinite',
+        datatest: 'piece-queue-infinite',
+        style: style({
+            alignItems: 'center', boxSizing: 'border-box', color: '#333', cursor: 'pointer',
+            display: 'flex', flexShrink: 0, gap: px(compactInfiniteToggle ? 1 : 2), justifyContent: 'center',
+            minHeight: px(26), overflow: 'hidden', padding: compactInfiniteToggle ? '3px 0' : '3px 1px',
+            width: px(width),
+        }),
+    }, [
+        input({
+            key: 'piece-queue-infinite-checkbox',
+            datatest: 'piece-queue-infinite-checkbox',
+            type: 'checkbox',
+            checked: infinitePieceQueue,
+            'aria-label': i18n.EditorUi.InfiniteBag(),
+            onchange: (event: Event) => {
+                toggleInfinitePieceQueue();
+                event.stopPropagation();
+            },
+            style: style({
+                flex: '0 0 auto', height: px(infiniteCheckboxSize), margin: '0', opacity: '1',
+                pointerEvents: 'auto', position: 'static', width: px(infiniteCheckboxSize),
+            }),
+        }),
+        small({
+            key: 'piece-queue-infinite-label',
+            datatest: 'piece-queue-infinite-text',
+            style: style({
+                flex: '0 1 auto', fontSize: px(Math.max(8, Math.min(10, width * .19))),
+                lineHeight: '1', minWidth: '0', whiteSpace: 'nowrap',
+            }),
+        }, i18n.EditorUi.InfiniteBag()),
+    ]);
+
     const nextRows = Array.from({ length: NEXT_COUNT }).map((_, index) => div({
         key: `piece-queue-next-row-${index}`,
         datatest: `piece-queue-next-${index}`,
@@ -174,7 +219,7 @@ export const pieceQueueOverlays = ({
             borderTop: index === 0 ? '0' : '1px solid #e0e0e0',
         }),
     }, [
-        mino(nexts[index], width, `piece-queue-next-piece-${index}`, guideLineColor),
+        mino(nexts[index], width, `piece-queue-next-piece-${index}`, guideLineColor, nextMinoHeight),
         span({
             key: `piece-queue-next-order-${index}`,
             'aria-hidden': 'true',
@@ -182,14 +227,14 @@ export const pieceQueueOverlays = ({
         }, String(index + 1)),
     ]));
 
+    // NEXT枠は右レールと同じ列の最上部に載せる（列の幅はレール側で決まる）
     const nextPanel = div({
         key: 'piece-queue-next-column',
         style: style({
             alignItems: 'flex-start',
             display: 'flex',
-            flex: `0 0 ${px(width)}`,
-            height: px(fieldHeight),
-            marginLeft: px(gap),
+            flexDirection: 'column',
+            flexShrink: 0,
         }),
     }, [queueButton({
         width,
@@ -201,7 +246,7 @@ export const pieceQueueOverlays = ({
             heading('piece-queue-next-heading', i18n.PieceQueue.NextLabel()),
             ...nextRows,
         ],
-    })]);
+    }), infiniteToggle]);
 
     return { holdPanel, nextPanel };
 };

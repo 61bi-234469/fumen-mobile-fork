@@ -76,7 +76,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
-    'MoveLeft', 'MoveRight', 'SoftDrop', 'HardDrop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Reset', 'Hold',
+    'MoveLeft', 'MoveRight', 'SoftDrop', 'HardDrop', 'RotateLeft', 'RotateRight', 'Rotate180', 'Hold', 'Reset',
 ];
 
 const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
@@ -99,12 +99,13 @@ const rotationSystemLabels: Record<RotationSystem, () => string> = {
     srsPlus: i18n.UserSettings.RotationSystem.SrsPlus,
 };
 
-const tabKeys: UserSettingsTab[] = ['field', 'view', 'shortcuts', 'misc'];
+const tabKeys: UserSettingsTab[] = ['field', 'view', 'shortcuts', 'piece', 'misc'];
 
 const tabLabels: Record<UserSettingsTab, () => string> = {
     field: i18n.UserSettings.Tabs.Field,
     view: i18n.UserSettings.Tabs.View,
     shortcuts: i18n.UserSettings.Tabs.Shortcuts,
+    piece: i18n.UserSettings.Tabs.Piece,
     misc: i18n.UserSettings.Tabs.Misc,
 };
 
@@ -279,7 +280,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
     const onchangeDas = (e: Event) => {
         const target = e.target as HTMLInputElement;
-        const value = parseInt(target.value, 10);
+        const value = parseFloat(target.value);
         if (!isNaN(value) && value >= 1 && value <= 60) {
             actions.keepPieceShortcutDas({ dasFrames: value });
         }
@@ -287,7 +288,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
     const onchangeArr = (e: Event) => {
         const target = e.target as HTMLInputElement;
-        const value = parseInt(target.value, 10);
+        const value = parseFloat(target.value);
         if (!isNaN(value) && value >= 0 && value <= 60) {
             actions.keepPieceShortcutArr({ arrFrames: value });
         }
@@ -360,16 +361,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         <div key="panel-user-settings-field" datatest="panel-user-settings-field"
                              style={panelStyle('field')}>
                             {renderSwitch({
-                                key: 'switch-row-ghost-visible',
-                                datatest: 'switch-ghost-visible',
-                                title: i18n.UserSettings.Ghost.Title(),
-                                checked: ghostVisible,
-                                offLabel: i18n.UserSettings.Ghost.Off(),
-                                onLabel: i18n.UserSettings.Ghost.On(),
-                                onChange: checked => actions.keepGhostVisible({ visible: checked }),
-                            })}
-
-                            {renderSwitch({
                                 key: 'switch-row-delete-spawn-mino-on-paint-drag',
                                 datatest: 'switch-delete-spawn-mino-on-paint-drag',
                                 title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
@@ -378,22 +369,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
                             })}
-
-                            <div>
-                                <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
-
-                                {rotationSystemValues.map((value) => {
-                                    return <label>
-                                        <input name="rotation-system" type="radio"
-                                               checked={value === rotationSystem}
-                                               dataTest={`radio-rotation-system-${value}`}
-                                               onchange={() => onchangeRotationSystem(value)}/>
-                                        <span style={style({ marginRight: px(20) })}>
-                                            {rotationSystemLabels[value]()}
-                                        </span>
-                                    </label>;
-                                })}
-                            </div>
 
                             {renderSwitch({
                                 key: 'switch-row-gray-after-line-clear-field',
@@ -416,33 +391,37 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepNoGrayAfterHardDrop({ enable: checked }),
                             })}
 
-                            <div>
-                                <h6>{i18n.UserSettings.Gradient.Title()}</h6>
+                            <details key="details-user-settings-gradient" datatest="details-user-settings-gradient">
+                                <summary datatest="summary-user-settings-gradient"
+                                         style={style({ cursor: 'pointer', marginTop: px(10) })}>
+                                    {i18n.UserSettings.Gradient.Title()}
+                                </summary>
 
-                                {gradientPieces.map((piece, index) => {
-                                    const name = `group${piece}`;
-                                    const selected = gradient[index] || '0';
-                                    const params = [
-                                        { label: '■', value: `${GradientPattern.None}` },
-                                        { label: '◢', value: `${GradientPattern.Triangle}` },
-                                        { label: '/', value: `${GradientPattern.Line}` },
-                                        { label: '●', value: `${GradientPattern.Circle}` },
+                                <div datatest="gradient-piece-options" style={style({ marginTop: px(8) })}>
+                                    {gradientPieces.map((piece, index) => {
+                                        const name = `group${piece}`;
+                                        const selected = gradient[index] || '0';
+                                        const params = [
+                                            { label: '■', value: `${GradientPattern.None}` },
+                                            { label: '◢', value: `${GradientPattern.Triangle}` },
+                                            { label: '/', value: `${GradientPattern.Line}` },
+                                            { label: '●', value: `${GradientPattern.Circle}` },
+                                        ];
+                                        const labels = params.map(({ label, value }) => {
+                                            return <label>
+                                                <input name={name} type="radio" checked={value === selected}
+                                                       onchange={() => onchangeGradient(index, value)}/>
+                                                <span style={style({ marginRight: px(20) })}>{label}</span>
+                                            </label>;
+                                        });
 
-                                    ];
-                                    const labels = params.map(({ label, value }) => {
-                                        return <label>
-                                            <input name={name} type="radio" checked={value === selected}
-                                                   onchange={() => onchangeGradient(index, value)}/>
-                                            <span style={style({ marginRight: px(20) })}>{label}</span>
-                                        </label>;
-                                    });
-
-                                    return div([
-                                        <div>{parsePieceName(piece)}</div>,
-                                        ...labels,
-                                    ]);
-                                })}
-                            </div>
+                                        return div([
+                                            <div>{parsePieceName(piece)}</div>,
+                                            ...labels,
+                                        ]);
+                                    })}
+                                </div>
+                            </details>
                         </div>
 
                         <div key="panel-user-settings-view" datatest="panel-user-settings-view"
@@ -565,7 +544,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     })}
                                 </div>
                             </div>
+                        </div>
 
+                        <div key="panel-user-settings-piece" datatest="panel-user-settings-piece"
+                             style={panelStyle('piece')}>
                             <div>
                                 <h6>{i18n.UserSettings.PieceShortcuts.Title()}</h6>
                                 <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
@@ -604,48 +586,80 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     })}
                                 </div>
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
-                                    </div>
-                                    <input
-                                        type="number"
-                                        datatest="input-piece-das"
-                                        value={pieceShortcutDasFrames}
-                                        min={1}
-                                        max={60}
-                                        step={1}
-                                        onchange={onchangeDas}
-                                        style={style({
-                                            width: px(80),
-                                            textAlign: 'center',
-                                        })}
-                                    />
+                                {renderSwitch({
+                                    key: 'switch-row-ghost-visible',
+                                    datatest: 'switch-ghost-visible',
+                                    title: i18n.UserSettings.Ghost.Title(),
+                                    checked: ghostVisible,
+                                    offLabel: i18n.UserSettings.Ghost.Off(),
+                                    onLabel: i18n.UserSettings.Ghost.On(),
+                                    onChange: checked => actions.keepGhostVisible({ visible: checked }),
+                                })}
+
+                                <div>
+                                    <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
+
+                                    {rotationSystemValues.map((value) => {
+                                        return <label>
+                                            <input name="rotation-system" type="radio"
+                                                   checked={value === rotationSystem}
+                                                   dataTest={`radio-rotation-system-${value}`}
+                                                   onchange={() => onchangeRotationSystem(value)}/>
+                                            <span style={style({ marginRight: px(20) })}>
+                                                {rotationSystemLabels[value]()}
+                                            </span>
+                                        </label>;
+                                    })}
                                 </div>
 
                                 <div style={style({ marginTop: px(15) })}>
-                                    <div style={style({ fontWeight: 'bold' })}>
+                                    <div datatest="label-piece-arr" style={style({ fontWeight: 'bold' })}>
                                         {i18n.UserSettings.PieceShortcuts.ArrFrames()}
                                     </div>
                                     <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
                                         {i18n.UserSettings.PieceShortcuts.ArrDescription()}
                                     </div>
-                                    <input
-                                        type="number"
-                                        datatest="input-piece-arr"
-                                        value={pieceShortcutArrFrames}
-                                        min={0}
-                                        max={60}
-                                        step={1}
-                                        onchange={onchangeArr}
-                                        style={style({
-                                            width: px(80),
-                                            textAlign: 'center',
-                                        })}
-                                    />
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-arr"
+                                            value={pieceShortcutArrFrames}
+                                            min={0}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeArr}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-arr">F</span>
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                    </div>
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-das"
+                                            value={pieceShortcutDasFrames}
+                                            min={1}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeDas}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-das">F</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

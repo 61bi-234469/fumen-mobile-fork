@@ -49,7 +49,7 @@ export const defaultPieceShortcuts: PieceShortcuts = {
 
 export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
-export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'misc';
+export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'piece' | 'misc';
 
 export type EditorSidePanelTab = 'list' | 'tree';
 

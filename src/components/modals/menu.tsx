@@ -2,6 +2,7 @@ import { Component, ComponentWithText, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { resources } from '../../states';
 import { CommentType, Platforms, Screens } from '../../lib/enums';
+import { TreeViewMode } from '../../lib/fumen/tree_types';
 import { i18n } from '../../locales/keys';
 import { Icon } from '../atomics/icons';
 import { getFieldLayout as getReaderFieldLayout } from '../../views/reader';
@@ -13,9 +14,9 @@ declare const M: any;
 interface MenuProps {
     version: string;
     screen: Screens;
-    currentIndex: number;
-    maxPageIndex: number;
     comment: CommentType;
+    treeEnabled: boolean;
+    treeViewMode: TreeViewMode;
     display: {
         width: number;
         height: number;
@@ -26,13 +27,14 @@ interface MenuProps {
         closeMenuModal: () => void;
         changeToReaderScreen: () => void;
         changeToDrawerScreen: (data: { refresh?: boolean }) => void;
+        changeToListViewScreen: () => void;
+        changeToTreeViewScreen: () => void;
+        setTreeViewMode: (data: { mode: TreeViewMode }) => void;
         changeCommentMode: (data: { type: CommentType }) => void;
         removeUnsettledItems: () => void;
         loadNewFumen: () => void;
         firstPage: () => void;
         lastPage: () => void;
-        clearToEnd: () => void;
-        clearPast: () => void;
         openAppendModal: () => void;
         openClipboardModal: () => void;
         changeGhostVisible: (data: { visible: boolean }) => void;
@@ -45,7 +47,7 @@ interface MenuProps {
 
 export const MenuModal: Component<MenuProps> = (
     {
-        version, screen, currentIndex, maxPageIndex, comment,
+        version, screen, comment, treeEnabled, treeViewMode,
         display, platform, editorSidePanelWidth, actions,
     },
 ) => {
@@ -75,15 +77,254 @@ export const MenuModal: Component<MenuProps> = (
         resources.modals.menu = undefined;
     };
 
-    const divProperties = style({
-        margin: 0,
-        padding: 0,
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'start',
-        alignItems: 'center',
-    });
+    const isTreeScreen = screen === Screens.ListView && treeEnabled && treeViewMode === TreeViewMode.Tree;
+    const isListScreen = screen === Screens.ListView && !isTreeScreen;
+
+    const modeButtons = [
+        screen !== Screens.Reader ?
+            <SettingButton key="btn-readonly" datatest="btn-readonly" href="#"
+                           icons={[{ name: 'visibility', size: 31.25 }]}
+                           onclick={() => {
+                               actions.changeToReaderScreen();
+                               actions.closeMenuModal();
+                           }}>{i18n.Menu.Buttons.Readonly()}</SettingButton>
+            : undefined,
+
+        screen !== Screens.Editor ?
+            <SettingButton key="btn-writable" datatest="btn-writable" href="#"
+                           icons={[{ name: 'mode_edit', size: 31.25 }]}
+                           onclick={() => {
+                               actions.changeToDrawerScreen({ refresh: true });
+                               actions.closeMenuModal();
+                           }}>{i18n.Menu.Buttons.Writable()}</SettingButton>
+            : undefined,
+
+        !isListScreen ?
+            <SettingButton key="btn-list-screen" datatest="btn-list-screen" href="#"
+                           icons={[{ name: 'list', size: 31.25 }]}
+                           onclick={() => {
+                               actions.removeUnsettledItems();
+                               if (treeEnabled && treeViewMode === TreeViewMode.Tree) {
+                                   actions.setTreeViewMode({ mode: TreeViewMode.List });
+                               }
+                               actions.changeToListViewScreen();
+                               actions.closeMenuModal();
+                           }}>{i18n.Menu.Buttons.List()}</SettingButton>
+            : undefined,
+
+        !isTreeScreen ?
+            <SettingButton key="btn-tree-screen" datatest="btn-tree-screen" href="#"
+                           icons={[{ name: 'account_tree', size: 30 }]}
+                           onclick={() => {
+                               actions.removeUnsettledItems();
+                               actions.changeToTreeViewScreen();
+                               actions.closeMenuModal();
+                           }}>{i18n.Menu.Buttons.Tree()}</SettingButton>
+            : undefined,
+    ];
+
+    const pageButtons = [
+        <SettingButton key="btn-new-fumen" datatest="btn-new-fumen" href="#"
+                       icons={[{ name: 'insert_drive_file', size: 32.3 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.loadNewFumen();
+                           actions.changeToDrawerScreen({ refresh: true });
+                           actions.closeMenuModal();
+                       }}>
+            {i18n.Menu.Buttons.New()}
+        </SettingButton>,
+
+        <SettingButton key="btn-list-menu" datatest="btn-list-menu" href="#"
+                       icons={[{ name: 'import_export', size: 30 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.openListViewMenuModal();
+                           actions.closeMenuModal();
+                       }}>
+            {i18n.Menu.Buttons.ImportExport()}
+        </SettingButton>,
+    ];
+
+    const generalButtons = [
+        screen === Screens.Reader || screen === Screens.Editor ?
+            <SettingButton key="btn-save-playfield-to-image" href="#"
+                           datatest="btn-save-playfield-to-image"
+                           icons={[{ name: 'file_download', size: 30 }]}
+                           onclick={() => {
+                               function downloadURI(uri: string, name: string) {
+                                   const link = document.createElement('a');
+                                   if (link == null) {
+                                       throw new Error('Unexpected: Failed to create an a-element');
+                                   }
+
+                                   link.download = name;
+                                   link.href = uri;
+                                   document.body.appendChild(link);
+                                   link.click();
+                                   document.body.removeChild(link);
+                               }
+
+                               function savePlayfieldToImage(
+                                   config: { x: number, y: number, width: number, height: number },
+                               ) {
+                                   const dataURL = resources.konva.stage.toDataURL(config);
+                                   if (dataURL != null) {
+                                       downloadURI(dataURL, 'playfield_fumen.png');
+                                   } else {
+                                       M.toast({
+                                           html: 'Failed to download image',
+                                           classes: 'top-toast',
+                                           displayLength: 5000,
+                                       });
+                                   }
+                               }
+
+                               switch (screen) {
+                               case Screens.Reader: {
+                                   const layout = getReaderFieldLayout({
+                                       ...display,
+                                       topLeftY: getNavigatorHeight(platform),
+                                   });
+                                   savePlayfieldToImage({
+                                       ...layout.topLeft,
+                                       ...layout.size,
+                                   });
+                                   break;
+                               }
+                               case Screens.Editor: {
+                                   // キャプチャ座標はKonvaステージ相対のため、
+                                   // パネル表示中もブロックサイズの一致だけ合わせればよい
+                                   const layout = getEditorFieldLayout({
+                                       ...display,
+                                       topLeftY: getNavigatorHeight(platform),
+                                       sidePanelWidth: editorSidePanelWidth,
+                                   });
+                                   savePlayfieldToImage({
+                                       ...layout.topLeft,
+                                       ...layout.size,
+                                   });
+                                   break;
+                               }
+                               }
+
+                               actions.closeMenuModal();
+                           }}>
+                {i18n.Menu.Buttons.SavePlayfieldToImage()}
+            </SettingButton>
+            : undefined,
+
+        <SettingButton key="btn-user-settings" datatest="btn-user-settings" href="#"
+                       icons={[{ name: 'build', size: 30 }]}
+                       onclick={() => {
+                           actions.closeMenuModal();
+                           actions.openUserSettingsModal();
+                       }}>
+            {i18n.Menu.Buttons.UserSettings()}
+        </SettingButton>,
+
+        <SettingButton key="btn-help" datatest="btn-help" href="./help.html"
+                       icons={[{ name: 'help_outline', size: 31.25 }]}>
+            {i18n.Menu.Buttons.Help()}
+        </SettingButton>,
+    ];
+
+    const legacyButtons = [
+        <SettingButton key="btn-copy-fumen" datatest="btn-copy-fumen" href="#"
+                       icons={[{ name: 'content_copy', size: 29.3 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.closeMenuModal();
+                           actions.openClipboardModal();
+                       }}>
+            {i18n.Menu.Buttons.Clipboard()}
+        </SettingButton>,
+
+        <SettingButton key="btn-open-fumen" datatest="btn-open-fumen" href="#"
+                       icons={[{ name: 'open_in_new', size: 32.3 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.closeMenuModal();
+                           actions.openFumenModal();
+                       }}>
+            {i18n.Menu.Buttons.Open()}
+        </SettingButton>,
+
+        <SettingButton key="btn-append-fumen" datatest="btn-append-fumen" href="#"
+                       icons={[{ name: 'library_add', size: 29 }]}
+                       onclick={() => {
+                           actions.closeMenuModal();
+                           actions.openAppendModal();
+                       }}>
+            {i18n.Menu.Buttons.Append()}
+        </SettingButton>,
+
+        <SettingButton key="btn-first-page" datatest="btn-first-page" href="#"
+                       icons={[{ name: 'fast_rewind', size: 32.3 }]}
+                       onclick={() => {
+                           actions.firstPage();
+                           actions.closeMenuModal();
+                       }}>
+            {i18n.Menu.Buttons.FirstPage()}
+        </SettingButton>,
+
+        <SettingButton key="btn-last-page" datatest="btn-last-page" href="#"
+                       icons={[{ name: 'fast_forward', size: 32.3 }]}
+                       onclick={() => {
+                           actions.lastPage();
+                           actions.closeMenuModal();
+                       }}>
+            {i18n.Menu.Buttons.LastPage()}
+        </SettingButton>,
+
+        comment !== CommentType.PageSlider ?
+            <SettingButton key="btn-page-slider" href="#"
+                           datatest="btn-page-slider"
+                           icons={[{ name: 'looks_one', size: 30 }]}
+                           onclick={() => {
+                               actions.changeCommentMode({ type: CommentType.PageSlider });
+                               actions.closeMenuModal();
+                           }}>
+                {i18n.Menu.Buttons.PageSlider()}
+            </SettingButton>
+            : undefined,
+
+        screen === Screens.Reader && comment === CommentType.PageSlider ?
+            <SettingButton key="btn-show-comment" href="#"
+                           datatest="btn-show-comment"
+                           icons={[{ name: 'text_fields', size: 32 }]}
+                           onclick={() => {
+                               actions.changeCommentMode({ type: CommentType.Writable });
+                               actions.closeMenuModal();
+                           }}>
+                {i18n.Menu.Buttons.ShowComment()}
+            </SettingButton>
+            : undefined,
+
+        screen === Screens.Editor && comment !== CommentType.Writable ?
+            <SettingButton key="btn-comment-writable" href="#"
+                           datatest="btn-comment-writable"
+                           icons={[{ name: 'text_fields', size: 32 }]}
+                           onclick={() => {
+                               actions.changeCommentMode({ type: CommentType.Writable });
+                               actions.closeMenuModal();
+                           }}>
+                {i18n.Menu.Buttons.WritableComment()}
+            </SettingButton>
+            : undefined,
+
+        screen === Screens.Editor && comment !== CommentType.Readonly ?
+            <SettingButton key="btn-comment-readonly" href="#"
+                           datatest="btn-comment-readonly"
+                           icons={[{ name: 'lock_outline', size: 30 }]}
+                           onclick={() => {
+                               actions.changeCommentMode({ type: CommentType.Readonly });
+                               actions.closeMenuModal();
+                           }}>
+                {i18n.Menu.Buttons.ReadonlyComment()}
+            </SettingButton>
+            : undefined,
+    ];
 
     return (
         <div key="menu-modal-top">
@@ -96,261 +337,66 @@ export const MenuModal: Component<MenuProps> = (
                         <span style={style({ color: '#999', fontSize: '50%' })}>[{i18n.Menu.Build(version)}]</span>
                     </h4>
 
-                    <p key="third-party-notice" style={style({ fontSize: px(11), color: '#999', margin: '0 0 8px 0' })}>
-                        AI: <a href="https://github.com/MinusKelvin/cold-clear" target="_blank"
-                               style={style({ color: '#999' })}>Cold Clear</a> (MPL-2.0)
-                    </p>
+                    <MenuSection key="menu-section-mode" datatest="menu-section-mode"
+                                 label={i18n.Menu.Sections.Mode()}>
+                        {modeButtons}
+                    </MenuSection>
 
-                    <div key="menu-top" style={divProperties}>
-                        {screen === Screens.Editor ?
-                            <SettingButton key="btn-readonly" datatest="btn-readonly" href="#"
-                                           icons={[{ name: 'visibility', size: 31.25 }]}
-                                           onclick={() => {
-                                               actions.changeToReaderScreen();
-                                               actions.closeMenuModal();
-                                           }}>{i18n.Menu.Buttons.Readonly()}</SettingButton>
-                            : undefined}
+                    <MenuSection key="menu-section-page" datatest="menu-section-page"
+                                 label={i18n.Menu.Sections.Page()}>
+                        {pageButtons}
+                    </MenuSection>
 
-                        {screen === Screens.Reader ?
-                            <SettingButton key="btn-writable" datatest="btn-writable" href="#"
-                                           icons={[{ name: 'mode_edit', size: 31.25 }]}
-                                           onclick={() => {
-                                               actions.changeToDrawerScreen({ refresh: true });
-                                               actions.closeMenuModal();
-                                           }}>{i18n.Menu.Buttons.Writable()}</SettingButton>
-                            : undefined}
+                    <MenuSection key="menu-section-general" datatest="menu-section-general"
+                                 label={i18n.Menu.Sections.General()}>
+                        {generalButtons}
+                    </MenuSection>
 
-                        <SettingButton key="btn-copy-fumen" datatest="btn-copy-fumen" href="#"
-                                       icons={[{ name: 'content_copy', size: 29.3 }]}
-                                       onclick={() => {
-                                           actions.removeUnsettledItems();
-                                           actions.closeMenuModal();
-                                           actions.openClipboardModal();
-                                       }}>
-                            {i18n.Menu.Buttons.Clipboard()}
-                        </SettingButton>
+                    <MenuSection key="menu-section-legacy" datatest="menu-section-legacy"
+                                 label={i18n.Menu.Sections.Legacy()}>
+                        {legacyButtons}
+                    </MenuSection>
 
-                        <SettingButton key="btn-list-menu" datatest="btn-list-menu" href="#"
-                                       icons={[{ name: 'import_export', size: 30 }]}
-                                       onclick={() => {
-                                           actions.removeUnsettledItems();
-                                           actions.openListViewMenuModal();
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.ImportExport()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-new-fumen" datatest="btn-new-fumen" href="#"
-                                       icons={[{ name: 'insert_drive_file', size: 32.3 }]}
-                                       onclick={() => {
-                                           actions.removeUnsettledItems();
-                                           actions.loadNewFumen();
-                                           actions.changeToDrawerScreen({ refresh: true });
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.New()}
-                        </SettingButton>
-
-                        {screen === Screens.Reader || screen === Screens.Editor ?
-                            <SettingButton key="btn-save-playfield-to-image" href="#"
-                                           datatest="btn-save-playfield-to-image"
-                                           icons={[{ name: 'file_download', size: 30 }]}
-                                           onclick={() => {
-                                               function downloadURI(uri: string, name: string) {
-                                                   const link = document.createElement('a');
-                                                   if (link == null) {
-                                                       throw new Error('Unexpected: Failed to create an a-element');
-                                                   }
-
-                                                   link.download = name;
-                                                   link.href = uri;
-                                                   document.body.appendChild(link);
-                                                   link.click();
-                                                   document.body.removeChild(link);
-                                               }
-
-                                               function savePlayfieldToImage(
-                                                   config: { x: number, y: number, width: number, height: number },
-                                               ) {
-                                                   const dataURL = resources.konva.stage.toDataURL(config);
-                                                   if (dataURL != null) {
-                                                       downloadURI(dataURL, 'playfield_fumen.png');
-                                                   } else {
-                                                       M.toast({
-                                                           html: 'Failed to download image',
-                                                           classes: 'top-toast',
-                                                           displayLength: 5000,
-                                                       });
-                                                   }
-                                               }
-
-                                               switch (screen) {
-                                               case Screens.Reader: {
-                                                   const layout = getReaderFieldLayout({
-                                                       ...display,
-                                                       topLeftY: getNavigatorHeight(platform),
-                                                   });
-                                                   savePlayfieldToImage({
-                                                       ...layout.topLeft,
-                                                       ...layout.size,
-                                                   });
-                                                   break;
-                                               }
-                                               case Screens.Editor: {
-                                                   // キャプチャ座標はKonvaステージ相対のため、
-                                                   // パネル表示中もブロックサイズの一致だけ合わせればよい
-                                                   const layout = getEditorFieldLayout({
-                                                       ...display,
-                                                       topLeftY: getNavigatorHeight(platform),
-                                                       sidePanelWidth: editorSidePanelWidth,
-                                                   });
-                                                   savePlayfieldToImage({
-                                                       ...layout.topLeft,
-                                                       ...layout.size,
-                                                   });
-                                                   break;
-                                               }
-                                               }
-
-                                               actions.closeMenuModal();
-                                           }}>
-                                {i18n.Menu.Buttons.SavePlayfieldToImage()}
-                            </SettingButton>
-                            : undefined}
-
-                        <SettingButton key="btn-open-fumen" datatest="btn-open-fumen" href="#"
-                                       icons={[{ name: 'open_in_new', size: 32.3 }]}
-                                       onclick={() => {
-                                           actions.removeUnsettledItems();
-                                           actions.closeMenuModal();
-                                           actions.openFumenModal();
-                                       }}>
-                            {i18n.Menu.Buttons.Open()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-append-fumen" datatest="btn-append-fumen" href="#"
-                                       icons={[{ name: 'library_add', size: 29 }]}
-                                       onclick={() => {
-                                           actions.closeMenuModal();
-                                           actions.openAppendModal();
-                                       }}>
-                            {i18n.Menu.Buttons.Append()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-first-page" datatest="btn-first-page" href="#"
-                                       icons={[{ name: 'fast_rewind', size: 32.3 }]}
-                                       onclick={() => {
-                                           actions.firstPage();
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.FirstPage()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-last-page" datatest="btn-last-page" href="#"
-                                       icons={[{ name: 'fast_forward', size: 32.3 }]}
-                                       onclick={() => {
-                                           actions.lastPage();
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.LastPage()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-clear-past" datatest="btn-clear-past" href="#"
-                                       icons={[{ name: 'arrow_back', size: 18 }, { name: 'clear', size: 28 }]}
-                                       textSize={12} enable={0 < currentIndex}
-                                       onclick={() => {
-                                           actions.clearPast();
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.ClearPast()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-clear-to-end" datatest="btn-clear-to-end" href="#"
-                                       icons={[{ name: 'clear', size: 28 }, { name: 'arrow_forward', size: 18 }]}
-                                       textSize={12} enable={currentIndex < maxPageIndex - 1}
-                                       onclick={() => {
-                                           actions.clearToEnd();
-                                           actions.closeMenuModal();
-                                       }}>
-                            {i18n.Menu.Buttons.ClearToEnd()}
-                        </SettingButton>
-
-                        <SettingButton key="btn-user-settings" datatest="btn-user-settings" href="#"
-                                       icons={[{ name: 'build', size: 30 }]}
-                                       onclick={() => {
-                                           actions.closeMenuModal();
-                                           actions.openUserSettingsModal();
-                                       }}>
-                            {i18n.Menu.Buttons.UserSettings()}
-                        </SettingButton>
-
-                        {comment !== CommentType.PageSlider ?
-                            <SettingButton key="btn-page-slider" href="#"
-                                           datatest="btn-page-slider"
-                                           icons={[{ name: 'looks_one', size: 30 }]}
-                                           onclick={() => {
-                                               actions.changeCommentMode({ type: CommentType.PageSlider });
-                                               actions.closeMenuModal();
-                                           }}>
-                                {i18n.Menu.Buttons.PageSlider()}
-                            </SettingButton>
-                            : undefined}
-
-                        {screen === Screens.Reader && comment === CommentType.PageSlider ?
-                            <SettingButton key="btn-show-comment" href="#"
-                                           datatest="btn-show-comment"
-                                           icons={[{ name: 'text_fields', size: 32 }]}
-                                           onclick={() => {
-                                               actions.changeCommentMode({ type: CommentType.Writable });
-                                               actions.closeMenuModal();
-                                           }}>
-                                {i18n.Menu.Buttons.ShowComment()}
-                            </SettingButton>
-                            : undefined}
-
-                        {screen === Screens.Editor && comment !== CommentType.Writable ?
-                            <SettingButton key="btn-comment-writable" href="#"
-                                           datatest="btn-comment-writable"
-                                           icons={[{ name: 'text_fields', size: 32 }]}
-                                           onclick={() => {
-                                               actions.changeCommentMode({ type: CommentType.Writable });
-                                               actions.closeMenuModal();
-                                           }}>
-                                {i18n.Menu.Buttons.WritableComment()}
-                            </SettingButton>
-                            : undefined}
-
-                        {screen === Screens.Editor && comment !== CommentType.Readonly ?
-                            <SettingButton key="btn-comment-readonly" href="#"
-                                           datatest="btn-comment-readonly"
-                                           icons={[{ name: 'lock_outline', size: 30 }]}
-                                           enable={screen === Screens.Editor}
-                                           onclick={screen === Screens.Editor ? () => {
-                                               actions.changeCommentMode({ type: CommentType.Readonly });
-                                               actions.closeMenuModal();
-                                           } : () => {
-                                               M.toast({
-                                                   html: i18n.Menu.Messages.NoAvailableCommentButton(),
-                                                   classes: 'top-toast',
-                                                   displayLength: 3000,
-                                               });
-                                           }}>
-                                {i18n.Menu.Buttons.ReadonlyComment()}
-                            </SettingButton>
-                            : undefined}
-
-                        <SettingButton key="btn-help" datatest="btn-help" href="./help.html"
-                                       icons={[{ name: 'help_outline', size: 31.25 }]}>
-                            {i18n.Menu.Buttons.Help()}
-                        </SettingButton>
-
-                        <div style={style({ height: px(10), width: '100%' })}/>
-                    </div>
+                    <div key="menu-bottom-space" style={style({ height: px(10), width: '100%' })}/>
                 </div>
             </div>
         </div>
     );
 };
+
+interface MenuSectionProps {
+    key: string;
+    datatest: string;
+    label: string;
+}
+
+const MenuSection: Component<MenuSectionProps & { children?: any }> = ({ key, datatest, label }, children) => (
+    <div key={key} datatest={datatest} style={style({ margin: '0 0 6px 0' })}>
+        <div key={`${key}-heading`} datatest={`${datatest}-heading`}
+             style={style({
+                 borderBottom: '1px solid #ddd',
+                 color: '#777',
+                 fontSize: px(11),
+                 fontWeight: '700',
+                 letterSpacing: '.05em',
+                 lineHeight: px(18),
+                 margin: '4px 0 2px',
+             })}>
+            {label}
+        </div>
+        <div key={`${key}-buttons`} style={style({
+            margin: 0,
+            padding: 0,
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'start',
+            alignItems: 'center',
+        })}>
+            {children}
+        </div>
+    </div>
+);
 
 interface SettingButtonProps {
     href?: string;

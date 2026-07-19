@@ -578,7 +578,9 @@ export const listViewActions: Readonly<ListViewActions> = {
                 done();
             });
         } else {
-            main.changeScreen({ screen: Screens.Editor });
+            // Deferred to avoid racing this reducer's own return value merge below
+            // (see actions/screen.ts changeToReaderScreen for the full explanation).
+            setTimeout(() => main.changeScreen({ screen: Screens.Editor }), 0);
         }
         // Keep current index (do not reset to 0) - tree mode may have set a specific page
         return sequence(state, [
@@ -739,7 +741,9 @@ export const listViewActions: Readonly<ListViewActions> = {
                 done();
             });
         } else {
-            main.changeScreen({ screen: Screens.Editor });
+            // Deferred to avoid racing this reducer's own return value merge below
+            // (see actions/screen.ts changeToReaderScreen for the full explanation).
+            setTimeout(() => main.changeScreen({ screen: Screens.Editor }), 0);
         }
         return sequence(state, [
             () => ({

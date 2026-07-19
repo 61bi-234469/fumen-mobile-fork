@@ -109,6 +109,7 @@ describe('Cold Clear menu', () => {
         operations.mode.piece.spawn.S();
 
         cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
         cy.get(datatest('pane-cold-clear-current')).click();
         cy.get(datatest('btn-cold-clear-queue-add-O')).click();
         cy.get(datatest('btn-cold-clear-menu-close')).click();

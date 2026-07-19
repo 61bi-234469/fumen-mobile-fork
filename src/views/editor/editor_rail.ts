@@ -91,10 +91,12 @@ const toolCell = ({
     const controlState: EditorControlState = status ? 'status' : selected ? selectionKind : 'idle';
     const stateStyle = editorControlStateStyle(controlState);
     const handlePointerDown = () => {
+        // A real follow-up pointerdown means the previous press did not
+        // produce a synthetic click. Do not let the guard suppress this click.
+        clearSuppressedClick();
         if (disabled || onlongpress === undefined) {
             return;
         }
-        clearSuppressedClick();
         clearPress();
         pressState.key = key;
         pressState.triggered = false;
@@ -140,6 +142,7 @@ const toolCell = ({
             event.preventDefault();
             event.stopPropagation();
         },
+        onpointerdown: handlePointerDown,
     } : {
         onclick: (event: MouseEvent) => {
             if (consumeSuppressedClick(event)) {

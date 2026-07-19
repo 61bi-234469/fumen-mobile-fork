@@ -643,6 +643,9 @@ export const operations = {
             cy.get(datatest('btn-list-menu')).click();
         },
         copyToClipboard: () => {
+            // Avoid treating a marker from an earlier copy in the same test as this copy's
+            // completion signal.
+            cy.get('body').invoke('removeAttr', 'datatest').invoke('removeAttr', 'data');
             operations.menu.open();
             cy.get(datatest('btn-copy-fumen')).click();
             // Clicking btn-raw-fumen waits for the clipboard modal to render and finish animating
@@ -667,9 +670,10 @@ export const operations = {
             }
 
             cy.get(datatest('btn-clipboard-cancel')).click();
-            // The clipboard action runs asynchronously after the modal is closed. Wait for its
-            // result and for the toast to disappear so it cannot cover the next editor action.
-            cy.get('.toast.top-toast').should('contain.text', 'Copied to clipboard');
+            // The fumen data marker is the deterministic completion signal. The toast is
+            // transient and can expire before Cypress observes it on a busy CI runner.
+            cy.get(datatest('copied-fumen-data')).should('exist');
+            // Do not let either a success or failure toast cover the next editor action.
             cy.get('.toast.top-toast').should('not.exist');
         },
         firstPage: () => {

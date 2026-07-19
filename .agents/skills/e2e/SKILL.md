@@ -22,6 +22,12 @@ yarn cy-run --spec cypress/integration/<name>_spec.js
 yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
 ```
 
+- **Scope to the affected spec(s), not the full suite.** For a minor UI-only change
+  (styling, copy, layout, non-selector markup) that touches no `datatest` attribute and
+  adds/moves/removes no control, run only the spec(s) that already cover the touched
+  component/view. Do not run the full suite "just in case." Run the full suite only when
+  the release skill calls for it, or when the change plausibly has cross-spec impact
+  (shared component/action, `cypress/support/operations.js` edit, selector rename).
 - Failure screenshots: `cypress/screenshots/<spec>/`.
 - `history_spec.js` alone takes 5+ minutes; full suite ~15 min. If a local run exceeds
   the environment's command timeout or Cypress Electron dies with a GPU error

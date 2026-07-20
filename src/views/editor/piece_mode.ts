@@ -17,6 +17,7 @@ import { PieceShortcuts, RotationSystem, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
+import { isDasHoldActive } from '../../lib/piece_das';
 
 export const pieceMode = ({
     layout,
@@ -74,6 +75,8 @@ export const pieceMode = ({
 }) => {
     const toolButtonMargin = 5;
     const operate = move !== undefined;
+    const leftHoldActive = isDasHoldActive('tool:btn-move-to-left');
+    const rightHoldActive = isDasHoldActive('tool:btn-move-to-right');
     const operateRotation = move !== undefined ? move.rotation : undefined;
 
     // ショートカットラベルを取得（設定されていれば表示、なければundefined）
@@ -209,7 +212,7 @@ export const pieceMode = ({
                 borderColor: '#333',
                 datatest: 'btn-move-to-left',
                 key: 'btn-move-to-left',
-                enable: operate,
+                enable: operate || leftHoldActive,
                 onclick: () => actions.moveToLeft(),
                 hold: {
                     move: actions.moveToLeft,
@@ -233,7 +236,7 @@ export const pieceMode = ({
                 borderColor: '#333',
                 datatest: 'btn-move-to-right',
                 key: 'btn-move-to-right',
-                enable: operate,
+                enable: operate || rightHoldActive,
                 onclick: () => actions.moveToRight(),
                 hold: {
                     move: actions.moveToRight,

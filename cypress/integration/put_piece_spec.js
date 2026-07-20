@@ -56,6 +56,28 @@ describe('Put pieces', () => {
         });
     });
 
+    it('keeps a touch direction held while hard-dropping with another pointer', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.tick(200);
+        cy.get(datatest('tray-piece-harddrop'))
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 })
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+        operations.mode.piece.spawn.T();
+        cy.tick(2 * (1000 / 60));
+
+        mino(Piece.T, Rotation.Spawn)(0, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
+    });
+
     it('exposes the DAS Cut setting in piece settings', () => {
         visit({ mode: 'edit' });
         operations.menu.openUserSettings();

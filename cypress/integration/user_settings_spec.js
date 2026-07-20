@@ -221,6 +221,7 @@ describe('User settings', () => {
         // パネルは縦に長くCypressの可視判定が中心点基準で誤るため、displayスタイルで判定する
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
         cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
         cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'none');

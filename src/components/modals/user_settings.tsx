@@ -209,7 +209,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                 <label>
                     {offLabel}
-                    <input type="checkbox" dataTest={datatest} disabled={disabled}
+                    <input type="checkbox" dataTest={datatest} checked={checked} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
                     {onLabel}

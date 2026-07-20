@@ -355,12 +355,18 @@ export const toolButton = (
         event.stopPropagation();
         event.preventDefault();
     };
+    const handleHoldPointerCancel = (event: PointerEvent) => {
+        // A page transition may cancel pointer capture while the finger remains held.
+        // Release the DAS hold on pointerup instead.
+        event.stopPropagation();
+        event.preventDefault();
+    };
 
     // 長押しがある場合はpointerイベントを使用、ない場合は従来のonclick
     const eventHandlers = hold ? {
         onpointerdown: handleHoldPointerDown,
         onpointerup: handleHoldPointerEnd,
-        onpointercancel: handleHoldPointerEnd,
+        onpointercancel: handleHoldPointerCancel,
         oncontextmenu: handleContextMenu,
         onclick: (event: MouseEvent) => {
             event.stopPropagation();

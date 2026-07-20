@@ -152,6 +152,13 @@ const pieceActionButton = ({
         }
         event.preventDefault();
     };
+    const handlePointerCancel = (event: PointerEvent) => {
+        // Page changes can cancel a captured pointer while the finger is still down.
+        // Keep the DAS hold alive until the corresponding pointerup arrives.
+        if (hold !== undefined) {
+            event.preventDefault();
+        }
+    };
     return trayButtonView({
         key, datatest, label, iconName, disabled, shortcutLabel,
         iconOnly: true,
@@ -159,7 +166,7 @@ const pieceActionButton = ({
         handlers: {
             onpointerdown: handlePointerDown,
             onpointerup: handlePointerEnd,
-            onpointercancel: handlePointerEnd,
+            onpointercancel: handlePointerCancel,
             oncontextmenu: (event: Event) => event.preventDefault(),
             onclick: (event: MouseEvent) => {
                 // アクションはpointerdownで実行済みのため、後続のclickは無効化する

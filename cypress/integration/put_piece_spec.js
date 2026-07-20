@@ -68,6 +68,9 @@ describe('Put pieces', () => {
         cy.get(datatest('tray-piece-harddrop'))
             .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 })
             .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+        // Page transition can cancel the captured pointer without lifting the finger.
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointercancel', { pointerId: 1, pointerType: 'touch' });
         operations.mode.piece.spawn.T();
         cy.tick(2 * (1000 / 60));
 

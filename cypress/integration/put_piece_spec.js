@@ -44,14 +44,18 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
 
+        // Hold right: nextPage() locks the current piece in place, and a left hold
+        // would immediately wall itself in behind that just-locked piece, leaving no
+        // room to prove DAS Cut moved anything.
         cy.clock();
-        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keydown', { code: 'ArrowRight' });
         cy.tick(200);
+        cy.clock().invoke('restore');
         operations.mode.tools.nextPage();
         operations.mode.piece.spawn.T();
-        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keyup', { code: 'ArrowRight' });
 
-        mino(Piece.T, Rotation.Spawn)(2, 20).forEach(selector => {
+        mino(Piece.T, Rotation.Spawn)(5, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
     });
@@ -72,7 +76,10 @@ describe('Put pieces', () => {
 
         cy.clock();
         cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
-        cy.tick(5 * (1000 / 60));
+        // A few ms past the DAS threshold so the fake-timer tick reliably fires the
+        // DAS timeout even with floating-point frame/ms rounding at the boundary.
+        cy.tick(5 * (1000 / 60) + 20);
+        cy.clock().invoke('restore');
         operations.mode.piece.harddrop();
 
         cy.get(datatest('text-pages')).should('contain', '2 / 2');
@@ -91,16 +98,18 @@ describe('Put pieces', () => {
         cy.get(datatest('tray-piece-move-left'))
             .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
         cy.tick(200);
+        cy.clock().invoke('restore');
         cy.get(datatest('tray-piece-harddrop'))
-            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 })
-            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0, force: true })
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0, force: true });
         // Page transition can cancel the captured pointer without lifting the finger.
         cy.get(datatest('tray-piece-move-left'))
             .trigger('pointercancel', { pointerId: 1, pointerType: 'touch' });
         operations.mode.piece.spawn.T();
-        cy.tick(2 * (1000 / 60));
 
-        mino(Piece.T, Rotation.Spawn)(0, 20).forEach(selector => {
+        // T's spawn shape extends one cell left of its base coordinate, so the
+        // leftmost legal base against the wall is x=1, not x=0.
+        mino(Piece.T, Rotation.Spawn)(1, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
         cy.get(datatest('tray-piece-move-left'))

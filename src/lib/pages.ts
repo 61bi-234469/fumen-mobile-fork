@@ -653,10 +653,8 @@ export class Pages {
 
                             result = { quizAfterOperation, quiz: cache.comment };
                             cache = { quiz: quizAfterOperation, comment: quizAfterOperation.format().toString() };
-                        } catch (e) {
-                            console.error(e);
-
-                            // Quizの解釈ができない
+                        } catch {
+                            // Keep the last valid queue state while a page is being edited.
                             result = { quizAfterOperation: cache.quiz, quiz: cache.comment };
                             const nextQuiz = currentQuiz.format();
                             cache = { quiz: nextQuiz, comment: nextQuiz.toString() };

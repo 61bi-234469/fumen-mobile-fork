@@ -163,7 +163,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     const ondestroy = () => {
         const modal = resources.modals.userSettings;
         resources.modals.userSettings = undefined;
-        if (modal !== undefined && !isClosing) {
+        if (modal !== undefined) {
             isClosing = true;
             modal.close();
         }

@@ -21,6 +21,7 @@ interface UserSettingsModalProps {
     pieceShortcuts: PieceShortcuts;
     pieceShortcutDasFrames: number;
     pieceShortcutArrFrames: number;
+    pieceShortcutDasCutFrames: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -43,6 +44,7 @@ interface UserSettingsModalProps {
         keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
         keepPieceShortcutDas: (data: { dasFrames: number }) => void;
         keepPieceShortcutArr: (data: { arrFrames: number }) => void;
+        keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
@@ -122,6 +124,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcuts,
         pieceShortcutDasFrames,
         pieceShortcutArrFrames,
+        pieceShortcutDasCutFrames,
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
@@ -291,6 +294,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         const value = parseFloat(target.value);
         if (!isNaN(value) && value >= 0 && value <= 60) {
             actions.keepPieceShortcutArr({ arrFrames: value });
+        }
+    };
+
+    const onchangeDasCut = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseFloat(target.value);
+        if (!isNaN(value) && value >= 0 && value <= 60) {
+            actions.keepPieceShortcutDasCut({ dasCutFrames: value });
         }
     };
 
@@ -634,6 +645,31 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             })}
                                         />
                                         <span datatest="unit-piece-arr">F</span>
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasCutFrames()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasCutDescription()}
+                                    </div>
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-dcd"
+                                            value={pieceShortcutDasCutFrames}
+                                            min={0}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeDasCut}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-dcd">F</span>
                                     </div>
                                 </div>
 

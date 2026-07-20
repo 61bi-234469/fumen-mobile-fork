@@ -1,10 +1,12 @@
 import {
+    activateDasCut,
     endAllDasHolds,
     endDasHold,
     FRAME_DURATION_MS,
     framesToMilliseconds,
     isDasHoldActive,
     millisecondsToFrames,
+    cutDasHolds,
     startDasHold,
 } from '../piece_das';
 
@@ -154,5 +156,96 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(1000);
         expect(move).toHaveBeenCalledTimes(2);
         expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('DAS Cut skips the initial DAS delay when a piece spawns', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+
+        activateDasCut(0);
+        expect(move).toHaveBeenCalledTimes(3);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 5);
+        expect(move).toHaveBeenCalledTimes(5);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * ARR_FRAMES);
+        expect(move).toHaveBeenCalledTimes(6);
+    });
+
+    test('DAS Cut keeps ARR=0 precharge active across spawns', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        activateDasCut(0);
+        activateDasCut(0);
+
+        expect(moveToEnd).toHaveBeenCalledTimes(3);
+    });
+
+    test('DCD delays DAS Cut ARR activation after a piece spawns', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        activateDasCut(3);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3 - 1);
+        expect(move).toHaveBeenCalledTimes(2);
+
+        jest.advanceTimersByTime(1);
+        expect(move).toHaveBeenCalledTimes(3);
+        expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('DAS Cut does not skip DAS for a hold that is not pre-charged', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        activateDasCut(0);
+
+        expect(move).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES - 1);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(1);
+        expect(move).toHaveBeenCalledTimes(2);
+    });
+
+    test('DCD pauses active ARR and resumes after the configured frames', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(move).toHaveBeenCalledTimes(2);
+
+        cutDasHolds(3);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3 - 1);
+        expect(move).toHaveBeenCalledTimes(2);
+
+        jest.advanceTimersByTime(1);
+        expect(move).toHaveBeenCalledTimes(3);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * ARR_FRAMES);
+        expect(move).toHaveBeenCalledTimes(4);
+        expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('DCD does not delay a hold that has not entered ARR yet', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        cutDasHolds(20);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+
+        expect(move).toHaveBeenCalledTimes(2);
     });
 });

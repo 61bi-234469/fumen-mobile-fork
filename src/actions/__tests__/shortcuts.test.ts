@@ -21,7 +21,9 @@ describe('clipboard insert shortcut', () => {
     let duplicatePageOnly: jest.Mock;
     let harddrop: jest.Mock;
     let hold: jest.Mock;
+    let moveToLeft: jest.Mock;
     let moveToRight: jest.Mock;
+    let rotateToRight: jest.Mock;
     let selectEditorPalette: jest.Mock;
     let backPage: jest.Mock;
     let nextPage: jest.Mock;
@@ -38,7 +40,9 @@ describe('clipboard insert shortcut', () => {
         duplicatePageOnly = jest.fn();
         harddrop = jest.fn();
         hold = jest.fn();
+        moveToLeft = jest.fn();
         moveToRight = jest.fn();
+        rotateToRight = jest.fn();
         selectEditorPalette = jest.fn();
         backPage = jest.fn();
         nextPage = jest.fn();
@@ -73,6 +77,7 @@ describe('clipboard insert shortcut', () => {
                 loop: false,
                 pieceShortcutDasFrames: 10,
                 pieceShortcutArrFrames: 1,
+                pieceShortcutDasCutFrames: 0,
                 paletteShortcuts: {
                     Comp: 'KeyC',
                 },
@@ -97,9 +102,11 @@ describe('clipboard insert shortcut', () => {
             duplicatePageOnly,
             harddrop,
             hold,
+            moveToLeft,
             importPagesFromClipboard,
             insertPageFromClipboard,
             moveToRight,
+            rotateToRight,
             nextPage,
             replaceAllFromClipboard,
             selectEditorPalette,
@@ -207,6 +214,24 @@ describe('clipboard insert shortcut', () => {
 
         expect(moveToRight).toHaveBeenCalledTimes(1);
         expect(duplicatePageOnly).not.toHaveBeenCalled();
+    });
+
+    test('piece movement and rotation shortcuts can be pressed simultaneously', () => {
+        state.editorUi.primaryTool = 'piece';
+        state.mode.pieceShortcuts = {
+            MoveLeft: 'ArrowLeft',
+            MoveRight: 'ArrowRight',
+            RotateRight: 'KeyX',
+        } as State['mode']['pieceShortcuts'];
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyX', bubbles: true }));
+
+        expect(moveToLeft).toHaveBeenCalledTimes(1);
+        expect(rotateToRight).toHaveBeenCalledTimes(1);
+
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowLeft', bubbles: true }));
     });
 
     test('piece shortcut is inactive outside PIECE mode', () => {

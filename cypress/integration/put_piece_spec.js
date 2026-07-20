@@ -3,6 +3,68 @@ import { operations } from '../support/operations';
 
 // テト譜を開く
 describe('Put pieces', () => {
+    it('combines keyboard movement and rotation while both keys are held', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keydown', { code: 'KeyX' });
+        cy.get('body').trigger('keyup', { code: 'KeyX' });
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+
+        cy.get(datatest('img-rotation-right')).should('be.visible');
+        mino(Piece.T, Rotation.Right)(3, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('combines touch movement and rotation with independent pointers', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerdown', { pointerId: 1, button: 0 });
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerdown', { pointerId: 2, button: 0 });
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerup', { pointerId: 2, button: 0 });
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerup', { pointerId: 1, button: 0 });
+
+        cy.get(datatest('img-rotation-right')).should('be.visible');
+        mino(Piece.T, Rotation.Right)(3, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('uses DAS Cut to skip DAS when a held direction meets a new spawn', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.tick(200);
+        operations.mode.tools.nextPage();
+        operations.mode.piece.spawn.T();
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+
+        mino(Piece.T, Rotation.Spawn)(2, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('exposes the DAS Cut setting in piece settings', () => {
+        visit({ mode: 'edit' });
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
+
+        cy.get(datatest('input-piece-dcd'))
+            .should('have.value', '0');
+    });
+
     it('Hard drop advances to the next page and reset re-spawns the piece', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();

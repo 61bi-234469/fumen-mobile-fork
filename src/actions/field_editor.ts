@@ -20,6 +20,7 @@ import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click
 import { intermediateCellIndices } from '../lib/grid_line';
 import { legacyModeForPaintTool } from '../lib/editor_interaction';
 import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
+import { activateDasCut, cutDasHolds } from '../lib/piece_das';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -501,6 +502,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         const prevPage = toPrimitivePage(page);
         page.piece = next;
+        activateDasCut(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
@@ -599,6 +601,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 y: element[1],
             },
         };
+        cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
@@ -650,6 +653,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 y: element[1],
             },
         };
+        cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
@@ -700,6 +704,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 y: element[1],
             },
         };
+        cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),

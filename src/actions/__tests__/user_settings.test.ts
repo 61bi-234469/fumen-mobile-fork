@@ -34,6 +34,7 @@ const baseUserSettings = {
     pieceShortcuts: {},
     pieceShortcutDasFrames: 10,
     pieceShortcutArrFrames: 1,
+    pieceShortcutDasCutFrames: 0,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     noGrayAfterHardDrop: false,
@@ -55,6 +56,7 @@ const createState = (override: any = {}) => ({
         pieceShortcuts: {},
         pieceShortcutDasFrames: 10,
         pieceShortcutArrFrames: 1,
+        pieceShortcutDasCutFrames: 0,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,
@@ -261,7 +263,8 @@ describe('userSettingsActions', () => {
                 'changeDeleteSpawnMinoOnPaintDrag',
                 'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
-                'changePieceShortcutDas', 'changePieceShortcutArr', 'changeGifFrameDelay', 'changeRotationSystem',
+                'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
+                'changeGifFrameDelay', 'changeRotationSystem',
                 'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
@@ -276,6 +279,7 @@ describe('userSettingsActions', () => {
                 ...baseUserSettings,
                 pieceShortcutDasFrames: 5.5,
                 pieceShortcutArrFrames: 1.5,
+                pieceShortcutDasCutFrames: 2.5,
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
@@ -285,6 +289,7 @@ describe('userSettingsActions', () => {
 
             expect(mockActions.changePieceShortcutDas).toHaveBeenCalledWith({ dasFrames: 5.5 });
             expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
+            expect(mockActions.changePieceShortcutDasCut).toHaveBeenCalledWith({ dasCutFrames: 2.5 });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

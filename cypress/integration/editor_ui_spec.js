@@ -388,7 +388,11 @@ describe('Editor UI final concept', () => {
                 const compElement = elements.filter(datatest('btn-piece-inference'))[0];
                 const comp = compElement.getBoundingClientRect();
                 expect(comp.bottom).to.be.at.most(comment.top);
-                const hit = document.elementFromPoint(comp.left + comp.width / 2, comp.bottom - 1);
+                // Cypress runs the spec in a separate document from the app under test.
+                // Hit-test the AUT document so this checks the actual COMP button layer.
+                const hit = compElement.ownerDocument.elementFromPoint(
+                    comp.left + comp.width / 2, comp.bottom - 1,
+                );
                 expect(hit === compElement || compElement.contains(hit)).to.equal(true);
             });
         const assertCommentIsBelowTray = () => cy.get(`${datatest('text-comment')},${datatest('field-bottom-tray')}`)

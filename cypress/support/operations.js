@@ -354,6 +354,10 @@ export const operations = {
                 cy.get(datatest('piece-queue-infinite-checkbox')).click();
                 cy.wait(100);
             },
+            resetBoard: () => {
+                cy.get(datatest('btn-piece-reset')).click();
+                cy.wait(100);
+            },
             resetPiece: () => {
                 cy.get(datatest('btn-piece-gray')).click();
             },

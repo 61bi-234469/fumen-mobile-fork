@@ -128,7 +128,7 @@
     },
     EditorUi: {
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
-        ResetPiece: 'RESPAWN', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag',
         ImportExport: 'Import / Export', Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row', Spawn: 'Spawn', Drag: 'Drag',

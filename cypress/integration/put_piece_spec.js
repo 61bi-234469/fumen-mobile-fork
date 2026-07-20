@@ -130,6 +130,38 @@ describe('Put pieces', () => {
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
     });
 
+    it('RESET clears the painted field and current piece', () => {
+        visit({ mode: 'edit' });
+        operations.mode.tools.home();
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.O();
+
+        operations.mode.piece.resetBoard();
+
+        cy.get(datatest('img-rotation-empty')).should('be.visible');
+        cy.get(block(0, 0)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('RESET replaces an enabled infinite 7bag with current plus six next pieces', () => {
+        visit({ mode: 'edit' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('#Q=[T](S)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.toggleInfiniteQueue();
+        operations.mode.piece.resetBoard();
+
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[\]\([IOTLJSZ]\)([IOTLJSZ]{6})$/)
+            .then(comment => {
+                const matched = /^#Q=\[\]\(([IOTLJSZ])\)([IOTLJSZ]{6})$/.exec(comment);
+                expect(matched).to.not.equal(null);
+                expect(`${matched[1]}${matched[2]}`).to.have.length(7);
+                expect(`${matched[1]}${matched[2]}`.split('').sort().join('')).to.equal('IJLOSTZ');
+            });
+    });
+
     it('spawns the first configured next piece after hard drop', () => {
         visit({ mode: 'edit' });
         operations.mode.comment.open();
@@ -154,7 +186,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\(I\)[IOTLJSZ]{7}$/);
@@ -170,7 +203,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val')
@@ -194,7 +228,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         operations.mode.piece.harddrop();
 
         operations.mode.comment.open();

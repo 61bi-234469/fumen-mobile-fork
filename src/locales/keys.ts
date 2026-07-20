@@ -138,7 +138,8 @@ export const i18n = {
     EditorUi: {
         Rotate180: () => t('EditorUi.Rotate180'), Hold: () => t('EditorUi.Hold'),
         SoftDrop: () => t('EditorUi.SoftDrop'), HardDrop: () => t('EditorUi.HardDrop'),
-        ResetPiece: () => t('EditorUi.ResetPiece'), InfiniteBag: () => t('EditorUi.InfiniteBag'),
+        ResetPiece: () => t('EditorUi.ResetPiece'), ResetField: () => t('EditorUi.ResetField'),
+        InfiniteBag: () => t('EditorUi.InfiniteBag'),
         ImportExport: () => t('EditorUi.ImportExport'), Settings: () => t('EditorUi.Settings'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),

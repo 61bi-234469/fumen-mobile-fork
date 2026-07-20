@@ -212,10 +212,8 @@ describe('Editor UI final concept', () => {
             .and('include', 'rgb(25, 118, 210)');
 
         cy.get(datatest('btn-piece-mode')).click();
-        cy.get(paletteFrames).should('have.length', 9);
-        cy.get(datatest('piece-palette-empty')).should('be.visible');
-        cy.get(`${paletteFrames},${datatest('piece-palette-empty')}`)
-            .should('have.length', 10);
+        cy.get(paletteFrames).should('have.length', 10);
+        cy.get(datatest('btn-piece-reset')).should('be.visible').and('contain.text', 'RESET');
         cy.get(datatest('btn-piece-i')).find('img').should('exist');
 
         cy.get(datatest('btn-select-mode')).click();

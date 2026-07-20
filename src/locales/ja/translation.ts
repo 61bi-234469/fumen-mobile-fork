@@ -123,7 +123,7 @@ export const resources = {
     },
     EditorUi: {
         Rotate180: '180°回転', Hold: 'Hold', SoftDrop: 'ソフトドロップ', HardDrop: 'ハードドロップ',
-        ResetPiece: 'RESPAWN', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag',
         ImportExport: '読み込み / 書き出し', Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
         Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る', Spawn: '出現', Drag: '移動',

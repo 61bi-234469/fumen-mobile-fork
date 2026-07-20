@@ -1,4 +1,4 @@
-import { datatest, visit } from '../support/common';
+import { Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('PIECE queues', () => {
@@ -25,7 +25,8 @@ describe('PIECE queues', () => {
                 .and('have.attr', 'data-piece', piece);
         });
         cy.get(datatest('piece-queue-infinite')).should('be.visible').and('contain.text', '∞ 7bag');
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('not.be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'false');
         cy.get(datatest('piece-queue-infinite')).then(toggle => {
             const toggleRect = toggle[0].getBoundingClientRect();
             const checkboxRect = toggle.find(datatest('piece-queue-infinite-checkbox'))[0].getBoundingClientRect();
@@ -49,12 +50,30 @@ describe('PIECE queues', () => {
         operations.mode.piece.open();
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('mdl-piece-queue')).should('not.exist');
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('not.be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'false');
         cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'I');
+    });
+
+    it('keeps the field focused when toggling infinite 7bag', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        cy.get('#field-top').focus();
+
+        operations.mode.piece.toggleInfiniteQueue();
+
+        cy.get('#field-top').should('be.focused');
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+        mino(Piece.T, Rotation.Spawn)(3, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
     });
 
     it('hides the comment input while the context tray is shown and restores its value', () => {

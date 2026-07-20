@@ -65,6 +65,8 @@ let treeTouchDragActive = false;
 let treePendingDragNodeId: string | null = null;
 let treePendingDragKind: 'handle' | 'longPress' | null = null;
 let treeLongPressTimer: number | null = null;
+let treeSuppressNextNodeClick = false;
+let treeSuppressNodeClickTimer: number | null = null;
 
 const TREE_LONG_PRESS_DELAY = 500;
 
@@ -85,6 +87,31 @@ const cancelTreeLongPress = () => {
         window.clearTimeout(treeLongPressTimer);
         treeLongPressTimer = null;
     }
+};
+
+const clearTreeNodeClickSuppression = () => {
+    if (treeSuppressNodeClickTimer !== null) {
+        window.clearTimeout(treeSuppressNodeClickTimer);
+        treeSuppressNodeClickTimer = null;
+    }
+    treeSuppressNextNodeClick = false;
+};
+
+const suppressNextTreeNodeClick = () => {
+    clearTreeNodeClickSuppression();
+    treeSuppressNextNodeClick = true;
+    // Some browsers synthesize the click after touchend; keep the guard alive
+    // long enough for that click, but do not affect a later independent tap.
+    treeSuppressNodeClickTimer = window.setTimeout(() => {
+        treeSuppressNextNodeClick = false;
+        treeSuppressNodeClickTimer = null;
+    }, 1000);
+};
+
+const consumeSuppressedTreeNodeClick = (): boolean => {
+    if (!treeSuppressNextNodeClick) return false;
+    clearTreeNodeClickSuppression();
+    return true;
 };
 
 const cleanupTreeTouchEndListeners = () => {
@@ -460,6 +487,10 @@ export const view: View<State, Actions> = (state, actions) => {
             e.preventDefault();
         }
 
+        if (treeTouchDragActive) {
+            suppressNextTreeNodeClick();
+        }
+
         // Get touch start position (set by fumen_graph.tsx buttons' ontouchstart).
         // This is necessary because the buttons' ontouchstart fires before the container's
         const touchStartPos = getTreeTouchStartPosition();
@@ -735,6 +766,7 @@ export const view: View<State, Actions> = (state, actions) => {
             ondestroy: () => {
                 cleanupTreeTouchEndListeners();
                 cancelPendingMouseDrag();
+                clearTreeNodeClickSuppression();
                 stopTreeDragFeedback();
                 treeTouchContainerElement = null;
                 treeTouchStartTarget = null;
@@ -767,6 +799,9 @@ export const view: View<State, Actions> = (state, actions) => {
                     autoFocusPending: state.tree.autoFocusPending,
                     actions: {
                         onNodeActivate: (nodeId) => {
+                            if (consumeSuppressedTreeNodeClick()) {
+                                return;
+                            }
                             if (state.tree.dragState.sourceNodeId === null) {
                                 if (state.tree.activeNodeId === nodeId) {
                                     actions.selectTreeNode({ nodeId });

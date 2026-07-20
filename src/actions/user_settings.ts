@@ -19,6 +19,7 @@ export interface UserSettingsActions {
     keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
     keepPieceShortcutDas: (data: { dasFrames: number }) => action;
     keepPieceShortcutArr: (data: { arrFrames: number }) => action;
+    keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
@@ -45,6 +46,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcuts: { ...state.mode.pieceShortcuts },
                     pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
                     pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
+                    pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
@@ -79,6 +81,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changePieceShortcutArr({
                 arrFrames: state.temporary.userSettings.pieceShortcutArrFrames,
+            }),
+            actions.changePieceShortcutDasCut({
+                dasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
@@ -326,6 +331,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepPieceShortcutDasCut: ({ dasCutFrames }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    pieceShortcutDasCutFrames: dasCutFrames,
+                },
+            },
+        };
+    },
     keepGifFrameDelay: ({ delayMs }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
@@ -443,6 +463,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
         pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
         pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
+        pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,

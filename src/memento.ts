@@ -170,6 +170,7 @@ interface UserSettings {
     pieceShortcuts: string;  // JSON文字列で保存
     pieceShortcutDasFrames: number;
     pieceShortcutArrFrames: number;
+    pieceShortcutDasCutFrames: number;
     pieceShortcutDasMs?: number;
     pieceShortcutArrMs?: number;
     gifFrameDelayMs: number;
@@ -250,6 +251,7 @@ export const localStorageWrapper = {
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasFrames: safer.number(obj.pieceShortcutDasFrames),
             pieceShortcutArrFrames: safer.number(obj.pieceShortcutArrFrames),
+            pieceShortcutDasCutFrames: safer.number(obj.pieceShortcutDasCutFrames),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),

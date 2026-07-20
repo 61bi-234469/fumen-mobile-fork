@@ -193,6 +193,13 @@ describe('Tree mode in list view', () => {
             const target = win.document.elementFromPoint(start.x, start.y) || source;
             const fireTouch = createTouchDispatcher(win, target);
 
+            const contextMenu = new win.MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+            });
+            target.dispatchEvent(contextMenu);
+            expect(contextMenu.defaultPrevented).to.equal(true);
+
             fireTouch('touchstart', start);
             await wait(60);
             fireTouch('touchmove', { x: start.x + 40, y: start.y + 10 });
@@ -324,9 +331,14 @@ describe('Tree mode in list view', () => {
             fireTouch('touchmove', end);
             await wait(120);
             fireTouch('touchend', end);
+
+            // A real touch drag may synthesize a click after touchend. It must
+            // not activate the source node after the drop has completed.
+            source.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
         });
 
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
     });
 

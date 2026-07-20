@@ -366,6 +366,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.pieceShortcutDasCutFrames !== undefined) {
+        main.changePieceShortcutDasCut({ dasCutFrames: settings.pieceShortcutDasCutFrames });
+        updated = true;
+    }
+
     if (settings.gifFrameDelayMs !== undefined) {
         main.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(settings.gifFrameDelayMs) });
         updated = true;

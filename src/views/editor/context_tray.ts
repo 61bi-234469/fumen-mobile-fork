@@ -10,7 +10,7 @@ import { rectHeight, rectWidth } from '../../lib/rect_selection';
 import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
-import { endDasHold, startDasHold } from '../../lib/piece_das';
+import { endDasHold, isDasHoldActive, startDasHold } from '../../lib/piece_das';
 import { displayShortcut } from '../../lib/shortcuts';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
@@ -323,6 +323,7 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         },
         datatest: key,
     });
+    const canContinueMoveHold = (key: string) => isDasHoldActive(`tray:${key}`);
     return [div({
         key: 'tray-piece-grid',
         datatest: 'tray-piece-grid',
@@ -354,13 +355,15 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         placeholder('tray-piece-empty-top-end'),
         pieceButton({
             key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
-            disabled: !canOperate, onpress: actions.moveToLeft,
+            disabled: !canOperate && !canContinueMoveHold('tray-piece-move-left'),
+            onpress: actions.moveToLeft,
             shortcut: 'MoveLeft',
             hold: { move: actions.moveToLeft, moveToEnd: actions.moveToLeftEnd },
         }),
         pieceButton({
             key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
-            disabled: !canOperate, onpress: actions.moveToRight,
+            disabled: !canOperate && !canContinueMoveHold('tray-piece-move-right'),
+            onpress: actions.moveToRight,
             shortcut: 'MoveRight',
             hold: { move: actions.moveToRight, moveToEnd: actions.moveToRightEnd },
         }),

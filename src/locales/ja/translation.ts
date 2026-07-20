@@ -104,6 +104,8 @@ export const resources = {
             DasDescription: 'ARR開始までのフレーム数',
             ArrFrames: 'ARR',
             ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
+            DasCutFrames: 'DCD (DAS Cut Delay)',
+            DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {

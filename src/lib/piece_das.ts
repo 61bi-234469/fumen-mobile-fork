@@ -18,6 +18,11 @@ export interface DasHoldOptions extends DasHoldCallbacks {
 interface HoldState {
     dasTimer: ReturnType<typeof setTimeout> | null;
     arrTimer: ReturnType<typeof setInterval> | null;
+    cutTimer: ReturnType<typeof setTimeout> | null;
+    arrActive: boolean;
+    move: () => void;
+    moveToEnd: () => void;
+    arrFrames: number;
 }
 
 const holds = new Map<string, HoldState>();
@@ -40,17 +45,30 @@ export const startDasHold = (id: string, options: DasHoldOptions) => {
     // 押下した瞬間に1回移動（レスポンス優先）
     move();
 
-    const hold: HoldState = { dasTimer: null, arrTimer: null };
+    const hold: HoldState = {
+        move,
+        moveToEnd,
+        arrFrames,
+        dasTimer: null,
+        arrTimer: null,
+        cutTimer: null,
+        arrActive: false,
+    };
     hold.dasTimer = setTimeout(() => {
         hold.dasTimer = null;
-        if (arrFrames <= 0) {
-            moveToEnd();
-        } else {
-            move();
-            hold.arrTimer = setInterval(move, framesToMilliseconds(arrFrames));
-        }
+        startArr(hold);
     }, framesToMilliseconds(dasFrames));
     holds.set(id, hold);
+};
+
+const startArr = (hold: HoldState) => {
+    hold.arrActive = true;
+    if (hold.arrFrames <= 0) {
+        hold.moveToEnd();
+    } else {
+        hold.move();
+        hold.arrTimer = setInterval(hold.move, framesToMilliseconds(hold.arrFrames));
+    }
 };
 
 export const endDasHold = (id: string) => {
@@ -64,7 +82,88 @@ export const endDasHold = (id: string) => {
     if (hold.arrTimer !== null) {
         clearInterval(hold.arrTimer);
     }
+    if (hold.cutTimer !== null) {
+        clearTimeout(hold.cutTimer);
+    }
     holds.delete(id);
+};
+
+/**
+ * Pause already-active DAS/ARR holds for the configured DCD delay.
+ *
+ * A hold which is still waiting for its initial DAS timer is intentionally
+ * left alone. DAS Cut is for charged/pre-input movement, so a normal tap
+ * followed by a rotation must not gain an extra delay.
+ */
+export const cutDasHolds = (dcdFrames: number | undefined) => {
+    if (dcdFrames === undefined || dcdFrames <= 0) {
+        return;
+    }
+
+    const cutMilliseconds = framesToMilliseconds(dcdFrames);
+    for (const hold of Array.from(holds.values())) {
+        if (!hold.arrActive) {
+            continue;
+        }
+
+        if (hold.arrTimer !== null) {
+            clearInterval(hold.arrTimer);
+        }
+        hold.arrTimer = null;
+        hold.arrActive = false;
+        if (hold.cutTimer !== null) {
+            clearTimeout(hold.cutTimer);
+        }
+
+        hold.cutTimer = setTimeout(() => {
+            hold.cutTimer = null;
+            if (!holdsHasValue(hold)) {
+                return;
+            }
+
+            startArr(hold);
+        }, cutMilliseconds);
+    }
+};
+
+/**
+ * Skip the initial DAS delay for every held direction that has already
+ * reached ARR when a new piece spawns. A non-zero DCD delays ARR activation.
+ */
+export const activateDasCut = (dcdFrames: number | undefined) => {
+    const delayMilliseconds = framesToMilliseconds(dcdFrames ?? 0);
+
+    for (const hold of Array.from(holds.values())) {
+        if (!hold.arrActive) {
+            continue;
+        }
+
+        if (hold.arrTimer !== null) {
+            clearInterval(hold.arrTimer);
+            hold.arrTimer = null;
+        }
+        hold.arrActive = false;
+
+        if (delayMilliseconds <= 0) {
+            startArr(hold);
+        } else {
+            hold.cutTimer = setTimeout(() => {
+                hold.cutTimer = null;
+                if (holdsHasValue(hold)) {
+                    startArr(hold);
+                }
+            }, delayMilliseconds);
+        }
+    }
+};
+
+const holdsHasValue = (value: HoldState): boolean => {
+    for (const hold of Array.from(holds.values())) {
+        if (hold === value) {
+            return true;
+        }
+    }
+    return false;
 };
 
 export const endAllDasHolds = () => {

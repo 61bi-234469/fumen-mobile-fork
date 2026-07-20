@@ -86,7 +86,7 @@
 - Use `develop` for routine development and commit directly to it. Do not create or switch to another branch unless the user explicitly approves it.
 - Treat `main` as production. Never commit, merge, or push to `main` without explicit user approval; merge `develop` into it only through the requested production release procedure.
 - A push to `develop` updates the preview deployment. A push to `main` updates production. The request "デプロイ" means the explicit `develop` → `main` release procedure in `.agents/skills/release/SKILL.md`, not merely a preview push.
-- Never push any branch without confirmation immediately before the push.
+- Never push `main` without confirmation immediately before the push. Pushes to branches other than `main` do not require confirmation.
 - Before a production release, run at least `yarn lint`, `yarn test`, and `yarn webpack-prod`, plus relevant Cypress specs or verify a green `dev-workflow` run as allowed by the release skill.
 - Before committing, use the repository owner's GitHub noreply identity. Never use a real email address for commits.
 - Write commit subjects and bodies in English. Include the actual model name in a trailer such as `Model: <model name>`. When the change follows an implementation plan in `docs/plans/` that records model names (設計作成者/レビュー者/実装者), use the model names recorded there for the trailer (joint names if multiple) in preference to the committing model's own name.

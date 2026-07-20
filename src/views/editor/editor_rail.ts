@@ -706,11 +706,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         marginLeft: '8px',
         minWidth: px(layout.buttons.size.width),
         overflow: 'hidden',
-        // The comment can occupy the shared bottom area when PAINT/SELECT
-        // uses the tray-sized field. Keep COMP above that area, at the
-        // field's lower edge rather than in the rising-line band.
-        paddingBottom: px(railBottomPadding === 0 ? 0
-            : railBottomPadding + layout.field.bottomBorderWidth + 8),
+        // Keep the last palette cell flush with the comment/tray boundary.
+        // The palette group clips overflowing cells, so extra padding here
+        // would cut off COMP even though its own rectangle still fits.
+        paddingBottom: px(railBottomPadding),
         width: px(layout.buttons.size.width),
     });
 

@@ -531,16 +531,16 @@ export const view: View<State, Actions> = (state, actions) => {
     // ページスライダー表示中はコメント欄を優先してトレイを出さない。
     const trayInBottom = !pageSliderVisible;
     const contextTrayVisible = trayInBottom && state.editorUi.bottomSlot === 'tray';
-    const commentVisible = !contextTrayVisible || state.mode.type === ModeTypes.Comment;
-    // PAINT/SELECT keep the tray-sized field even when the comment replaces the tray.
-    // PIECE retains its existing queue/comment height calculation.
-    const useTrayLayout = !pageSliderVisible
-        && state.mode.type !== ModeTypes.Comment
-        && state.editorUi.primaryTool !== 'piece';
-    const reserveCommentHeight = !useTrayLayout;
-    // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
-    // （盤面サイズは develop 時点の計算式と完全に一致させる）。
-    // 初期匁E
+    const paintOrSelect = state.editorUi.primaryTool === 'paint'
+        || state.editorUi.primaryTool === 'select';
+    // PAINT/SELECTはトレイとコメントを同時に表示する。トレイと排他にするのは
+    // フィールド下部のせり上がり行だけで、コメントはその下の独立行に残す。
+    // PIECEでは既存のキュー／コメント表示条件を維持する。
+    const commentVisible = paintOrSelect
+        || !contextTrayVisible
+        || state.mode.type === ModeTypes.Comment;
+    const reserveCommentHeight = commentVisible;
+
     const layout = getLayout({
         rightInspectorWidth,
         sidePanelWidth,
@@ -590,13 +590,6 @@ export const view: View<State, Actions> = (state, actions) => {
 
         div({
             key: 'menu-top',
-            style: useTrayLayout && commentVisible ? style({
-                bottom: '0',
-                left: '0',
-                position: 'absolute',
-                right: '0',
-                zIndex: 10,
-            }) : undefined,
         }, [
             commentVisible ? getComment(state, actions, layout) : undefined as any,
 

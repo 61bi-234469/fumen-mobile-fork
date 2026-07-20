@@ -138,10 +138,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         actions,
     },
 ) => {
+    let isClosing = false;
+
     const oncreate = (element: HTMLDivElement) => {
+        isClosing = false;
         const instance = M.Modal.init(element, {
             onCloseStart: () => {
-                actions.closeUserSettingsModal();
+                if (!isClosing) {
+                    isClosing = true;
+                    actions.closeUserSettingsModal();
+                }
             },
         });
 
@@ -156,18 +162,21 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
     const ondestroy = () => {
         const modal = resources.modals.userSettings;
-        if (modal !== undefined) {
+        resources.modals.userSettings = undefined;
+        if (modal !== undefined && !isClosing) {
+            isClosing = true;
             modal.close();
         }
-        resources.modals.userSettings = undefined;
     };
 
     const save = () => {
+        isClosing = true;
         actions.commitUserSettings();
         actions.closeUserSettingsModal();
     };
 
     const cancel = () => {
+        isClosing = true;
         actions.closeUserSettingsModal();
     };
 

@@ -268,11 +268,23 @@ const renderNodeCard = (
             key={`node-card-${node.id}`}
             datatest={`tree-node-${node.id}`}
             transform={`translate(${pos.x}, ${pos.y})`}
-            style={style({ cursor: 'pointer' })}
+            style={{
+                ...style({ cursor: 'pointer', userSelect: 'none' }),
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+            }}
             onclick={() => {
                 if (!isDragging) {
                     actions.onNodeActivate(node.id);
                 }
+            }}
+            oncontextmenu={(e: Event) => {
+                // Android browsers otherwise show the native image menu when
+                // a field thumbnail is held before the drag timer completes.
+                e.preventDefault();
+            }}
+            ondragstart={(e: DragEvent) => {
+                e.preventDefault();
             }}
             ontouchstart={(e: TouchEvent) => {
                 if (!isDragging && canStartDrag && e.touches.length === 1) {

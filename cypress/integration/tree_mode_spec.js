@@ -193,6 +193,13 @@ describe('Tree mode in list view', () => {
             const target = win.document.elementFromPoint(start.x, start.y) || source;
             const fireTouch = createTouchDispatcher(win, target);
 
+            const contextMenu = new win.MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+            });
+            target.dispatchEvent(contextMenu);
+            expect(contextMenu.defaultPrevented).to.equal(true);
+
             fireTouch('touchstart', start);
             await wait(60);
             fireTouch('touchmove', { x: start.x + 40, y: start.y + 10 });

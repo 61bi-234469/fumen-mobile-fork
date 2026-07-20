@@ -23,6 +23,7 @@ interface HoldState {
     move: () => void;
     moveToEnd: () => void;
     arrFrames: number;
+    cutVersion: number;
 }
 
 const holds = new Map<string, HoldState>();
@@ -53,6 +54,7 @@ export const startDasHold = (id: string, options: DasHoldOptions) => {
         arrTimer: null,
         cutTimer: null,
         arrActive: false,
+        cutVersion: 0,
     };
     hold.dasTimer = setTimeout(() => {
         hold.dasTimer = null;
@@ -76,6 +78,7 @@ export const endDasHold = (id: string) => {
     if (hold === undefined) {
         return;
     }
+    hold.cutVersion += 1;
     if (hold.dasTimer !== null) {
         clearTimeout(hold.dasTimer);
     }
@@ -115,9 +118,11 @@ export const cutDasHolds = (dcdFrames: number | undefined) => {
             clearTimeout(hold.cutTimer);
         }
 
+        hold.cutVersion += 1;
+        const cutVersion = hold.cutVersion;
         hold.cutTimer = setTimeout(() => {
             hold.cutTimer = null;
-            if (!holdsHasValue(hold)) {
+            if (!holdsHasValue(hold) || hold.cutVersion !== cutVersion) {
                 return;
             }
 
@@ -148,13 +153,22 @@ export const activateDasCut = (dcdFrames: number | undefined) => {
             hold.cutTimer = null;
         }
         hold.arrActive = false;
+        hold.cutVersion += 1;
+        const cutVersion = hold.cutVersion;
 
         if (delayMilliseconds <= 0) {
-            startArr(hold);
+            // spawnPiece can run inside a raw action sequence before Hyperapp commits
+            // its global state. A microtask starts ARR against the committed spawn while
+            // still running before Hyperapp's timer-based render.
+            Promise.resolve().then(() => {
+                if (holdsHasValue(hold) && hold.cutVersion === cutVersion) {
+                    startArr(hold);
+                }
+            });
         } else {
             hold.cutTimer = setTimeout(() => {
                 hold.cutTimer = null;
-                if (holdsHasValue(hold)) {
+                if (holdsHasValue(hold) && hold.cutVersion === cutVersion) {
                     startArr(hold);
                 }
             }, delayMilliseconds);

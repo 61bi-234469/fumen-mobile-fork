@@ -158,7 +158,7 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('DAS Cut skips the initial DAS delay when a piece spawns', () => {
+    test('DAS Cut skips the initial DAS delay when a piece spawns', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
@@ -166,6 +166,8 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
 
         activateDasCut(0);
+        expect(move).toHaveBeenCalledTimes(2);
+        await Promise.resolve();
         expect(move).toHaveBeenCalledTimes(3);
 
         jest.advanceTimersByTime(FRAME_DURATION_MS * 5);
@@ -175,16 +177,42 @@ describe('piece_das', () => {
         expect(move).toHaveBeenCalledTimes(6);
     });
 
-    test('DAS Cut keeps ARR=0 precharge active across spawns', () => {
+    test('DAS Cut keeps ARR=0 precharge active across spawns', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
         startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
         jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
         activateDasCut(0);
+        await Promise.resolve();
         activateDasCut(0);
+        await Promise.resolve();
 
         expect(moveToEnd).toHaveBeenCalledTimes(3);
+    });
+
+    test('only the latest zero-DCD DAS Cut starts ARR in the same turn', async () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        activateDasCut(0);
+        activateDasCut(0);
+        await Promise.resolve();
+
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+    });
+
+    test('releasing a hold cancels a pending zero-DCD DAS Cut', async () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        activateDasCut(0);
+        endDasHold('test');
+        await Promise.resolve();
+
+        expect(moveToEnd).not.toHaveBeenCalled();
     });
 
     test('DCD delays DAS Cut ARR activation after a piece spawns', () => {
@@ -203,13 +231,15 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('DAS Cut skips pending DAS when a direction is held before spawn', () => {
+    test('DAS Cut skips pending DAS when a direction is held before spawn', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
         startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
         activateDasCut(0);
 
+        expect(move).toHaveBeenCalledTimes(1);
+        await Promise.resolve();
         expect(move).toHaveBeenCalledTimes(2);
         jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
         expect(move).toHaveBeenCalledTimes(7);

@@ -56,6 +56,32 @@ describe('Put pieces', () => {
         });
     });
 
+    it('applies ARR=0 DAS Cut to a queued spawn when DCD is zero', () => {
+        visit({ mode: 'edit' });
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
+        cy.get(datatest('input-piece-arr')).clear().type('0').blur();
+        cy.get(datatest('input-piece-das')).clear().type('5').blur();
+        cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
+        cy.get(datatest('btn-save')).click();
+
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('T:J');
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.tick(5 * (1000 / 60));
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        mino(Piece.J, Rotation.Spawn)(1, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
+        });
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+    });
+
     it('keeps a touch direction held while hard-dropping with another pointer', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();

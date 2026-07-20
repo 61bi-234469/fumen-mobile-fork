@@ -91,6 +91,15 @@ describe('comment', () => {
         });
     });
 
+    test('quietly falls back when a quiz page piece does not match the queue', () => {
+        const pages = new Pages([quizText(new Quiz('#Q=[](L)OZJSTI'), Piece.J)] as any);
+
+        expect(() => pages.getComment(0)).not.toThrow();
+        expect(pages.getComment(0)).toMatchObject({
+            quiz: '#Q=[](L)OZJSTI',
+        });
+    });
+
     test('next', () => {
         const firstMove = { type: Piece.I, rotation: Rotation.Spawn, coordinate: { x: 1, y: 0 } };
         const secondMove = { type: Piece.J, rotation: Rotation.Left, coordinate: { x: 5, y: 1 } };

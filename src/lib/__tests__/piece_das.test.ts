@@ -2,12 +2,14 @@ import {
     activateDasCut,
     endAllDasHolds,
     endDasHold,
+    endSoftDropHold,
     FRAME_DURATION_MS,
     framesToMilliseconds,
     isDasHoldActive,
     millisecondsToFrames,
     cutDasHolds,
     startDasHold,
+    startSoftDropHold,
 } from '../piece_das';
 
 const DAS_FRAMES = 10;
@@ -158,7 +160,7 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('DAS Cut skips the initial DAS delay when a piece spawns', () => {
+    test('DAS Cut skips the initial DAS delay when a piece spawns', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
@@ -166,6 +168,8 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
 
         activateDasCut(0);
+        expect(move).toHaveBeenCalledTimes(2);
+        await Promise.resolve();
         expect(move).toHaveBeenCalledTimes(3);
 
         jest.advanceTimersByTime(FRAME_DURATION_MS * 5);
@@ -175,16 +179,42 @@ describe('piece_das', () => {
         expect(move).toHaveBeenCalledTimes(6);
     });
 
-    test('DAS Cut keeps ARR=0 precharge active across spawns', () => {
+    test('DAS Cut keeps ARR=0 precharge active across spawns', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
         startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
         jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
         activateDasCut(0);
+        await Promise.resolve();
         activateDasCut(0);
+        await Promise.resolve();
 
         expect(moveToEnd).toHaveBeenCalledTimes(3);
+    });
+
+    test('only the latest zero-DCD DAS Cut starts ARR in the same turn', async () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        activateDasCut(0);
+        activateDasCut(0);
+        await Promise.resolve();
+
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+    });
+
+    test('releasing a hold cancels a pending zero-DCD DAS Cut', async () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        activateDasCut(0);
+        endDasHold('test');
+        await Promise.resolve();
+
+        expect(moveToEnd).not.toHaveBeenCalled();
     });
 
     test('DCD delays DAS Cut ARR activation after a piece spawns', () => {
@@ -203,7 +233,7 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('DAS Cut does not skip DAS for a hold that is not pre-charged', () => {
+    test('DAS Cut skips pending DAS when a direction is held before spawn', async () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
@@ -211,7 +241,20 @@ describe('piece_das', () => {
         activateDasCut(0);
 
         expect(move).toHaveBeenCalledTimes(1);
-        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES - 1);
+        await Promise.resolve();
+        expect(move).toHaveBeenCalledTimes(2);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(move).toHaveBeenCalledTimes(7);
+    });
+
+    test('DCD delays DAS Cut even when the initial DAS is still pending', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        activateDasCut(3);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3 - 1);
         expect(move).toHaveBeenCalledTimes(1);
 
         jest.advanceTimersByTime(1);
@@ -236,6 +279,44 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(FRAME_DURATION_MS * ARR_FRAMES);
         expect(move).toHaveBeenCalledTimes(4);
         expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('SDFはTETR.IOの0.05G下限準拠でSDF×3マス/秒の落下間隔になる', () => {
+        const move = jest.fn();
+
+        // SDF=5 → 5 × 3 = 15マス/秒 → 4フレーム間隔
+        startSoftDropHold('test', move, 5);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 4 - 1);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(1);
+        expect(move).toHaveBeenCalledTimes(2);
+
+        // 以降も同じ間隔でリピートする
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 4 * 3);
+        expect(move).toHaveBeenCalledTimes(5);
+    });
+
+    test('SDF=∞は毎フレーム落下する', () => {
+        const move = jest.fn();
+
+        startSoftDropHold('test', move, Infinity);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        expect(move).toHaveBeenCalledTimes(4);
+    });
+
+    test('ソフトドロップホールドを離すと落下が停止する', () => {
+        const move = jest.fn();
+
+        startSoftDropHold('test', move, 5);
+        endSoftDropHold('test');
+
+        jest.advanceTimersByTime(1000);
+        expect(move).toHaveBeenCalledTimes(1);
     });
 
     test('DCD does not delay a hold that has not entered ARR yet', () => {

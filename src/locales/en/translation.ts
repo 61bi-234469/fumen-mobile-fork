@@ -109,8 +109,10 @@
             DasDescription: 'Frames before ARR starts when holding left/right',
             ArrFrames: 'ARR',
             ArrDescription: 'Repeat interval after DAS. 0 moves to the edge instantly',
-            DasCutFrames: 'DCD (DAS Cut Delay)',
+            DasCutFrames: 'DCD',
             DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
+            Sdf: 'SDF',
+            SdfDescription: 'TETR.IO-style soft drop factor (SDF x 3 cells per second, from the 0.05G floor)',
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
@@ -126,7 +128,7 @@
     },
     EditorUi: {
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
-        ResetPiece: 'RESPAWN', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag',
         ImportExport: 'Import / Export', Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row', Spawn: 'Spawn', Drag: 'Drag',

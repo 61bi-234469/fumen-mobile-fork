@@ -116,6 +116,8 @@ export const i18n = {
             ArrDescription: () => t('UserSettings.PieceShortcuts.ArrDescription'),
             DasCutFrames: () => t('UserSettings.PieceShortcuts.DasCutFrames'),
             DasCutDescription: () => t('UserSettings.PieceShortcuts.DasCutDescription'),
+            Sdf: () => t('UserSettings.PieceShortcuts.Sdf'),
+            SdfDescription: () => t('UserSettings.PieceShortcuts.SdfDescription'),
         },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),
@@ -136,7 +138,8 @@ export const i18n = {
     EditorUi: {
         Rotate180: () => t('EditorUi.Rotate180'), Hold: () => t('EditorUi.Hold'),
         SoftDrop: () => t('EditorUi.SoftDrop'), HardDrop: () => t('EditorUi.HardDrop'),
-        ResetPiece: () => t('EditorUi.ResetPiece'), InfiniteBag: () => t('EditorUi.InfiniteBag'),
+        ResetPiece: () => t('EditorUi.ResetPiece'), ResetField: () => t('EditorUi.ResetField'),
+        InfiniteBag: () => t('EditorUi.InfiniteBag'),
         ImportExport: () => t('EditorUi.ImportExport'), Settings: () => t('EditorUi.Settings'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),

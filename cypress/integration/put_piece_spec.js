@@ -44,16 +44,49 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
 
+        // Hold right: nextPage() locks the current piece in place, and a left hold
+        // would immediately wall itself in behind that just-locked piece, leaving no
+        // room to prove DAS Cut moved anything.
         cy.clock();
-        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keydown', { code: 'ArrowRight' });
         cy.tick(200);
+        cy.clock().invoke('restore');
         operations.mode.tools.nextPage();
         operations.mode.piece.spawn.T();
-        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keyup', { code: 'ArrowRight' });
 
-        mino(Piece.T, Rotation.Spawn)(2, 20).forEach(selector => {
+        mino(Piece.T, Rotation.Spawn)(5, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
+    });
+
+    it('applies ARR=0 DAS Cut to a queued spawn when DCD is zero', () => {
+        visit({ mode: 'edit' });
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('piece');
+        cy.get(datatest('input-piece-arr')).clear().type('0').blur();
+        cy.get(datatest('input-piece-das')).clear().type('5').blur();
+        cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
+        cy.get(datatest('btn-save')).click();
+
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('T:J');
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        // A few ms past the DAS threshold so the fake-timer tick reliably fires the
+        // DAS timeout even with floating-point frame/ms rounding at the boundary.
+        cy.tick(5 * (1000 / 60) + 20);
+        cy.clock().invoke('restore');
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        mino(Piece.J, Rotation.Spawn)(1, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
+        });
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
     });
 
     it('keeps a touch direction held while hard-dropping with another pointer', () => {
@@ -65,13 +98,18 @@ describe('Put pieces', () => {
         cy.get(datatest('tray-piece-move-left'))
             .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
         cy.tick(200);
+        cy.clock().invoke('restore');
         cy.get(datatest('tray-piece-harddrop'))
-            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 })
-            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0, force: true })
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0, force: true });
+        // Page transition can cancel the captured pointer without lifting the finger.
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointercancel', { pointerId: 1, pointerType: 'touch' });
         operations.mode.piece.spawn.T();
-        cy.tick(2 * (1000 / 60));
 
-        mino(Piece.T, Rotation.Spawn)(0, 20).forEach(selector => {
+        // T's spawn shape extends one cell left of its base coordinate, so the
+        // leftmost legal base against the wall is x=1, not x=0.
+        mino(Piece.T, Rotation.Spawn)(1, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
         cy.get(datatest('tray-piece-move-left'))
@@ -101,6 +139,38 @@ describe('Put pieces', () => {
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
     });
 
+    it('RESET clears the painted field and current piece', () => {
+        visit({ mode: 'edit' });
+        operations.mode.tools.home();
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.O();
+
+        operations.mode.piece.resetBoard();
+
+        cy.get(datatest('img-rotation-empty')).should('be.visible');
+        cy.get(block(0, 0)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('RESET replaces an enabled infinite 7bag with current plus six next pieces', () => {
+        visit({ mode: 'edit' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('#Q=[T](S)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.toggleInfiniteQueue();
+        operations.mode.piece.resetBoard();
+
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[\]\([IOTLJSZ]\)([IOTLJSZ]{6})$/)
+            .then(comment => {
+                const matched = /^#Q=\[\]\(([IOTLJSZ])\)([IOTLJSZ]{6})$/.exec(comment);
+                expect(matched).to.not.equal(null);
+                expect(`${matched[1]}${matched[2]}`).to.have.length(7);
+                expect(`${matched[1]}${matched[2]}`.split('').sort().join('')).to.equal('IJLOSTZ');
+            });
+    });
+
     it('spawns the first configured next piece after hard drop', () => {
         visit({ mode: 'edit' });
         operations.mode.comment.open();
@@ -125,7 +195,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val').should('match', /^#Q=\[T\]\(I\)[IOTLJSZ]{7}$/);
@@ -141,7 +212,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
 
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).invoke('val')
@@ -165,7 +237,8 @@ describe('Put pieces', () => {
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
         operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('piece-queue-infinite-checkbox')).should('be.checked');
+        cy.get(datatest('piece-queue-infinite-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
         operations.mode.piece.harddrop();
 
         operations.mode.comment.open();

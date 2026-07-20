@@ -23,9 +23,11 @@ interface HoldState {
     move: () => void;
     moveToEnd: () => void;
     arrFrames: number;
+    cutVersion: number;
 }
 
 const holds = new Map<string, HoldState>();
+const softDropHolds = new Map<string, ReturnType<typeof setInterval>>();
 
 export const FRAME_DURATION_MS = 1000 / 60;
 
@@ -53,6 +55,7 @@ export const startDasHold = (id: string, options: DasHoldOptions) => {
         arrTimer: null,
         cutTimer: null,
         arrActive: false,
+        cutVersion: 0,
     };
     hold.dasTimer = setTimeout(() => {
         hold.dasTimer = null;
@@ -76,6 +79,7 @@ export const endDasHold = (id: string) => {
     if (hold === undefined) {
         return;
     }
+    hold.cutVersion += 1;
     if (hold.dasTimer !== null) {
         clearTimeout(hold.dasTimer);
     }
@@ -86,6 +90,27 @@ export const endDasHold = (id: string) => {
         clearTimeout(hold.cutTimer);
     }
     holds.delete(id);
+};
+
+// TETR.IO準拠: ソフトドロップ速度は max(重力, 0.05G) × SDF。
+// 標準重力0.02G（40L/TL開始時）では下限0.05Gが常に支配的なため、
+// 自然落下のないエディタでは 0.05G × 60fps = 3マス/秒 をSDF 1あたりの基準にする。
+export const SOFT_DROP_BASE_CELLS_PER_SECOND = 3;
+
+/** Keep applying soft drop while the shortcut key remains pressed. */
+export const startSoftDropHold = (id: string, move: () => void, sdf: number) => {
+    endSoftDropHold(id);
+    move();
+    const intervalFrames = sdf === Infinity ? 1 : 60 / (sdf * SOFT_DROP_BASE_CELLS_PER_SECOND);
+    softDropHolds.set(id, setInterval(move, framesToMilliseconds(intervalFrames)));
+};
+
+export const endSoftDropHold = (id: string) => {
+    const timer = softDropHolds.get(id);
+    if (timer !== undefined) {
+        clearInterval(timer);
+        softDropHolds.delete(id);
+    }
 };
 
 /**
@@ -115,9 +140,11 @@ export const cutDasHolds = (dcdFrames: number | undefined) => {
             clearTimeout(hold.cutTimer);
         }
 
+        hold.cutVersion += 1;
+        const cutVersion = hold.cutVersion;
         hold.cutTimer = setTimeout(() => {
             hold.cutTimer = null;
-            if (!holdsHasValue(hold)) {
+            if (!holdsHasValue(hold) || hold.cutVersion !== cutVersion) {
                 return;
             }
 
@@ -127,29 +154,43 @@ export const cutDasHolds = (dcdFrames: number | undefined) => {
 };
 
 /**
- * Skip the initial DAS delay for every held direction that has already
- * reached ARR when a new piece spawns. A non-zero DCD delays ARR activation.
+ * Skip the initial DAS delay for every direction that is still held when a
+ * new piece spawns. DCD delays the resulting ARR activation; DCD=0 starts it
+ * immediately.
  */
 export const activateDasCut = (dcdFrames: number | undefined) => {
     const delayMilliseconds = framesToMilliseconds(dcdFrames ?? 0);
 
     for (const hold of Array.from(holds.values())) {
-        if (!hold.arrActive) {
-            continue;
+        if (hold.dasTimer !== null) {
+            clearTimeout(hold.dasTimer);
+            hold.dasTimer = null;
         }
-
         if (hold.arrTimer !== null) {
             clearInterval(hold.arrTimer);
             hold.arrTimer = null;
         }
+        if (hold.cutTimer !== null) {
+            clearTimeout(hold.cutTimer);
+            hold.cutTimer = null;
+        }
         hold.arrActive = false;
+        hold.cutVersion += 1;
+        const cutVersion = hold.cutVersion;
 
         if (delayMilliseconds <= 0) {
-            startArr(hold);
+            // spawnPiece can run inside a raw action sequence before Hyperapp commits
+            // its global state. A microtask starts ARR against the committed spawn while
+            // still running before Hyperapp's timer-based render.
+            Promise.resolve().then(() => {
+                if (holdsHasValue(hold) && hold.cutVersion === cutVersion) {
+                    startArr(hold);
+                }
+            });
         } else {
             hold.cutTimer = setTimeout(() => {
                 hold.cutTimer = null;
-                if (holdsHasValue(hold)) {
+                if (holdsHasValue(hold) && hold.cutVersion === cutVersion) {
                     startArr(hold);
                 }
             }, delayMilliseconds);
@@ -169,6 +210,9 @@ const holdsHasValue = (value: HoldState): boolean => {
 export const endAllDasHolds = () => {
     for (const id of Array.from(holds.keys())) {
         endDasHold(id);
+    }
+    for (const id of Array.from(softDropHolds.keys())) {
+        endSoftDropHold(id);
     }
 };
 

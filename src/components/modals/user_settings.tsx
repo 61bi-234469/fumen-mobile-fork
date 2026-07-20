@@ -22,6 +22,7 @@ interface UserSettingsModalProps {
     pieceShortcutDasFrames: number;
     pieceShortcutArrFrames: number;
     pieceShortcutDasCutFrames: number;
+    pieceShortcutSdf: number;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -45,6 +46,7 @@ interface UserSettingsModalProps {
         keepPieceShortcutDas: (data: { dasFrames: number }) => void;
         keepPieceShortcutArr: (data: { arrFrames: number }) => void;
         keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
+        keepPieceShortcutSdf: (data: { sdf: number }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
@@ -125,6 +127,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasFrames,
         pieceShortcutArrFrames,
         pieceShortcutDasCutFrames,
+        pieceShortcutSdf,
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
@@ -135,36 +138,42 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         actions,
     },
 ) => {
+    let isClosing = false;
+
     const oncreate = (element: HTMLDivElement) => {
+        isClosing = false;
         const instance = M.Modal.init(element, {
             onCloseStart: () => {
-                actions.closeUserSettingsModal();
+                if (!isClosing) {
+                    isClosing = true;
+                    actions.closeUserSettingsModal();
+                }
             },
         });
 
         actions.copyUserSettingsToTemporary();
         instance.open();
 
-        const elems = document.querySelectorAll('select');
-        M.FormSelect.init(elems);
-
         resources.modals.userSettings = instance;
     };
 
     const ondestroy = () => {
         const modal = resources.modals.userSettings;
+        resources.modals.userSettings = undefined;
         if (modal !== undefined) {
+            isClosing = true;
             modal.close();
         }
-        resources.modals.userSettings = undefined;
     };
 
     const save = () => {
+        isClosing = true;
         actions.commitUserSettings();
         actions.closeUserSettingsModal();
     };
 
     const cancel = () => {
+        isClosing = true;
         actions.closeUserSettingsModal();
     };
 
@@ -197,7 +206,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
                 <label>
                     {offLabel}
-                    <input type="checkbox" dataTest={datatest} disabled={disabled}
+                    <input type="checkbox" dataTest={datatest} checked={checked} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
                     {onLabel}
@@ -303,6 +312,11 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         if (!isNaN(value) && value >= 0 && value <= 60) {
             actions.keepPieceShortcutDasCut({ dasCutFrames: value });
         }
+    };
+
+    const onchangeSdf = (e: Event) => {
+        const value = (e.target as HTMLSelectElement).value;
+        actions.keepPieceShortcutSdf({ sdf: value === 'Infinity' ? Infinity : parseInt(value, 10) });
     };
 
     const onchangeGifFrameDelay = (e: Event) => {
@@ -649,6 +663,31 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 </div>
 
                                 <div style={style({ marginTop: px(15) })}>
+                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                    </div>
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-das"
+                                            value={pieceShortcutDasFrames}
+                                            min={1}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeDas}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-das">F</span>
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
                                     <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
                                         {i18n.UserSettings.PieceShortcuts.DasCutFrames()}
                                     </div>
@@ -674,28 +713,23 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 </div>
 
                                 <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
+                                    <div datatest="label-piece-sdf" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.Sdf()}
                                     </div>
                                     <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                        {i18n.UserSettings.PieceShortcuts.SdfDescription()}
                                     </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-das"
-                                            value={pieceShortcutDasFrames}
-                                            min={1}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeDas}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-das">F</span>
-                                    </div>
+                                    <select datatest="input-piece-sdf" className="browser-default"
+                                            value={String(pieceShortcutSdf)}
+                                            onchange={onchangeSdf}
+                                            style={style({ width: px(80), height: px(32) })}>
+                                        {[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+                                            36, 37, 38, 39, 40].map(value => <option value={String(value)}>
+                                             {value}
+                                         </option>)}
+                                        <option value="Infinity">∞</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

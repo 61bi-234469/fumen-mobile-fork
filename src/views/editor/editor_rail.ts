@@ -225,19 +225,6 @@ const row = (key: string, columns: VNode<{}>[]) => div({
     }),
 }, columns);
 
-const emptyPaletteCell = (height: number) => div({
-    key: 'piece-palette-empty',
-    datatest: 'piece-palette-empty',
-    'aria-hidden': 'true',
-    style: style({
-        background: '#fff',
-        boxSizing: 'border-box',
-        height: px(height),
-        minHeight: px(height),
-        width: '100%',
-    }),
-});
-
 const icon = (name: string, size: number) => BlockIcon({ key: `icon-${name}`, iconSize: size }, name);
 
 const minoPaletteSwatch = (selection: Piece, height: number, guideLineColor: boolean) => {
@@ -361,6 +348,9 @@ const paletteContent = (
         return BlockIcon({ key: 'delete-piece-icon', iconSize: Math.max(14, height - 7) }, 'delete');
     }
     if (state.editorUi.primaryTool === 'piece' && selection === Piece.Gray) {
+        if (width < 50) {
+            return BlockIcon({ key: 'respawn-piece-icon', iconSize: Math.max(14, height - 7) }, 'refresh');
+        }
         return span({
             key: 'reset-piece-label',
             style: style({ fontSize: px(Math.max(10, height * 0.3)), fontWeight: '600' }),
@@ -584,9 +574,9 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         ],
     });
     const aiAndPieceCells = [pieceModeCell, coldClearCell];
-    const aiAndPieceGroup = toolGroup(pieceModeVisible ? 'rail-ai-piece-piece' : 'rail-ai-piece', pieceModeVisible
-        ? aiAndPieceCells
-        : [row('rail-ai-piece-row', aiAndPieceCells)]);
+    const aiAndPieceGroup = toolGroup(pieceModeVisible ? 'rail-ai-piece-piece' : 'rail-ai-piece', [
+        row(pieceModeVisible ? 'rail-ai-piece-row-piece' : 'rail-ai-piece-row', aiAndPieceCells),
+    ]);
     const auxiliaryAndAiGroup = div({
         key: 'rail-auxiliary-ai',
         style: style({
@@ -597,7 +587,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         }),
     }, [auxiliaryGroup, aiAndPieceGroup]);
 
-    const modeGroup = toolGroup('rail-modes', [
+    const modeCells = [
         toolCell({
             key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
             selected: state.editorUi.primaryTool === 'select',
@@ -614,7 +604,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 key: 'paint', style: style({ marginLeft: '3px' }),
             }, 'PAINT')])],
         }),
-    ]);
+    ];
+    const modeGroup = toolGroup('rail-modes', pieceModeVisible
+        ? [row('rail-modes-row-piece', modeCells)]
+        : modeCells);
 
     const selections: PaletteSelection[] = [
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
@@ -669,18 +662,26 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         });
     });
     if (pieceModeVisible) {
-        // The infinite queue moved to the NEXT panel, but its former palette slot
-        // remains as an empty cell so PIECE and PAINT keep the same frame count.
-        paletteCells.push(emptyPaletteCell(cellHeight));
+        paletteCells.push(toolCell({
+            key: 'btn-piece-reset',
+            datatest: 'btn-piece-reset',
+            label: i18n.EditorUi.ResetField(),
+            height: cellHeight,
+            onpress: () => actions.resetFieldAndPiece(),
+            children: compact ? icon('layers_clear', iconSize) : [span({
+                key: 'reset-field-label',
+                style: style({ fontSize: px(Math.max(10, cellHeight * 0.3)), fontWeight: '600' }),
+            }, i18n.EditorUi.ResetField())],
+        }));
     }
     const paletteGroup = toolGroup('rail-palette', twoColumns
         ? [0, 1, 2, 3, 4].map(index => row(`rail-palette-row-${index + 1}`,
             paletteCells.slice(index * 2, index * 2 + 2)))
         : paletteCells);
 
-    // PIECE時は「↑↓（共有）〜切り取り」までの共有・設定・ページ操作セルを描画しない
+    // PIECE時はキューと操作セルを広げるため、共有・設定・ページ・インスペクタ操作を描画しない
     const railGroups = pieceModeVisible
-        ? [systemGroup, aiAndPieceGroup, modeGroup, paletteGroup]
+        ? [aiAndPieceGroup, modeGroup, paletteGroup]
         : [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup];
     const railBottomPadding = Math.max(0, layout.field.size.height
         - (layout.comment.topLeft.y - layout.field.topLeft.y));

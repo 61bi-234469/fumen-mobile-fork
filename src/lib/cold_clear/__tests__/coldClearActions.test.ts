@@ -3,6 +3,7 @@ import {
     canStartColdClearSequenceSearch,
     canSwapCurrentPieceWithHoldQueue,
     coldClearActions,
+    createRandomSevenBagQueue,
     createRandomSevenBags,
     fillInfiniteQueueToMinimum,
     initColdClearActions,
@@ -173,6 +174,16 @@ describe('coldClearActions run isolation', () => {
         expect(pieces).toHaveLength(14);
         expect(pieces.slice(0, 7).sort()).toEqual(expected);
         expect(pieces.slice(7, 14).sort()).toEqual(expected);
+    });
+
+    test('creates a reset queue with one current piece and six next pieces', () => {
+        const result = createRandomSevenBagQueue();
+
+        expect(result.queue).toHaveLength(6);
+        expect([result.current, ...result.queue].sort()).toEqual(
+            [Piece.I, Piece.J, Piece.L, Piece.O, Piece.S, Piece.T, Piece.Z].sort(),
+        );
+        expect(result.comment).toMatch(/^#Q=\[\]\([IOTLJSZ]\)[IOTLJSZ]{6}$/);
     });
 
     test('refills an infinite queue by a whole bag only when fewer than seven pieces are known', () => {

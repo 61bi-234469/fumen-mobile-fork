@@ -1,4 +1,4 @@
-import { button, div, input, label, small, span } from '@hyperapp/html';
+import { button, div, small, span } from '@hyperapp/html';
 import { VNode } from 'hyperapp';
 import { ColdClearMenuQueueState } from '../../actions/cold_clear';
 import { decidePieceColor } from '../../lib/colors';
@@ -176,31 +176,51 @@ export const pieceQueueOverlays = ({
         ],
     })]);
 
-    const infiniteToggle = label({
+    const infiniteToggle = div({
         key: 'piece-queue-infinite',
         datatest: 'piece-queue-infinite',
         style: style({
-            alignItems: 'center', boxSizing: 'border-box', color: '#333', cursor: 'pointer',
-            display: 'flex', flexShrink: 0, gap: px(compactInfiniteToggle ? 1 : 2), justifyContent: 'center',
-            minHeight: px(26), overflow: 'hidden', padding: compactInfiniteToggle ? '3px 0' : '3px 1px',
+            boxSizing: 'border-box', flexShrink: 0, minHeight: px(26), overflow: 'hidden',
+            padding: compactInfiniteToggle ? '3px 0' : '3px 1px',
             width: px(width),
         }),
-    }, [
-        input({
-            key: 'piece-queue-infinite-checkbox',
-            datatest: 'piece-queue-infinite-checkbox',
-            type: 'checkbox',
-            checked: infinitePieceQueue,
-            'aria-label': i18n.EditorUi.InfiniteBag(),
-            onchange: (event: Event) => {
-                toggleInfinitePieceQueue();
-                event.stopPropagation();
-            },
-            style: style({
-                flex: '0 0 auto', height: px(infiniteCheckboxSize), margin: '0', opacity: '1',
-                pointerEvents: 'auto', position: 'static', width: px(infiniteCheckboxSize),
-            }),
+    }, [button({
+        key: 'piece-queue-infinite-checkbox',
+        datatest: 'piece-queue-infinite-checkbox',
+        type: 'button',
+        'aria-label': i18n.EditorUi.InfiniteBag(),
+        'aria-pressed': infinitePieceQueue ? 'true' : 'false',
+        onclick: (event: MouseEvent) => {
+            toggleInfinitePieceQueue();
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onmousedown: (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        style: style({
+            alignItems: 'center', background: 'transparent', border: '0', borderRadius: '0',
+            boxSizing: 'border-box', color: '#333', cursor: 'pointer', display: 'flex',
+            fontFamily: 'inherit', gap: px(compactInfiniteToggle ? 1 : 2), justifyContent: 'center',
+            margin: '0', minHeight: px(26), padding: '3px 0', width: '100%',
         }),
+    }, [
+        span({
+            key: 'piece-queue-infinite-indicator',
+            'aria-hidden': 'true',
+            style: style({
+                alignItems: 'center', background: infinitePieceQueue ? '#1976d2' : '#fff',
+                border: '1px solid #757575', borderRadius: '2px', boxSizing: 'border-box',
+                color: '#fff', display: 'flex', flex: '0 0 auto', fontSize: px(9),
+                fontWeight: '700', height: px(infiniteCheckboxSize), justifyContent: 'center',
+                lineHeight: '1', width: px(infiniteCheckboxSize),
+            }),
+        }, infinitePieceQueue ? '✓' : ''),
         small({
             key: 'piece-queue-infinite-label',
             datatest: 'piece-queue-infinite-text',
@@ -209,6 +229,7 @@ export const pieceQueueOverlays = ({
                 lineHeight: '1', minWidth: '0', whiteSpace: 'nowrap',
             }),
         }, i18n.EditorUi.InfiniteBag()),
+    ]),
     ]);
 
     const nextRows = Array.from({ length: NEXT_COUNT }).map((_, index) => div({

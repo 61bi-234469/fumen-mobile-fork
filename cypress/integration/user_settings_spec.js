@@ -16,6 +16,7 @@ describe('User settings', () => {
                 'radio-rotation-system-classic',
                 'input-piece-arr',
                 'input-piece-das',
+                'input-piece-sdf',
             ];
             const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
             const indexes = expectedOrder.map(value => datatests.findIndex(element =>
@@ -31,12 +32,18 @@ describe('User settings', () => {
         cy.get(datatest('unit-piece-arr')).should('have.text', 'F');
         cy.get(datatest('label-piece-das')).should('have.text', 'DAS');
         cy.get(datatest('label-piece-arr')).should('have.text', 'ARR');
+        cy.get(datatest('label-piece-sdf')).should('have.text', 'SDF');
+        // Must stay a visible native select: Materialize FormSelect rewrites the DOM
+        // and breaks Hyperapp patching (settings modal fails to close).
+        cy.get(datatest('input-piece-sdf')).should('be.visible')
+            .and('have.value', 'Infinity').select('10');
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('tab-user-settings-piece')).click();
         cy.get(datatest('input-piece-das')).should('have.value', '5.5');
         cy.get(datatest('input-piece-arr')).should('have.value', '1.5');
+        cy.get(datatest('input-piece-sdf')).should('have.value', '10');
         cy.get(datatest('btn-save')).click();
 
         cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
@@ -221,6 +228,7 @@ describe('User settings', () => {
         // パネルは縦に長くCypressの可視判定が中心点基準で誤るため、displayスタイルで判定する
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
         cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
         cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'none');

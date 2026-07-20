@@ -104,8 +104,10 @@ export const resources = {
             DasDescription: 'ARR開始までのフレーム数',
             ArrFrames: 'ARR',
             ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
-            DasCutFrames: 'DCD (DAS Cut Delay)',
+            DasCutFrames: 'DCD',
             DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
+            Sdf: 'SDF',
+            SdfDescription: 'TETR.IO準拠のソフトドロップ倍率（SDF × 3マス/秒 = 0.05G下限 × SDF）',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
@@ -121,7 +123,7 @@ export const resources = {
     },
     EditorUi: {
         Rotate180: '180°回転', Hold: 'Hold', SoftDrop: 'ソフトドロップ', HardDrop: 'ハードドロップ',
-        ResetPiece: 'RESPAWN', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag',
         ImportExport: '読み込み / 書き出し', Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
         Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る', Spawn: '出現', Drag: '移動',

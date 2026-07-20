@@ -355,6 +355,17 @@ export const getCurrentColdClearQueueComment = (state: Readonly<State>): string 
 
 export const createRandomSevenBag = (): Piece[] => shufflePieces(ONE_BAG_PIECES);
 
+export const createRandomSevenBagQueue = () => {
+    const bag = createRandomSevenBag();
+    const current = bag[0];
+    const queue = bag.slice(1);
+    return {
+        current,
+        queue,
+        comment: buildQueueStateComment(null, current, queue, false, 0),
+    };
+};
+
 export const createRandomSevenBags = (count: number): Piece[] => {
     const queue: Piece[] = [];
     for (let i = 0; i < count; i += 1) {

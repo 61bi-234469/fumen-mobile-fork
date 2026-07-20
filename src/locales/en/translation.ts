@@ -111,6 +111,8 @@
             ArrDescription: 'Repeat interval after DAS. 0 moves to the edge instantly',
             DasCutFrames: 'DCD (DAS Cut Delay)',
             DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
+            Sdf: 'SDF',
+            SdfDescription: 'Soft drop speed in cells per second',
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {

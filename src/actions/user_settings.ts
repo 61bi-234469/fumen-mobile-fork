@@ -20,6 +20,7 @@ export interface UserSettingsActions {
     keepPieceShortcutDas: (data: { dasFrames: number }) => action;
     keepPieceShortcutArr: (data: { arrFrames: number }) => action;
     keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
+    keepPieceShortcutSdf: (data: { sdf: number }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
@@ -47,6 +48,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
                     pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
                     pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
+                    pieceShortcutSdf: state.mode.pieceShortcutSdf,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
@@ -85,6 +87,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePieceShortcutDasCut({
                 dasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             }),
+            actions.changePieceShortcutSdf === undefined ? undefined
+                : actions.changePieceShortcutSdf({ sdf: state.temporary.userSettings.pieceShortcutSdf }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
@@ -346,6 +350,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepPieceShortcutSdf: ({ sdf }) => (state): NextState => {
+        if (!state.modal.userSettings) return undefined;
+        return { temporary: { ...state.temporary, userSettings: {
+            ...state.temporary.userSettings, pieceShortcutSdf: sdf,
+        } } };
+    },
     keepGifFrameDelay: ({ delayMs }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
@@ -464,6 +474,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutDasFrames: state.mode.pieceShortcutDasFrames,
         pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
         pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
+        pieceShortcutSdf: state.mode.pieceShortcutSdf === Infinity ? 'Infinity' : state.mode.pieceShortcutSdf,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,

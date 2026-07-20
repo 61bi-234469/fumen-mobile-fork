@@ -82,6 +82,7 @@ export interface FieldEditorActions {
     moveToRightEnd(): action;
 
     softdrop(): action;
+    softdropStep(): action;
 
     harddrop(): action;
 
@@ -868,6 +869,22 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             },
         };
 
+        return sequence(state, [
+            fieldEditorActions.resetInferencePiece(),
+            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            actions.reopenCurrentPage(),
+        ]);
+    },
+    softdropStep: () => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        const piece = page?.piece;
+        if (!page || !piece) return undefined;
+        const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+        const test = testCallback(field, piece.type, piece.rotation);
+        if (!test(piece.coordinate.x, piece.coordinate.y - 1)) return undefined;
+        const prevPage = toPrimitivePage(page);
+        page.piece = { ...piece, coordinate: { ...piece.coordinate, y: piece.coordinate.y - 1 } };
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),

@@ -116,6 +116,8 @@ export const i18n = {
             ArrDescription: () => t('UserSettings.PieceShortcuts.ArrDescription'),
             DasCutFrames: () => t('UserSettings.PieceShortcuts.DasCutFrames'),
             DasCutDescription: () => t('UserSettings.PieceShortcuts.DasCutDescription'),
+            Sdf: () => t('UserSettings.PieceShortcuts.Sdf'),
+            SdfDescription: () => t('UserSettings.PieceShortcuts.SdfDescription'),
         },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),

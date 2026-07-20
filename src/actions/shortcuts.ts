@@ -4,7 +4,7 @@ import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../state
 import { Actions } from '../actions';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { executePieceShortcut, PieceShortcutKey } from '../lib/piece_shortcut';
-import { endDasHold, startDasHold } from '../lib/piece_das';
+import { endDasHold, endSoftDropHold, startDasHold, startSoftDropHold } from '../lib/piece_das';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -287,6 +287,17 @@ const startPieceMoveHold = (code: string, key: PieceShortcutKey, state: State) =
     });
 };
 
+const startPieceSoftDropHold = (code: string, state: State) => {
+    startSoftDropHold(keyboardHoldId(code), () => {
+        const currentActions = getActions!();
+        if (state.mode.pieceShortcutSdf === Infinity) {
+            currentActions.softdrop();
+        } else {
+            currentActions.softdropStep();
+        }
+    }, state.mode.pieceShortcutSdf);
+};
+
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
 let getState: (() => State) | null = null;
 let getActions: (() => Actions) | null = null;
@@ -355,7 +366,9 @@ const handleKeyDown = (event: KeyboardEvent) => {
             longPressExecuted: false,
         });
         if (currentPageHasPiece(state)) {
-            if (hasPieceDas(pieceModeShortcut)) {
+            if (pieceModeShortcut === 'SoftDrop') {
+                startPieceSoftDropHold(event.code, state);
+            } else if (hasPieceDas(pieceModeShortcut)) {
                 startPieceMoveHold(event.code, pieceModeShortcut, state);
             } else {
                 executePieceShortcut(pieceModeShortcut, actions);
@@ -434,6 +447,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
     // 移動ホールド（DAS/ARR）を停止
     endDasHold(keyboardHoldId(event.code));
+    endSoftDropHold(keyboardHoldId(event.code));
 
     if (!getState || !getActions) {
         if (pressState.longPressTimer !== null) {

@@ -27,6 +27,7 @@ interface HoldState {
 }
 
 const holds = new Map<string, HoldState>();
+const softDropHolds = new Map<string, ReturnType<typeof setInterval>>();
 
 export const FRAME_DURATION_MS = 1000 / 60;
 
@@ -89,6 +90,22 @@ export const endDasHold = (id: string) => {
         clearTimeout(hold.cutTimer);
     }
     holds.delete(id);
+};
+
+/** Keep applying soft drop while the shortcut key remains pressed. */
+export const startSoftDropHold = (id: string, move: () => void, sdf: number) => {
+    endSoftDropHold(id);
+    move();
+    const intervalFrames = sdf === Infinity ? 1 : 60 / sdf;
+    softDropHolds.set(id, setInterval(move, framesToMilliseconds(intervalFrames)));
+};
+
+export const endSoftDropHold = (id: string) => {
+    const timer = softDropHolds.get(id);
+    if (timer !== undefined) {
+        clearInterval(timer);
+        softDropHolds.delete(id);
+    }
 };
 
 /**
@@ -188,6 +205,9 @@ const holdsHasValue = (value: HoldState): boolean => {
 export const endAllDasHolds = () => {
     for (const id of Array.from(holds.keys())) {
         endDasHold(id);
+    }
+    for (const id of Array.from(softDropHolds.keys())) {
+        endSoftDropHold(id);
     }
 };
 

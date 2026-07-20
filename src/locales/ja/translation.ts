@@ -106,6 +106,8 @@ export const resources = {
             ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
             DasCutFrames: 'DCD (DAS Cut Delay)',
             DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
+            Sdf: 'SDF',
+            SdfDescription: '1秒あたりのソフトドロップ速度（マス）',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {

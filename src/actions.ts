@@ -370,6 +370,12 @@ const loadUserSettings = () => {
         main.changePieceShortcutDasCut({ dasCutFrames: settings.pieceShortcutDasCutFrames });
         updated = true;
     }
+    const sdf = settings.pieceShortcutSdf;
+    if (typeof sdf === 'number' &&
+        (sdf === Infinity || (sdf >= 5 && sdf <= 40))) {
+        main.changePieceShortcutSdf({ sdf });
+        updated = true;
+    }
 
     if (settings.gifFrameDelayMs !== undefined) {
         main.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(settings.gifFrameDelayMs) });

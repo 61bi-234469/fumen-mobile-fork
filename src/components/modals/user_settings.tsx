@@ -663,31 +663,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 </div>
 
                                 <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasCutFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasCutDescription()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-dcd"
-                                            value={pieceShortcutDasCutFrames}
-                                            min={0}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeDasCut}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-dcd">F</span>
-                                    </div>
-                                </div>
-
-                                <div style={style({ marginTop: px(15) })}>
                                     <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
                                         {i18n.UserSettings.PieceShortcuts.DasFrames()}
                                     </div>
@@ -709,6 +684,31 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             })}
                                         />
                                         <span datatest="unit-piece-das">F</span>
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(15) })}>
+                                    <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasCutFrames()}
+                                    </div>
+                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                        {i18n.UserSettings.PieceShortcuts.DasCutDescription()}
+                                    </div>
+                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                                        <input
+                                            type="number"
+                                            datatest="input-piece-dcd"
+                                            value={pieceShortcutDasCutFrames}
+                                            min={0}
+                                            max={60}
+                                            step={0.1}
+                                            onchange={onchangeDasCut}
+                                            style={style({
+                                                width: px(80),
+                                                textAlign: 'center',
+                                            })}
+                                        />
+                                        <span datatest="unit-piece-dcd">F</span>
                                     </div>
                                 </div>
 

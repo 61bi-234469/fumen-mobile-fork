@@ -104,7 +104,7 @@ export const resources = {
             DasDescription: 'ARR開始までのフレーム数',
             ArrFrames: 'ARR',
             ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
-            DasCutFrames: 'DCD (DAS Cut Delay)',
+            DasCutFrames: 'DCD',
             DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
             Sdf: 'SDF',
             SdfDescription: 'TETR.IO準拠のソフトドロップ倍率（SDF × 3マス/秒 = 0.05G下限 × SDF）',

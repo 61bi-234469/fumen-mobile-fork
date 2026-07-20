@@ -109,7 +109,7 @@
             DasDescription: 'Frames before ARR starts when holding left/right',
             ArrFrames: 'ARR',
             ArrDescription: 'Repeat interval after DAS. 0 moves to the edge instantly',
-            DasCutFrames: 'DCD (DAS Cut Delay)',
+            DasCutFrames: 'DCD',
             DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
             Sdf: 'SDF',
             SdfDescription: 'TETR.IO-style soft drop factor (SDF x 3 cells per second, from the 0.05G floor)',

@@ -107,7 +107,7 @@ export const resources = {
             DasCutFrames: 'DCD (DAS Cut Delay)',
             DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
             Sdf: 'SDF',
-            SdfDescription: '自然落下（0.02G = 1.2マス/秒）に対するソフトドロップ倍率',
+            SdfDescription: 'TETR.IO準拠のソフトドロップ倍率（SDF × 3マス/秒 = 0.05G下限 × SDF）',
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {

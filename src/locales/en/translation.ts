@@ -112,7 +112,7 @@
             DasCutFrames: 'DCD (DAS Cut Delay)',
             DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
             Sdf: 'SDF',
-            SdfDescription: 'Soft drop multiplier of natural gravity (0.02G = 1.2 cells per second)',
+            SdfDescription: 'TETR.IO-style soft drop factor (SDF x 3 cells per second, from the 0.05G floor)',
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {

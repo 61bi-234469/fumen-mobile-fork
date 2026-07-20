@@ -281,21 +281,21 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('SDFは0.02G(1.2マス/秒)に対する倍率として落下間隔を決める', () => {
+    test('SDFはTETR.IOの0.05G下限準拠でSDF×3マス/秒の落下間隔になる', () => {
         const move = jest.fn();
 
-        // SDF=5 → 5 × 1.2 = 6マス/秒 → 10フレーム間隔
+        // SDF=5 → 5 × 3 = 15マス/秒 → 4フレーム間隔
         startSoftDropHold('test', move, 5);
         expect(move).toHaveBeenCalledTimes(1);
 
-        jest.advanceTimersByTime(FRAME_DURATION_MS * 10 - 1);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 4 - 1);
         expect(move).toHaveBeenCalledTimes(1);
 
         jest.advanceTimersByTime(1);
         expect(move).toHaveBeenCalledTimes(2);
 
         // 以降も同じ間隔でリピートする
-        jest.advanceTimersByTime(FRAME_DURATION_MS * 10 * 3);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 4 * 3);
         expect(move).toHaveBeenCalledTimes(5);
     });
 

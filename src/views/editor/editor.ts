@@ -20,7 +20,10 @@ import { editorOverlay } from './editor_overlay';
 import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
-import { getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics } from './responsive_layout';
+import {
+    getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics, getPieceSideWidth, PIECE_RAIL_COLUMNS,
+    PIECE_RIGHT_COLUMN_GAP,
+} from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
 
@@ -138,21 +141,21 @@ export const getLayout = (
         height: height - (toolsHeight + commentHeight + topLeftY),
     };
 
-    const rail = getEditorRailConfig(canvasSize.height, pieceQueueVisible);
+    const rail = getEditorRailConfig(canvasSize.height);
     const pieceQueueWidth = pieceQueueVisible
-        ? Math.min(56, Math.max(34, canvasSize.width * .12))
+        ? getPieceSideWidth(canvasSize.width)
         : 0;
     const pieceQueueGap = pieceQueueVisible
         ? Math.min(6, Math.max(2, canvasSize.width * .012))
         : 0;
-    // NEXT枠は右レールと同じ列に縦積みするため、横方向の追加確保はHold列ぶんだけでよい
-    const pieceQueueReserve = pieceQueueVisible
-        ? pieceQueueWidth + pieceQueueGap * 2
-        : 0;
+    // PIECE時はHOLD列とNEXT／レール列を同じ幅にし、実DOMと同じgapを横幅計算へ反映する
+    const horizontalReserve = pieceQueueVisible
+        ? pieceQueueWidth * 2 + pieceQueueGap + PIECE_RIGHT_COLUMN_GAP
+        : rail.reserve;
 
     const blockSize = Math.min(
         (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - rail.reserve - pieceQueueReserve) / 10.5,
+        (canvasSize.width - horizontalReserve) / 10.5,
     ) - 1;
 
     const fieldSize = {
@@ -165,8 +168,9 @@ export const getLayout = (
         : { nextMinoHeight: 0, nextPanelHeight: 0, railCellHeight: 0 };
 
     const pieceButtonsSize = {
-        width: Math.min(Math.max((canvasSize.width - fieldSize.width) * rail.widthRatio, rail.minWidth),
-            rail.maxWidth),
+        width: pieceQueueVisible ? pieceQueueWidth
+            : Math.min(Math.max((canvasSize.width - fieldSize.width) * rail.widthRatio, rail.minWidth),
+                rail.maxWidth),
         height: Math.min(
             fieldSize.height / (1.25 * 18 + 0.25),
             30,
@@ -199,7 +203,7 @@ export const getLayout = (
         },
         buttons: {
             size: pieceButtonsSize,
-            columns: rail.columns,
+            columns: pieceQueueVisible ? PIECE_RAIL_COLUMNS : rail.columns,
         },
         pieceQueue: {
             visible: pieceQueueVisible,
@@ -364,7 +368,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 flexDirection: 'column',
                 flexShrink: 0,
                 height: px(layout.field.size.height),
-                marginLeft: '8px',
+                marginLeft: px(PIECE_RIGHT_COLUMN_GAP),
                 width: px(layout.buttons.size.width),
             }),
         }, [

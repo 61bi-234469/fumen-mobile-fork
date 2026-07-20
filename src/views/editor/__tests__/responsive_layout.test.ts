@@ -2,8 +2,11 @@ import {
     getEditorBottomMetrics,
     getEditorRailConfig,
     getPieceRailMetrics,
+    getPieceSideWidth,
     getResponsiveRailCellHeight,
-    PIECE_RAIL_CELL_COUNT,
+    PIECE_RAIL_CHROME_HEIGHT,
+    PIECE_RAIL_COLUMNS,
+    PIECE_RAIL_ROW_COUNT,
 } from '../responsive_layout';
 
 describe('editor responsive layout', () => {
@@ -32,14 +35,11 @@ describe('editor responsive layout', () => {
         });
     });
 
-    test('forces a single rail column when the PIECE queue is visible', () => {
-        expect(getEditorRailConfig(300, true)).toEqual({
-            columns: 1,
-            reserve: 90,
-            minWidth: 56,
-            maxWidth: 80,
-            widthRatio: 0.6,
-        });
+    test('widens the PIECE side columns without exceeding the desktop cap', () => {
+        expect(getPieceSideWidth(300)).toBe(60);
+        expect(getPieceSideWidth(320)).toBeCloseTo(61.44);
+        expect(getPieceSideWidth(375)).toBe(72);
+        expect(getPieceSideWidth(500)).toBe(80);
     });
 
     test('keeps usable rail cell heights for representative field sizes', () => {
@@ -48,12 +48,19 @@ describe('editor responsive layout', () => {
         expect(getResponsiveRailCellHeight(282, 2)).toBe(20);
     });
 
-    test('sizes the PIECE queue and vertically stacked rail for representative fields', () => {
-        expect(PIECE_RAIL_CELL_COUNT).toBe(16);
-        const metrics = getPieceRailMetrics(340, 38);
-        expect(metrics.nextMinoHeight).toBe(10);
-        expect(metrics.nextPanelHeight).toBe(106);
-        expect(metrics.railCellHeight).toBe(12);
-        expect(metrics.nextPanelHeight + metrics.railCellHeight * PIECE_RAIL_CELL_COUNT + 41).toBeLessThanOrEqual(340);
+    test('sizes the PIECE queue above a two-column seven-row rail', () => {
+        expect(PIECE_RAIL_COLUMNS).toBe(2);
+        expect(PIECE_RAIL_ROW_COUNT).toBe(7);
+
+        const compactLandscape = getPieceRailMetrics(340, 80);
+        expect(compactLandscape).toEqual({ nextMinoHeight: 18, nextPanelHeight: 146, railCellHeight: 24 });
+        expect(compactLandscape.nextPanelHeight
+            + compactLandscape.railCellHeight * PIECE_RAIL_ROW_COUNT
+            + PIECE_RAIL_CHROME_HEIGHT).toBeLessThanOrEqual(340);
+
+        expect(getPieceRailMetrics(419, getPieceSideWidth(320)))
+            .toEqual({ nextMinoHeight: 33, nextPanelHeight: 221, railCellHeight: 24 });
+        expect(getPieceRailMetrics(493, getPieceSideWidth(375)))
+            .toEqual({ nextMinoHeight: 38, nextPanelHeight: 246, railCellHeight: 31 });
     });
 });

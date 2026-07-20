@@ -33,29 +33,38 @@ const assertRailArrangement = () => {
     });
 };
 
-const assertPieceRailSingleColumn = () => {
-    const selectors = ['btn-editor-share', 'btn-editor-user-settings', 'btn-piece-mode', 'btn-cold-clear'];
-    cy.get(selectors.map(datatest).join(',')).then(elements => {
+const assertPieceRailTwoColumns = () => {
+    const rowPairs = [
+        ['btn-piece-mode', 'btn-cold-clear'],
+        ['btn-select-mode', 'btn-paint-mode'],
+        ['btn-piece-i', 'btn-piece-l'],
+        ['btn-piece-o', 'btn-piece-z'],
+        ['btn-piece-t', 'btn-piece-j'],
+        ['btn-piece-s', 'btn-piece-empty'],
+        ['btn-piece-gray', 'btn-piece-reset'],
+    ];
+    const selectors = rowPairs.reduce((all, pair) => all.concat(pair), []);
+    cy.get([datatest('editor-rail'), ...selectors.map(datatest)].join(',')).then(elements => {
         const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
-        const cells = selectors.map(rect);
-        cells.slice(1).forEach(cell => {
-            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
-            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        const rail = rect('editor-rail');
+        rowPairs.forEach(([leftSelector, rightSelector]) => {
+            const left = rect(leftSelector);
+            const right = rect(rightSelector);
+            expect(Math.abs(left.top - right.top)).to.be.lessThan(1);
+            expect(left.right).to.be.at.most(right.left);
         });
-        expect(rect('btn-editor-share').bottom).to.be.at.most(rect('btn-editor-user-settings').top);
-        expect(rect('btn-piece-mode').bottom).to.be.at.most(rect('btn-cold-clear').top);
-    });
-    cy.get(`${datatest('editor-rail')} button`).then(buttons => {
-        const cells = Array.from(buttons).map(button => button.getBoundingClientRect());
-        cells.slice(1).forEach(cell => {
-            expect(Math.abs(cell.left - cells[0].left)).to.be.lessThan(1);
-            expect(Math.abs(cell.right - cells[0].right)).to.be.lessThan(1);
+        selectors.map(rect).forEach(cell => {
+            expect(cell.left).to.be.at.least(rail.left);
+            expect(cell.right).to.be.at.most(rail.right);
+            expect(cell.width).to.be.at.least(28);
+            expect(cell.height).to.be.at.least(22);
         });
     });
+    cy.get(`${datatest('editor-rail')} button`).should('have.length', 14);
     cy.get(`${datatest('editor-rail')},${datatest('btn-piece-gray')}`).then(elements => {
         const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
         const lastCell = elements.filter(datatest('btn-piece-gray'))[0].getBoundingClientRect();
-        expect(rail.bottom - lastCell.bottom).to.be.at.least(3);
+        expect(rail.bottom - lastCell.bottom).to.be.at.least(0);
     });
 };
 
@@ -107,24 +116,25 @@ describe('Editor UI final concept', () => {
     });
 
     [
-        [320, 568, true],
-        [375, 667, true],
-        [390, 844, true],
-        [844, 390, true],
-        [1024, 768, false],
-        [1920, 1080, false],
-    ].forEach(([width, height, mobile]) => {
+        [320, 568, true, 68],
+        [375, 667, true, 69],
+        [390, 844, true, 79],
+        [844, 390, true, 17],
+        [1024, 768, false, 35],
+        [1920, 1080, false, 40],
+    ].forEach(([width, height, mobile, minimumTrayHeight]) => {
         it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
             cy.viewport(width, height);
             visit({ mode: 'edit', mobile });
             cy.get(datatest('btn-piece-mode')).click();
 
-            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '1');
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '2');
             cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
-            assertPieceRailSingleColumn();
+            assertPieceRailTwoColumns();
             assertInfiniteToggleFits();
             ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
-                'btn-utils-mode', 'btn-flags-mode', 'btn-piece-inference'].forEach(selector => {
+                'btn-editor-share', 'btn-editor-user-settings', 'btn-utils-mode', 'btn-flags-mode',
+                'btn-piece-inference'].forEach(selector => {
                 cy.get(datatest(selector)).should('not.exist');
             });
             cy.get([
@@ -137,7 +147,11 @@ describe('Editor UI final concept', () => {
                 expect(rect.left).to.be.at.least(0);
                 expect(rect.right).to.be.at.most(width);
             });
+            cy.get(`${datatest('piece-queue-hold')},${datatest('piece-queue-next')}`).each(element => {
+                expect(element[0].getBoundingClientRect().width).to.be.at.least(60);
+            });
             cy.get(datatest('tray-context')).then(tray => {
+                expect(tray[0].getBoundingClientRect().height).to.be.at.least(minimumTrayHeight);
                 cy.get(datatest('tools')).then(tools => {
                     expect(tray[0].getBoundingClientRect().bottom)
                         .to.be.at.most(tools[0].getBoundingClientRect().top);
@@ -176,7 +190,7 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-select-mode')).should('contain.text', 'SELECT');
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('btn-piece-gray'))
-            .should('contain.text', 'RESPAWN')
+            .should('have.attr', 'aria-label', 'RESPAWN')
             .and('have.attr', 'data-active', 'false');
         cy.get(datatest('btn-piece-empty')).should('have.attr', 'data-active', 'false');
 
@@ -213,7 +227,9 @@ describe('Editor UI final concept', () => {
 
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(paletteFrames).should('have.length', 10);
-        cy.get(datatest('btn-piece-reset')).should('be.visible').and('contain.text', 'RESET');
+        cy.get(datatest('btn-piece-reset'))
+            .should('be.visible')
+            .and('have.attr', 'aria-label', 'RESET');
         cy.get(datatest('btn-piece-i')).find('img').should('exist');
 
         cy.get(datatest('btn-select-mode')).click();

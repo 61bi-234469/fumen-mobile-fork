@@ -19,6 +19,9 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-hold'))
             .should('be.visible')
             .and('have.attr', 'data-piece', 'T');
+        cy.get(`${datatest('piece-queue-hold')},${datatest('piece-queue-next')}`).each(element => {
+            expect(element[0].getBoundingClientRect().width).to.be.at.least(60);
+        });
         ['I', 'O', 'T', 'L', 'J'].forEach((piece, index) => {
             cy.get(datatest(`piece-queue-next-${index}`))
                 .should('be.visible')
@@ -36,9 +39,10 @@ describe('PIECE queues', () => {
             expect(textRect.right).to.be.at.most(toggleRect.right);
             expect(toggle[0].scrollWidth).to.be.at.most(Math.ceil(toggleRect.width));
         });
-        cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '1');
+        cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '2');
         ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
-            'btn-utils-mode', 'btn-flags-mode', 'btn-piece-inference'].forEach(selector => {
+            'btn-editor-share', 'btn-editor-user-settings', 'btn-utils-mode', 'btn-flags-mode',
+            'btn-piece-inference'].forEach(selector => {
             cy.get(datatest(selector)).should('not.exist');
         });
     });

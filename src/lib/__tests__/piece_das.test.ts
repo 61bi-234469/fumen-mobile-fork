@@ -2,12 +2,14 @@ import {
     activateDasCut,
     endAllDasHolds,
     endDasHold,
+    endSoftDropHold,
     FRAME_DURATION_MS,
     framesToMilliseconds,
     isDasHoldActive,
     millisecondsToFrames,
     cutDasHolds,
     startDasHold,
+    startSoftDropHold,
 } from '../piece_das';
 
 const DAS_FRAMES = 10;
@@ -277,6 +279,44 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(FRAME_DURATION_MS * ARR_FRAMES);
         expect(move).toHaveBeenCalledTimes(4);
         expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('SDFは0.02G(1.2マス/秒)に対する倍率として落下間隔を決める', () => {
+        const move = jest.fn();
+
+        // SDF=5 → 5 × 1.2 = 6マス/秒 → 10フレーム間隔
+        startSoftDropHold('test', move, 5);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 10 - 1);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(1);
+        expect(move).toHaveBeenCalledTimes(2);
+
+        // 以降も同じ間隔でリピートする
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 10 * 3);
+        expect(move).toHaveBeenCalledTimes(5);
+    });
+
+    test('SDF=∞は毎フレーム落下する', () => {
+        const move = jest.fn();
+
+        startSoftDropHold('test', move, Infinity);
+        expect(move).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        expect(move).toHaveBeenCalledTimes(4);
+    });
+
+    test('ソフトドロップホールドを離すと落下が停止する', () => {
+        const move = jest.fn();
+
+        startSoftDropHold('test', move, 5);
+        endSoftDropHold('test');
+
+        jest.advanceTimersByTime(1000);
+        expect(move).toHaveBeenCalledTimes(1);
     });
 
     test('DCD does not delay a hold that has not entered ARR yet', () => {

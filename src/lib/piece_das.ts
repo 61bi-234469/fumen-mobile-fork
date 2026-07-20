@@ -92,11 +92,15 @@ export const endDasHold = (id: string) => {
     holds.delete(id);
 };
 
+// TETR.IO準拠: SDFは自然落下速度に対する倍率。基準は0.02G = 1.2マス/秒
+// https://tetrio.wiki.gg/wiki/Mechanics
+export const BASE_GRAVITY_CELLS_PER_SECOND = 1.2;
+
 /** Keep applying soft drop while the shortcut key remains pressed. */
 export const startSoftDropHold = (id: string, move: () => void, sdf: number) => {
     endSoftDropHold(id);
     move();
-    const intervalFrames = sdf === Infinity ? 1 : 60 / sdf;
+    const intervalFrames = sdf === Infinity ? 1 : 60 / (sdf * BASE_GRAVITY_CELLS_PER_SECOND);
     softDropHolds.set(id, setInterval(move, framesToMilliseconds(intervalFrames)));
 };
 

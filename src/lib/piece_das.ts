@@ -127,20 +127,25 @@ export const cutDasHolds = (dcdFrames: number | undefined) => {
 };
 
 /**
- * Skip the initial DAS delay for every held direction that has already
- * reached ARR when a new piece spawns. A non-zero DCD delays ARR activation.
+ * Skip the initial DAS delay for every direction that is still held when a
+ * new piece spawns. DCD delays the resulting ARR activation; DCD=0 starts it
+ * immediately.
  */
 export const activateDasCut = (dcdFrames: number | undefined) => {
     const delayMilliseconds = framesToMilliseconds(dcdFrames ?? 0);
 
     for (const hold of Array.from(holds.values())) {
-        if (!hold.arrActive) {
-            continue;
+        if (hold.dasTimer !== null) {
+            clearTimeout(hold.dasTimer);
+            hold.dasTimer = null;
         }
-
         if (hold.arrTimer !== null) {
             clearInterval(hold.arrTimer);
             hold.arrTimer = null;
+        }
+        if (hold.cutTimer !== null) {
+            clearTimeout(hold.cutTimer);
+            hold.cutTimer = null;
         }
         hold.arrActive = false;
 

@@ -203,15 +203,26 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
-    test('DAS Cut does not skip DAS for a hold that is not pre-charged', () => {
+    test('DAS Cut skips pending DAS when a direction is held before spawn', () => {
         const move = jest.fn();
         const moveToEnd = jest.fn();
 
         startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
         activateDasCut(0);
 
-        expect(move).toHaveBeenCalledTimes(1);
-        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES - 1);
+        expect(move).toHaveBeenCalledTimes(2);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(move).toHaveBeenCalledTimes(7);
+    });
+
+    test('DCD delays DAS Cut even when the initial DAS is still pending', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        activateDasCut(3);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3 - 1);
         expect(move).toHaveBeenCalledTimes(1);
 
         jest.advanceTimersByTime(1);

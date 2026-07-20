@@ -108,6 +108,7 @@ interface LayoutParams {
     trayInBottom: boolean;
     pieceQueueVisible?: boolean;
     commentVisible?: boolean;
+    reserveCommentHeight?: boolean;
 }
 
 export const getLayout = (
@@ -120,10 +121,12 @@ export const getLayout = (
         trayInBottom,
         pieceQueueVisible = false,
         commentVisible = true,
+        reserveCommentHeight = commentVisible,
     }: LayoutParams,
 ): EditorLayout => {
     const bottomMetrics = getEditorBottomMetrics(height);
-    const commentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
+    const visibleCommentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
+    const commentHeight = reserveCommentHeight ? visibleCommentHeight : 0;
     const { toolsHeight } = bottomMetrics;
     const borderWidthBottomField = 2.4;
 
@@ -209,11 +212,11 @@ export const getLayout = (
         comment: {
             topLeft: {
                 x: 0,
-                y: height - commentHeight - toolsHeight,
+                y: height - bottomMetrics.commentHeight - toolsHeight,
             },
             size: {
                 width,
-                height: commentHeight,
+                height: visibleCommentHeight,
             },
         },
         tools: {
@@ -528,15 +531,22 @@ export const view: View<State, Actions> = (state, actions) => {
     // ページスライダー表示中はコメント欄を優先してトレイを出さない。
     const trayInBottom = !pageSliderVisible;
     const contextTrayVisible = trayInBottom && state.editorUi.bottomSlot === 'tray';
-    const commentVisible = !contextTrayVisible || state.mode.type === ModeTypes.Comment;
-    // コメント欄は常時表示（最優先）。トレイは盤面下部の枠に重ねるだけで高さには含めない
-    // （盤面サイズは develop 時点の計算式と完全に一致させる）。
-    // 初期匁E
+    const paintOrSelect = state.editorUi.primaryTool === 'paint'
+        || state.editorUi.primaryTool === 'select';
+    // PAINT/SELECTはトレイとコメントを同時に表示する。トレイと排他にするのは
+    // フィールド下部のせり上がり行だけで、コメントはその下の独立行に残す。
+    // PIECEでは既存のキュー／コメント表示条件を維持する。
+    const commentVisible = paintOrSelect
+        || !contextTrayVisible
+        || state.mode.type === ModeTypes.Comment;
+    const reserveCommentHeight = commentVisible;
+
     const layout = getLayout({
         rightInspectorWidth,
         sidePanelWidth,
         trayInBottom,
         commentVisible,
+        reserveCommentHeight,
         pieceQueueVisible: state.editorUi.primaryTool === 'piece',
         ...state.display,
         topLeftY: navigatorHeight,

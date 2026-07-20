@@ -682,6 +682,8 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const railGroups = pieceModeVisible
         ? [systemGroup, aiAndPieceGroup, modeGroup, paletteGroup]
         : [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup];
+    const railBottomPadding = Math.max(0, layout.field.size.height
+        - (layout.comment.topLeft.y - layout.field.topLeft.y));
 
     // PIECE時はNEXT枠の下（同じ右列）へ詰めて並べ、余りは最下部の空白として残す
     const railStyle = pieceModeVisible ? style({
@@ -704,6 +706,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         marginLeft: '8px',
         minWidth: px(layout.buttons.size.width),
         overflow: 'hidden',
+        // Keep the last palette cell flush with the comment/tray boundary.
+        // The palette group clips overflowing cells, so extra padding here
+        // would cut off COMP even though its own rectangle still fits.
+        paddingBottom: px(railBottomPadding),
         width: px(layout.buttons.size.width),
     });
 

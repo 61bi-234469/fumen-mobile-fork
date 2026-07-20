@@ -330,11 +330,11 @@ describe('Editor UI final concept', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
-        // Default: paint mode active, context tray occupies the bottom band, comment is hidden.
+        // Default: paint mode active, context tray and the independent comment row are visible.
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
         cy.get(datatest('tray-context')).should('have.class', 'editor-context-tray--compact');
-        cy.get(datatest('text-comment')).should('not.exist');
+        cy.get(datatest('text-comment')).should('be.visible');
         cy.get(datatest('field-bottom-tray')).then(tray => {
             const trayRect = tray[0].getBoundingClientRect();
             cy.get(datatest('editor-field-frame')).then(field => {
@@ -343,10 +343,10 @@ describe('Editor UI final concept', () => {
             });
         });
 
-        // Pressing the already-active mode button again hides the tray (rising row shown instead).
+        // Pressing the already-active mode button again hides the tray (the rising row is shown instead).
         cy.get(datatest('btn-paint-mode')).click();
         cy.get(datatest('tray-context')).should('not.exist');
-        cy.get(datatest('text-comment')).should('exist');
+        cy.get(datatest('text-comment')).should('be.visible');
 
         // Selecting a different tool brings the tray back.
         cy.get(datatest('btn-piece-mode')).click();
@@ -362,6 +362,74 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
+    });
+
+    it('keeps PAINT and SELECT at one tray layout without covering COMP', () => {
+        cy.viewport(320, 568);
+        visit({ mode: 'edit' });
+
+        const readGeometry = () => cy.get(`${datatest('editor-field-frame')},${datatest('editor-rail')}`)
+            .then(elements => {
+                const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+                const copyRect = value => ({ bottom: value.bottom, height: value.height,
+                    left: value.left, right: value.right, top: value.top, width: value.width });
+                return { field: copyRect(rect('editor-field-frame')), rail: copyRect(rect('editor-rail')) };
+            });
+        const assertSameGeometry = (expected, actual) => {
+            ['field', 'rail'].forEach(area => {
+                ['bottom', 'height', 'left', 'right', 'top', 'width'].forEach(property => {
+                    expect(actual[area][property]).to.be.closeTo(expected[area][property], 0.5);
+                });
+            });
+        };
+        const assertCommentDoesNotCoverComp = () => cy.get(`${datatest('text-comment')},${datatest('btn-piece-inference')}`)
+            .then(elements => {
+                const comment = elements.filter(datatest('text-comment'))[0].getBoundingClientRect();
+                const compElement = elements.filter(datatest('btn-piece-inference'))[0];
+                const comp = compElement.getBoundingClientRect();
+                expect(comp.bottom).to.be.at.most(comment.top);
+                // Cypress runs the spec in a separate document from the app under test.
+                // Hit-test the AUT document so this checks the actual COMP button layer.
+                const hit = compElement.ownerDocument.elementFromPoint(
+                    comp.left + comp.width / 2, comp.bottom - 1,
+                );
+                expect(hit === compElement || compElement.contains(hit)).to.equal(true);
+            });
+        const assertCommentIsBelowTray = () => cy.get(`${datatest('text-comment')},${datatest('field-bottom-tray')}`)
+            .then(elements => {
+                const comment = elements.filter(datatest('text-comment'))[0].getBoundingClientRect();
+                const tray = elements.filter(datatest('field-bottom-tray'))[0].getBoundingClientRect();
+                expect(comment.top).to.be.at.least(tray.bottom - 1);
+            });
+
+        let trayGeometry;
+        readGeometry().then(geometry => {
+            trayGeometry = geometry;
+        });
+        cy.get(datatest('text-comment')).should('be.visible');
+        assertCommentDoesNotCoverComp();
+        assertCommentIsBelowTray();
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).should('be.visible');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        assertCommentDoesNotCoverComp();
+
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('tray-context')).should('be.visible');
+        cy.get(datatest('text-comment')).should('be.visible');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        assertCommentDoesNotCoverComp();
+        assertCommentIsBelowTray();
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('text-comment')).should('be.visible');
+        readGeometry().then(geometry => {
+            assertSameGeometry(trayGeometry, geometry);
+        });
+        assertCommentDoesNotCoverComp();
     });
 
     it('spawns from PIECE palette clicks and keeps PIECE active for reset/delete', () => {

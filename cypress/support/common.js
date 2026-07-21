@@ -223,7 +223,7 @@ export const disableModalAnimations = (win) => {
 };
 
 export const visit = (
-    { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
+    { fumen, sleepInMill = 200, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
 ) => {
     let baseUrl = 'fumen-mobile-fork/#';
 
@@ -279,6 +279,14 @@ export const visit = (
         disableModalAnimations(win);
     });
 
+    // Field renders a fixed 10x23 grid of <param datatest="block-x-y"> elements (see
+    // src/components/field.tsx) on both readonly and edit screens regardless of fumen
+    // content, so waiting for block-0-0 to exist covers app boot + fumen decode + initial
+    // render with a real assertion instead of a blind sleep. It's a non-visible Konva-backed
+    // element, so `exist` (not `be.visible`) is the right check. The remaining sleepInMill
+    // covers startup work that doesn't show up in the DOM (i18n init, localStorage restore,
+    // initial resize), so it is shortened rather than removed.
+    cy.get(datatest('block-0-0'), { timeout: 10000 }).should('exist');
     cy.wait(sleepInMill);
 };
 

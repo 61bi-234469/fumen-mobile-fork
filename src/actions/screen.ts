@@ -3,7 +3,9 @@ import { action, actions, main } from '../actions';
 import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes } from '../lib/enums';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State } from '../states';
+import {
+    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State,
+} from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
@@ -32,7 +34,8 @@ export interface ScreenActions {
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
-    changeSkipReaderMode: (data: { enable: boolean }) => action;
+    changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
+    changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
@@ -215,11 +218,17 @@ export const modeActions: Readonly<ScreenActions> = {
             },
         };
     },
-    changeSkipReaderMode: ({ enable }) => (state): NextState => {
-        if (state.mode.skipReaderMode === enable) {
+    changeInitialScreen: ({ initialScreen }) => (state): NextState => {
+        if (state.mode.initialScreen === initialScreen) {
             return undefined;
         }
-        return { mode: { ...state.mode, skipReaderMode: enable } };
+        return { mode: { ...state.mode, initialScreen } };
+    },
+    changeOpenTreeScreenOnTreeData: ({ enable }) => (state): NextState => {
+        if (state.mode.openTreeScreenOnTreeData === enable) {
+            return undefined;
+        }
+        return { mode: { ...state.mode, openTreeScreenOnTreeData: enable } };
     },
     changeLoop: ({ enable }) => (state): NextState => {
         if (state.mode.loop === enable) {

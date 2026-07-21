@@ -1,6 +1,8 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, UserSettingsTab } from '../../states';
+import {
+    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, UserSettingsTab,
+} from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
@@ -13,7 +15,8 @@ declare const M: any;
 interface UserSettingsModalProps {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
-    skipReaderMode: boolean;
+    initialScreen: InitialScreenSetting;
+    openTreeScreenOnTreeData: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;
@@ -37,7 +40,8 @@ interface UserSettingsModalProps {
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
-        keepSkipReaderMode: (data: { enable: boolean }) => void;
+        keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
+        keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
@@ -96,6 +100,15 @@ const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
     Hold: i18n.UserSettings.PieceShortcuts.Hold,
 };
 
+const initialScreenValues: InitialScreenSetting[] = ['reader', 'editor', 'list', 'tree'];
+
+const initialScreenLabels: Record<InitialScreenSetting, () => string> = {
+    reader: i18n.UserSettings.InitialScreen.Reader,
+    editor: i18n.UserSettings.InitialScreen.Editor,
+    list: i18n.UserSettings.InitialScreen.List,
+    tree: i18n.UserSettings.InitialScreen.Tree,
+};
+
 const rotationSystemValues: RotationSystem[] = ['classic', 'srs', 'srsPlus'];
 
 const rotationSystemLabels: Record<RotationSystem, () => string> = {
@@ -118,7 +131,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
         deleteSpawnMinoOnPaintDrag,
-        skipReaderMode,
+        initialScreen,
+        openTreeScreenOnTreeData,
         loop,
         shortcutLabelVisible,
         gradient,
@@ -752,14 +766,32 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepLoop({ enable: checked }),
                             })}
 
+                            <div>
+                                <h6>{i18n.UserSettings.InitialScreen.Title()}</h6>
+
+                                {initialScreenValues.map((value) => {
+                                    return <label>
+                                        <input name="initial-screen" type="radio"
+                                               checked={value === initialScreen}
+                                               dataTest={`radio-initial-screen-${value}`}
+                                               onchange={() => actions.keepInitialScreen({
+                                                   initialScreen: value,
+                                               })}/>
+                                        <span style={style({ marginRight: px(20) })}>
+                                            {initialScreenLabels[value]()}
+                                        </span>
+                                    </label>;
+                                })}
+                            </div>
+
                             {renderSwitch({
-                                key: 'switch-row-skip-reader-mode',
-                                datatest: 'switch-skip-reader-mode',
-                                title: i18n.UserSettings.SkipReaderMode.Title(),
-                                checked: skipReaderMode,
+                                key: 'switch-row-open-tree-screen-on-tree-data',
+                                datatest: 'switch-open-tree-screen-on-tree-data',
+                                title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title(),
+                                checked: openTreeScreenOnTreeData,
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
-                                onChange: checked => actions.keepSkipReaderMode({ enable: checked }),
+                                onChange: checked => actions.keepOpenTreeScreenOnTreeData({ enable: checked }),
                             })}
 
                             {renderNumberField({

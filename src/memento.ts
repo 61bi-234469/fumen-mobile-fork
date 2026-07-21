@@ -4,6 +4,7 @@ import { Page } from './lib/fumen/types';
 import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, RotationSystem } from './states';
+import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import lodash from 'lodash';
 
 interface SaverProp {
@@ -161,7 +162,8 @@ export const memento = (() => {
 interface UserSettings {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
-    skipReaderMode: boolean;
+    initialScreen: InitialScreenSetting;
+    openTreeScreenOnTreeData: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
@@ -243,7 +245,8 @@ export const localStorageWrapper = {
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
             deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
-            skipReaderMode: safer.boolean(obj.skipReaderMode),
+            initialScreen: initialScreenSettingFrom(obj),
+            openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),
             loop: safer.boolean(obj.loop),
             shortcutLabelVisible: safer.boolean(obj.shortcutLabelVisible),
             gradient: safer.string(obj.gradient),

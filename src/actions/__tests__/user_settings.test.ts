@@ -25,7 +25,8 @@ const { userSettingsActions } = require('../user_settings');
 const baseUserSettings = {
     ghostVisible: true,
     deleteSpawnMinoOnPaintDrag: true,
-    skipReaderMode: false,
+    initialScreen: 'reader',
+    openTreeScreenOnTreeData: true,
     loop: false,
     shortcutLabelVisible: false,
     gradient: '0000000',
@@ -47,7 +48,8 @@ const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
-        skipReaderMode: false,
+        initialScreen: 'reader',
+        openTreeScreenOnTreeData: true,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -138,6 +140,30 @@ describe('userSettingsActions', () => {
             const state = createState({ tree: { grayAfterLineClear: false } });
 
             expect(userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
+    describe('keepInitialScreen', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepInitialScreen({ initialScreen: 'tree' })(state);
+
+            expect(next.temporary.userSettings.initialScreen).toBe('tree');
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepInitialScreen({ initialScreen: 'editor' })(state)).toBeUndefined();
+        });
+    });
+
+    describe('keepOpenTreeScreenOnTreeData', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepOpenTreeScreenOnTreeData({ enable: false })(state);
+
+            expect(next.temporary.userSettings.openTreeScreenOnTreeData).toBe(false);
         });
     });
 
@@ -261,7 +287,8 @@ describe('userSettingsActions', () => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
                 'changeDeleteSpawnMinoOnPaintDrag',
-                'changeSkipReaderMode',
+                'changeInitialScreen',
+                'changeOpenTreeScreenOnTreeData',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
                 'changePieceShortcutSdf',

@@ -1,6 +1,8 @@
 import { Color, datatest, leftTap, mino, Piece, rightTap, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
+const initialScreenRadio = (value) => datatest(`radio-initial-screen-${value}`);
+
 describe('User settings', () => {
     it('separates soft and hard drop shortcuts and configures DAS/ARR in frames', () => {
         cy.clearLocalStorage();
@@ -255,6 +257,38 @@ describe('User settings', () => {
         cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+
+    it('Initial screen: setting persists and controls startup screen', () => {
+        cy.clearLocalStorage();
+
+        visit({});
+
+        // デフォルトはReader画面
+        cy.get(datatest('btn-writable-in-reader')).should('be.visible');
+
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
+        cy.get(initialScreenRadio('reader')).should('be.checked');
+        cy.get(initialScreenRadio('editor')).check({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        visit({ reload: true });
+
+        // Editor画面で起動する
+        cy.get(datatest('btn-editor-user-settings')).should('be.visible');
+
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('misc');
+        cy.get(initialScreenRadio('editor')).should('be.checked');
+        cy.get(initialScreenRadio('list')).check({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        // List/Tree画面起動時はKonvaキャンバスを描画しないため、block-0-0を待つ共通visit()は使えない
+        cy.reload();
+
+        // List画面で起動する
+        cy.get(datatest('list-view-tools')).should('be.visible');
     });
 
     it('Gray after line clear: tabs stay in sync and setting persists', () => {

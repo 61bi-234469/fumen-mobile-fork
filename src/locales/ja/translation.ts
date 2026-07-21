@@ -43,8 +43,15 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '黒ペイントドラッグでスポーンミノを通過削除',
         },
-        SkipReaderMode: {
-            Title: 'アクセス時にReaderモードをスキップ',
+        InitialScreen: {
+            Title: '初期画面',
+            Reader: 'Reader画面',
+            Editor: 'Editor画面',
+            List: 'List画面',
+            Tree: 'Tree画面',
+        },
+        OpenTreeScreenOnTreeData: {
+            Title: 'ツリーデータ(#TREE)付きのデータはTree画面で開く',
         },
         Loop: {
             Title: 'ページ移動のループ',

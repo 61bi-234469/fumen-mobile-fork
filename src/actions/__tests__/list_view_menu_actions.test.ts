@@ -291,7 +291,7 @@ describe('copyLeftSegmentToClipboard', () => {
 });
 
 describe('exportListViewAsUrl', () => {
-    test('encodes a share URL without tree data when tree mode is disabled', async () => {
+    test('encodes a share URL with only the d param when tree mode is disabled', async () => {
         const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
         const state = createState({ treeEnabled: false, shortenUrls: false });
 
@@ -301,11 +301,11 @@ describe('exportListViewAsUrl', () => {
 
         expect(openSpy).toHaveBeenCalledTimes(1);
         const url = (openSpy.mock.calls[0][0] as string);
-        expect(url).toMatch(/#\?d=v115%40ENC&screen=list&tree=0&treeView=list$/);
+        expect(url).toMatch(/#\?d=v115%40ENC$/);
         openSpy.mockRestore();
     });
 
-    test('includes tree=1 in the share URL when tree mode is enabled', async () => {
+    test('shares tree mode through #TREE embedding instead of URL params', async () => {
         const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
         const state = createState({ treeEnabled: true, shortenUrls: false });
 
@@ -315,7 +315,12 @@ describe('exportListViewAsUrl', () => {
 
         expect(openSpy).toHaveBeenCalledTimes(1);
         const url = (openSpy.mock.calls[0][0] as string);
-        expect(url).toContain('tree=1');
+        expect(url).toMatch(/#\?d=v115%40ENC$/);
+        expect(url).not.toContain('tree=');
+        expect(url).not.toContain('screen=');
+
+        const encodedPages = encodeMock.mock.calls[0][0] as Page[];
+        expect(encodedPages[0].comment.text).toContain('#TREE=');
         openSpy.mockRestore();
     });
 

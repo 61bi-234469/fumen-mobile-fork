@@ -1,6 +1,8 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab } from '../states';
+import {
+    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab,
+} from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 import { normalizeGifFrameDelayMs } from '../lib/gif_export';
@@ -10,7 +12,8 @@ export interface UserSettingsActions {
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
-    keepSkipReaderMode: (data: { enable: boolean }) => action;
+    keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
+    keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
@@ -55,7 +58,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
                     deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
-                    skipReaderMode: state.mode.skipReaderMode,
+                    initialScreen: state.mode.initialScreen,
+                    openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
                     loop: state.mode.loop,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     gradient: gradientToStr(state.mode.gradient),
@@ -82,7 +86,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeDeleteSpawnMinoOnPaintDrag({
                 enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
             }),
-            actions.changeSkipReaderMode({ enable: state.temporary.userSettings.skipReaderMode }),
+            actions.changeInitialScreen({ initialScreen: state.temporary.userSettings.initialScreen }),
+            actions.changeOpenTreeScreenOnTreeData({
+                enable: state.temporary.userSettings.openTreeScreenOnTreeData,
+            }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
             actions.changeShortcutLabelVisible({ visible: state.temporary.userSettings.shortcutLabelVisible }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
@@ -130,7 +137,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     },
     keepGhostVisible: ({ visible }) => keepTemporary({ ghostVisible: visible }),
     keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => keepTemporary({ deleteSpawnMinoOnPaintDrag: enable }),
-    keepSkipReaderMode: ({ enable }) => keepTemporary({ skipReaderMode: enable }),
+    keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
+    keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
     keepLoop: ({ enable }) => keepTemporary({ loop: enable }),
     keepShortcutLabelVisible: ({ visible }) => keepTemporary({ shortcutLabelVisible: visible }),
     keepGradient: ({ gradient }) => keepTemporary({ gradient }),
@@ -280,7 +288,8 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
         deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
-        skipReaderMode: state.mode.skipReaderMode,
+        initialScreen: state.mode.initialScreen,
+        openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
         loop: state.mode.loop,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         gradient: gradientToStr(state.mode.gradient),

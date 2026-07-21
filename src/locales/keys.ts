@@ -52,8 +52,15 @@ export const i18n = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
         },
-        SkipReaderMode: {
-            Title: () => t('UserSettings.SkipReaderMode.Title'),
+        InitialScreen: {
+            Title: () => t('UserSettings.InitialScreen.Title'),
+            Reader: () => t('UserSettings.InitialScreen.Reader'),
+            Editor: () => t('UserSettings.InitialScreen.Editor'),
+            List: () => t('UserSettings.InitialScreen.List'),
+            Tree: () => t('UserSettings.InitialScreen.Tree'),
+        },
+        OpenTreeScreenOnTreeData: {
+            Title: () => t('UserSettings.OpenTreeScreenOnTreeData.Title'),
         },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),

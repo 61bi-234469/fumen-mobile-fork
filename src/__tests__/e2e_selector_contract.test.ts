@@ -162,6 +162,15 @@ const ALLOWLIST: ReadonlyArray<string> = [
     // with its dead view (src/views/editor/desktop_context_inspector.ts);
     // editor_ui_spec.js asserts .should('not.exist').
     'editor-context-inspector',
+    // generated at src/components/modals/user_settings.tsx: renderShortcutGrid's
+    // `inputDatatest` callback builds `input-piece-shortcut-${shortcut}` and is applied via
+    // `datatest={inputDatatest ? inputDatatest(key) : undefined}` — never a
+    // `datatest: \`...\`` / `datatest={\`...\`}` template literal, so the src-side
+    // dynamic-pattern rule above can't see it. user_settings_spec.js references these
+    // three directly via datatest(...) calls.
+    'input-piece-shortcut-HardDrop',
+    'input-piece-shortcut-Hold',
+    'input-piece-shortcut-SoftDrop',
 ];
 
 const existsAsStatic = (name: string): boolean => {

@@ -6,6 +6,7 @@ import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
 import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
+import { SDF_MAX, SDF_MIN } from '../../lib/piece_das';
 
 declare const M: any;
 
@@ -211,6 +212,100 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                     <span class="lever"/>
                     {onLabel}
                 </label>
+            </div>
+        );
+    };
+
+    // ショートカット割当グリッドの共通レンダラ（パレット/編集/PIECEで共有）
+    const renderShortcutGrid = <K extends string>({
+        keys, getCode, renderLabel, labelMinWidth, onKeyDown, inputDatatest, notSetText,
+    }: {
+        keys: K[];
+        getCode: (key: K) => string;
+        renderLabel: (key: K) => string;
+        labelMinWidth: number;
+        onKeyDown: (key: K, e: KeyboardEvent) => void;
+        inputDatatest?: (key: K) => string;
+        notSetText: string;
+    }) => (
+        <div style={style({
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            gap: px(8),
+            alignItems: 'center',
+        })}>
+            {keys.map((key) => {
+                const code = getCode(key);
+                const display = code ? displayShortcut(code) : notSetText;
+                return [
+                    <div style={style({ fontWeight: 'bold', minWidth: px(labelMinWidth) })}>
+                        {renderLabel(key)}
+                    </div>,
+                    <input
+                        type="text"
+                        datatest={inputDatatest ? inputDatatest(key) : undefined}
+                        readonly
+                        value={display}
+                        onkeydown={(e: KeyboardEvent) => onKeyDown(key, e)}
+                        style={style({
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            color: code ? '#333' : '#999',
+                            marginBottom: px(0),
+                            height: px(32),
+                        })}
+                    />,
+                ];
+            })}
+        </div>
+    );
+
+    // フレーム数値入力ブロックの共通レンダラ（ARR/DAS/DCD/GIF遅延で共有）
+    const renderNumberField = ({
+        labelDatatest, title, description, inputDatatest, value, min, max, step, onchange, width,
+        unitDatatest, unit, outerMarginBottom,
+    }: {
+        labelDatatest?: string;
+        title: string;
+        description: string;
+        inputDatatest?: string;
+        value: number;
+        min: number;
+        max: number;
+        step: number;
+        onchange: (e: Event) => void;
+        width: number;
+        unitDatatest?: string;
+        unit: string;
+        outerMarginBottom?: number;
+    }) => {
+        const outerStyle = outerMarginBottom !== undefined
+            ? style({ marginTop: px(15), marginBottom: px(outerMarginBottom) })
+            : style({ marginTop: px(15) });
+        return (
+            <div style={outerStyle}>
+                <div datatest={labelDatatest} style={style({ fontWeight: 'bold' })}>
+                    {title}
+                </div>
+                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                    {description}
+                </div>
+                <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
+                    <input
+                        type="number"
+                        datatest={inputDatatest}
+                        value={value}
+                        min={min}
+                        max={max}
+                        step={step}
+                        onchange={onchange}
+                        style={style({
+                            width: px(width),
+                            textAlign: 'center',
+                        })}
+                    />
+                    <span datatest={unitDatatest}>{unit}</span>
+                </div>
             </div>
         );
     };
@@ -500,36 +595,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     {i18n.UserSettings.PaletteShortcuts.Description()}
                                 </div>
 
-                                <div style={style({
-                                    display: 'grid',
-                                    gridTemplateColumns: 'auto 1fr',
-                                    gap: px(8),
-                                    alignItems: 'center',
-                                })}>
-                                    {paletteKeys.map((palette) => {
-                                        const code = paletteShortcuts[palette];
-                                        const notSetText = i18n.UserSettings.PaletteShortcuts.NotSet();
-                                        const display = code ? displayShortcut(code) : notSetText;
-                                        return [
-                                            <div style={style({ fontWeight: 'bold', minWidth: px(50) })}>
-                                                {palette}
-                                            </div>,
-                                            <input
-                                                type="text"
-                                                readonly
-                                                value={display}
-                                                onkeydown={(e: KeyboardEvent) => onkeydownShortcut(palette, e)}
-                                                style={style({
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center',
-                                                    color: code ? '#333' : '#999',
-                                                    marginBottom: px(0),
-                                                    height: px(32),
-                                                })}
-                                            />,
-                                        ];
-                                    })}
-                                </div>
+                                {renderShortcutGrid({
+                                    keys: paletteKeys,
+                                    getCode: palette => paletteShortcuts[palette],
+                                    renderLabel: palette => palette,
+                                    labelMinWidth: 50,
+                                    onKeyDown: onkeydownShortcut,
+                                    notSetText: i18n.UserSettings.PaletteShortcuts.NotSet(),
+                                })}
                             </div>
 
                             <div>
@@ -538,36 +611,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     {i18n.UserSettings.EditShortcuts.Description()}
                                 </div>
 
-                                <div style={style({
-                                    display: 'grid',
-                                    gridTemplateColumns: 'auto 1fr',
-                                    gap: px(8),
-                                    alignItems: 'center',
-                                })}>
-                                    {editShortcutKeys.map((shortcut) => {
-                                        const code = editShortcuts[shortcut];
-                                        const notSetText = i18n.UserSettings.EditShortcuts.NotSet();
-                                        const display = code ? displayShortcut(code) : notSetText;
-                                        return [
-                                            <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
-                                                {editShortcutLabels[shortcut]()}
-                                            </div>,
-                                            <input
-                                                type="text"
-                                                readonly
-                                                value={display}
-                                                onkeydown={(e: KeyboardEvent) => onkeydownEditShortcut(shortcut, e)}
-                                                style={style({
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center',
-                                                    color: code ? '#333' : '#999',
-                                                    marginBottom: px(0),
-                                                    height: px(32),
-                                                })}
-                                            />,
-                                        ];
-                                    })}
-                                </div>
+                                {renderShortcutGrid({
+                                    keys: editShortcutKeys,
+                                    getCode: shortcut => editShortcuts[shortcut],
+                                    renderLabel: shortcut => editShortcutLabels[shortcut](),
+                                    labelMinWidth: 80,
+                                    onKeyDown: onkeydownEditShortcut,
+                                    notSetText: i18n.UserSettings.EditShortcuts.NotSet(),
+                                })}
                             </div>
                         </div>
 
@@ -579,37 +630,15 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     {i18n.UserSettings.PieceShortcuts.Description()}
                                 </div>
 
-                                <div style={style({
-                                    display: 'grid',
-                                    gridTemplateColumns: 'auto 1fr',
-                                    gap: px(8),
-                                    alignItems: 'center',
-                                })}>
-                                    {pieceShortcutKeys.map((shortcut) => {
-                                        const code = pieceShortcuts[shortcut];
-                                        const notSetText = i18n.UserSettings.PieceShortcuts.NotSet();
-                                        const display = code ? displayShortcut(code) : notSetText;
-                                        return [
-                                            <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
-                                                {pieceShortcutLabels[shortcut]()}
-                                            </div>,
-                                            <input
-                                                type="text"
-                                                datatest={`input-piece-shortcut-${shortcut}`}
-                                                readonly
-                                                value={display}
-                                                onkeydown={(e: KeyboardEvent) => onkeydownPieceShortcut(shortcut, e)}
-                                                style={style({
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center',
-                                                    color: code ? '#333' : '#999',
-                                                    marginBottom: px(0),
-                                                    height: px(32),
-                                                })}
-                                            />,
-                                        ];
-                                    })}
-                                </div>
+                                {renderShortcutGrid({
+                                    keys: pieceShortcutKeys,
+                                    getCode: shortcut => pieceShortcuts[shortcut],
+                                    renderLabel: shortcut => pieceShortcutLabels[shortcut](),
+                                    labelMinWidth: 80,
+                                    onKeyDown: onkeydownPieceShortcut,
+                                    inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
+                                    notSetText: i18n.UserSettings.PieceShortcuts.NotSet(),
+                                })}
 
                                 {renderSwitch({
                                     key: 'switch-row-ghost-visible',
@@ -637,55 +666,35 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     })}
                                 </div>
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-arr" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.ArrFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.ArrDescription()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-arr"
-                                            value={pieceShortcutArrFrames}
-                                            min={0}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeArr}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-arr">F</span>
-                                    </div>
-                                </div>
+                                {renderNumberField({
+                                    labelDatatest: 'label-piece-arr',
+                                    title: i18n.UserSettings.PieceShortcuts.ArrFrames(),
+                                    description: i18n.UserSettings.PieceShortcuts.ArrDescription(),
+                                    inputDatatest: 'input-piece-arr',
+                                    value: pieceShortcutArrFrames,
+                                    min: 0,
+                                    max: 60,
+                                    step: 0.1,
+                                    onchange: onchangeArr,
+                                    width: 80,
+                                    unitDatatest: 'unit-piece-arr',
+                                    unit: 'F',
+                                })}
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-das" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasDescription()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-das"
-                                            value={pieceShortcutDasFrames}
-                                            min={1}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeDas}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-das">F</span>
-                                    </div>
-                                </div>
+                                {renderNumberField({
+                                    labelDatatest: 'label-piece-das',
+                                    title: i18n.UserSettings.PieceShortcuts.DasFrames(),
+                                    description: i18n.UserSettings.PieceShortcuts.DasDescription(),
+                                    inputDatatest: 'input-piece-das',
+                                    value: pieceShortcutDasFrames,
+                                    min: 1,
+                                    max: 60,
+                                    step: 0.1,
+                                    onchange: onchangeDas,
+                                    width: 80,
+                                    unitDatatest: 'unit-piece-das',
+                                    unit: 'F',
+                                })}
 
                                 <div style={style({ marginTop: px(15) })}>
                                     <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
@@ -723,11 +732,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             value={String(pieceShortcutSdf)}
                                             onchange={onchangeSdf}
                                             style={style({ width: px(80), height: px(32) })}>
-                                        {[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
-                                            36, 37, 38, 39, 40].map(value => <option value={String(value)}>
-                                             {value}
-                                         </option>)}
+                                        {Array.from({ length: SDF_MAX - SDF_MIN + 1 }, (_, i) => SDF_MIN + i)
+                                            .map(value => <option value={String(value)}>{value}</option>)}
                                         <option value="Infinity">∞</option>
                                     </select>
                                 </div>
@@ -756,29 +762,18 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepSkipReaderMode({ enable: checked }),
                             })}
 
-                            <div style={style({ marginTop: px(15), marginBottom: px(15) })}>
-                                <div style={style({ fontWeight: 'bold' })}>
-                                    {i18n.UserSettings.GifFrameDelayMs.Title()}
-                                </div>
-                                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                    {i18n.UserSettings.GifFrameDelayMs.Description()}
-                                </div>
-                                <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                    <input
-                                        type="number"
-                                        value={gifFrameDelayMs}
-                                        min={100}
-                                        max={10000}
-                                        step={100}
-                                        onchange={onchangeGifFrameDelay}
-                                        style={style({
-                                            width: px(100),
-                                            textAlign: 'center',
-                                        })}
-                                    />
-                                    <span>ms</span>
-                                </div>
-                            </div>
+                            {renderNumberField({
+                                title: i18n.UserSettings.GifFrameDelayMs.Title(),
+                                description: i18n.UserSettings.GifFrameDelayMs.Description(),
+                                value: gifFrameDelayMs,
+                                min: 100,
+                                max: 10000,
+                                step: 100,
+                                onchange: onchangeGifFrameDelay,
+                                width: 100,
+                                unit: 'ms',
+                                outerMarginBottom: 15,
+                            })}
                         </div>
                     </div>
                 </div>

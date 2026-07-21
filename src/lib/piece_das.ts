@@ -220,6 +220,12 @@ export const isDasHoldActive = (id: string): boolean => {
     return holds.has(id);
 };
 
+// TETR.IO準拠のSDF設定範囲。UIの選択肢とlocalStorage復元の検証で共有する
+export const SDF_MIN = 5;
+export const SDF_MAX = 40;
+export const isValidSdf = (value: unknown): value is number =>
+    typeof value === 'number' && (value === Infinity || (SDF_MIN <= value && value <= SDF_MAX));
+
 // フォーカスを失ったらpointerup/keyupを受け取れないため、全ホールドを解除する
 if (typeof window !== 'undefined') {
     window.addEventListener('blur', endAllDasHolds);

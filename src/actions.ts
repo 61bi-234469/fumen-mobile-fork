@@ -40,7 +40,7 @@ import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
-import { millisecondsToFrames } from './lib/piece_das';
+import { isValidSdf, millisecondsToFrames } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -371,8 +371,7 @@ const loadUserSettings = () => {
         updated = true;
     }
     const sdf = settings.pieceShortcutSdf;
-    if (typeof sdf === 'number' &&
-        (sdf === Infinity || (sdf >= 5 && sdf <= 40))) {
+    if (isValidSdf(sdf)) {
         main.changePieceShortcutSdf({ sdf });
         updated = true;
     }

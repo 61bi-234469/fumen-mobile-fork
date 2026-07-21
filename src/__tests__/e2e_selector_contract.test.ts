@@ -109,10 +109,11 @@ for (const file of cypressFiles) {
 // appear in the candidate name, in order.
 //
 // Templates whose combined fixed-segment length is under MIN_TEMPLATE_LITERAL are skipped:
-// e.g. switchButton's `datatest: \`${datatest}-${enable ? 'on' : 'off'}\`` (src/views/editor_buttons.ts)
-// has only a single literal "-" between two interpolations, which would otherwise match
-// almost any hyphenated name and defeat the guard. The `-on`/`-off` suffix that switchButton
-// appends is handled separately below (rule 2), against the *base* datatest value.
+// a template shaped like `datatest: \`${base}-${enable ? 'on' : 'off'}\`` (as the pre-rework
+// switchButton had, before the dead-view removal) has only a single literal "-" between two
+// interpolations, which would otherwise match almost any hyphenated name and defeat the
+// guard. `-on`/`-off` suffixed names are additionally handled below (rule 2), against the
+// *base* datatest value.
 const MIN_TEMPLATE_LITERAL = 4;
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -176,8 +177,10 @@ const ALLOWLIST: ReadonlyArray<string> = [
 const existsAsStatic = (name: string): boolean => {
     if (srcCorpus.includes(name)) return true;
 
-    // switchButton (src/views/editor_buttons.ts) appends "-on"/"-off" to the base
-    // datatest value it is given; the base value is what actually appears in src.
+    // Some controls render state-suffixed names, e.g. `btn-lock-flag-${lock ? 'on' : 'off'}`
+    // (src/views/editor/editor_overlay.ts). Those templates are usually caught by the
+    // dynamic-pattern rule below; stripping the suffix additionally resolves an "-on"/"-off"
+    // name against its base value when only the base appears in src.
     const withoutOnOff = name.replace(/-(on|off)$/, '');
     if (withoutOnOff !== name && srcCorpus.includes(withoutOnOff)) return true;
 

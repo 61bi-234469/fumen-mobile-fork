@@ -264,6 +264,7 @@ describe('userSettingsActions', () => {
                 'changeSkipReaderMode',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
+                'changePieceShortcutSdf',
                 'changeGifFrameDelay', 'changeRotationSystem',
                 'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',

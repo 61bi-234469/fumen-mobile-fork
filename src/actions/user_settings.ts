@@ -30,6 +30,23 @@ export interface UserSettingsActions {
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
+// モーダル表示中のみ temporary.userSettings を部分更新する
+const keepTemporary = (partial: Partial<State['temporary']['userSettings']>) =>
+    (state: Readonly<State>): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    ...partial,
+                },
+            },
+        };
+    };
+
 export const userSettingsActions: Readonly<UserSettingsActions> = {
     copyUserSettingsToTemporary: () => (state): NextState => {
         return {
@@ -87,8 +104,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePieceShortcutDasCut({
                 dasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             }),
-            actions.changePieceShortcutSdf === undefined ? undefined
-                : actions.changePieceShortcutSdf({ sdf: state.temporary.userSettings.pieceShortcutSdf }),
+            actions.changePieceShortcutSdf({ sdf: state.temporary.userSettings.pieceShortcutSdf }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
@@ -112,95 +128,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    keepGhostVisible: ({ visible }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    ghostVisible: visible,
-                },
-            },
-        };
-    },
-    keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    deleteSpawnMinoOnPaintDrag: enable,
-                },
-            },
-        };
-    },
-    keepSkipReaderMode: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    skipReaderMode: enable,
-                },
-            },
-        };
-    },
-    keepLoop: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    loop: enable,
-                },
-            },
-        };
-    },
-    keepShortcutLabelVisible: ({ visible }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    shortcutLabelVisible: visible,
-                },
-            },
-        };
-    },
-    keepGradient: ({ gradient }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    gradient,
-                },
-            },
-        };
-    },
+    keepGhostVisible: ({ visible }) => keepTemporary({ ghostVisible: visible }),
+    keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => keepTemporary({ deleteSpawnMinoOnPaintDrag: enable }),
+    keepSkipReaderMode: ({ enable }) => keepTemporary({ skipReaderMode: enable }),
+    keepLoop: ({ enable }) => keepTemporary({ loop: enable }),
+    keepShortcutLabelVisible: ({ visible }) => keepTemporary({ shortcutLabelVisible: visible }),
+    keepGradient: ({ gradient }) => keepTemporary({ gradient }),
     keepPaletteShortcut: ({ palette, code }) => (state): NextState => {
         if (!state.modal.userSettings) {
             return undefined;
@@ -305,102 +238,13 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
-    keepPieceShortcutDas: ({ dasFrames }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    pieceShortcutDasFrames: dasFrames,
-                },
-            },
-        };
-    },
-    keepPieceShortcutArr: ({ arrFrames }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    pieceShortcutArrFrames: arrFrames,
-                },
-            },
-        };
-    },
-    keepPieceShortcutDasCut: ({ dasCutFrames }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    pieceShortcutDasCutFrames: dasCutFrames,
-                },
-            },
-        };
-    },
-    keepPieceShortcutSdf: ({ sdf }) => (state): NextState => {
-        if (!state.modal.userSettings) return undefined;
-        return { temporary: { ...state.temporary, userSettings: {
-            ...state.temporary.userSettings, pieceShortcutSdf: sdf,
-        } } };
-    },
-    keepGifFrameDelay: ({ delayMs }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs),
-                },
-            },
-        };
-    },
-    keepRotationSystem: ({ rotationSystem }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    rotationSystem,
-                },
-            },
-        };
-    },
-    keepGrayAfterLineClear: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    grayAfterLineClear: enable,
-                },
-            },
-        };
-    },
+    keepPieceShortcutDas: ({ dasFrames }) => keepTemporary({ pieceShortcutDasFrames: dasFrames }),
+    keepPieceShortcutArr: ({ arrFrames }) => keepTemporary({ pieceShortcutArrFrames: arrFrames }),
+    keepPieceShortcutDasCut: ({ dasCutFrames }) => keepTemporary({ pieceShortcutDasCutFrames: dasCutFrames }),
+    keepPieceShortcutSdf: ({ sdf }) => keepTemporary({ pieceShortcutSdf: sdf }),
+    keepGifFrameDelay: ({ delayMs }) => keepTemporary({ gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs) }),
+    keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),
+    keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
     keepNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
         if (!state.modal.userSettings || !state.temporary.userSettings.grayAfterLineClear) {
             return undefined;
@@ -416,36 +260,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
-    keepTrimTopBlank: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    trimTopBlank: enable,
-                },
-            },
-        };
-    },
-    keepEditorSidePanel: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    editorSidePanel: enable,
-                },
-            },
-        };
-    },
+    keepTrimTopBlank: ({ enable }) => keepTemporary({ trimTopBlank: enable }),
+    keepEditorSidePanel: ({ enable }) => keepTemporary({ editorSidePanel: enable }),
     setUserSettingsTab: ({ tab }) => (state): NextState => {
         if (state.temporary.userSettingsTab === tab) {
             return undefined;

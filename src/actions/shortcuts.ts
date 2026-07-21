@@ -49,12 +49,10 @@ export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = 
     [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Menu', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
 };
 
-// モーダルが開いているかチェック
+// どれか1つでもモーダルが開いていればグローバルショートカットを無効化する。
+// フラグを列挙すると追加時に漏れるため、modal の全フィールドを走査する。
 const isAnyModalOpen = (state: State): boolean => {
-    const { modal } = state;
-    return modal.fumen || modal.menu || modal.append || modal.clipboard ||
-           modal.userSettings || modal.listViewReplace || modal.listViewMenu
-           || modal.coldClearMenu;
+    return Object.values(state.modal).some(flag => flag);
 };
 
 // 入力フィールドにフォーカスしているかチェック

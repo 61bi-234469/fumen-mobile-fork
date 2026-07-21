@@ -146,6 +146,13 @@ const ALLOWLIST: ReadonlyArray<string> = [
     // tray; editor_ui_spec.js asserts .should('not.exist') to confirm pin controls stay
     // confined to the PIECE tray parts palette (src/views/editor/editor_rail.ts).
     'tray-select-part-pin',
+    // generated at src/components/field.tsx: `const key = \`block-${xIndex}-${yIndex}\`;`
+    // is a plain local variable, later passed through as `dataTest={key}` and then
+    // `datatest={dataTest}` on the rendered <param> — never a `datatest: \`...\`` /
+    // `datatest={\`...\`}` template literal, so the src-side dynamic-pattern rule above
+    // can't see it. cypress/support/common.js's visit() asserts on 'block-0-0' directly
+    // (rather than through the block(x, y) helper) to wait for the initial field render.
+    'block-0-0',
 ];
 
 const existsAsStatic = (name: string): boolean => {

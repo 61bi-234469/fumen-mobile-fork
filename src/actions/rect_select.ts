@@ -7,6 +7,7 @@ import {
     extractRectPieces,
     floatingPartAtTop,
     floatingRect,
+    initialRectSelectState,
     isIndexInRect,
     mirrorPartCells,
     rotatePartCellsLeft,
@@ -338,7 +339,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
     },
     cancelRectSelectionPreview: () => (state): NextState => {
         if (state.rectSelect.status === 'selecting') {
-            return { rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null } };
+            return { rectSelect: initialRectSelectState };
         }
         if (state.rectSelect.status === 'floating') {
             const rect = state.rectSelect.floating?.sourceRect ?? state.rectSelect.rect;
@@ -358,7 +359,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         if (state.rectSelect.status === 'none') {
             return undefined;
         }
-        return { rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null } };
+        return { rectSelect: initialRectSelectState };
     },
     deleteRectSelection: () => (state): NextState => {
         if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {

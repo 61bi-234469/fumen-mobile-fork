@@ -1,6 +1,7 @@
 import { State } from '../../states';
 import { Piece } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
+import { initialRectSelectState } from '../../lib/rect_selection';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -108,9 +109,7 @@ describe('rectSelectActions', () => {
                     flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
                 }],
             },
-            rectSelect: {
-                status: 'none', rect: null, anchorIndex: null, floating: null,
-            },
+            rectSelect: initialRectSelectState,
         } as unknown as State;
 
         const next = rectSelectActions.beginWholeFieldMove()(state) as any;

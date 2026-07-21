@@ -123,6 +123,7 @@ import { Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
 import { loadBlackTransparentPaste, loadParts } from './lib/parts';
+import { initialRectSelectState } from './lib/rect_selection';
 
 const VERSION = PageEnv.Version;
 
@@ -467,12 +468,7 @@ export const initState: Readonly<State> = {
         infinitePieceQueue: false,
         bottomSlot: 'tray',
     },
-    rectSelect: {
-        status: 'none',
-        rect: null,
-        anchorIndex: null,
-        floating: null,
-    },
+    rectSelect: initialRectSelectState,
     parts: {
         items: loadParts(),
         selectedId: null,

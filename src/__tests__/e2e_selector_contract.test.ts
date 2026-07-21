@@ -153,6 +153,15 @@ const ALLOWLIST: ReadonlyArray<string> = [
     // can't see it. cypress/support/common.js's visit() asserts on 'block-0-0' directly
     // (rather than through the block(x, y) helper) to wait for the initial field render.
     'block-0-0',
+    // intentionally absent: pre-rail/tray-rework "Fill mode" and "Fill row mode" buttons,
+    // removed along with their dead views (src/views/editor/fill_mode.ts,
+    // src/views/editor/fill_row_mode.ts); utils_spec.js asserts .should('not.exist').
+    'btn-fill-mode',
+    'btn-fill-row-mode',
+    // intentionally absent: pre-rail/tray-rework desktop context inspector, removed along
+    // with its dead view (src/views/editor/desktop_context_inspector.ts);
+    // editor_ui_spec.js asserts .should('not.exist').
+    'editor-context-inspector',
 ];
 
 const existsAsStatic = (name: string): boolean => {

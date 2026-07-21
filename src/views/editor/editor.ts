@@ -236,23 +236,6 @@ export const getLayout = (
     };
 };
 
-export const toolStyle = (layout: EditorLayout) => {
-    const margin = (layout.canvas.size.height - layout.field.size.height) / 2;
-    return style({
-        marginTop: '0px',
-        marginBottom: '0px',
-        marginLeft: '10px',
-        marginRight: '0px',
-        padding: `${px(margin)} 0px`,
-        display: 'flex',
-        justifyContent: 'flex-end',
-        flexDirection: 'column',
-        alignItems: 'center',
-        height: px(layout.canvas.size.height),
-        width: px(layout.buttons.size.width),
-    });
-};
-
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {

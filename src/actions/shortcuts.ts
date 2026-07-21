@@ -82,19 +82,11 @@ const isInputFocused = (): boolean => {
     return false;
 };
 
-// codeからパレットを検索
-const findPaletteByCode = (shortcuts: PaletteShortcuts, code: string): PaletteKey | null => {
-    for (const key of Object.keys(shortcuts) as PaletteKey[]) {
-        if (shortcuts[key] === code) {
-            return key;
-        }
-    }
-    return null;
-};
-
-// codeから編集用ショートカットを検索
-const findEditShortcutByCode = (shortcuts: EditShortcuts, code: string): EditShortcutKey | null => {
-    for (const key of Object.keys(shortcuts) as EditShortcutKey[]) {
+// 割当表から code に一致するキーを逆引きする
+const findKeyByCode = <T extends Record<string, string>>(
+    shortcuts: T, code: string,
+): (keyof T) | null => {
+    for (const key of Object.keys(shortcuts) as (keyof T)[]) {
         if (shortcuts[key] === code) {
             return key;
         }
@@ -236,18 +228,6 @@ const hasEditLongPress = (key: EditShortcutKey): boolean => {
         || key === 'Insert' || key === 'Copy' || key === 'Cut' || key === 'Menu';
 };
 
-// ピースショートカットをコードで検索（修飾キーなし）
-const findPieceShortcutByCode = (
-    shortcuts: PieceShortcuts, code: string,
-): PieceShortcutKey | null => {
-    for (const key of Object.keys(shortcuts) as PieceShortcutKey[]) {
-        if (shortcuts[key] === code) {
-            return key;
-        }
-    }
-    return null;
-};
-
 // 現在のページにピースがあるかチェック
 const currentPageHasPiece = (state: State): boolean => {
     const page = state.fumen.pages[state.fumen.currentIndex];
@@ -355,7 +335,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     const pieceModeShortcut = screen === Screens.Editor
         && state.editorUi?.primaryTool === 'piece'
         && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
-        ? findPieceShortcutByCode(state.mode.pieceShortcuts, event.code) : null;
+        ? findKeyByCode(state.mode.pieceShortcuts, event.code) : null;
     if (pieceModeShortcut) {
         event.preventDefault();
         pressedKeys.set(event.code, {
@@ -379,7 +359,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     const editShortcut = findEditShortcutByEvent(state.mode.editShortcuts, event);
     const allowedKeys = allowedEditShortcuts[screen];
 
-    if (state.editorUi?.primaryTool === 'select' && editShortcut !== undefined) {
+    if (state.editorUi?.primaryTool === 'select' && editShortcut !== null) {
         if (editShortcut === 'Copy' && state.rectSelect?.status === 'selected') {
             actions.copyRectSelection();
             event.preventDefault();
@@ -419,7 +399,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (screen !== Screens.Editor) return;
 
     // パレットショートカットを検索
-    const palette = findPaletteByCode(state.mode.paletteShortcuts, event.code);
+    const palette = findKeyByCode(state.mode.paletteShortcuts, event.code);
     if (!palette) return;
 
     event.preventDefault();

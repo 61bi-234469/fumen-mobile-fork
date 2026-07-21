@@ -180,12 +180,7 @@ const saveToMemento = (state: Readonly<State>): NextState => {
         version: 1,
     } : null;
 
-    console.log('saveToMemento: tree enabled =', state.tree.enabled, 'tree nodes =', tree?.nodes.length);
-
     const pagesToSave = embedTreeInPages(state.fumen.pages, tree, hasTreeData);
-
-    console.log('saveToMemento: first page comment text =', pagesToSave[0]?.comment?.text,
-        'contains #TREE=', pagesToSave[0]?.comment?.text?.includes('#TREE='));
 
     memento.save(pagesToSave);
     return undefined;

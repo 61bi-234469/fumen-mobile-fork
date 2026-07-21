@@ -51,6 +51,8 @@ export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
 export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'piece' | 'misc';
 
+export type { InitialScreenSetting } from './lib/initial_screen';
+
 export type EditorSidePanelTab = 'list' | 'tree';
 
 export type PrimaryTool = 'paint' | 'piece' | 'select';
@@ -123,6 +125,8 @@ import { Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
 import { loadBlackTransparentPaste, loadParts } from './lib/parts';
+import { initialRectSelectState } from './lib/rect_selection';
+import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 
 const VERSION = PageEnv.Version;
 
@@ -141,10 +145,15 @@ const getInitialScreen = (): Screens => {
     if (window.location.hash.includes('#/edit')) {
         return Screens.Editor;
     }
+    // memento.ts は states.ts に依存するため、ここでは localStorage を直接読む。
     try {
         const settings = JSON.parse(localStorage.getItem('user-settings@1') ?? '{}');
-        if (settings.skipReaderMode === true) {
+        switch (initialScreenSettingFrom(settings)) {
+        case 'editor':
             return Screens.Editor;
+        case 'list':
+        case 'tree':
+            return Screens.ListView;
         }
     } catch {
         // Ignore malformed persisted settings.
@@ -199,7 +208,8 @@ export interface State {
         userSettings: {
             ghostVisible: boolean;
             deleteSpawnMinoOnPaintDrag: boolean;
-            skipReaderMode: boolean;
+            initialScreen: InitialScreenSetting;
+            openTreeScreenOnTreeData: boolean;
             loop: boolean;
             shortcutLabelVisible: boolean;
             gradient: string;
@@ -242,7 +252,8 @@ export interface State {
         comment: CommentType;
         ghostVisible: boolean;
         deleteSpawnMinoOnPaintDrag: boolean;
-        skipReaderMode: boolean;
+        initialScreen: InitialScreenSetting;
+        openTreeScreenOnTreeData: boolean;
         loop: boolean;
         shortcutLabelVisible: boolean;
         gradient: {
@@ -378,7 +389,8 @@ export const initState: Readonly<State> = {
         userSettings: {
             ghostVisible: true,
             deleteSpawnMinoOnPaintDrag: true,
-            skipReaderMode: false,
+            initialScreen: 'reader',
+            openTreeScreenOnTreeData: true,
             loop: false,
             shortcutLabelVisible: false,
             gradient: '0000000',
@@ -420,7 +432,8 @@ export const initState: Readonly<State> = {
         comment: CommentType.Writable,
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
-        skipReaderMode: false,
+        initialScreen: 'reader',
+        openTreeScreenOnTreeData: true,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -467,12 +480,7 @@ export const initState: Readonly<State> = {
         infinitePieceQueue: false,
         bottomSlot: 'tray',
     },
-    rectSelect: {
-        status: 'none',
-        rect: null,
-        anchorIndex: null,
-        floating: null,
-    },
+    rectSelect: initialRectSelectState,
     parts: {
         items: loadParts(),
         selectedId: null,

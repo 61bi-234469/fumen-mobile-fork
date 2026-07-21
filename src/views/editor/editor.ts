@@ -236,23 +236,6 @@ export const getLayout = (
     };
 };
 
-export const toolStyle = (layout: EditorLayout) => {
-    const margin = (layout.canvas.size.height - layout.field.size.height) / 2;
-    return style({
-        marginTop: '0px',
-        marginBottom: '0px',
-        marginLeft: '10px',
-        marginRight: '0px',
-        padding: `${px(margin)} 0px`,
-        display: 'flex',
-        justifyContent: 'flex-end',
-        flexDirection: 'column',
-        alignItems: 'center',
-        height: px(layout.canvas.size.height),
-        width: px(layout.buttons.size.width),
-    });
-};
-
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {
@@ -305,7 +288,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             width: px(layout.field.size.width),
         }),
     }, [
-        KonvaCanvas({  // canvas空間�Eみ
+        KonvaCanvas({  // canvas空間のみ
             actions,
             canvas: layout.canvas.size,
             hyperStage: resources.konva.stage,
@@ -388,10 +371,10 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ];
     };
 
-    // フィールドエリアをクリチE��したらフォーカスを移動（キーボ�EドショートカチE��有効化�Eため�E�E
+    // フィールドエリアをクリックしたらフォーカスを移動（キーボードショートカット有効化のため）
     const handleFieldClick = (event: MouseEvent) => {
         const target = event.target as HTMLElement;
-        // コメント�E力欁E��外をクリチE��した場合、フィールドにフォーカスを移勁E
+        // コメント入力欄以外をクリックした場合、フィールドにフォーカスを移動
         const tagName = target.tagName.toLowerCase();
         if (tagName !== 'input' && tagName !== 'textarea') {
             const fieldTop = document.getElementById('field-top');
@@ -404,14 +387,14 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     return div({
         key: 'field-top',
         id: 'field-top',
-        tabIndex: -1, // フォーカス可能にする�E�Eabでは移動しなぁE��E
+        tabIndex: -1, // フォーカス可能にする（Tabでは移動しない）
         style: style({
             display: 'flex',
             justifyContent: 'center',
             flexDirection: 'row',
             alignItems: 'center',
             userSelect: 'none',
-            outline: 'none', // フォーカス時�E枠線を消す
+            outline: 'none', // フォーカス時の枠線を消す
             flex: '1 1 auto',
             minWidth: '0',
             position: 'relative',
@@ -472,41 +455,26 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
     const currentPage = state.fumen.pages[currentIndex];
 
     switch (state.mode.comment) {
-    case CommentType.Writable: {
-        const isCommentKey = resources.comment !== undefined
-            || (currentPage !== undefined && currentPage.comment.text !== undefined);
-
-        return comment({
-            currentIndex,
-            actions,
-            key: `text-comment-editor-${state.comment.changeKey}`,
-            dataTest: 'text-comment',
-            id: 'text-comment',
-            textColor: isCommentKey ? '#333' : '#757575',
-            backgroundColorClass: 'white',
-            height: layout.comment.size.height,
-            text: resources.comment !== undefined ? resources.comment.text : state.comment.text,
-            placeholder: 'comment',
-            readonly: false,
-        });
-    }
+    case CommentType.Writable:
     case CommentType.Readonly: {
-        const currentIndex = state.fumen.currentIndex;
-        const currentPage = state.fumen.pages[currentIndex];
+        const readonly = state.mode.comment === CommentType.Readonly;
         const isCommentKey = resources.comment !== undefined
             || (currentPage !== undefined && currentPage.comment.text !== undefined);
 
         return comment({
             currentIndex,
             actions,
-            key: `text-comment-editor-readonly-${state.comment.changeKey}`,
+            key: readonly
+                ? `text-comment-editor-readonly-${state.comment.changeKey}`
+                : `text-comment-editor-${state.comment.changeKey}`,
             dataTest: 'text-comment',
             id: 'text-comment',
             textColor: isCommentKey ? '#333' : '#757575',
             backgroundColorClass: 'white',
             height: layout.comment.size.height,
             text: resources.comment !== undefined ? resources.comment.text : state.comment.text,
-            readonly: true,
+            ...(readonly ? {} : { placeholder: 'comment' }),
+            readonly,
         });
     }
     case CommentType.PageSlider: {
@@ -562,7 +530,7 @@ export const view: View<State, Actions> = (state, actions) => {
         oncreate: batchDraw,
         onupdate: batchDraw,
         key: 'view',
-    }, [ // Hyperappでは最上位�Eノ�Eドが最後に実行される
+    }, [ // Hyperappでは最上位のノードが最後に実行される
         resources.konva.stage.isReady ? Events(state, actions) : undefined as any,
 
         navigatorElement({

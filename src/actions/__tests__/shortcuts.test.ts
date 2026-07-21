@@ -27,6 +27,7 @@ describe('clipboard insert shortcut', () => {
     let selectEditorPalette: jest.Mock;
     let backPage: jest.Mock;
     let nextPage: jest.Mock;
+    let undo: jest.Mock;
 
     beforeAll(() => {
         initShortcutHandlers(() => state, () => actions);
@@ -46,6 +47,7 @@ describe('clipboard insert shortcut', () => {
         selectEditorPalette = jest.fn();
         backPage = jest.fn();
         nextPage = jest.fn();
+        undo = jest.fn();
         state = {
             modal: {
                 append: false,
@@ -110,6 +112,7 @@ describe('clipboard insert shortcut', () => {
             nextPage,
             replaceAllFromClipboard,
             selectEditorPalette,
+            undo,
         } as unknown as Actions;
     });
 
@@ -250,5 +253,24 @@ describe('clipboard insert shortcut', () => {
 
         expect(hold).toHaveBeenCalledTimes(1);
         expect(selectEditorPalette).not.toHaveBeenCalled();
+    });
+
+    test('PIECE shortcuts stay disabled while the piece queue modal is open', () => {
+        state.editorUi.primaryTool = 'piece';
+        (state.modal as State['modal']).pieceQueue = true;
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
+
+        expect(harddrop).not.toHaveBeenCalled();
+    });
+
+    test('edit shortcuts stay disabled while the tree-disable confirm modal is open', () => {
+        (state.modal as State['modal']).treeDisableConfirm = true;
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', ctrlKey: true, bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyZ', ctrlKey: true, bubbles: true }));
+
+        expect(undo).not.toHaveBeenCalled();
     });
 });

@@ -350,20 +350,11 @@ const resolveTetgramExport = (
     return { pages: state.fumen.pages, tree: getExportTree(state) };
 };
 
-const buildShareParams = (
-    state: Readonly<State>,
-    encoded: string,
-    opts: { includeTreeParams: boolean },
-): URLSearchParams => {
+// 共有URLは d のみ。画面はひらいた側の初期画面設定に、ツリーは #TREE 埋め込みに委ねる
+// (?screen=/?tree=/?treeView= の解析は旧URL互換のため残っている)。
+const buildShareParams = (encoded: string): URLSearchParams => {
     const params = new URLSearchParams();
     params.set('d', `v115@${encoded}`);
-    params.set('screen', 'list');
-    if (opts.includeTreeParams) {
-        params.set('tree', state.tree.enabled ? '1' : '0');
-        params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
-    } else {
-        params.set('tree', '0');
-    }
     return params;
 };
 
@@ -815,7 +806,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const pagesToEncode = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
                 const encoded = await encode(pagesToEncode);
 
-                const params = buildShareParams(state, encoded, { includeTreeParams: true });
+                const params = buildShareParams(encoded);
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 openGeneratedUrl(url, state.listView.shortenUrls);
@@ -839,7 +830,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 // 6. Encode (no tree embedding)
                 const encoded = await encode(segment.pages);
 
-                const params = buildShareParams(state, encoded, { includeTreeParams: false });
+                const params = buildShareParams(encoded);
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 openGeneratedUrl(url, state.listView.shortenUrls);
@@ -854,7 +845,6 @@ export const listViewActions: Readonly<ListViewActions> = {
     copyListViewUrlToClipboard: () => (state): NextState => {
         (async () => {
             try {
-                const isLeftScope = state.tree.enabled && state.listView.exportScope === 'left';
                 const resolved = resolvePagesToEncode(state);
                 if ('error' in resolved) {
                     showToast(resolved.error);
@@ -862,7 +852,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 }
 
                 const encoded = await encode(resolved.pages);
-                const params = buildShareParams(state, encoded, { includeTreeParams: !isLeftScope });
+                const params = buildShareParams(encoded);
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;

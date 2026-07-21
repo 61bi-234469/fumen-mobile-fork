@@ -3,7 +3,9 @@ import { action, actions, main } from '../actions';
 import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes } from '../lib/enums';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
-import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State } from '../states';
+import {
+    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State,
+} from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
@@ -24,23 +26,16 @@ export interface ScreenActions {
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
     changeToListViewScreen: () => action;
     changeToTreeViewScreen: () => action;
-    changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
-    changeToFlagsMode: () => action;
-    changeToUtilsMode: () => action;
     changeToShiftMode: () => action;
-    changeToFillRowMode: () => action;
-    changeToPieceMode: () => action;
-    changeToFillMode: () => action;
     changeToCommentMode: () => action;
-    changeToDrawPieceMode: () => action;
     changeToMovePieceMode: () => action;
-    changeToSelectPieceMode: () => action;
     changeScreen: (data: { screen: Screens }) => action;
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
-    changeSkipReaderMode: (data: { enable: boolean }) => action;
+    changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
+    changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
@@ -148,17 +143,8 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.changeToListViewScreen(),
         ]);
     },
-    changeToDrawingMode: () => (state): NextState => {
-        return actions.changePaintTool({ tool: 'pen' })(state);
-    },
     changeToDrawingToolMode: () => (state): NextState => {
         return actions.changePaintTool({ tool: 'pen' })(state);
-    },
-    changeToFlagsMode: () => (state): NextState => {
-        return actions.openEditorInspector({ inspector: 'flags' })(state);
-    },
-    changeToUtilsMode: () => (state): NextState => {
-        return actions.openEditorInspector({ inspector: 'utils' })(state);
     },
     changeToShiftMode: () => (state): NextState => {
         return sequence(state, [
@@ -174,21 +160,6 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.beginWholeFieldMove(),
         ]);
     },
-    changeToFillRowMode: () => (state): NextState => {
-        return sequence(state, [
-            actions.changePaintTool({ tool: 'fillRow' }),
-            newState => ({ mode: {
-                ...newState.mode,
-                piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
-            } }),
-        ]);
-    },
-    changeToPieceMode: () => (state): NextState => {
-        return actions.changePrimaryTool({ tool: 'piece' })(state);
-    },
-    changeToFillMode: () => (state): NextState => {
-        return actions.changePaintTool({ tool: 'fill' })(state);
-    },
     changeToCommentMode: () => (state): NextState => {
         focusCommentInput();
         return sequence(state, [
@@ -202,16 +173,8 @@ export const modeActions: Readonly<ScreenActions> = {
             } }),
         ]);
     },
-    changeToDrawPieceMode: () => (state): NextState => {
-        return actions.changePieceAction({ pieceAction: 'spawn' })(state);
-    },
     changeToMovePieceMode: () => (state): NextState => {
         return actions.changePieceAction({ pieceAction: 'drag' })(state);
-    },
-    changeToSelectPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.SelectPiece }),
-        ]);
     },
     changeScreen: ({ screen }) => (state): NextState => {
         return {
@@ -255,11 +218,17 @@ export const modeActions: Readonly<ScreenActions> = {
             },
         };
     },
-    changeSkipReaderMode: ({ enable }) => (state): NextState => {
-        if (state.mode.skipReaderMode === enable) {
+    changeInitialScreen: ({ initialScreen }) => (state): NextState => {
+        if (state.mode.initialScreen === initialScreen) {
             return undefined;
         }
-        return { mode: { ...state.mode, skipReaderMode: enable } };
+        return { mode: { ...state.mode, initialScreen } };
+    },
+    changeOpenTreeScreenOnTreeData: ({ enable }) => (state): NextState => {
+        if (state.mode.openTreeScreenOnTreeData === enable) {
+            return undefined;
+        }
+        return { mode: { ...state.mode, openTreeScreenOnTreeData: enable } };
     },
     changeLoop: ({ enable }) => (state): NextState => {
         if (state.mode.loop === enable) {

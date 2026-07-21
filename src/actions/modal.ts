@@ -1,6 +1,6 @@
 import { NextState, sequence } from './commons';
 import { action } from '../actions';
-import { PieceQueueFocus, UserSettingsTab } from '../states';
+import { PieceQueueFocus, State, UserSettingsTab } from '../states';
 import { coldClearActions } from './cold_clear';
 
 export interface ModalActions {
@@ -28,6 +28,16 @@ export interface ModalActions {
     closeAllModals: () => action;
 }
 
+type ModalName = keyof State['modal'];
+
+const setModal = (name: ModalName, open: boolean) =>
+    (state: Readonly<State>): NextState => ({
+        modal: {
+            ...state.modal,
+            [name]: open,
+        },
+    });
+
 export const modalActions: Readonly<ModalActions> = {
     showOpenErrorMessage: ({ message }) => (state): NextState => {
         return sequence(state, [
@@ -39,38 +49,10 @@ export const modalActions: Readonly<ModalActions> = {
             }),
         ]);
     },
-    openFumenModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                fumen: true,
-            },
-        };
-    },
-    openMenuModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                menu: true,
-            },
-        };
-    },
-    openAppendModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                append: true,
-            },
-        };
-    },
-    openClipboardModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                clipboard: true,
-            },
-        };
-    },
+    openFumenModal: () => setModal('fumen', true),
+    openMenuModal: () => setModal('menu', true),
+    openAppendModal: () => setModal('append', true),
+    openClipboardModal: () => setModal('clipboard', true),
     openUserSettingsModal: (data = {}) => (state): NextState => {
         return {
             modal: {
@@ -83,78 +65,15 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    closeFumenModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                fumen: false,
-            },
-        };
-    },
-    closeMenuModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                menu: false,
-            },
-        };
-    },
-    closeAppendModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                append: false,
-            },
-        };
-    },
-    closeClipboardModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                clipboard: false,
-            },
-        };
-    },
-    closeUserSettingsModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                userSettings: false,
-            },
-        };
-    },
-    openListViewReplaceModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewReplace: true,
-            },
-        };
-    },
-    closeListViewReplaceModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewReplace: false,
-            },
-        };
-    },
-    openListViewMenuModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewMenu: true,
-            },
-        };
-    },
-    openTreeDisableConfirmModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                treeDisableConfirm: true,
-            },
-        };
-    },
+    closeFumenModal: () => setModal('fumen', false),
+    closeMenuModal: () => setModal('menu', false),
+    closeAppendModal: () => setModal('append', false),
+    closeClipboardModal: () => setModal('clipboard', false),
+    closeUserSettingsModal: () => setModal('userSettings', false),
+    openListViewReplaceModal: () => setModal('listViewReplace', true),
+    closeListViewReplaceModal: () => setModal('listViewReplace', false),
+    openListViewMenuModal: () => setModal('listViewMenu', true),
+    openTreeDisableConfirmModal: () => setModal('treeDisableConfirm', true),
     openColdClearMenuModal: () => (state): NextState => {
         return sequence(state, [
             // スポーンミノがあればカレント枠に反映してから開く
@@ -183,22 +102,8 @@ export const modalActions: Readonly<ModalActions> = {
             }),
         ]);
     },
-    closeListViewMenuModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                listViewMenu: false,
-            },
-        };
-    },
-    closeTreeDisableConfirmModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                treeDisableConfirm: false,
-            },
-        };
-    },
+    closeListViewMenuModal: () => setModal('listViewMenu', false),
+    closeTreeDisableConfirmModal: () => setModal('treeDisableConfirm', false),
     closeColdClearMenuModal: () => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
@@ -210,14 +115,7 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    closePieceQueueModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                pieceQueue: false,
-            },
-        };
-    },
+    closePieceQueueModal: () => setModal('pieceQueue', false),
     closeAllModals: () => (state): NextState => {
         return {
             modal: {

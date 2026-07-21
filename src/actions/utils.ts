@@ -33,8 +33,8 @@ import { clearUnpinnedParts, saveParts } from '../lib/parts';
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
     commitOpenFumenData: () => action;
-    loadFumen: (data: { fumen: string, purgeOnFailed?: boolean }) => action;
-    loadNewFumen: () => action;
+    loadFumen: (data: { fumen: string, purgeOnFailed?: boolean, initialLoad?: boolean }) => action;
+    loadNewFumen: (data?: { initialLoad?: boolean }) => action;
     commitAppendFumenData: (data: { position: 'next' | 'end' }) => action;
     loadPages: (data: {
         pages: Page[],
@@ -42,6 +42,7 @@ export interface UtilsActions {
         treeEnabledParam?: boolean,
         treeViewModeParam?: TreeViewMode,
         screenParam?: Screens,
+        initialLoad?: boolean,
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     executeNewFumen: () => action;
@@ -148,14 +149,14 @@ export const utilsActions: Readonly<UtilsActions> = {
         }
         return loadFumen(fumen, false);
     },
-    loadFumen: ({ fumen, purgeOnFailed = false }) => (): NextState => {
-        return loadFumen(fumen, purgeOnFailed);
+    loadFumen: ({ fumen, purgeOnFailed = false, initialLoad = false }) => (): NextState => {
+        return loadFumen(fumen, purgeOnFailed, initialLoad);
     },
-    loadNewFumen: () => (state): NextState => {
+    loadNewFumen: ({ initialLoad = false } = {}) => (state): NextState => {
         const items = clearUnpinnedParts(state.parts.items);
         saveParts(items);
         return sequence(state, [
-            utilsActions.loadFumen({ fumen: 'v115@vhAAgH' }),
+            utilsActions.loadFumen({ initialLoad, fumen: 'v115@vhAAgH' }),
             newState => ({
                 parts: {
                     ...newState.parts,
@@ -172,7 +173,9 @@ export const utilsActions: Readonly<UtilsActions> = {
             actions.changeToDrawerScreen({ refresh: true }),
         ]);
     },
-    loadPages: ({ pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam }) => (state): NextState => {
+    loadPages: (
+        { pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam, initialLoad },
+    ) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
         const prevTree: SerializedTree | null = hasTreeData ? {
             nodes: state.tree.nodes,
@@ -194,8 +197,14 @@ export const utilsActions: Readonly<UtilsActions> = {
         const urlTreeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
         const urlTreeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
         const urlScreenParam = parseScreenParam(urlQuery.get('screen'));
-        const finalTreeEnabledParam = treeEnabledParam ?? urlTreeEnabledParam;
-        const finalTreeViewModeParam = treeViewModeParam ?? urlTreeViewModeParam;
+        // 起動時ロードで初期画面設定がTreeなら、明示指定がない限り ?tree=1&treeView=tree 相当として扱う
+        const wantsInitialTree = initialLoad === true
+            && state.mode.initialScreen === 'tree'
+            && !hasImportedTree;
+        const finalTreeEnabledParam = treeEnabledParam ?? urlTreeEnabledParam
+            ?? (wantsInitialTree ? true : undefined);
+        const finalTreeViewModeParam = treeViewModeParam ?? urlTreeViewModeParam
+            ?? (wantsInitialTree ? TreeViewMode.Tree : undefined);
         const finalScreenParam = screenParam ?? urlScreenParam;
 
         // Set up tree state
@@ -253,9 +262,9 @@ export const utilsActions: Readonly<UtilsActions> = {
             };
         }
 
-        // Build screen state update: explicit param > URL param > hasImportedTree default
+        // Build screen state update: explicit param > URL param > #TREE付きデータのTree画面遷移(設定でOFF可)
         const targetScreen = finalScreenParam !== undefined ? finalScreenParam
-            : hasImportedTree ? Screens.ListView
+            : hasImportedTree && state.mode.openTreeScreenOnTreeData ? Screens.ListView
             : undefined;
         const screenUpdate = targetScreen !== undefined
             ? () => ({ mode: { ...state.mode, screen: targetScreen } })
@@ -391,7 +400,7 @@ const appendPages = (
     ]);
 };
 
-const loadFumen = (fumen: string, purgeOnFailed: boolean): NextState => {
+const loadFumen = (fumen: string, purgeOnFailed: boolean, initialLoad: boolean = false): NextState => {
     main.pauseAnimation();
 
     if (fumen === undefined) {
@@ -421,6 +430,7 @@ const loadFumen = (fumen: string, purgeOnFailed: boolean): NextState => {
         try {
             main.loadPages({
                 pages,
+                initialLoad,
                 loadedFumen: normalizedFumen,
                 treeEnabledParam: parsedInput.treeParam,
                 treeViewModeParam: parsedInput.treeViewMode,

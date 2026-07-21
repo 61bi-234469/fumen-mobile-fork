@@ -93,7 +93,7 @@ describe('URL behavior', () => {
         cy.get('[title="Enable tree mode"]').should('be.visible');
     });
 
-    it('exports left segment URL and can reopen it as list screen with tree=0', () => {
+    it('exports left segment URL with only d and reopens per the receiver settings', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
 
         cy.window().then((win) => {
@@ -115,14 +115,28 @@ describe('URL behavior', () => {
         cy.get('@windowOpen').should('have.been.called');
         cy.get('@windowOpen').then((windowOpen) => {
             const exportedUrl = windowOpen.getCall(0).args[0];
-            expect(exportedUrl).to.include('screen=list');
-            expect(exportedUrl).to.include('tree=0');
-            cy.visit(exportedUrl);
-        });
+            const params = new URLSearchParams(exportedUrl.split('#?')[1]);
+            expect(params.get('d')).to.not.be.null;
+            expect(params.get('screen')).to.be.null;
+            expect(params.get('tree')).to.be.null;
+            expect(params.get('treeView')).to.be.null;
 
-        cy.wait(800);
-        cy.location('href').should('include', 'screen=list');
-        cy.location('href').should('include', 'tree=0');
-        cy.get(datatest('list-view-tools')).should('be.visible');
+            // cy.visit はハッシュのみが異なるURLでは完全な再読み込みを行わないため、
+            // 「別タブで新規に開く」を再現するには明示的な cy.reload() が必要
+            // (see docs/notes/e2e-ci-failure-investigation.md 一部 skip テストの hash collapse と同種の注意点)。
+
+            // 画面指定なしのURLは受け取り側の初期画面設定(デフォルト: Reader)で開く
+            cy.visit(exportedUrl);
+            cy.reload();
+            cy.wait(800);
+            cy.get(datatest('btn-writable-in-reader')).should('be.visible');
+            cy.get(datatest('list-view-tools')).should('not.exist');
+
+            // 旧URL互換: screen=list を付ければ従来どおりList画面で開ける
+            cy.visit(`${exportedUrl}&screen=list`);
+            cy.reload();
+            cy.wait(800);
+            cy.get(datatest('list-view-tools')).should('be.visible');
+        });
     });
 });

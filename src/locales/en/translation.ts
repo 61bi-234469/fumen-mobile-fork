@@ -47,8 +47,15 @@
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when paint drag passes over it',
         },
-        SkipReaderMode: {
-            Title: 'Skip Reader mode on startup',
+        InitialScreen: {
+            Title: 'Initial screen',
+            Reader: 'Reader',
+            Editor: 'Editor',
+            List: 'List',
+            Tree: 'Tree',
+        },
+        OpenTreeScreenOnTreeData: {
+            Title: 'Open fumen with tree data (#TREE) in Tree screen',
         },
         Loop: {
             Title: 'Loop on page navigation',

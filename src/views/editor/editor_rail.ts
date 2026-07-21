@@ -441,6 +441,34 @@ const getPaletteShortcut = (state: State, selection: PaletteSelection): string |
     return code ? displayShortcut(code) : undefined;
 };
 
+const paletteCellLabel = (state: State, selection: PaletteSelection): string => {
+    if (state.editorUi.primaryTool === 'piece') {
+        if (selection === Piece.Empty) return i18n.EditorUi.Delete();
+        if (selection === Piece.Gray) return i18n.EditorUi.ResetPiece();
+        if (selection === 'comp') return i18n.EditorUi.InfiniteBag();
+    }
+    if (selection === 'comp') return 'COMP';
+    return parsePieceName(selection) ?? '';
+};
+
+const isPaletteCellSelected = (
+    state: State, selection: PaletteSelection, part: State['parts']['items'][number] | undefined,
+): boolean => {
+    const tool = state.editorUi.primaryTool;
+    if (selection === 'comp') {
+        return tool === 'piece' && state.editorUi.infinitePieceQueue
+            || tool === 'select' && state.parts.blackTransparent
+            || tool === 'paint' && state.editorUi.paletteSelection === selection;
+    }
+    if (tool === 'select' && part !== undefined) {
+        return state.parts.selectedId === part.id;
+    }
+    if (tool === 'piece' && (selection === Piece.Empty || selection === Piece.Gray)) {
+        return false;
+    }
+    return state.editorUi.paletteSelection === selection;
+};
+
 export const getRailCellHeight = (layout: EditorLayout, pieceModeVisible = layout.pieceQueue.visible): number => (
     pieceModeVisible
         ? layout.pieceQueue.railCellHeight
@@ -618,12 +646,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const paletteCells: VNode<{}>[] = visibleSelections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
         const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
-        const label = state.editorUi.primaryTool === 'piece' && selection === Piece.Empty
-            ? i18n.EditorUi.Delete()
-            : state.editorUi.primaryTool === 'piece' && selection === Piece.Gray
-                ? i18n.EditorUi.ResetPiece()
-                : selection === 'comp' && state.editorUi.primaryTool === 'piece'
-                    ? i18n.EditorUi.InfiniteBag() : selection === 'comp' ? 'COMP' : parsePieceName(selection) ?? '';
+        const label = paletteCellLabel(state, selection);
         const onlongpress = state.editorUi.primaryTool === 'select'
             ? part === undefined ? undefined : () => actions.togglePartPin({ slot: part.slot })
             : () => actions.executeEditorPaletteShortcut({ selection });
@@ -633,16 +656,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             height: cellHeight,
             key: `btn-piece-${name}`,
             datatest: `btn-piece-${name}`,
-            selected: selection === 'comp'
-                ? state.editorUi.primaryTool === 'piece' && state.editorUi.infinitePieceQueue
-                    || state.editorUi.primaryTool === 'select' && state.parts.blackTransparent
-                    || state.editorUi.primaryTool === 'paint' && state.editorUi.paletteSelection === selection
-                : state.editorUi.primaryTool === 'select' && part !== undefined
-                    ? state.parts.selectedId === part.id
-                    : state.editorUi.primaryTool === 'piece'
-                        && (selection === Piece.Empty || selection === Piece.Gray)
-                        ? false
-                    : state.editorUi.paletteSelection === selection,
+            selected: isPaletteCellSelected(state, selection, part),
             selectionKind: 'palette',
             onpress: () => {
                 if (state.editorUi.primaryTool === 'piece' && selection === 'comp') {

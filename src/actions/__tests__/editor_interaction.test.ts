@@ -1,4 +1,5 @@
 import { ModeTypes, Piece, Rotation, TouchTypes } from '../../lib/enums';
+import { initialRectSelectState } from '../../lib/rect_selection';
 import { State } from '../../states';
 
 jest.mock('../../actions', () => ({
@@ -42,9 +43,7 @@ const createState = (): State => ({
         currentIndex: 0,
         pages: [{ index: 0 }],
     },
-    rectSelect: {
-        status: 'none', rect: null, anchorIndex: null, floating: null,
-    },
+    rectSelect: initialRectSelectState,
     parts: { items: [], selectedId: null, blackTransparent: true },
 } as unknown as State);
 

@@ -10,7 +10,7 @@ import {
 import { ModeTypes, Piece, TouchTypes } from '../lib/enums';
 import { NextState, sequence } from './commons';
 import { isMinoPaletteSelection, legacyModeForPaintTool } from '../lib/editor_interaction';
-import { floatingPartAtTop } from '../lib/rect_selection';
+import { floatingPartAtTop, initialRectSelectState } from '../lib/rect_selection';
 
 export interface EditorInteractionActions {
     changePrimaryTool(data: { tool: PrimaryTool }): action;
@@ -90,7 +90,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     inspector: 'none',
                 },
                 parts: { ...state.parts, selectedId: null },
-                rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+                rectSelect: initialRectSelectState,
             };
         }
         if (tool === 'piece') {
@@ -112,7 +112,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     touch: pieceAction === 'drag' ? TouchTypes.MovePiece : TouchTypes.Piece,
                 },
                 parts: { ...state.parts, selectedId: null },
-                rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+                rectSelect: initialRectSelectState,
             };
         }
         return {
@@ -152,7 +152,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 bottomSlot: 'tray',
             },
             parts: { ...state.parts, selectedId: null },
-            rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+            rectSelect: initialRectSelectState,
         };
     }),
     changePieceAction: ({ pieceAction }) => cancelSelectionPreviewAndSet((state) => {
@@ -172,7 +172,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 touch: pieceAction === 'drag' ? TouchTypes.MovePiece : TouchTypes.Piece,
             },
             parts: { ...state.parts, selectedId: null },
-            rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+            rectSelect: initialRectSelectState,
         };
     }),
     openEditorInspector: ({ inspector }) => (state): NextState => ({
@@ -230,7 +230,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                         floating: floatingPartAtTop(part.cells, part.width, part.height),
                         reselectOnNextTouch: false,
                     }
-                    : { status: 'none', rect: null, anchorIndex: null, floating: null },
+                    : initialRectSelectState,
             };
         }
         if (state.editorUi.primaryTool === 'piece') {
@@ -304,7 +304,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 bottomSlot: state.editorUi.bottomSlot,
             },
             ...(state.mode.type === ModeTypes.Slide ? {
-                rectSelect: { status: 'none', rect: null, anchorIndex: null, floating: null },
+                rectSelect: initialRectSelectState,
             } : {}),
         };
     }),

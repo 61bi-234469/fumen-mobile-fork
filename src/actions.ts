@@ -40,7 +40,7 @@ import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
-import { millisecondsToFrames } from './lib/piece_das';
+import { isValidSdf, millisecondsToFrames } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -204,6 +204,8 @@ window.addEventListener('load', () => {
     };
 
     setupI18n(urlQuery);
+    // loadFumen の decode は非同期のため、同期の loadUserSettings が必ず先に完了する。
+    // loadPages(initialLoad) は state.mode の initialScreen 等を参照するので、この順序を崩さないこと。
     loadFumen(urlQuery);
     loadUserSettings();
 });
@@ -245,7 +247,7 @@ const loadFumen = (urlQuery: Query) => {
     {
         const fumen = urlQuery.get('d');
         if (fumen !== undefined) {
-            return main.loadFumen({ fumen });
+            return main.loadFumen({ fumen, initialLoad: true });
         }
     }
 
@@ -254,12 +256,12 @@ const loadFumen = (urlQuery: Query) => {
         const fumen = localStorageWrapper.loadFumen();
         if (fumen) {
             M.toast({ html: i18n.Top.RestoreFromStorage(), classes: 'top-toast', displayLength: 1500 });
-            return main.loadFumen({ fumen });
+            return main.loadFumen({ fumen, initialLoad: true });
         }
     }
 
     // 空のフィールドを読み込む
-    return main.loadNewFumen();
+    return main.loadNewFumen({ initialLoad: true });
 };
 
 const loadUserSettings = () => {
@@ -276,8 +278,13 @@ const loadUserSettings = () => {
         updated = true;
     }
 
-    if (settings.skipReaderMode !== undefined) {
-        main.changeSkipReaderMode({ enable: settings.skipReaderMode });
+    if (settings.initialScreen !== undefined) {
+        main.changeInitialScreen({ initialScreen: settings.initialScreen });
+        updated = true;
+    }
+
+    if (settings.openTreeScreenOnTreeData !== undefined) {
+        main.changeOpenTreeScreenOnTreeData({ enable: settings.openTreeScreenOnTreeData });
         updated = true;
     }
 
@@ -371,8 +378,7 @@ const loadUserSettings = () => {
         updated = true;
     }
     const sdf = settings.pieceShortcutSdf;
-    if (typeof sdf === 'number' &&
-        (sdf === Infinity || (sdf >= 5 && sdf <= 40))) {
+    if (isValidSdf(sdf)) {
         main.changePieceShortcutSdf({ sdf });
         updated = true;
     }

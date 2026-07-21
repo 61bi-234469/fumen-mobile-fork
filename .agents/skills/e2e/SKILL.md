@@ -28,6 +28,8 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   component/view. Do not run the full suite "just in case." Run the full suite only when
   the release skill calls for it, or when the change plausibly has cross-spec impact
   (shared component/action, `cypress/support/operations.js` edit, selector rename).
+  Use [`cypress/SPEC_MAP.md`](../../../cypress/SPEC_MAP.md) to look up which spec(s) cover a
+  given src area instead of relying on grep/memory each time.
 - Failure screenshots: `cypress/screenshots/<spec>/`.
 - `history_spec.js` alone takes 5+ minutes; full suite ~15 min. If a local run exceeds
   the environment's command timeout or Cypress Electron dies with a GPU error
@@ -59,8 +61,19 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   removing them doesn't move full-run time (±2min run-to-run variance swamps it).
 - **Never rewrite fumen expected values to make a test pass.** Classify first:
   intentional app change (`git log -L`/`-S` the behavior), test bug, or real regression.
-  Decode fumen strings with a throwaway Jest (`decode()`, `getBlockPositions()`);
-  base64 substring comparison lies.
+  Decode and compare fumen strings with `src/lib/__tests__/fumen_semantic_diff.test.ts`
+  (skipped unless `FUMEN_A` is set, so it never affects a normal `yarn test`):
+  ```
+  # PowerShell
+  $env:FUMEN_A='v115@...'; $env:FUMEN_B='v115@...'; yarn test-ci fumen_semantic_diff
+  # bash
+  FUMEN_A='v115@...' FUMEN_B='v115@...' yarn test-ci fumen_semantic_diff
+  ```
+  `FUMEN_A` alone dumps every page (comment/flags/piece/board); with `FUMEN_B` it prints only
+  the differing items per page (`page N: piece rotation expected=Reverse actual=Spawn`), with
+  `(physically equivalent)` noted when the two pieces occupy the same 4 cells (e.g. I/S/Z
+  Left/Right). Base64 substring comparison lies. A throwaway Jest (`decode()`,
+  `getBlockPositions()`) remains a fallback for cases this tool doesn't cover.
 - **`it.skip` is only for tests of unimplemented features** (e.g. the skipped live-URL-sync
   tests in `url_behavior_spec.js` — reactivate only when URL sync is implemented).
   Never skip a flaky test of a real feature; fix the app or the test.

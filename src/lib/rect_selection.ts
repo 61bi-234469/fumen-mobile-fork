@@ -1,6 +1,13 @@
 import { FieldConstants, Piece } from './enums';
 import { Block } from '../state_types';
-import { FloatingSelection, SelectionRect, State } from '../states';
+import { FloatingSelection, RectSelectState, SelectionRect, State } from '../states';
+
+// 「選択なし」を表す共通の初期値。states.ts の initState と、選択解除する各アクションで共有する。
+// states.ts 自体は import 時に環境依存の副作用（env.ts 等）を伴うため、値としての単一の
+// 定義元はここ（副作用のない lib モジュール）に置く。
+export const initialRectSelectState: RectSelectState = {
+    status: 'none', rect: null, anchorIndex: null, floating: null,
+};
 
 export const rectFromIndices = (first: number, second: number): SelectionRect => {
     const firstX = first % FieldConstants.Width;

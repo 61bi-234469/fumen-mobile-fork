@@ -24,18 +24,10 @@ export interface ScreenActions {
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
     changeToListViewScreen: () => action;
     changeToTreeViewScreen: () => action;
-    changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
-    changeToFlagsMode: () => action;
-    changeToUtilsMode: () => action;
     changeToShiftMode: () => action;
-    changeToFillRowMode: () => action;
-    changeToPieceMode: () => action;
-    changeToFillMode: () => action;
     changeToCommentMode: () => action;
-    changeToDrawPieceMode: () => action;
     changeToMovePieceMode: () => action;
-    changeToSelectPieceMode: () => action;
     changeScreen: (data: { screen: Screens }) => action;
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
@@ -148,17 +140,8 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.changeToListViewScreen(),
         ]);
     },
-    changeToDrawingMode: () => (state): NextState => {
-        return actions.changePaintTool({ tool: 'pen' })(state);
-    },
     changeToDrawingToolMode: () => (state): NextState => {
         return actions.changePaintTool({ tool: 'pen' })(state);
-    },
-    changeToFlagsMode: () => (state): NextState => {
-        return actions.openEditorInspector({ inspector: 'flags' })(state);
-    },
-    changeToUtilsMode: () => (state): NextState => {
-        return actions.openEditorInspector({ inspector: 'utils' })(state);
     },
     changeToShiftMode: () => (state): NextState => {
         return sequence(state, [
@@ -174,21 +157,6 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.beginWholeFieldMove(),
         ]);
     },
-    changeToFillRowMode: () => (state): NextState => {
-        return sequence(state, [
-            actions.changePaintTool({ tool: 'fillRow' }),
-            newState => ({ mode: {
-                ...newState.mode,
-                piece: newState.mode.piece !== undefined ? newState.mode.piece : Piece.Gray,
-            } }),
-        ]);
-    },
-    changeToPieceMode: () => (state): NextState => {
-        return actions.changePrimaryTool({ tool: 'piece' })(state);
-    },
-    changeToFillMode: () => (state): NextState => {
-        return actions.changePaintTool({ tool: 'fill' })(state);
-    },
     changeToCommentMode: () => (state): NextState => {
         focusCommentInput();
         return sequence(state, [
@@ -202,16 +170,8 @@ export const modeActions: Readonly<ScreenActions> = {
             } }),
         ]);
     },
-    changeToDrawPieceMode: () => (state): NextState => {
-        return actions.changePieceAction({ pieceAction: 'spawn' })(state);
-    },
     changeToMovePieceMode: () => (state): NextState => {
         return actions.changePieceAction({ pieceAction: 'drag' })(state);
-    },
-    changeToSelectPieceMode: () => (state): NextState => {
-        return sequence(state, [
-            changeModeType({ type: ModeTypes.SelectPiece }),
-        ]);
     },
     changeScreen: ({ screen }) => (state): NextState => {
         return {

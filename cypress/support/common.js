@@ -223,7 +223,10 @@ export const disableModalAnimations = (win) => {
 };
 
 export const visit = (
-    { fumen, sleepInMill = 200, lng = 'en', mode = 'readonly', mobile = true, reload = false, stubClipboard = true },
+    {
+        fumen, sleepInMill = 200, lng = 'en', mode = 'readonly', mobile = true, reload = false,
+        stubClipboard = true, flagsHidden = undefined,
+    },
 ) => {
     let baseUrl = 'fumen-mobile-fork/#';
 
@@ -245,28 +248,56 @@ export const visit = (
         params.mobile = 1;
     }
 
+    const applyFlagsHidden = (win) => {
+        if (flagsHidden === undefined) {
+            return;
+        }
+        let settings = {};
+        try {
+            settings = JSON.parse(win.localStorage.getItem('user-settings@1') || '{}');
+        } catch (error) {
+            settings = {};
+        }
+        win.localStorage.setItem('user-settings@1', JSON.stringify({ ...settings, flagsHidden }));
+    };
+
+    const beforeLoad = (win) => {
+        if (stubClipboard) {
+            stubClipboardCopy(win);
+        }
+        applyFlagsHidden(win);
+    };
+
     // Keep direct cy.reload() calls covered as well; onBeforeLoad below handles the initial
-    // visit explicitly, and the idempotent stub makes the two hooks safe together.
+    // visit explicitly, and the idempotent setup makes the two hooks safe together.
     if (stubClipboard) {
         cy.on('window:before:load', stubClipboardCopy);
     }
 
     if (params) {
         const query = Object.entries(params).map(value => value[0] + '=' + value[1]).join('&');
-        if (stubClipboard) {
-            cy.visit(baseUrl + '?' + query, { onBeforeLoad: stubClipboardCopy });
+        if (stubClipboard || flagsHidden !== undefined) {
+            cy.visit(baseUrl + '?' + query, { onBeforeLoad: beforeLoad });
         } else {
             cy.visit(baseUrl + '?' + query);
         }
     } else {
-        if (stubClipboard) {
-            cy.visit(baseUrl, { onBeforeLoad: stubClipboardCopy });
+        if (stubClipboard || flagsHidden !== undefined) {
+            cy.visit(baseUrl, { onBeforeLoad: beforeLoad });
         } else {
             cy.visit(baseUrl);
         }
     }
 
     if (reload) {
+        cy.reload();
+    }
+
+    // The app restores user settings during its bootstrap. Re-apply the explicit test
+    // fixture after the first render and reload once so the setting is also covered on
+    // browsers that do not deliver the initial beforeLoad callback consistently.
+    if (flagsHidden !== undefined && !reload) {
+        cy.window().then(applyFlagsHidden);
         cy.reload();
     }
 

@@ -278,6 +278,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.flagsHidden !== undefined) {
+        main.changeFlagsHidden({ hidden: settings.flagsHidden });
+        updated = true;
+    }
+
     if (settings.initialScreen !== undefined) {
         main.changeInitialScreen({ initialScreen: settings.initialScreen });
         updated = true;

@@ -59,6 +59,7 @@ describe('Drawing Tools', () => {
         visit({
             fumen: 'v115@bhJ8JeAgH',
             mode: 'edit',
+            flagsHidden: false,
         });
 
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Highlight1);
@@ -347,6 +348,7 @@ describe('Drawing Tools', () => {
         visit({
             fumen: 'v115@lhwhglQpAtwwg0Q4CeAgH',
             mode: 'edit',
+            flagsHidden: false,
         });
 
         operations.mode.block.open();
@@ -422,7 +424,7 @@ describe('Drawing Tools', () => {
     });
 
     it('Flags 2', () => {
-        visit({});
+        visit({ flagsHidden: false });
 
         operations.menu.newPage();
 
@@ -456,6 +458,7 @@ describe('Drawing Tools', () => {
     it('Slide', () => {
         visit({
             fumen: 'v115@heB8GeD8FeD8GeB8hfB8GeD8FeD8GeB8rexyHjeTaH?hxwIfgTaLfJHJDhQaIeQaIeQaIeQaMepmH',
+            flagsHidden: false,
         });
 
         // MenuからWritableモードにして開く

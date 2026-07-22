@@ -554,17 +554,20 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const auxiliaryGroup = toolGroup('rail-auxiliary', [
         row('rail-inspector-row', [
             toolCell({
-                key: 'btn-utils-mode', datatest: 'btn-utils-mode', label: i18n.EditorUi.Utilities(), height: cellHeight,
+                key: 'btn-utils-mode', datatest: 'btn-utils-mode',
+                label: state.mode.flagsHidden ? 'UTILS' : i18n.EditorUi.Utilities(), height: cellHeight,
                 selected: state.editorUi.inspector === 'utils',
                 onpress: () => actions.openEditorInspector({ inspector: 'utils' }),
-                children: compact ? icon('widgets', iconSize) : [icon('widgets', iconSize), span({ key: 'u' }, 'U')],
+                children: state.mode.flagsHidden
+                    ? [icon('widgets', iconSize), span({ key: 'utils-label' }, 'UTILS')]
+                    : compact ? icon('widgets', iconSize) : [icon('widgets', iconSize), span({ key: 'u' }, 'U')],
             }),
-            toolCell({
+            ...(state.mode.flagsHidden ? [] : [toolCell({
                 key: 'btn-flags-mode', datatest: 'btn-flags-mode', label: i18n.EditorUi.Flags(), height: cellHeight,
                 selected: state.editorUi.inspector === 'flags',
                 onpress: () => actions.openEditorInspector({ inspector: 'flags' }),
                 children: compact ? icon('flag', iconSize) : [icon('flag', iconSize), span({ key: 'f' }, 'F')],
-            }),
+            })]),
         ]),
     ]);
 

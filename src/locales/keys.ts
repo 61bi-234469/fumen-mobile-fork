@@ -52,6 +52,9 @@ export const i18n = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
         },
+        ShowFlags: {
+            Title: () => t('UserSettings.ShowFlags.Title'),
+        },
         InitialScreen: {
             Title: () => t('UserSettings.InitialScreen.Title'),
             Reader: () => t('UserSettings.InitialScreen.Reader'),

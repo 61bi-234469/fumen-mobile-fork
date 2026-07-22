@@ -315,5 +315,37 @@ describe('User settings', () => {
         cy.get(datatest('switch-gray-after-line-clear-field')).should('be.checked');
         cy.get(datatest('btn-cancel')).click();
     });
+
+    it('shows FLAGS setting defaults off and persists the field setting', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-flags-mode')).should('not.exist');
+        cy.get(datatest('btn-utils-mode'))
+            .should('contain.text', 'UTILS')
+            .and('have.attr', 'aria-label', 'UTILS');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-flags-hidden')).should('not.be.checked').check({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        cy.get(datatest('btn-flags-mode')).should('be.visible');
+        cy.get(datatest('btn-utils-mode')).should('contain.text', 'U');
+
+        // Cancel does not roll back a previously saved value or change the rail.
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-flags-hidden')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-flags-mode')).should('be.visible');
+
+        // Reload restores the saved visible state.
+        visit({ mode: 'edit', reload: true });
+        cy.get(datatest('btn-flags-mode')).should('be.visible');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-flags-hidden')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-save')).click();
+        cy.get(datatest('btn-flags-mode')).should('not.exist');
+    });
 });
 

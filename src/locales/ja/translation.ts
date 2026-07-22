@@ -43,6 +43,9 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '黒ペイントドラッグでスポーンミノを通過削除',
         },
+        ShowFlags: {
+            Title: 'FLAGSを表示',
+        },
         InitialScreen: {
             Title: '初期画面',
             Reader: 'Reader画面',

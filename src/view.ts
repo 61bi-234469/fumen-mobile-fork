@@ -94,6 +94,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             ghostVisible: state.temporary.userSettings.ghostVisible,
             deleteSpawnMinoOnPaintDrag: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            flagsHidden: state.temporary.userSettings.flagsHidden,
             initialScreen: state.temporary.userSettings.initialScreen,
             openTreeScreenOnTreeData: state.temporary.userSettings.openTreeScreenOnTreeData,
             loop: state.temporary.userSettings.loop,

@@ -162,7 +162,7 @@ describe('Editor UI final concept', () => {
 
     it('keeps the production field size and text labels on a phone display', () => {
         cy.viewport(412, 844);
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
 
         cy.get(datatest('editor-field-frame')).then(field => {
             expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
@@ -292,7 +292,7 @@ describe('Editor UI final concept', () => {
     });
 
     it('preserves the active tool while opening and closing inspectors', () => {
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
 
         cy.get(datatest('btn-utils-mode')).click();
@@ -310,7 +310,7 @@ describe('Editor UI final concept', () => {
     });
 
     it('drags inspectors by their heading and shows flag checkboxes', () => {
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
 
         cy.get(datatest('btn-utils-mode')).click();
         let beforeLeft;

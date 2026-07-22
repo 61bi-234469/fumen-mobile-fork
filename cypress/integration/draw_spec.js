@@ -303,6 +303,7 @@ describe('Drawing', () => {
         visit({
             fumen: 'v115@vhAAgH',
             mode: 'edit',
+            flagsHidden: false,
         });
 
         operations.mode.block.open();

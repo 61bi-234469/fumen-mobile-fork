@@ -226,6 +226,7 @@ export interface State {
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             editorSidePanel: boolean;
+            flagsHidden: boolean;
         };
         userSettingsTab: UserSettingsTab;
         pieceQueueFocus: PieceQueueFocus;
@@ -252,6 +253,7 @@ export interface State {
         comment: CommentType;
         ghostVisible: boolean;
         deleteSpawnMinoOnPaintDrag: boolean;
+        flagsHidden: boolean;
         initialScreen: InitialScreenSetting;
         openTreeScreenOnTreeData: boolean;
         loop: boolean;
@@ -407,6 +409,7 @@ export const initState: Readonly<State> = {
             grayAfterLineClear: false,
             trimTopBlank: false,
             editorSidePanel: false,
+            flagsHidden: true,
         },
         userSettingsTab: 'field',
         pieceQueueFocus: 'next',
@@ -432,6 +435,7 @@ export const initState: Readonly<State> = {
         comment: CommentType.Writable,
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
+        flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
         loop: false,

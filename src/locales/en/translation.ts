@@ -47,6 +47,9 @@
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when paint drag passes over it',
         },
+        ShowFlags: {
+            Title: 'Show FLAGS',
+        },
         InitialScreen: {
             Title: 'Initial screen',
             Reader: 'Reader',

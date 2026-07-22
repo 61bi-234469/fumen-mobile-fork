@@ -19,14 +19,14 @@ describe('History', () => {
             {
                 fumen,
                 callback: () => {
-                    visit({ fumen, reload: true });
+                    visit({ fumen, reload: true, flagsHidden: false });
                     operations.screen.writable();
                 },
                 count: 0,
             },
         ].concat(history);
 
-        visit({});
+        visit({ flagsHidden: false });
         operations.screen.writable();
 
         // 通常の操作

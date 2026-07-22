@@ -162,6 +162,7 @@ export const memento = (() => {
 interface UserSettings {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
+    flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
     loop: boolean;
@@ -245,6 +246,7 @@ export const localStorageWrapper = {
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
             deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
+            flagsHidden: safer.boolean(obj.flagsHidden),
             initialScreen: initialScreenSettingFrom(obj),
             openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),
             loop: safer.boolean(obj.loop),

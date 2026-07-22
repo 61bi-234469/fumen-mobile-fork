@@ -113,6 +113,17 @@ export const endSoftDropHold = (id: string) => {
     }
 };
 
+/** Stop every continuous piece input registered under the same input ID. */
+export const endPieceHold = (id: string) => {
+    endDasHold(id);
+    endSoftDropHold(id);
+};
+
+/** Return whether a DAS or soft-drop hold is active for the input ID. */
+export const isPieceHoldActive = (id: string): boolean => {
+    return holds.has(id) || softDropHolds.has(id);
+};
+
 /**
  * Pause already-active DAS/ARR holds for the configured DCD delay.
  *

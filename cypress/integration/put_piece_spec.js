@@ -1,6 +1,13 @@
 import { block, Color, datatest, expectFumen, mino, minoPosition, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
+const configurePieceSdf = value => {
+    operations.menu.openUserSettings();
+    operations.menu.selectUserSettingsTab('piece');
+    cy.get(datatest('input-piece-sdf')).select(String(value));
+    cy.get(datatest('btn-save')).click();
+};
+
 // テト譜を開く
 describe('Put pieces', () => {
     it('combines keyboard movement and rotation while both keys are held', () => {
@@ -35,6 +42,51 @@ describe('Put pieces', () => {
 
         cy.get(datatest('img-rotation-right')).should('be.visible');
         mino(Piece.T, Rotation.Right)(3, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('uses the configured SDF for a held touch soft drop', () => {
+        visit({ mode: 'edit' });
+        configurePieceSdf(5);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        // SDF=5 is a four-frame interval: one immediate step plus one repeat.
+        cy.tick(70);
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.tick(200);
+        cy.clock().invoke('restore');
+
+        mino(Piece.T, Rotation.Spawn)(3, 18).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('combines touch soft drop and rotation with independent pointers', () => {
+        visit({ mode: 'edit' });
+        configurePieceSdf(5);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.tick(1);
+        cy.clock().invoke('restore');
+
+        cy.get(datatest('img-rotation-right')).should('be.visible');
+        mino(Piece.T, Rotation.Right)(3, 19).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
     });
@@ -113,6 +165,36 @@ describe('Put pieces', () => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
         cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
+    });
+
+    it('keeps a touch soft drop held through a queued hard drop', () => {
+        visit({ mode: 'edit' });
+        configurePieceSdf(5);
+
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('T:J');
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-harddrop'))
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0, force: true })
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0, force: true });
+        // Page transition can cancel the captured pointer without lifting the finger.
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointercancel', { pointerId: 1, pointerType: 'touch' });
+        // The queued J spawns at y=20, then the held SDF applies one step.
+        cy.tick(70);
+        cy.clock().invoke('restore');
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        mino(Piece.J, Rotation.Spawn)(4, 19).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
+        });
+        cy.get(datatest('tray-piece-softdrop'))
             .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
     });
 

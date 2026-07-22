@@ -21,6 +21,8 @@ describe('clipboard insert shortcut', () => {
     let duplicatePageOnly: jest.Mock;
     let harddrop: jest.Mock;
     let hold: jest.Mock;
+    let softdrop: jest.Mock;
+    let softdropStep: jest.Mock;
     let moveToLeft: jest.Mock;
     let moveToRight: jest.Mock;
     let rotateToRight: jest.Mock;
@@ -41,6 +43,8 @@ describe('clipboard insert shortcut', () => {
         duplicatePageOnly = jest.fn();
         harddrop = jest.fn();
         hold = jest.fn();
+        softdrop = jest.fn();
+        softdropStep = jest.fn();
         moveToLeft = jest.fn();
         moveToRight = jest.fn();
         rotateToRight = jest.fn();
@@ -80,6 +84,7 @@ describe('clipboard insert shortcut', () => {
                 pieceShortcutDasFrames: 10,
                 pieceShortcutArrFrames: 1,
                 pieceShortcutDasCutFrames: 0,
+                pieceShortcutSdf: 5,
                 paletteShortcuts: {
                     Comp: 'KeyC',
                 },
@@ -104,6 +109,8 @@ describe('clipboard insert shortcut', () => {
             duplicatePageOnly,
             harddrop,
             hold,
+            softdrop,
+            softdropStep,
             moveToLeft,
             importPagesFromClipboard,
             insertPageFromClipboard,
@@ -235,6 +242,27 @@ describe('clipboard insert shortcut', () => {
 
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', bubbles: true }));
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowLeft', bubbles: true }));
+    });
+
+    test('piece soft drop follows SDF while the key is held', () => {
+        state.editorUi.primaryTool = 'piece';
+        state.mode.pieceShortcutSdf = 5;
+        state.mode.pieceShortcuts = {
+            SoftDrop: 'ArrowDown',
+        } as State['mode']['pieceShortcuts'];
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowDown', bubbles: true }));
+
+        expect(softdropStep).toHaveBeenCalledTimes(1);
+        expect(softdrop).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(100);
+        expect(softdropStep.mock.calls.length).toBeGreaterThan(1);
+
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowDown', bubbles: true }));
+        const callsAfterRelease = softdropStep.mock.calls.length;
+        jest.advanceTimersByTime(1000);
+        expect(softdropStep).toHaveBeenCalledTimes(callsAfterRelease);
     });
 
     test('piece shortcut is inactive outside PIECE mode', () => {

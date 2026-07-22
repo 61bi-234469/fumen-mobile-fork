@@ -2,10 +2,12 @@ import {
     activateDasCut,
     endAllDasHolds,
     endDasHold,
+    endPieceHold,
     endSoftDropHold,
     FRAME_DURATION_MS,
     framesToMilliseconds,
     isDasHoldActive,
+    isPieceHoldActive,
     millisecondsToFrames,
     cutDasHolds,
     startDasHold,
@@ -129,6 +131,27 @@ describe('piece_das', () => {
         jest.advanceTimersByTime(FRAME_DURATION_MS * 5);
         expect(moveRight).toHaveBeenCalledTimes(3);
         expect(moveLeft).toHaveBeenCalledTimes(2);
+    });
+
+    test('同じ入力IDのDASとソフトドロップをまとめて停止できる', () => {
+        const move = jest.fn();
+        const softdrop = jest.fn();
+
+        startDasHold('same-input', {
+            move,
+            moveToEnd: jest.fn(),
+            dasFrames: DAS_FRAMES,
+            arrFrames: ARR_FRAMES,
+        });
+        startSoftDropHold('same-input', softdrop, 5);
+
+        expect(isPieceHoldActive('same-input')).toBe(true);
+        endPieceHold('same-input');
+        expect(isPieceHoldActive('same-input')).toBe(false);
+
+        jest.advanceTimersByTime(1000);
+        expect(move).toHaveBeenCalledTimes(1);
+        expect(softdrop).toHaveBeenCalledTimes(1);
     });
 
     test('同じIDで再スタートすると前のホールドは破棄される', () => {

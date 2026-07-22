@@ -290,9 +290,15 @@ export const i18n = {
     },
     ListViewMenu: {
         Title: () => t('ListViewMenu.Title'),
+        Tabs: {
+            Export: () => t('ListViewMenu.Tabs.Export'),
+            Import: () => t('ListViewMenu.Tabs.Import'),
+        },
         Sections: {
             Read: () => t('ListViewMenu.Sections.Read'),
             Image: () => t('ListViewMenu.Sections.Image'),
+            Copy: () => t('ListViewMenu.Sections.Copy'),
+            Url: () => t('ListViewMenu.Sections.Url'),
             Export: () => t('ListViewMenu.Sections.Export'),
             External: () => t('ListViewMenu.Sections.External'),
             Tetgram: () => t('ListViewMenu.Sections.Tetgram'),
@@ -302,7 +308,9 @@ export const i18n = {
             Label: () => t('ListViewMenu.Scope.Label'),
             Description: () => t('ListViewMenu.Scope.Description'),
             All: () => t('ListViewMenu.Scope.All'),
+            AllWithCount: (count: number) => t('ListViewMenu.Scope.AllWithCount', { count }),
             LeftToActive: () => t('ListViewMenu.Scope.LeftToActive'),
+            LeftToActiveWithCount: (count: number) => t('ListViewMenu.Scope.LeftToActiveWithCount', { count }),
         },
         ShortUrl: {
             Title: () => t('ListViewMenu.ShortUrl.Title'),

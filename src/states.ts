@@ -285,6 +285,7 @@ export interface State {
         trimTopBlank: boolean;
         shortenUrls: boolean;
         exportScope: 'all' | 'left';
+        menuTab: 'export' | 'import';
         settingsOpened: boolean;
     };
     editorPanel: {
@@ -465,6 +466,7 @@ export const initState: Readonly<State> = {
         trimTopBlank: false,
         shortenUrls: false,
         exportScope: 'all',
+        menuTab: 'export',
         settingsOpened: false,
     },
     editorPanel: {

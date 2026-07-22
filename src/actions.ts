@@ -410,6 +410,9 @@ const loadUserSettings = () => {
     if (viewSettings.shortenUrls !== undefined) {
         main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
     }
+    if (viewSettings.listViewMenuTab !== undefined) {
+        main.setListViewMenuTab({ tab: viewSettings.listViewMenuTab });
+    }
     if (viewSettings.editorSidePanel !== undefined) {
         main.setEditorSidePanelEnabled({ enabled: viewSettings.editorSidePanel });
     }

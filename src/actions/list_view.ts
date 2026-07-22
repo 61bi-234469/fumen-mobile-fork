@@ -238,6 +238,7 @@ export interface ListViewActions {
     setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
     setListViewSettingsOpened: (data: { opened: boolean }) => action;
     setListViewShortenUrls: (data: { enabled: boolean }) => action;
+    setListViewMenuTab: (data: { tab: 'export' | 'import' }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     activatePageInListView: (data: { pageIndex: number }) => action;
@@ -856,9 +857,7 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
-                if (state.listView.shortenUrls) {
-                    openGeneratedUrl(url, true);
-                } else if (await copyTextToClipboard(url)) {
+                if (await copyTextToClipboard(url)) {
                     showToast('Copied share URL', 1000);
                 } else {
                     showToast('Failed to copy');
@@ -958,6 +957,19 @@ export const listViewActions: Readonly<ListViewActions> = {
             listView: {
                 ...state.listView,
                 shortenUrls: enabled,
+            },
+        };
+    },
+    setListViewMenuTab: ({ tab }) => (state): NextState => {
+        if (state.listView.menuTab === tab) {
+            return undefined;
+        }
+
+        persistViewSettings(state, { listViewMenuTab: tab });
+        return {
+            listView: {
+                ...state.listView,
+                menuTab: tab,
             },
         };
     },

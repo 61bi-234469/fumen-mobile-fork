@@ -31,12 +31,7 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   Use [`cypress/SPEC_MAP.md`](../../../cypress/SPEC_MAP.md) to look up which spec(s) cover a
   given src area instead of relying on grep/memory each time.
 - Failure screenshots: `cypress/screenshots/<spec>/`.
-- `history_spec.js` alone takes 5+ minutes; full suite ~15 min. If a local run exceeds
-  the environment's command timeout or Cypress Electron dies with a GPU error
-  (`GPU process isn't usable` — environment issue, not a test failure; `--browser chrome`
-  and `--disable-gpu` do NOT help), verify on GitHub Actions instead: check the latest
-  existing `dev-workflow` run, or — per AGENTS.md, only after explicit user confirmation
-  immediately beforehand — push to trigger a fresh run.
+- `history_spec.js` alone takes 5+ minutes; full suite ~15 min.
 - Checking CI: `gh run list --workflow dev-workflow.yaml --branch develop`
   (apply any `gh` environment notes from `AGENTS.local.md` if present).
 

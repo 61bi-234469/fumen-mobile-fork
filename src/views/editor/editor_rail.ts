@@ -520,16 +520,16 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
 
     const systemCells = [
         toolCell({
-            key: 'btn-editor-share', datatest: 'btn-editor-share',
-            label: i18n.EditorUi.ImportExport(), height: cellHeight,
-            onpress: () => actions.openListViewMenuModal(), children: icon('import_export', iconSize),
+            key: 'btn-editor-import', datatest: 'btn-editor-import',
+            label: i18n.ListViewMenu.Tabs.Import(), height: cellHeight,
+            onpress: () => actions.openListViewMenuModal({ initialTab: 'import' }),
+            children: icon('file_download', iconSize),
         }),
         toolCell({
-            key: 'btn-editor-user-settings',
-            datatest: 'btn-editor-user-settings',
-            label: i18n.EditorUi.Settings(),
-            height: cellHeight,
-            onpress: () => actions.openUserSettingsModal({ initialTab: 'field' }), children: icon('settings', iconSize),
+            key: 'btn-editor-export', datatest: 'btn-editor-export',
+            label: i18n.ListViewMenu.Tabs.Export(), height: cellHeight,
+            onpress: () => actions.openListViewMenuModal({ initialTab: 'export' }),
+            children: icon('file_upload', iconSize),
         }),
     ];
     const systemGroup = toolGroup(pieceModeVisible ? 'rail-system-piece' : 'rail-system', pieceModeVisible

@@ -659,7 +659,8 @@ export const view: View<State, Actions> = (state, actions) => {
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 openUtils: () => actions.openEditorInspector({ inspector: 'utils' }),
-                openListViewMenuModal: () => actions.openListViewMenuModal(),
+                openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) =>
+                    actions.openListViewMenuModal(data),
                 openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
                 toggleTreeMode: () => state.tree.enabled
                     ? actions.openTreeDisableConfirmModal()

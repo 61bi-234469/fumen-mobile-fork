@@ -235,11 +235,6 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
 
     const settingStyle = style(settingBaseStyle);
 
-    const topSettingStyle = style({
-        ...settingBaseStyle,
-        marginTop: '0px',
-    });
-
     const settingNameStyle = style({
         fontSize: px(13),
         fontWeight: 'bold',
@@ -285,17 +280,17 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                     </h4>
 
                     <div key="list-view-menu-tabs" role="tablist" style={tabsStyle}>
-                        <button key="tab-list-view-menu-export" datatest="tab-list-view-menu-export"
-                                type="button" role="tab" aria-selected={menuTab === 'export'}
-                                style={menuTab === 'export' ? activeTabStyle : inactiveTabStyle}
-                                onclick={() => actions.setListViewMenuTab({ tab: 'export' })}>
-                            {i18n.ListViewMenu.Tabs.Export()}
-                        </button>
                         <button key="tab-list-view-menu-import" datatest="tab-list-view-menu-import"
                                 type="button" role="tab" aria-selected={menuTab === 'import'}
                                 style={menuTab === 'import' ? activeTabStyle : inactiveTabStyle}
                                 onclick={() => actions.setListViewMenuTab({ tab: 'import' })}>
                             {i18n.ListViewMenu.Tabs.Import()}
+                        </button>
+                        <button key="tab-list-view-menu-export" datatest="tab-list-view-menu-export"
+                                type="button" role="tab" aria-selected={menuTab === 'export'}
+                                style={menuTab === 'export' ? activeTabStyle : inactiveTabStyle}
+                                onclick={() => actions.setListViewMenuTab({ tab: 'export' })}>
+                            {i18n.ListViewMenu.Tabs.Export()}
                         </button>
                     </div>
 
@@ -348,6 +343,41 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                 )}
                             </div>
 
+                            <div key="section-export" datatest="section-export" style={sectionStyle}>
+                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Copy()}</div>
+                                <a href="#" key="btn-export-fumen" datatest="btn-export-fumen" style={btnStyle}
+                                   className="waves-effect waves-light btn red"
+                                   onclick={runAndClose(() => (
+                                       useLeft
+                                           ? actions.copyLeftSegmentToClipboard()
+                                           : actions.copyAllPagesToClipboard()
+                                   ))}>
+                                    <Icon key="btn-export-fumen-icon" classNames={['left']} iconSize={18}>
+                                        content_copy
+                                    </Icon>
+                                    {i18n.ListViewMenu.Buttons.Fumen()}
+                                </a>
+                                <a href="#" key="btn-copy-url" datatest="btn-copy-url" style={btnStyle}
+                                   className="waves-effect waves-light btn red"
+                                   onclick={runAndClose(() => actions.copyListViewUrlToClipboard())}>
+                                    <Icon key="btn-copy-url-icon" classNames={['left']} iconSize={18}>
+                                        content_copy
+                                    </Icon>
+                                    {i18n.ListViewMenu.Buttons.UrlCopy()}
+                                </a>
+                                <div key="section-tetgram-copy" datatest="section-tetgram-copy">
+                                    <a href="#" key="btn-export-tetgram" datatest="btn-export-tetgram"
+                                       style={btnStyle} className="waves-effect waves-light btn red"
+                                       onclick={runAndClose(() => actions.copyTetgramRawToClipboard())}>
+                                        <Icon key="btn-export-tetgram-icon" classNames={['left']} iconSize={18}>
+                                            content_copy
+                                        </Icon>
+                                        {i18n.ListViewMenu.Buttons.TetgramRaw()}
+                                        <span style={hintStyle}>{i18n.ListViewMenu.Buttons.TetgramRawHint()}</span>
+                                    </a>
+                                </div>
+                            </div>
+
                             <div key="section-image" datatest="section-image" style={sectionStyle}>
                                 <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Image()}</div>
                                 <div style={imageButtonsStyle}>
@@ -387,52 +417,8 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                 </div>
                             </div>
 
-                            <div key="section-export" datatest="section-export" style={sectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Copy()}</div>
-                                <a href="#" key="btn-export-fumen" datatest="btn-export-fumen" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => (
-                                       useLeft
-                                           ? actions.copyLeftSegmentToClipboard()
-                                           : actions.copyAllPagesToClipboard()
-                                   ))}>
-                                    <Icon key="btn-export-fumen-icon" classNames={['left']} iconSize={18}>
-                                        content_copy
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.Fumen()}
-                                </a>
-                                <a href="#" key="btn-copy-url" datatest="btn-copy-url" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => actions.copyListViewUrlToClipboard())}>
-                                    <Icon key="btn-copy-url-icon" classNames={['left']} iconSize={18}>
-                                        content_copy
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.UrlCopy()}
-                                </a>
-                                <div key="section-tetgram-copy" datatest="section-tetgram-copy">
-                                    <a href="#" key="btn-export-tetgram" datatest="btn-export-tetgram"
-                                       style={btnStyle} className="waves-effect waves-light btn red"
-                                       onclick={runAndClose(() => actions.copyTetgramRawToClipboard())}>
-                                        <Icon key="btn-export-tetgram-icon" classNames={['left']} iconSize={18}>
-                                            content_copy
-                                        </Icon>
-                                        {i18n.ListViewMenu.Buttons.TetgramRaw()}
-                                        <span style={hintStyle}>{i18n.ListViewMenu.Buttons.TetgramRawHint()}</span>
-                                    </a>
-                                </div>
-                            </div>
-
                             <div key="section-external" datatest="section-external" style={sectionStyle}>
                                 <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Url()}</div>
-                                <div key="shorten-urls" style={topSettingStyle}>
-                                    <div style={settingNameStyle}>{i18n.ListViewMenu.ShortUrl.Title()}</div>
-                                    <label>
-                                        <input key="switch-shorten-urls" datatest="switch-shorten-urls"
-                                               type="checkbox" checked={shortenUrls}
-                                               onchange={onchangeShortenUrls}/>
-                                        <span>{i18n.ListViewMenu.ShortUrl.Description()}</span>
-                                    </label>
-                                </div>
                                 <a href="#" key="btn-export-url" datatest="btn-export-url"
                                    style={externalLinkStyle} className="waves-effect waves-teal"
                                    onclick={runAndClose(() => (
@@ -478,6 +464,15 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                             {i18n.ListViewMenu.Buttons.TetgramUrlHint()}
                                         </span>
                                     </a>
+                                </div>
+                                <div key="shorten-urls" datatest="shorten-urls" style={settingStyle}>
+                                    <div style={settingNameStyle}>{i18n.ListViewMenu.ShortUrl.Title()}</div>
+                                    <label>
+                                        <input key="switch-shorten-urls" datatest="switch-shorten-urls"
+                                               type="checkbox" checked={shortenUrls}
+                                               onchange={onchangeShortenUrls}/>
+                                        <span>{i18n.ListViewMenu.ShortUrl.Description()}</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>

@@ -9,6 +9,9 @@ jest.mock('../cold_clear', () => ({
         seedQueuePreviewFromSpawnedPiece: () => () => undefined,
     },
 }));
+jest.mock('../view_settings', () => ({
+    persistViewSettings: jest.fn(),
+}));
 
 import { modalActions } from '../modal';
 import { State } from '../../states';
@@ -22,9 +25,11 @@ const baseModal = {
 const createState = (overrides: {
     modal?: Partial<typeof baseModal>;
     coldClearRunning?: boolean;
+    listViewMenuTab?: 'export' | 'import';
 } = {}): State => ({
     modal: { ...baseModal, ...(overrides.modal ?? {}) },
     temporary: { userSettingsTab: 'field', pieceQueueFocus: 'next' },
+    listView: { menuTab: overrides.listViewMenuTab ?? 'export' },
     coldClear: { isRunning: overrides.coldClearRunning ?? false },
 } as unknown as State);
 
@@ -64,6 +69,24 @@ describe('modalActions characterization tests', () => {
 
             expect(result.modal).toEqual({ ...baseModal, userSettings: true });
             expect(result.temporary.userSettingsTab).toBe('piece');
+        });
+    });
+
+    describe('openListViewMenuModal', () => {
+        test('initialTab selects the requested tab before opening', () => {
+            const state = createState({ listViewMenuTab: 'export' });
+            const result = modalActions.openListViewMenuModal({ initialTab: 'import' })(state) as any;
+
+            expect(result.modal).toEqual({ ...baseModal, listViewMenu: true });
+            expect(result.listView.menuTab).toBe('import');
+        });
+
+        test('without initialTab preserves the current tab', () => {
+            const state = createState({ listViewMenuTab: 'import' });
+            const result = modalActions.openListViewMenuModal()(state) as any;
+
+            expect(result.modal).toEqual({ ...baseModal, listViewMenu: true });
+            expect(result.listView).toBeUndefined();
         });
     });
 

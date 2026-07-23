@@ -22,6 +22,8 @@ interface Props {
     marginRight?: number;
     marginLeft?: number;
     datatest?: string;
+    title?: string;
+    ariaLabel?: string;
     key: string;
     shortcutLabel?: string;
     shortcutLabelColor?: string;
@@ -40,7 +42,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
     {
         height, width, fontSize, key, iconName, sticky = false, stickyLeft = false,
         stickyOffset = 10, marginLeft = undefined, marginRight = 0,
-        datatest, shortcutLabel, shortcutLabelColor, colors, enable = true, actions,
+        datatest, title, ariaLabel, shortcutLabel, shortcutLabelColor, colors, enable = true, actions,
     },
 ) => {
     const hasAbsolutePosition = sticky || stickyLeft;
@@ -141,6 +143,8 @@ export const ToolButton: Component<Props & SizedIconProps> = (
             <a href="#"
                key={key}
                datatest={datatest}
+               title={title}
+               aria-label={ariaLabel ?? title}
                style={aProperties}
                onpointerdown={onpointerdown}
                onpointerup={onpointerup}
@@ -163,6 +167,8 @@ export const ToolButton: Component<Props & SizedIconProps> = (
         <a href="#"
            key={key}
            datatest={datatest}
+           title={title}
+           aria-label={ariaLabel ?? title}
            style={aProperties}
            onclick={onclick !== undefined ? (event: MouseEvent) => {
                onclick(event);

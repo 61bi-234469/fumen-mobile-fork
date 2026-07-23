@@ -228,6 +228,8 @@ describe('User settings', () => {
 
         // エディタのツール列から直接開く(フィールドタブが初期表示)
         // パネルは縦に長くCypressの可視判定が中心点基準で誤るため、displayスタイルで判定する
+        cy.get(datatest('editor-rail')).find(datatest('btn-editor-user-settings')).should('not.exist');
+        cy.get(datatest('tools')).find(datatest('btn-editor-user-settings')).should('be.visible');
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
         cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
@@ -243,9 +245,10 @@ describe('User settings', () => {
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
 
-        // エディタの共有ボタンからImport/Exportモーダルを直接開く
-        cy.get(datatest('btn-editor-share')).click();
+        // エディタの書き出しボタンからImport/Exportモーダルを直接開く
+        cy.get(datatest('btn-editor-export')).click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('tab-list-view-menu-export')).should('have.attr', 'aria-selected', 'true');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-list-view-menu')).should('not.exist');
 

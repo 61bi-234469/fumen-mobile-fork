@@ -4,6 +4,7 @@ import { ToolButton } from './tool_button';
 import { ColorPalette } from '../../lib/colors';
 import { TreeViewToggle } from '../tree/tree_view_toggle';
 import { TreeViewMode } from '../../lib/fumen/tree_types';
+import { i18n } from '../../locales/keys';
 
 interface Props {
     height: number;
@@ -17,7 +18,7 @@ interface Props {
     actions: {
         changeToEditorFromListView: () => void;
         openUtils: () => void;
-        openListViewMenuModal: () => void;
+        openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) => void;
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
@@ -105,15 +106,30 @@ export const ListViewTools: Component<Props> = (
                     />
 
                     <ToolButton
-                        iconName="import_export"
-                        datatest="btn-list-view-menu"
+                        iconName="file_download"
+                        datatest="btn-list-view-import"
                         width={36}
                         height={height - 10}
-                        key="btn-list-view-menu"
+                        key="btn-list-view-import"
                         fontSize={24}
+                        title={i18n.ListViewMenu.Tabs.Import()}
                         colors={palette}
                         actions={{
-                            onclick: () => actions.openListViewMenuModal(),
+                            onclick: () => actions.openListViewMenuModal({ initialTab: 'import' }),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="file_upload"
+                        datatest="btn-list-view-export"
+                        width={36}
+                        height={height - 10}
+                        key="btn-list-view-export"
+                        fontSize={24}
+                        title={i18n.ListViewMenu.Tabs.Export()}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.openListViewMenuModal({ initialTab: 'export' }),
                         }}
                     />
 

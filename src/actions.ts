@@ -278,6 +278,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.flagsHidden !== undefined) {
+        main.changeFlagsHidden({ hidden: settings.flagsHidden });
+        updated = true;
+    }
+
     if (settings.initialScreen !== undefined) {
         main.changeInitialScreen({ initialScreen: settings.initialScreen });
         updated = true;
@@ -404,6 +409,9 @@ const loadUserSettings = () => {
     }
     if (viewSettings.shortenUrls !== undefined) {
         main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
+    }
+    if (viewSettings.listViewMenuTab !== undefined) {
+        main.setListViewMenuTab({ tab: viewSettings.listViewMenuTab });
     }
     if (viewSettings.editorSidePanel !== undefined) {
         main.setEditorSidePanelEnabled({ enabled: viewSettings.editorSidePanel });

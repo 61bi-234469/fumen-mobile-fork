@@ -162,6 +162,7 @@ export const memento = (() => {
 interface UserSettings {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
+    flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
     loop: boolean;
@@ -184,6 +185,7 @@ interface UserSettings {
 interface ViewSettings {
     trimTopBlank: boolean;
     shortenUrls: boolean;
+    listViewMenuTab: 'export' | 'import';
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
@@ -219,6 +221,9 @@ const safer = {
     editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
         return value === 'list' || value === 'tree' ? value : undefined;
     },
+    listViewMenuTab: (value: any): 'export' | 'import' | undefined => {
+        return value === 'export' || value === 'import' ? value : undefined;
+    },
     treeOperationScope: (value: any): TreeOperationScope | undefined => {
         return value === 'node' || value === 'subtree' || value === 'descendants' ? value : undefined;
     },
@@ -245,6 +250,7 @@ export const localStorageWrapper = {
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
             deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
+            flagsHidden: safer.boolean(obj.flagsHidden),
             initialScreen: initialScreenSettingFrom(obj),
             openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),
             loop: safer.boolean(obj.loop),
@@ -284,6 +290,7 @@ export const localStorageWrapper = {
         return {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
             shortenUrls: safer.boolean(obj.shortenUrls),
+            listViewMenuTab: safer.listViewMenuTab(obj.listViewMenuTab),
             treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
                 ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),

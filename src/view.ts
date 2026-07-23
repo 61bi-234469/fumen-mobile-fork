@@ -16,7 +16,7 @@ import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { PieceQueueModal } from './components/modals/piece_queue';
-import { embedTreeInPages } from './lib/fumen/tree_utils';
+import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
 import { getSidePanelWidth } from './views/editor/side_panel_layout';
 import {
@@ -33,6 +33,13 @@ export const view: View<State, Actions> = (state, actions) => {
     const canSequenceSearch = !searchBlockedByHoldQueue && canStartColdClearSequenceSearch(state);
     const canTopBranchesSearch = !searchBlockedByHoldQueue && canStartColdClearTopBranchesSearch(state);
     const canPlacedSpawnScore = canEvaluatePlacedSpawnMinoScore(state);
+    const pageCount = state.fumen.pages.length;
+    const realTreeNodeIds = new Set(state.tree.nodes.filter(node => node.pageIndex >= 0).map(node => node.id));
+    const selectedPathPageCount = state.tree.activeNodeId === null
+        ? pageCount
+        : getPathToNode({ nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 }, state.tree.activeNodeId)
+            .filter(nodeId => realTreeNodeIds.has(nodeId))
+            .length;
     const currentQueueState = resolveCurrentColdClearMenuQueueState(state);
     const canClearComment = canClearCommentForColdClearQueue(state);
 
@@ -94,6 +101,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             ghostVisible: state.temporary.userSettings.ghostVisible,
             deleteSpawnMinoOnPaintDrag: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            flagsHidden: state.temporary.userSettings.flagsHidden,
             initialScreen: state.temporary.userSettings.initialScreen,
             openTreeScreenOnTreeData: state.temporary.userSettings.openTreeScreenOnTreeData,
             loop: state.temporary.userSettings.loop,
@@ -121,8 +129,11 @@ export const view: View<State, Actions> = (state, actions) => {
 
         state.modal.listViewMenu ? ListViewMenuModal({
             actions,
+            pageCount,
+            selectedPathPageCount,
             treeEnabled: state.tree.enabled,
             exportScope: state.listView.exportScope,
+            menuTab: state.listView.menuTab,
             gifFrameDelayMs: state.mode.gifFrameDelayMs,
             shortenUrls: state.listView.shortenUrls,
         }) : undefined as any,

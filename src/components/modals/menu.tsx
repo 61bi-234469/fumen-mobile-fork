@@ -41,7 +41,7 @@ interface MenuProps {
         reopenCurrentPage: () => void;
         openFumenModal: () => void;
         openUserSettingsModal: () => void;
-        openListViewMenuModal: () => void;
+        openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) => void;
     };
 }
 
@@ -135,14 +135,24 @@ export const MenuModal: Component<MenuProps> = (
             {i18n.Menu.Buttons.New()}
         </SettingButton>,
 
-        <SettingButton key="btn-list-menu" datatest="btn-list-menu" href="#"
-                       icons={[{ name: 'import_export', size: 30 }]}
+        <SettingButton key="btn-list-menu-import" datatest="btn-list-menu-import" href="#"
+                       icons={[{ name: 'file_download', size: 30 }]}
                        onclick={() => {
                            actions.removeUnsettledItems();
-                           actions.openListViewMenuModal();
+                           actions.openListViewMenuModal({ initialTab: 'import' });
                            actions.closeMenuModal();
                        }}>
-            {i18n.Menu.Buttons.ImportExport()}
+            {i18n.ListViewMenu.Tabs.Import()}
+        </SettingButton>,
+
+        <SettingButton key="btn-list-menu-export" datatest="btn-list-menu-export" href="#"
+                       icons={[{ name: 'file_upload', size: 30 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.openListViewMenuModal({ initialTab: 'export' });
+                           actions.closeMenuModal();
+                       }}>
+            {i18n.ListViewMenu.Tabs.Export()}
         </SettingButton>,
     ];
 

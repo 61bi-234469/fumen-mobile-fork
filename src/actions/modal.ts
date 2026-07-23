@@ -2,6 +2,7 @@ import { NextState, sequence } from './commons';
 import { action } from '../actions';
 import { PieceQueueFocus, State, UserSettingsTab } from '../states';
 import { coldClearActions } from './cold_clear';
+import { persistViewSettings } from './view_settings';
 
 export interface ModalActions {
     showOpenErrorMessage: (data: { message: string }) => action;
@@ -11,7 +12,7 @@ export interface ModalActions {
     openClipboardModal: () => action;
     openUserSettingsModal: (data?: { initialTab?: UserSettingsTab }) => action;
     openListViewReplaceModal: () => action;
-    openListViewMenuModal: () => action;
+    openListViewMenuModal: (data?: { initialTab?: 'export' | 'import' }) => action;
     openTreeDisableConfirmModal: () => action;
     openColdClearMenuModal: () => action;
     openPieceQueueModal: (data?: { focus?: PieceQueueFocus }) => action;
@@ -72,7 +73,23 @@ export const modalActions: Readonly<ModalActions> = {
     closeUserSettingsModal: () => setModal('userSettings', false),
     openListViewReplaceModal: () => setModal('listViewReplace', true),
     closeListViewReplaceModal: () => setModal('listViewReplace', false),
-    openListViewMenuModal: () => setModal('listViewMenu', true),
+    openListViewMenuModal: (data = {}) => (state): NextState => {
+        if (data.initialTab === undefined || state.listView.menuTab === data.initialTab) {
+            return setModal('listViewMenu', true)(state);
+        }
+
+        persistViewSettings(state, { listViewMenuTab: data.initialTab });
+        return {
+            modal: {
+                ...state.modal,
+                listViewMenu: true,
+            },
+            listView: {
+                ...state.listView,
+                menuTab: data.initialTab,
+            },
+        };
+    },
     openTreeDisableConfirmModal: () => setModal('treeDisableConfirm', true),
     openColdClearMenuModal: () => (state): NextState => {
         return sequence(state, [

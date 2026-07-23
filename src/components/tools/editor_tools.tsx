@@ -5,6 +5,7 @@ import { ToolText } from './tool_text';
 import { ColorPalette } from '../../lib/colors';
 import { EditShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
+import { i18n } from '../../locales/keys';
 
 interface Props {
     height: number;
@@ -20,6 +21,7 @@ interface Props {
     loop: boolean;
     actions: {
         openFumenModal: () => void;
+        openUserSettingsModal: () => void;
         openMenuModal: () => void;
         executeNewFumen: () => void;
         changeToListViewScreen: () => void;
@@ -149,6 +151,12 @@ export const EditorTools: Component<Props> = (
                             key="btn-insert-page" fontSize={edgeIconSize} marginRight={itemGap} colors={colors}
                             shortcutLabel={getLabel('InsertPage')}
                             actions={{ onclick: () => actions.duplicatePageOnly({ index: currentPage }) }}/>
+
+                <ToolButton iconName="settings" datatest="btn-editor-user-settings" sticky={true}
+                            stickyOffset={edgeWidth + 3} width={edgeWidth} height={buttonHeight}
+                            key="btn-editor-user-settings" fontSize={edgeIconSize}
+                            title={i18n.EditorUi.Settings()} colors={colors}
+                            actions={{ onclick: () => actions.openUserSettingsModal() }}/>
 
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true} stickyOffset={3}
                             key="btn-open-menu" width={edgeWidth} height={buttonHeight}

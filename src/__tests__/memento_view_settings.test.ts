@@ -31,6 +31,7 @@ describe('view settings tree operation scope migration', () => {
         localStorageWrapper.saveViewSettings({
             trimTopBlank: false,
             shortenUrls: false,
+            listViewMenuTab: 'import',
             treeOperationScope: 'descendants',
             grayAfterLineClear: false,
             editorSidePanel: false,
@@ -46,6 +47,15 @@ describe('view settings tree operation scope migration', () => {
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
         expect(saved.treeOperationScope).toBe('descendants');
+        expect(saved.listViewMenuTab).toBe('import');
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
+    });
+
+    test('loads valid import/export tabs and rejects invalid values', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({ listViewMenuTab: 'import' }));
+        expect(localStorageWrapper.loadViewSettings().listViewMenuTab).toBe('import');
+
+        localStorage.setItem('view-settings@1', JSON.stringify({ listViewMenuTab: 'invalid' }));
+        expect(localStorageWrapper.loadViewSettings().listViewMenuTab).toBeUndefined();
     });
 });

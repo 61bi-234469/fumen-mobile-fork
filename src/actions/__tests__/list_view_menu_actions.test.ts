@@ -106,6 +106,7 @@ const createState = (overrides: any = {}) => ({
     },
     listView: {
         exportScope: overrides.exportScope || 'all',
+        menuTab: overrides.menuTab || 'export',
         trimTopBlank: false,
         shortenUrls: overrides.shortenUrls ?? false,
         scale: 1.0,
@@ -130,6 +131,7 @@ const createState = (overrides: any = {}) => ({
 beforeEach(() => {
     encodeMock.mockReset();
     encodeMock.mockResolvedValue('ENC');
+    require('../../memento').localStorageWrapper.saveViewSettings.mockClear();
     (global as any).M = { toast: jest.fn() };
 });
 
@@ -187,6 +189,24 @@ describe('setListViewShortenUrls', () => {
         const next = listViewActions.setListViewShortenUrls({ enabled: true })(state) as any;
 
         expect(next.listView.shortenUrls).toBe(true);
+    });
+});
+
+describe('setListViewMenuTab', () => {
+    test('updates and saves the selected tab', () => {
+        const state = createState({ menuTab: 'export' });
+        const next = listViewActions.setListViewMenuTab({ tab: 'import' })(state) as any;
+
+        expect(next.listView.menuTab).toBe('import');
+        const { localStorageWrapper } = require('../../memento');
+        expect(localStorageWrapper.saveViewSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ listViewMenuTab: 'import' }),
+        );
+    });
+
+    test('does nothing when the tab is unchanged', () => {
+        const state = createState({ menuTab: 'export' });
+        expect(listViewActions.setListViewMenuTab({ tab: 'export' })(state)).toBeUndefined();
     });
 });
 
@@ -272,6 +292,22 @@ describe('copyListViewUrlToClipboard', () => {
 
         expect(document.execCommand).toHaveBeenCalledWith('copy');
         expect(selectAllChildren.mock.calls[0][0].textContent).toContain('d=v115%40ENC');
+        selectionSpy.mockRestore();
+    });
+
+    test('still copies instead of opening TinyURL when short URLs are enabled', async () => {
+        const selectAllChildren = jest.fn();
+        const selectionSpy = jest.spyOn(document, 'getSelection').mockReturnValue({ selectAllChildren } as any);
+        const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+        document.execCommand = jest.fn(() => true);
+        const state = createState({ treeEnabled: false, exportScope: 'all', shortenUrls: true });
+
+        listViewActions.copyListViewUrlToClipboard()(state);
+        await flushPromises();
+
+        expect(document.execCommand).toHaveBeenCalledWith('copy');
+        expect(openSpy).not.toHaveBeenCalled();
+        openSpy.mockRestore();
         selectionSpy.mockRestore();
     });
 });

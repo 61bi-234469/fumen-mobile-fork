@@ -43,6 +43,9 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '黒ペイントドラッグでスポーンミノを通過削除',
         },
+        ShowFlags: {
+            Title: 'FLAGSを表示',
+        },
         InitialScreen: {
             Title: '初期画面',
             Reader: 'Reader画面',
@@ -243,29 +246,37 @@ export const resources = {
     },
     ListViewMenu: {
         Title: 'Import/Export',
+        Tabs: {
+            Export: '書き出し',
+            Import: '取り込み',
+        },
         Sections: {
             Read: '取り込み',
             Image: '画像を保存',
+            Copy: 'データをコピー',
+            Url: 'URLで開く',
             Export: '共有（テト譜データ / URL）',
             External: '外部サイトで開く',
             Tetgram: 'tetgram連携',
             Settings: '設定',
         },
         Scope: {
-            Label: '出力範囲',
-            Description: '画像・共有・外部サイトに適用されます',
+            Label: '書き出すページ',
+            Description: 'このタブ内のすべての書き出し操作に適用されます',
             All: 'すべてのページ',
-            LeftToActive: '選択中のページまで',
+            AllWithCount: 'すべて（全{{count}}ページ）',
+            LeftToActive: 'ルートから選択ページまで',
+            LeftToActiveWithCount: 'ルートから選択ページまで（{{count}}ページ）',
         },
         ShortUrl: {
             Title: '短縮URL',
-            Description: 'TinyURLによる短縮を有効にする',
+            Description: '共有URL・外部サイト・tetgramを開くときにTinyURL作成ページを使用',
         },
         Buttons: {
             Insert: 'クリップボードから挿入',
-            InsertHint: 'テト譜を追加',
+            InsertHint: '現在のテト譜の末尾へ追加',
             Import: 'クリップボードから読み込む',
-            ImportHint: '現在のテト譜を置き換え',
+            ImportHint: '現在のテト譜全体を置き換え',
             Png: 'PNG',
             Gif: 'GIF',
             Fumen: 'テト譜データをコピー',

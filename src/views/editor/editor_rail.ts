@@ -520,16 +520,16 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
 
     const systemCells = [
         toolCell({
-            key: 'btn-editor-share', datatest: 'btn-editor-share',
-            label: i18n.EditorUi.ImportExport(), height: cellHeight,
-            onpress: () => actions.openListViewMenuModal(), children: icon('import_export', iconSize),
+            key: 'btn-editor-import', datatest: 'btn-editor-import',
+            label: i18n.ListViewMenu.Tabs.Import(), height: cellHeight,
+            onpress: () => actions.openListViewMenuModal({ initialTab: 'import' }),
+            children: icon('file_download', iconSize),
         }),
         toolCell({
-            key: 'btn-editor-user-settings',
-            datatest: 'btn-editor-user-settings',
-            label: i18n.EditorUi.Settings(),
-            height: cellHeight,
-            onpress: () => actions.openUserSettingsModal({ initialTab: 'field' }), children: icon('settings', iconSize),
+            key: 'btn-editor-export', datatest: 'btn-editor-export',
+            label: i18n.ListViewMenu.Tabs.Export(), height: cellHeight,
+            onpress: () => actions.openListViewMenuModal({ initialTab: 'export' }),
+            children: icon('file_upload', iconSize),
         }),
     ];
     const systemGroup = toolGroup(pieceModeVisible ? 'rail-system-piece' : 'rail-system', pieceModeVisible
@@ -554,17 +554,20 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const auxiliaryGroup = toolGroup('rail-auxiliary', [
         row('rail-inspector-row', [
             toolCell({
-                key: 'btn-utils-mode', datatest: 'btn-utils-mode', label: i18n.EditorUi.Utilities(), height: cellHeight,
+                key: 'btn-utils-mode', datatest: 'btn-utils-mode',
+                label: state.mode.flagsHidden ? 'UTILS' : i18n.EditorUi.Utilities(), height: cellHeight,
                 selected: state.editorUi.inspector === 'utils',
                 onpress: () => actions.openEditorInspector({ inspector: 'utils' }),
-                children: compact ? icon('widgets', iconSize) : [icon('widgets', iconSize), span({ key: 'u' }, 'U')],
+                children: state.mode.flagsHidden
+                    ? [icon('widgets', iconSize), span({ key: 'utils-label' }, 'UTILS')]
+                    : compact ? icon('widgets', iconSize) : [icon('widgets', iconSize), span({ key: 'u' }, 'U')],
             }),
-            toolCell({
+            ...(state.mode.flagsHidden ? [] : [toolCell({
                 key: 'btn-flags-mode', datatest: 'btn-flags-mode', label: i18n.EditorUi.Flags(), height: cellHeight,
                 selected: state.editorUi.inspector === 'flags',
                 onpress: () => actions.openEditorInspector({ inspector: 'flags' }),
                 children: compact ? icon('flag', iconSize) : [icon('flag', iconSize), span({ key: 'f' }, 'F')],
-            }),
+            })]),
         ]),
     ]);
 

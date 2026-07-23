@@ -3,7 +3,8 @@ import { operations } from '../support/operations';
 
 const assertRailOrder = () => {
     const selectors = [
-        'btn-editor-share',
+        'btn-editor-import',
+        'btn-editor-export',
         'btn-insert-new-page',
         'btn-utils-mode',
         'btn-piece-mode',
@@ -109,6 +110,19 @@ describe('Editor UI final concept', () => {
             ['btn-paint-mode', 'btn-piece-mode', 'btn-select-mode'].forEach(selector => {
                 cy.get(datatest(selector)).should('have.attr', 'aria-label').and('not.be.empty');
             });
+            cy.get(datatest('btn-editor-import')).find('.material-icons').should('contain.text', 'file_download');
+            cy.get(datatest('btn-editor-export')).find('.material-icons').should('contain.text', 'file_upload');
+            cy.get([
+                datatest('tools'),
+                datatest('btn-editor-user-settings'),
+                datatest('btn-open-menu'),
+            ].join(',')).then(elements => {
+                const tools = elements.filter(datatest('tools'))[0].getBoundingClientRect();
+                const settings = elements.filter(datatest('btn-editor-user-settings'))[0].getBoundingClientRect();
+                const menu = elements.filter(datatest('btn-open-menu'))[0].getBoundingClientRect();
+                expect(settings.right).to.be.closeTo(menu.left, 1);
+                expect(menu.right).to.be.closeTo(tools.right - 3, 1);
+            });
             ['i', 'l', 'o', 'z', 't', 'j', 's', 'empty', 'gray', 'inference'].forEach(piece => {
                 cy.get(datatest(`btn-piece-${piece}`)).should('be.visible');
             });
@@ -133,10 +147,11 @@ describe('Editor UI final concept', () => {
             assertPieceRailTwoColumns();
             assertInfiniteToggleFits();
             ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
-                'btn-editor-share', 'btn-editor-user-settings', 'btn-utils-mode', 'btn-flags-mode',
+                'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode',
                 'btn-piece-inference'].forEach(selector => {
                 cy.get(datatest(selector)).should('not.exist');
             });
+            cy.get(datatest('btn-editor-user-settings')).should('be.visible');
             cy.get([
                 datatest('piece-queue-hold'),
                 datatest('piece-queue-next'),
@@ -162,7 +177,7 @@ describe('Editor UI final concept', () => {
 
     it('keeps the production field size and text labels on a phone display', () => {
         cy.viewport(412, 844);
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
 
         cy.get(datatest('editor-field-frame')).then(field => {
             expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
@@ -292,7 +307,7 @@ describe('Editor UI final concept', () => {
     });
 
     it('preserves the active tool while opening and closing inspectors', () => {
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
         cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
 
         cy.get(datatest('btn-utils-mode')).click();
@@ -310,7 +325,7 @@ describe('Editor UI final concept', () => {
     });
 
     it('drags inspectors by their heading and shows flag checkboxes', () => {
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', flagsHidden: false });
 
         cy.get(datatest('btn-utils-mode')).click();
         let beforeLeft;

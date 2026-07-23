@@ -25,6 +25,7 @@ const { userSettingsActions } = require('../user_settings');
 const baseUserSettings = {
     ghostVisible: true,
     deleteSpawnMinoOnPaintDrag: true,
+    flagsHidden: true,
     initialScreen: 'reader',
     openTreeScreenOnTreeData: true,
     loop: false,
@@ -48,6 +49,7 @@ const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
+        flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
         loop: false,
@@ -176,6 +178,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepFlagsHidden', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepFlagsHidden({ hidden: false })(state);
+
+            expect(next.temporary.userSettings.flagsHidden).toBe(false);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepFlagsHidden({ hidden: false })(state)).toBeUndefined();
+        });
+    });
+
     describe('keepTrimTopBlank', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
@@ -286,7 +303,7 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
-                'changeDeleteSpawnMinoOnPaintDrag',
+                'changeDeleteSpawnMinoOnPaintDrag', 'changeFlagsHidden',
                 'changeInitialScreen',
                 'changeOpenTreeScreenOnTreeData',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
@@ -311,6 +328,7 @@ describe('userSettingsActions', () => {
                 grayAfterLineClear: true,
                 trimTopBlank: true,
                 editorSidePanel: true,
+                flagsHidden: false,
             };
 
             userSettingsActions.commitUserSettings()(state);
@@ -324,6 +342,7 @@ describe('userSettingsActions', () => {
             expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
             expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
             expect(saveUserSettingsMock).toHaveBeenCalled();
+            expect(mockActions.changeFlagsHidden).toHaveBeenCalledWith({ hidden: false });
         });
     });
 });

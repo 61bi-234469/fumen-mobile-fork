@@ -41,10 +41,11 @@ describe('PIECE queues', () => {
         });
         cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '2');
         ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
-            'btn-editor-share', 'btn-editor-user-settings', 'btn-utils-mode', 'btn-flags-mode',
+            'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode',
             'btn-piece-inference'].forEach(selector => {
             cy.get(datatest(selector)).should('not.exist');
         });
+        cy.get(datatest('btn-editor-user-settings')).should('be.visible');
     });
 
     it('toggles infinite 7bag separately from the NEXT settings button', () => {

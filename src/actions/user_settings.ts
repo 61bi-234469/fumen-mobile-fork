@@ -12,6 +12,7 @@ export interface UserSettingsActions {
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    keepFlagsHidden: (data: { hidden: boolean }) => action;
     keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
@@ -58,6 +59,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
                     deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+                    flagsHidden: state.mode.flagsHidden,
                     initialScreen: state.mode.initialScreen,
                     openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
                     loop: state.mode.loop,
@@ -86,6 +88,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeDeleteSpawnMinoOnPaintDrag({
                 enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
             }),
+            actions.changeFlagsHidden({ hidden: state.temporary.userSettings.flagsHidden }),
             actions.changeInitialScreen({ initialScreen: state.temporary.userSettings.initialScreen }),
             actions.changeOpenTreeScreenOnTreeData({
                 enable: state.temporary.userSettings.openTreeScreenOnTreeData,
@@ -137,6 +140,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     },
     keepGhostVisible: ({ visible }) => keepTemporary({ ghostVisible: visible }),
     keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => keepTemporary({ deleteSpawnMinoOnPaintDrag: enable }),
+    keepFlagsHidden: ({ hidden }) => keepTemporary({ flagsHidden: hidden }),
     keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
     keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
     keepLoop: ({ enable }) => keepTemporary({ loop: enable }),
@@ -288,6 +292,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
         deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+        flagsHidden: state.mode.flagsHidden,
         initialScreen: state.mode.initialScreen,
         openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
         loop: state.mode.loop,

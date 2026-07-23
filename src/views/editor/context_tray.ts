@@ -3,14 +3,20 @@ import { VNode } from 'hyperapp';
 import { Actions } from '../../actions';
 import { ModeTypes, Piece, Rotation } from '../../lib/enums';
 import { px, style } from '../../lib/types';
-import { EditorPart, PieceShortcuts, State } from '../../states';
+import { EditorPart, State } from '../../states';
 import { BlockIcon } from '../../components/atomics/icons';
 import { i18n } from '../../locales/keys';
 import { rectHeight, rectWidth } from '../../lib/rect_selection';
 import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
 import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
-import { endDasHold, isDasHoldActive, startDasHold } from '../../lib/piece_das';
+import {
+    endPieceShortcut,
+    isPieceShortcutHoldActive,
+    PieceShortcutHoldOptions,
+    PieceShortcutKey,
+    startPieceShortcut,
+} from '../../lib/piece_shortcut';
 import { displayShortcut } from '../../lib/shortcuts';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
@@ -106,24 +112,20 @@ const trayButton = ({
 
 // ピース操作用ボタン
 // - pointerdownで即時実行（pointerupを待たない）
-// - ボタンごとに独立したポインタ処理のため、複数ボタンの同時押しが可能
-// - hold指定時はDAS/ARRエンジンで押しっぱなしのリピート移動に対応
+// - ボタンごとに独立した入力IDを持つため、複数ボタンの同時押しが可能
+// - 左右移動とソフトドロップの保持処理はキー操作と共通化する
 const pieceActionButton = ({
-    key, datatest, label, iconName, disabled = false, onpress, hold, shortcutLabel,
+    key, datatest, label, iconName, disabled = false, shortcut, holdOptions, shortcutLabel, actions,
 }: {
     key: string;
     datatest: string;
     label: string;
     iconName: string;
     disabled?: boolean;
-    onpress: () => void;
+    shortcut: PieceShortcutKey;
+    holdOptions: PieceShortcutHoldOptions;
     shortcutLabel?: string;
-    hold?: {
-        dasFrames: number;
-        arrFrames: number;
-        move: () => void;
-        moveToEnd: () => void;
-    };
+    actions: Actions;
 }) => {
     const holdId = `tray:${key}`;
     const handlePointerDown = (event: PointerEvent) => {
@@ -140,22 +142,16 @@ const pieceActionButton = ({
                 // 合成イベントなどでpointerIdが無効な場合は無視
             }
         }
-        if (hold !== undefined) {
-            startDasHold(holdId, hold);
-        } else {
-            onpress();
-        }
+        startPieceShortcut(holdId, shortcut, holdOptions, () => actions);
     };
     const handlePointerEnd = (event: PointerEvent) => {
-        if (hold !== undefined) {
-            endDasHold(holdId);
-        }
+        endPieceShortcut(holdId);
         event.preventDefault();
     };
     const handlePointerCancel = (event: PointerEvent) => {
         // Page changes can cancel a captured pointer while the finger is still down.
-        // Keep the DAS hold alive until the corresponding pointerup arrives.
-        if (hold !== undefined) {
+        // Keep a continuous hold alive until the corresponding pointerup arrives.
+        if (isPieceShortcutHoldActive(holdId)) {
             event.preventDefault();
         }
     };
@@ -303,34 +299,30 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         style: style({ background: '#fff', borderLeft: '1px solid #ddd', minWidth: '0' }),
     });
     const pieceButton = ({
-        key, label, iconName, disabled = false, onpress, hold, shortcut,
+        key, label, iconName, disabled = false, shortcut,
     }: {
         key: string;
         label: string;
         iconName: string;
         disabled?: boolean;
-        onpress: () => void;
-        shortcut?: keyof PieceShortcuts;
-        hold?: {
-            move: () => void;
-            moveToEnd: () => void;
-        };
+        shortcut: PieceShortcutKey;
     }) => pieceActionButton({
         key,
         label,
         iconName,
         disabled,
-        onpress,
+        shortcut,
+        actions,
+        datatest: key,
         shortcutLabel: shortcut !== undefined && state.mode.shortcutLabelVisible
             ? displayShortcut(state.mode.pieceShortcuts[shortcut]) : undefined,
-        hold: hold === undefined ? undefined : {
-            ...hold,
+        holdOptions: {
             dasFrames: state.mode.pieceShortcutDasFrames,
             arrFrames: state.mode.pieceShortcutArrFrames,
+            sdf: state.mode.pieceShortcutSdf,
         },
-        datatest: key,
     });
-    const canContinueMoveHold = (key: string) => isDasHoldActive(`tray:${key}`);
+    const canContinuePieceHold = (key: string) => isPieceShortcutHoldActive(`tray:${key}`);
     return [div({
         key: 'tray-piece-grid',
         datatest: 'tray-piece-grid',
@@ -348,43 +340,39 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
         state.mode.rotationSystem === 'srsPlus'
             ? pieceButton({
                 key: 'tray-piece-rotate-180', label: i18n.EditorUi.Rotate180(), iconName: 'refresh',
-                disabled: !canOperate, onpress: actions.rotateTo180, shortcut: 'Rotate180',
+                disabled: !canOperate, shortcut: 'Rotate180',
             })
             : placeholder('tray-piece-empty-180'),
         pieceButton({
             key: 'tray-piece-hold', label: i18n.EditorUi.Hold(), iconName: 'swap_horiz',
-            disabled: !canHold, onpress: actions.swapCurrentPieceWithHoldQueue, shortcut: 'Hold',
+            disabled: !canHold, shortcut: 'Hold',
         }),
         pieceButton({
             key: 'tray-piece-harddrop', label: i18n.EditorUi.HardDrop(), iconName: 'vertical_align_bottom',
-            disabled: !canOperate, onpress: actions.harddrop, shortcut: 'HardDrop',
+            disabled: !canOperate, shortcut: 'HardDrop',
         }),
         placeholder('tray-piece-empty-top-end'),
         pieceButton({
             key: 'tray-piece-move-left', label: i18n.EditorUi.Left(), iconName: 'keyboard_arrow_left',
-            disabled: !canOperate && !canContinueMoveHold('tray-piece-move-left'),
-            onpress: actions.moveToLeft,
+            disabled: !canOperate && !canContinuePieceHold('tray-piece-move-left'),
             shortcut: 'MoveLeft',
-            hold: { move: actions.moveToLeft, moveToEnd: actions.moveToLeftEnd },
         }),
         pieceButton({
             key: 'tray-piece-move-right', label: i18n.EditorUi.Right(), iconName: 'keyboard_arrow_right',
-            disabled: !canOperate && !canContinueMoveHold('tray-piece-move-right'),
-            onpress: actions.moveToRight,
+            disabled: !canOperate && !canContinuePieceHold('tray-piece-move-right'),
             shortcut: 'MoveRight',
-            hold: { move: actions.moveToRight, moveToEnd: actions.moveToRightEnd },
         }),
         pieceButton({
             key: 'tray-piece-softdrop', label: i18n.EditorUi.SoftDrop(), iconName: 'keyboard_arrow_down',
-            disabled: !canOperate, onpress: actions.softdrop, shortcut: 'SoftDrop',
+            disabled: !canOperate && !canContinuePieceHold('tray-piece-softdrop'), shortcut: 'SoftDrop',
         }),
         pieceButton({
             key: 'tray-piece-rotate-left', label: i18n.EditorUi.RotateLeft(), iconName: 'rotate_left',
-            disabled: !canOperate, onpress: actions.rotateToLeft, shortcut: 'RotateLeft',
+            disabled: !canOperate, shortcut: 'RotateLeft',
         }),
         pieceButton({
             key: 'tray-piece-rotate-right', label: i18n.EditorUi.RotateRight(), iconName: 'rotate_right',
-            disabled: !canOperate, onpress: actions.rotateToRight, shortcut: 'RotateRight',
+            disabled: !canOperate, shortcut: 'RotateRight',
         }),
         div({
             key: `img-rotation-${rotationName}`,

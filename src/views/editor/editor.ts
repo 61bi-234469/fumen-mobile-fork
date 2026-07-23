@@ -427,6 +427,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         loop: state.mode.loop,
         actions: {
             openFumenModal: actions.openFumenModal,
+            openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'field' }),
             openMenuModal: actions.openMenuModal,
             executeNewFumen: actions.executeNewFumen,
             changeToListViewScreen: actions.changeToListViewScreen,

@@ -648,9 +648,16 @@ export const operations = {
             operations.menu.open();
             cy.get(datatest('btn-append-fumen')).click();
         },
-        importExport: () => {
+        import: () => {
             operations.menu.open();
-            cy.get(datatest('btn-list-menu')).click();
+            cy.get(datatest('btn-list-menu-import')).click();
+        },
+        export: () => {
+            operations.menu.open();
+            cy.get(datatest('btn-list-menu-export')).click();
+        },
+        importExport: () => {
+            operations.menu.export();
         },
         copyToClipboard: () => {
             // Avoid treating a marker from an earlier copy in the same test as this copy's
@@ -747,6 +754,14 @@ export const operations = {
             operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
+        },
+    },
+    listView: {
+        openImport: () => {
+            cy.get(datatest('btn-list-view-import')).click();
+        },
+        openExport: () => {
+            cy.get(datatest('btn-list-view-export')).click();
         },
     },
     tree: {

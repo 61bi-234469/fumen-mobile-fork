@@ -31,3 +31,22 @@ describe('user settings initial screen migration', () => {
         expect(localStorageWrapper.loadUserSettings().initialScreen).toBe('editor');
     });
 });
+
+describe('user settings FLAGS visibility', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads a boolean flagsHidden value', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ flagsHidden: false }));
+
+        expect(localStorageWrapper.loadUserSettings().flagsHidden).toBe(false);
+    });
+
+    test('rejects a missing or invalid flagsHidden value', () => {
+        expect(localStorageWrapper.loadUserSettings().flagsHidden).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ flagsHidden: 'false' }));
+        expect(localStorageWrapper.loadUserSettings().flagsHidden).toBeUndefined();
+    });
+});

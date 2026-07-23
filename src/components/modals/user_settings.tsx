@@ -15,6 +15,7 @@ declare const M: any;
 interface UserSettingsModalProps {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
+    flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
     loop: boolean;
@@ -40,6 +41,7 @@ interface UserSettingsModalProps {
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
+        keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
@@ -131,6 +133,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
         deleteSpawnMinoOnPaintDrag,
+        flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
         loop,
@@ -502,6 +505,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-flags-hidden',
+                                datatest: 'switch-flags-hidden',
+                                title: i18n.UserSettings.ShowFlags.Title(),
+                                checked: !flagsHidden,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepFlagsHidden({ hidden: !checked }),
                             })}
 
                             {renderSwitch({

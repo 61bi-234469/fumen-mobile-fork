@@ -62,7 +62,7 @@ describe('Put pieces', () => {
         cy.tick(200);
         cy.clock().invoke('restore');
 
-        mino(Piece.T, Rotation.Spawn)(3, 18).forEach(selector => {
+        mino(Piece.T, Rotation.Spawn)(4, 18).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
     });
@@ -86,7 +86,7 @@ describe('Put pieces', () => {
         cy.clock().invoke('restore');
 
         cy.get(datatest('img-rotation-right')).should('be.visible');
-        mino(Piece.T, Rotation.Right)(3, 19).forEach(selector => {
+        mino(Piece.T, Rotation.Right)(4, 19).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
         });
     });

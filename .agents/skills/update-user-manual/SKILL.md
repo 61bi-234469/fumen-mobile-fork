@@ -27,7 +27,8 @@ Maintain `resources/manual/index.html` as a concise, task-oriented description o
 - Put behavior under the screen or setting that currently owns it. For example, document kick-table selection under Settings, not FLAGS.
 - Lead with what the user can accomplish. Prefer short steps, verbs, tables, and visible button labels.
 - Preserve the warning that tree data is stored as `#TREE=...` in the first-page comment.
-- Keep the manual in Japanese unless the task explicitly adds another language.
+- Maintain both `resources/manual/index.html` (Japanese) and `resources/manual/en/index.html` (English) when the English manual exists. Update both versions together for UI or workflow changes.
+- Use visible labels from `src/locales/ja/translation.ts` in the Japanese manual and from `src/locales/en/translation.ts` in the English manual.
 - Keep a short footer disclosure that the manual is created and maintained with generative AI using the implementation and live app as its basis.
 
 ## Keep the information architecture stable
@@ -65,26 +66,28 @@ Before declaring the manual current, compare the live app and Cypress coverage f
 
 ## Maintain screenshots
 
-- Store screenshots under `resources/manual/images/`.
+- Store Japanese screenshots under `resources/manual/images/` and English screenshots under `resources/manual/images/en/`, using matching filenames for corresponding screens.
 - Capture the running current app. Never generate or reconstruct the application UI.
 - Use a stable sample fumen that clearly shows the documented feature.
 - Capture PC-only features at a desktop viewport and mobile workflows at a representative mobile viewport.
+- Capture corresponding Japanese and English screenshots from the same sample fumen, state, and viewport whenever both versions document the screen.
 - Avoid personal data, browser chrome, debug overlays, and transient toasts unless the toast itself is documented.
 - Replace a screenshot when visible controls, labels, layout, or workflow change.
-- Add concise Japanese `alt` text and a caption describing the current UI.
+- Write concise `alt` text and captions in the language of the manual page: Japanese for the Japanese manual and English for the English manual.
 - If adding arrows or callouts, annotate a real screenshot and retain the unedited source during the task.
 
 ## Preserve navigation
 
 - Preserve the remaining informational content in `resources/help.html` unless the user explicitly requests a removal.
 - Keep the manual link near the bottom of Help rather than redirecting Help itself.
-- Keep README and Help links pointing to the manual.
+- Keep README and Help links pointing to both language versions of the manual.
+- Keep the language switch links and the app/Help links valid from both `manual/` and the deeper `manual/en/` path.
 - Keep all manual assets local so the manual works offline.
 
 ## Validate delivery
 
-1. Confirm every local link, section anchor, stylesheet, and image referenced by the manual exists.
-2. Confirm navigation order matches section order.
+1. Confirm every local link, section anchor, stylesheet, and image referenced by both manuals exists and resolves from its own directory.
+2. Confirm navigation order matches section order in both manuals.
 3. Search the manual for obsolete and historical wording before finishing.
 4. Run `yarn webpack`; do not edit generated files in `dest/`.
 5. Open the built manual and verify all images load at desktop and mobile widths without page-level horizontal overflow.

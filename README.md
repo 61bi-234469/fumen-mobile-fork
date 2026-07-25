@@ -3,6 +3,7 @@
 スマートフォンとPCで使える、テトリスのテト譜エディタです。
 
 - [ユーザーマニュアル](https://61bi-234469.github.io/fumen-mobile-fork/manual/)
+- [User manual in English](https://61bi-234469.github.io/fumen-mobile-fork/manual/en/)
 - アプリ内では右下のメニューから **Help** を選んで開けます。
 
 ## Third-Party Source Availability

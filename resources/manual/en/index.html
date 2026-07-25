@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn how to create fumen data, organize pages, manage branches, and analyze fields with Cold Clear in Fumen Mobile Fork.">
+  <title>Fumen Mobile Fork User Manual</title>
+  <link rel="canonical" href="https://61bi-234469.github.io/fumen-mobile-fork/manual/en/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Fumen Mobile Fork">
+  <meta property="og:title" content="Fumen Mobile Fork User Manual">
+  <meta property="og:description" content="Learn how to create fumen data, organize pages, manage branches, and analyze fields with Cold Clear in Fumen Mobile Fork.">
+  <meta property="og:url" content="https://61bi-234469.github.io/fumen-mobile-fork/manual/en/">
+  <meta property="og:image" content="https://61bi-234469.github.io/fumen-mobile-fork/manual/images/en/editor.png">
+  <meta property="og:image:alt" content="Fumen Mobile Fork editor">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Fumen Mobile Fork User Manual">
+  <meta name="twitter:description" content="Learn how to create fumen data, organize pages, manage branches, and analyze fields with Cold Clear in Fumen Mobile Fork.">
+  <meta name="twitter:image" content="https://61bi-234469.github.io/fumen-mobile-fork/manual/images/en/editor.png">
+  <link rel="alternate" hreflang="ja" href="https://61bi-234469.github.io/fumen-mobile-fork/manual/">
+  <link rel="alternate" hreflang="en" href="https://61bi-234469.github.io/fumen-mobile-fork/manual/en/">
+  <link rel="alternate" hreflang="x-default" href="https://61bi-234469.github.io/fumen-mobile-fork/manual/">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Fumen Mobile Fork<br>User Manual</h1>
+    <p>Create and view fumen data, organize pages and branches, and analyze fields with Cold Clear on mobile or desktop.</p>
+    <p><a href="../">日本語</a></p>
+  </div>
+</header>
+<nav aria-label="Table of contents">
+  <a href="#start">Get started</a><a href="#screens">Screens</a><a href="#edit">Edit</a><a href="#pages">Pages</a><a href="#list">List</a><a href="#tree">Tree</a><a href="#side-panel">Side panel</a><a href="#ai">Cold Clear</a><a href="#share">Import/Export</a><a href="#settings">Settings</a><a href="#tips">Useful operations</a><a href="#trouble">Troubleshooting</a>
+</nav>
+<main>
+  <section id="start">
+    <h2>Get started</h2>
+    <p class="note">This manual is created and maintained with generative AI using the implementation and the live app as its basis.</p>
+    <ol class="steps">
+      <li><a href="../../index.html">Open Fumen Mobile Fork</a>.</li>
+      <li>Choose a color in the editor, then tap or drag across the field to place blocks.</li>
+      <li>Press <strong>+</strong> at the bottom to create the next page.</li>
+      <li>Use the list icon at the bottom left to inspect all pages.</li>
+      <li>Open import, sharing, settings, or Help from the menu at the bottom right.</li>
+    </ol>
+    <div class="tip"><strong>Mobile:</strong> long-pressing buttons provides additional actions. <strong>PC:</strong> configure keyboard shortcuts in User Settings.</div>
+  </section>
+
+  <section id="screens">
+    <h2>The four screens</h2>
+    <div class="cards">
+      <div class="card"><h3>Reader</h3><p>View completed fumen data. It is useful for moving between pages, playing the animation, and checking comments. Select the pencil icon to move to Edit.</p></div>
+      <div class="card"><h3>Edit</h3><p>Edit the field, pieces, comments, and pages. Most work starts on this screen.</p></div>
+      <div class="card"><h3>List</h3><p>Review every page as a card. It is useful for reordering pages, editing comments in bulk, and exporting images or URLs.</p></div>
+      <div class="card"><h3>Tree</h3><p>Branch from the same position into multiple sequences. It is useful for organizing candidate moves, setups, and completions.</p></div>
+    </div>
+    <p class="note">Switch between List and Tree with the List and Tree tabs in the same overview screen. When Tree mode is enabled, page order follows the tree structure. On PC, List or Tree can also appear in a side panel beside Edit.</p>
+  </section>
+
+  <section id="edit">
+    <h2>Edit the field</h2>
+    <figure class="shot"><img src="../images/en/editor.png" alt="Edit screen with the Import and Export rail beside the field and the PAINT context tools below it."><figcaption>Edit. Use the rail on the right for Import/Export, page actions, editing modes, and the palette. The context tools below the field change with the selected mode.</figcaption></figure>
+
+    <h3>Draw with PAINT</h3>
+    <div class="cards">
+      <div class="card"><h3>Pen</h3><p>Choose from seven colors, black, or gray, then tap or drag to place blocks. Long-press a color to spawn its corresponding piece and switch to PIECE.</p></div>
+      <div class="card"><h3>Erase</h3><p>Remove blocks. When <strong>Delete spawn mino when paint drag passes over it</strong> is enabled, the drag also removes SPAWN pieces it passes over.</p></div>
+      <div class="card"><h3>Fill and Fill row</h3><p>Fill a connected area or one row with the selected color. Choose the empty color to erase the same area.</p></div>
+      <div class="card"><h3>COMP</h3><p>Select four cells to infer a piece from its shape and confirm it with the matching color. Long-press to clear colored blocks while leaving gray blocks, and remove SPAWN pieces.</p></div>
+    </div>
+
+    <h3>The right-side rail</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Button</th><th>What it does</th><th>Long press</th></tr></thead>
+        <tbody>
+          <tr><td>Import<br>(down arrow)</td><td>Open the modal for inserting or loading data from the clipboard</td><td>—</td></tr>
+          <tr><td>Export<br>(up arrow)</td><td>Open the modal for saving images, sharing fumen data or URLs, and opening external sites</td><td>—</td></tr>
+          <tr><td>Settings<br>(gear)</td><td>Open the Field tab of User Settings directly</td><td>—</td></tr>
+          <tr><td>Add</td><td>Add a page after the current page</td><td>—</td></tr>
+          <tr><td>Insert</td><td>Insert clipboard fumen data or a field image as the next page</td><td>Replace all pages with the loaded content</td></tr>
+          <tr><td>Copy</td><td>Copy the current page in fumen v115 format</td><td>Copy all pages</td></tr>
+          <tr><td>Cut</td><td>Copy and delete the current page</td><td>Cut all pages</td></tr>
+          <tr><td>Utilities</td><td>Open panels for mirroring, sliding, and field conversion</td><td>—</td></tr>
+          <tr><td>Flags</td><td>Open the panel for page information such as Lock, Rise, and Mirror</td><td>—</td></tr>
+          <tr><td>AI</td><td>Open the Cold Clear search menu</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Switch between PAINT, PIECE, and SELECT</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mode</th><th>Main actions</th></tr></thead>
+        <tbody>
+          <tr><td>PAINT</td><td>Use Pen, Erase, Fill, and Fill row. The palette shows block colors.</td></tr>
+          <tr><td>PIECE</td><td>Spawn pieces from the palette, then use Hold, hard drop, horizontal movement, soft drop, and rotation. Long-press horizontal movement to move to the edge.</td></tr>
+          <tr><td>SELECT</td><td>Drag across the field to select a rectangle, then copy, cut, rotate, or mirror it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Press the selected mode button again to show or hide the context tools below the field. Scroll the tray horizontally when the available width is too small.</p>
+
+    <h3>HOLD and NEXT in PIECE</h3>
+    <figure class="shot"><img src="../images/en/piece-queue.png" alt="PIECE mode with HOLD on the left and NEXT pieces in order on the right."><figcaption>In PIECE, queue information from the page comment appears beside the field as HOLD and NEXT.</figcaption></figure>
+    <ul>
+      <li><strong>HOLD / NEXT:</strong> These appear only in PIECE. NEXT is listed upward from the nearest piece.</li>
+      <li><strong>Piece queue settings:</strong> Select HOLD or NEXT to open the settings. The input is stored in the page comment as queue data such as <code>#Q=[](I)OTLJSZ</code>.</li>
+      <li><strong>Palette:</strong> Select a piece to spawn it. Delete removes a SPAWN piece, <strong>RESPAWN</strong> resets its position and rotation, and <strong>∞ 7bag</strong> toggles automatic queue generation.</li>
+    </ul>
+
+    <h3>Reuse a region with SELECT</h3>
+    <figure class="shot"><img src="../images/en/select.png" alt="SELECT mode with a rectangular region selected near the bottom of the field and the region size and action buttons visible."><figcaption>SELECT. Check the selected region size and block count, then copy, cut, rotate, or mirror the region.</figcaption></figure>
+    <ol class="steps">
+      <li>Choose <strong>SELECT</strong> and drag from the start point to the end point on the field.</li>
+      <li>Choose Copy, Cut, Rotate left, Rotate right, or Mirror from the context tools.</li>
+      <li>Copied or cut regions are saved in an empty palette slot. Select that slot, then tap the field to stamp it.</li>
+      <li>Pin a slot to keep the part saved. COMP controls whether empty cells pass through when stamping.</li>
+    </ol>
+
+    <h3>Utilities and Flags</h3>
+    <ul>
+      <li><strong>Mirror all pages:</strong> Mirror every page horizontally.</li>
+      <li><strong>Slide:</strong> Move the field up by one row and gray out the newly empty bottom row.</li>
+      <li><strong>Lock:</strong> Lock pieces on the page so line clears are applied when moving to the next page.</li>
+      <li><strong>Panels:</strong> Drag a panel heading to move it. Closing with the close button or <kbd>Esc</kbd> keeps the PAINT, PIECE, and SELECT choice.</li>
+    </ul>
+  </section>
+
+  <section id="pages">
+    <h2>Pages and comments</h2>
+    <div class="cards">
+      <div class="card"><h3>Move between pages</h3><p>Use the left and right buttons at the bottom. Long-press to jump to the first or last page.</p></div>
+      <div class="card"><h3>Insert in the middle</h3><p>Use <strong>+</strong> or <strong>Insert</strong> even when a next page already exists. The new page is inserted between the current and next pages.</p></div>
+      <div class="card"><h3>Undo and redo</h3><p>Undo or redo the latest edit. History is preserved when editing across screen modes.</p></div>
+      <div class="card"><h3>Comments</h3><p>Write explanations or NEXT queue data in the field below the board. In List, edit comments while viewing all pages or replace text in bulk.</p></div>
+    </div>
+    <div class="tip warn"><strong>First-page information:</strong> Some settings, such as colors and the kick table, apply to the entire fumen. These settings carry forward automatically even when the first page is replaced.</div>
+  </section>
+
+  <section id="list">
+    <h2>Organize pages in List</h2>
+    <p class="lead">Open it with the list icon at the bottom left of the editor.</p>
+    <figure class="shot"><img src="../images/en/list-view.png" alt="List view with field images and comments arranged as page cards."><figcaption>List. Review fields and comments together to understand the flow of the whole fumen.</figcaption></figure>
+    <ol class="steps">
+      <li>Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
+      <li>Use <strong>#page number</strong> links to move to a page. In the side panel, only the Edit field on the right updates.</li>
+      <li>Drag a card to reorder pages. Reordering is disabled while Tree mode is enabled.</li>
+      <li>Edit a comment directly in its text area. Use Utilities and Replace to replace text across all pages.</li>
+      <li>Use the bottom bar to return to Edit, toggle Tree mode, switch between List and Tree, open Utilities, open Import/Export, or open Settings. Undo/Redo is at the bottom left, and View settings is the floating button at the bottom right.</li>
+      <li><strong>Utilities:</strong> Mirror all pages, gray out pages, clear pages, or replace comments without leaving List.</li>
+      <li><strong>View settings</strong> (the bottom-right button) includes the <strong>Trim top blank</strong> switch and a <strong>Zoom</strong> slider. The slider snaps near 100%, and tapping the percentage returns to 100%. Use <kbd>Ctrl</kbd> + the mouse wheel to zoom on PC.</li>
+    </ol>
+  </section>
+
+  <section id="tree">
+    <h2>Branch with Tree</h2>
+    <ol class="steps">
+      <li>Choose <strong>Enable tree mode</strong> at the top of List.</li>
+      <li>Select the tree icon to switch to Tree.</li>
+      <li>Select the node to branch from, then use the colored buttons to create the next sequence.</li>
+    </ol>
+    <figure class="shot"><img src="../images/en/tree-view.png" alt="Tree view with two connected nodes and green and orange continuation and branch buttons."><figcaption>Tree. Use the green plus for a continuation, the orange plus for a branch, and the bottom-left chip to choose the Move/Delete scope.</figcaption></figure>
+
+    <h3>Add, move, and delete</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Click</th><th>Drag a node over another node</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot green"></span>Green plus</td><td>Add a page as a continuation of the selected node</td><td>Move it after that node</td></tr>
+          <tr><td><span class="dot orange"></span>Orange plus</td><td>Add a new branch from the selected node</td><td>Move it to the branch</td></tr>
+          <tr><td><span class="dot blue"></span>Blue duplicate</td><td>Duplicate a node or branch</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>Delete page</td><td>Delete the pages in the selected Move/Delete scope. Undo from the notification immediately afterward.</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Move/Delete:</strong> Choose <strong>Node only</strong>, <strong>Node &amp; descendants</strong>, or <strong>Descendants only</strong> from the bottom-left chip. The same scope applies to moving and deleting.</li>
+      <li><strong>Descendants only:</strong> Keep the node and move or delete only its descendants. The green button is available when there is one direct child. Only when the destination is a leaf node can multiple child subtrees be moved while keeping their original order.</li>
+      <li><strong>Delete:</strong> Select the <strong>Delete page</strong> icon at the top right of a node. Restore it with <strong>Undo</strong> in the notification after deletion. The last page cannot be deleted.</li>
+      <li><strong>Select a node:</strong> Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
+      <li><strong>Disable Tree mode:</strong> A confirmation dialog appears because the tree data will be removed.</li>
+      <li><strong>Add a parent tree:</strong> Create an independent root that is not connected to the existing branches. Use it to manage another set or loop in the same fumen.</li>
+      <li><strong>Gray out with + button:</strong> When + creates a page, blocks after line clear are grayed out. You can enable <strong>Do not gray out on hard drop</strong>.</li>
+      <li><strong>To the active node:</strong> Export only the pages from the root through the selected node as a PNG or share URL.</li>
+    </ul>
+    <div class="tip warn"><strong>Important:</strong> Tree data is stored in the first page comment as <code>#TREE=...</code>. Do not delete or rewrite this string while using Tree. Other fumen tools may display it as an ordinary comment.</div>
+  </section>
+
+  <section id="side-panel">
+    <h2>The PC side panel</h2>
+    <p class="lead">On PC, show List or Tree on the left while keeping Edit open. This is useful for checking all pages or branches while editing the field.</p>
+    <figure class="shot"><img src="../images/en/editor-side-panel.png" alt="Edit on the right with a Tree side panel containing two nodes on the left."><figcaption>Tree side panel. Edit the field on the right while checking the branches on the left.</figcaption></figure>
+    <ol class="steps">
+      <li>Select <strong>Show side panel</strong> at the top of the screen. You can also toggle it from User Settings &gt; List &amp; Tree &gt; <strong>Show side panel (PC)</strong>.</li>
+      <li>Choose the <strong>List</strong> or <strong>Tree</strong> tab.</li>
+      <li>Select a card or node and edit the field on the right. Comments and the current page stay synchronized.</li>
+    </ol>
+    <ul>
+      <li><strong>List tab:</strong> Move between pages, edit comments, and drag to reorder. Reordering is disabled in Tree mode.</li>
+      <li><strong>Tree tab:</strong> Enable Tree mode, add continuations and branches, duplicate or delete nodes, choose the Move/Delete scope, and move between pages.</li>
+      <li><strong>View settings and Zoom:</strong> Use the settings button at the bottom right of the panel for the same zoom slider and display settings as full-screen mode. The Move/Delete chip is at the bottom left and the AI button is above the settings button.</li>
+      <li><strong>Resize:</strong> Drag the divider at the right edge of the panel. Double-click the divider to return to the automatic width.</li>
+      <li><strong>Availability:</strong> This is a PC feature. The panel hides automatically below 1024px and reappears when the viewport is wide enough.</li>
+    </ul>
+  </section>
+
+  <section id="ai">
+    <h2>Analyze with Cold Clear</h2>
+    <ol class="steps">
+      <li>Select the blue <strong>AI</strong> button in Edit, List, or Tree.</li>
+      <li>Set Hold, Queue, B2B, and Combo to match the current situation.</li>
+      <li>Review the search settings and run the search that matches your goal.</li>
+    </ol>
+    <figure class="shot"><img src="../images/en/cold-clear.png" alt="The top of the Cold Clear menu showing Sequence Search, Branch Search, Get Score, and Queue State."><figcaption>Cold Clear. Choose a search, then scroll down to edit the queue and search settings.</figcaption></figure>
+
+    <h3>Three searches</h3>
+    <div class="cards">
+      <div class="card"><h3>Sequence Search</h3><p>Add AI moves through the end of the configured queue. Use it when you first want to see one complete line.</p></div>
+      <div class="card"><h3>Branch Search</h3><p>Add the top candidates at each position to Tree. Use it to compare several possible moves.</p></div>
+      <div class="card"><h3>Get Score</h3><p>Ask the AI to evaluate a piece that has already been spawned on the field. Use it to compare your own moves.</p></div>
+    </div>
+
+    <h3>Enter a queue</h3>
+    <ul>
+      <li>Select the Hold, Current, or Next field, then enter pieces with the <strong>I O T L J S Z</strong> buttons.</li>
+      <li><strong>Clear</strong> removes the currently selected field.</li>
+      <li><strong>+1bag</strong> appends one bag of all seven pieces to Next.</li>
+      <li><strong>B2B:</strong> Set the current Back-to-Back state. <strong>Combo:</strong> Set the current Combo (REN) count.</li>
+      <li>When a queue string is present in the comment, it is read automatically. Check existing ordinary comments before editing them.</li>
+    </ul>
+
+    <h3>Search settings</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Setting</th><th>Meaning</th><th>Guideline</th></tr></thead>
+        <tbody>
+          <tr><td>Hold usage</td><td>Allow Hold during search</td><td>Turn it on to match a real game</td></tr>
+          <tr><td>NEXT limit</td><td>Limit known NEXT pieces passed to the AI from 0 to 30</td><td>Use it when comparing only the visible NEXT pieces</td></tr>
+          <tr><td>Think Time</td><td>Search for 0.2 to 5 seconds per move</td><td>Start with 1 second; use less for speed and more for accuracy</td></tr>
+          <tr><td>Weights Default</td><td>Standard evaluation strategy</td><td>Use this in most cases</td></tr>
+          <tr><td>Weights Fast</td><td>An evaluation strategy that more readily favors digging and REN over T-spins</td><td>Use it for speed or digging comparisons</td></tr>
+          <tr><td>Speculate</td><td>Predict and search pieces beyond the known queue</td><td>Expand candidates when NEXT is short</td></tr>
+          <tr><td>Top candidates</td><td>Number of candidates kept by Branch Search: 1–20</td><td>More candidates increase processing time and output size</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">While a search is running, use <strong>Stop Search</strong> from the same menu. Progress is also shown on the AI button.</p>
+    <div class="tip warn"><strong>When a search takes too long:</strong> reduce Think Time, Top candidates, and queue length. Branch Search can grow rapidly as these settings are combined.</div>
+  </section>
+
+  <section id="share">
+    <h2>Import, export, and sharing</h2>
+    <div class="cards">
+      <div class="card"><h3>Insert from clipboard</h3><p>Add loaded content after the current position, or at the end in List or Tree. Use it when you want to keep the existing fumen and append to it.</p></div>
+      <div class="card"><h3>Load from clipboard</h3><p>Replace all current pages with the loaded content. Confirm that replacement is intended before using it.</p></div>
+      <div class="card"><h3>Copy fumen data</h3><p>Copy all pages as a fumen v115 or later string for sharing with other fumen tools.</p></div>
+      <div class="card"><h3>Share URL</h3><p>Open or copy a URL containing the current fumen. Use it for sharing or bookmarks.</p></div>
+      <div class="card"><h3>PNG / GIF</h3><p>Save the page list as a still image or animation. Display settings such as Trim top blank are included.</p></div>
+      <div class="card"><h3>External sites</h3><p>Open the current content in supported fumen sites. Available information may differ by site.</p></div>
+      <div class="card"><h3>tetgram</h3><p>Copy tetgram raw data to pass the tree layout, or open tetgram with the field already loaded.</p></div>
+    </div>
+
+    <h3>The Import/Export modal</h3>
+    <figure class="shot"><img src="../images/en/import-export.png" alt="Import/Export modal with Import and Export tabs, output scope, image export, and sharing actions."><figcaption>Open Import/Export from the Import and Export buttons on the Edit rail. The same modal is available from the List and Tree bottom bars.</figcaption></figure>
+    <ul>
+      <li><strong>Import:</strong> <strong>Load from clipboard</strong> replaces the whole fumen, while <strong>Insert from clipboard</strong> appends it. tetgram RawData JSON is detected automatically. On PC, a short <kbd>Ctrl</kbd> + <kbd>V</kbd> press inserts, while holding it for at least 500ms loads the data.</li>
+      <li><strong>Save image:</strong> Choose PNG or GIF. GIF export lets you set the page interval.</li>
+      <li><strong>Pages to export:</strong> In List or Tree Import/Export, choose <strong>All pages</strong> or <strong>From root to selected page</strong> for images, sharing, and external sites.</li>
+      <li><strong>Sharing:</strong> Copy or open fumen data and URLs.</li>
+      <li><strong>tetgram:</strong> Copy tetgram raw data with the tree layout. Open in tetgram with the field loaded, but note that the tree layout is not included in the URL.</li>
+      <li><strong>Short URL:</strong> Enable the TinyURL creation page when opening share, external, and tetgram URLs.</li>
+    </ul>
+
+    <h3>Common import formats</h3>
+    <ul>
+      <li>Fumen Mobile Fork, fumen-for-mobile, and PC fumen URLs</li>
+      <li>fumen v115 or later strings</li>
+      <li>tetgram RawData JSON</li>
+      <li>Field images copied to the clipboard</li>
+    </ul>
+    <div class="tip"><strong>Tips for importing images:</strong> Select the field along its grid lines and copy it to the clipboard as an image before inserting it. A complete 20×10 field is most reliable, but images with fewer rows can also be loaded.</div>
+    <p class="note">Share URLs include pages and tree data. URLs opened in tetgram do not include the tree layout. When a URL is too long, enable Short URL in Import/Export.</p>
+  </section>
+
+  <section id="settings">
+    <h2>User settings</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tab</th><th>Main settings</th></tr></thead>
+        <tbody>
+          <tr><td>Field</td><td><strong>Show FLAGS</strong>, <strong>Delete spawn mino when paint drag passes over it</strong>, <strong>Gray out with + button</strong>, <strong>Do not gray out on hard drop</strong>, and <strong>Block surface marker</strong></td></tr>
+          <tr><td>List &amp; Tree</td><td><strong>Trim top blank</strong>, <strong>Gray out with + button</strong>, and <strong>Show side panel (PC)</strong></td></tr>
+          <tr><td>Shortcuts</td><td><strong>Show shortcut labels</strong>, palette, edit, and piece shortcuts</td></tr>
+          <tr><td>Piece</td><td><strong>Piece Shortcuts</strong>, <strong>Show the ghost</strong>, <strong>Kick table</strong>, and ARR, DAS, DCD, and SDF (frame units)</td></tr>
+          <tr><td>Others</td><td><strong>Loop on page navigation [Reader]</strong>, <strong>Initial screen</strong>, <strong>Open fumen with tree data (#TREE) in Tree screen</strong>, and GIF page interval</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Show shortcut labels:</strong> Display the assigned key at the bottom right of each button.</li>
+      <li><strong>Change a key:</strong> Select a field and press a key. Press Backspace to clear the assignment.</li>
+      <li><strong>Kick table:</strong> Choose <strong>Classic</strong>, <strong>SRS</strong>, or <strong>SRS+</strong>. SRS+ also supports 180° rotation.</li>
+      <li><strong>Initial screen:</strong> Choose Reader, Edit, List, or Tree as the screen opened at startup. You can also open fumen data containing <code>#TREE</code> in Tree.</li>
+      <li><strong>Gray out with + button:</strong> Changing this in either Field or List &amp; Tree updates the same setting.</li>
+      <li><strong>Side panel:</strong> Enable the List or Tree panel beside Edit with <strong>Show side panel (PC)</strong>.</li>
+      <li><strong>Saving settings:</strong> Settings are saved in the browser. Clearing browser data resets them.</li>
+    </ul>
+  </section>
+
+  <section id="tips">
+    <h2>Useful operations</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Long-press previous or next page</td><td>Move to the first or last page</td></tr>
+          <tr><td>Long-press the List icon</td><td>Enable Tree mode and open Tree</td></tr>
+          <tr><td>Long-press the menu</td><td>Create a new fumen</td></tr>
+          <tr><td>Long-press PIECE</td><td>Delete SPAWN pieces from the field</td></tr>
+          <tr><td>Press the selected PAINT, PIECE, or SELECT button again</td><td>Show or hide the context tools below the field</td></tr>
+          <tr><td>Long-press a color</td><td>Spawn its corresponding piece</td></tr>
+          <tr><td>Long-press black</td><td>Clear the whole field and remove SPAWN pieces</td></tr>
+          <tr><td>Long-press gray</td><td>Turn all colored blocks gray while leaving empty cells unchanged</td></tr>
+          <tr><td>Long-press COMP</td><td>Clear colored blocks while leaving gray blocks, and remove SPAWN pieces</td></tr>
+          <tr><td>Right-click the field</td><td>Place a black block (PC only)</td></tr>
+          <tr><td>HOLD in PIECE</td><td>Swap HOLD and the current piece, and update the page comment queue</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2>Troubleshooting</h2>
+    <div class="cards">
+      <div class="card"><h3>Pages cannot be reordered</h3><p>List drag-reordering is disabled in Tree mode. Move nodes in Tree while preserving the tree structure, or disable Tree mode.</p></div>
+      <div class="card"><h3>Cold Clear cannot run</h3><p>Check that the Queue is not empty. Get Score requires a SPAWN piece on the field. Some settings cannot be changed during a search.</p></div>
+      <div class="card"><h3>An image cannot be imported</h3><p>Confirm that the image is on the clipboard and follows the field grid. Reduce margins and text, then select the field again.</p></div>
+      <div class="card"><h3>The tree disappeared</h3><p>Check that <code>#TREE=...</code> remains in the first page comment. If you saved or shared after deleting it, the original tree data may not be recoverable.</p></div>
+      <div class="card"><h3>Settings were reset</h3><p>Settings are saved in the browser. Clearing cache or site data, using another browser, or using another device does not carry them over.</p></div>
+      <div class="card"><h3>The shared result looks different</h3><p>Open the share URL again and check the kick table, <strong>Trim top blank</strong>, and Tree mode settings.</p></div>
+    </div>
+  </section>
+</main>
+<footer>
+  <p><a href="../../index.html">Back to app</a> · <a href="../../help.html">Help</a> · <a href="../">日本語マニュアル</a> · <a href="https://github.com/61bi-234469/fumen-mobile-fork">GitHub</a></p>
+  <p>Created and maintained with generative AI using the implementation and the live app as its basis.</p>
+</footer>
+</body>
+</html>

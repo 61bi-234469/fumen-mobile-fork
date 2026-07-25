@@ -63,6 +63,16 @@ jobs:
           mkdir -p site/preview
           cp -a develop-src/dest/. site/preview/
 
+      - name: Exclude preview from search indexes
+        run: |
+          # プロジェクトページのためrobots.txtはオリジンルート(61bi-234469.github.io/robots.txt)にしか
+          # 置けず、/fumen-mobile-fork/robots.txt はクローラーに読まれない。
+          # previewの除外はHTMLへnoindexを直接注入して行う。
+          find site/preview -name '*.html' -exec \
+            sed -i 's|<head>|<head>\n<meta name="robots" content="noindex, nofollow">|' {} +
+          # previewへコピーされたrobots.txt/sitemap.xmlは本番URLを指すため取り除く
+          rm -f site/preview/robots.txt site/preview/sitemap.xml
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:

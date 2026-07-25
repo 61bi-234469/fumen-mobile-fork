@@ -1,4 +1,8 @@
 ﻿export const resources = {
+    Seo: {
+        Title: 'Tetris Fumen Editor | Fumen Mobile Fork',
+        Description: 'A Tetris fumen editor forked from fumen-for-mobile. Create and view fumens on mobile and desktop, organize pages in lists or trees, export GIFs, and analyze fields with Cold Clear.',
+    },
     Top: {
         RestoreFromStorage: 'Restored to last state',
     },

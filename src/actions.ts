@@ -33,6 +33,7 @@ import { editorPanelActions, EditorPanelActions } from './actions/editor_panel';
 import { treeOperationActions, TreeOperationActions } from './actions/tree_operations';
 import { coldClearActions, ColdClearActions, initColdClearActions } from './actions/cold_clear';
 import { i18n } from './locales/keys';
+import { syncSeoMetadata } from './lib/seo';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
@@ -235,10 +236,23 @@ const setupI18n = (urlQuery: Query) => {
             },
         })
         .then(() => {
+            const language = (i18next.language || '').toLowerCase().startsWith('ja') ? 'ja' : 'en';
+            syncSeoMetadata({
+                language,
+                title: i18n.Seo.Title(),
+                description: i18n.Seo.Description(),
+            });
             main.refresh();
         })
         .catch(() => {
             console.error('Failed to load i18n');
+            // 初期化に失敗するとUIはfallbackLngの英語になるため、documentの言語と文面も英語へ揃える。
+            // i18next.tはキー名をそのまま返すので、翻訳リソースを直接参照する。
+            syncSeoMetadata({
+                language: 'en',
+                title: resourcesEn.Seo.Title,
+                description: resourcesEn.Seo.Description,
+            });
         });
 };
 

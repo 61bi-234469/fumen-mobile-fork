@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /fumen-mobile-fork/preview/
+
+Sitemap: https://61bi-234469.github.io/fumen-mobile-fork/sitemap.xml

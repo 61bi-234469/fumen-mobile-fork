@@ -4,6 +4,10 @@ const t: (key: string, options?: object) => string = (key, options) => i18next.t
 
 // Top Level = Screen name
 export const i18n = {
+    Seo: {
+        Title: () => t('Seo.Title'),
+        Description: () => t('Seo.Description'),
+    },
     Top: {
         RestoreFromStorage: () => t('Top.RestoreFromStorage'),
     },

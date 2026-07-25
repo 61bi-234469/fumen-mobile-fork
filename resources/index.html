@@ -1,6 +1,58 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,user-scalable=no,minimal-ui">
+
+    <title>テト譜エディタ | Fumen Mobile Fork</title>
+    <meta name="description" content="fumen-for-mobile派生のテト譜エディタ。スマートフォンとPCでテト譜の作成・閲覧、リスト・ツリー編集、GIF出力、Cold Clearによる盤面分析に対応しています。">
+    <link rel="canonical" href="https://61bi-234469.github.io/fumen-mobile-fork/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Fumen Mobile Fork">
+    <meta property="og:title" content="テト譜エディタ | Fumen Mobile Fork">
+    <meta property="og:description" content="fumen-for-mobile派生のテト譜エディタ。スマートフォンとPCでテト譜の作成・閲覧、リスト・ツリー編集、GIF出力、Cold Clearによる盤面分析に対応しています。">
+    <meta property="og:url" content="https://61bi-234469.github.io/fumen-mobile-fork/">
+    <meta property="og:image" content="https://61bi-234469.github.io/fumen-mobile-fork/icons/ms-icon-310x310.png">
+    <meta property="og:image:width" content="310">
+    <meta property="og:image:height" content="310">
+    <meta property="og:image:alt" content="Fumen Mobile Fork">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:locale:alternate" content="en_US">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="テト譜エディタ | Fumen Mobile Fork">
+    <meta name="twitter:description" content="fumen-for-mobile派生のテト譜エディタ。スマートフォンとPCでテト譜の作成・閲覧、リスト・ツリー編集、GIF出力、Cold Clearによる盤面分析に対応しています。">
+    <meta name="twitter:image" content="https://61bi-234469.github.io/fumen-mobile-fork/icons/ms-icon-310x310.png">
+    <meta name="twitter:image:alt" content="Fumen Mobile Fork">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Fumen Mobile Fork",
+        "alternateName": "テト譜エディタ",
+        "url": "https://61bi-234469.github.io/fumen-mobile-fork/",
+        "description": "スマートフォンとPCでテト譜を作成・閲覧・整理できるWebアプリケーションです。",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "JavaScriptを有効にしたモダンブラウザ",
+        "inLanguage": ["ja", "en"],
+        "isBasedOn": {
+            "@type": "WebApplication",
+            "name": "fumen-for-mobile",
+            "url": "https://knewjade.github.io/fumen-for-mobile/"
+        },
+        "featureList": [
+            "テト譜の作成と閲覧",
+            "リスト表示とツリー表示",
+            "Tetgramのインポートとエクスポート",
+            "GIF出力",
+            "Cold Clearによる盤面分析"
+        ]
+    }
+    </script>
+
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FV2XQ6J39K"></script>
     <script>
@@ -24,23 +76,13 @@
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-    <link rel="manifest" href="manifest.json">
     <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="msapplication-TileImage" content="icons/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
-
-    <meta charset="UTF-8">
-    <meta name="description" content="Tetris fumen tool for mobile">
-    <meta name="keywords" content="tetris,fumen tool,fumentool,mobile,phone,テト譜,テトリス,譜面,iPhone,iOS,Android,謎テト,スマホ,スマートホン,スマートフォン">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,user-scalable=no,minimal-ui"/>
-
-    <meta http-equiv="Content-Language" content="en,ja">
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-
-    <title>Fumen Mobile Fork</title>
 
     <script src="materialize/materialize.min.js"></script>
     <link rel="stylesheet" href="materialize/materialize.min.css">
@@ -161,6 +203,15 @@
     </style>
 </head>
 <body>
+
+<noscript>
+    <main>
+        <h1>Fumen Mobile Fork - テト譜エディタ</h1>
+        <p>このアプリを利用するにはJavaScriptを有効にしてください。</p>
+        <p><a href="manual/">機能と使い方をユーザーマニュアルで確認する</a></p>
+        <p>本アプリは <a href="https://knewjade.github.io/fumen-for-mobile/">fumen-for-mobile</a>（作者: knewjade）を基にした派生版です。</p>
+    </main>
+</noscript>
 
 <script src="vendor.bundle.js"></script>
 <script src="main.bundle.js"></script>

@@ -1,4 +1,8 @@
 export const resources = {
+    Seo: {
+        Title: 'テト譜エディタ | Fumen Mobile Fork',
+        Description: 'fumen-for-mobile派生のテト譜エディタ。スマートフォンとPCでテト譜の作成・閲覧、リスト・ツリー編集、GIF出力、Cold Clearによる盤面分析に対応しています。',
+    },
     Top: {
         RestoreFromStorage: '最後の状態が復元されました',
     },

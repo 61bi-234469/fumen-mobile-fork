@@ -118,7 +118,7 @@
       <li>Choose <strong>SELECT</strong> and drag from the start point to the end point on the field.</li>
       <li>Choose Copy, Cut, Rotate left, Rotate right, or Mirror from the context tools.</li>
       <li>Copied or cut regions are saved in an empty palette slot. Select that slot, then tap the field to stamp it.</li>
-      <li>Pin a slot to keep the part saved. COMP controls whether black cells pass through when stamping.</li>
+      <li>Pin a slot to keep the part saved. COMP controls whether empty cells pass through when stamping.</li>
     </ol>
 
     <h3>Utilities and Flags</h3>
@@ -138,7 +138,7 @@
       <div class="card"><h3>Undo and redo</h3><p>Undo or redo the latest edit. History is preserved when editing across screen modes.</p></div>
       <div class="card"><h3>Comments</h3><p>Write explanations or NEXT queue data in the field below the board. In List, edit comments while viewing all pages or replace text in bulk.</p></div>
     </div>
-    <div class="tip warn"><strong>First-page information:</strong> Some settings, such as colors and the rotation system, apply to the entire fumen. Operations that change the first page carry the required information forward.</div>
+    <div class="tip warn"><strong>First-page information:</strong> Some settings, such as colors and the kick table, apply to the entire fumen. These settings carry forward automatically even when the first page is replaced.</div>
   </section>
 
   <section id="list">
@@ -146,7 +146,7 @@
     <p class="lead">Open it with the list icon at the bottom left of the editor.</p>
     <figure class="shot"><img src="../images/en/list-view.png" alt="List view with field images and comments arranged as page cards."><figcaption>List. Review fields and comments together to understand the flow of the whole fumen.</figcaption></figure>
     <ol class="steps">
-      <li>Select a card once to make it active. From another card, select the same card again to move to its Edit screen.</li>
+      <li>Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
       <li>Use <strong>#page number</strong> links to move to a page. In the side panel, only the Edit field on the right updates.</li>
       <li>Drag a card to reorder pages. Reordering is disabled while Tree mode is enabled.</li>
       <li>Edit a comment directly in its text area. Use Utilities and Replace to replace text across all pages.</li>
@@ -173,15 +173,15 @@
           <tr><td><span class="dot green"></span>Green plus</td><td>Add a page as a continuation of the selected node</td><td>Move it after that node</td></tr>
           <tr><td><span class="dot orange"></span>Orange plus</td><td>Add a new branch from the selected node</td><td>Move it to the branch</td></tr>
           <tr><td><span class="dot blue"></span>Blue duplicate</td><td>Duplicate a node or branch</td><td>—</td></tr>
-          <tr><td><span class="dot red"></span>Delete page</td><td>Delete the selected Move/Delete scope. Undo from the notification immediately afterward.</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>Delete page</td><td>Delete the pages in the selected Move/Delete scope. Undo from the notification immediately afterward.</td><td>—</td></tr>
         </tbody>
       </table>
     </div>
     <ul>
       <li><strong>Move/Delete:</strong> Choose <strong>Node only</strong>, <strong>Node &amp; descendants</strong>, or <strong>Descendants only</strong> from the bottom-left chip. The same scope applies to moving and deleting.</li>
-      <li><strong>Descendants only:</strong> Keep the node and move or delete only its descendants. Normally the green button is available when there is one direct child, but multiple child subtrees can be moved in their original order when the destination is a leaf node.</li>
+      <li><strong>Descendants only:</strong> Keep the node and move or delete only its descendants. The green button is available when there is one direct child. Only when the destination is a leaf node can multiple child subtrees be moved while keeping their original order.</li>
       <li><strong>Delete:</strong> Select the <strong>Delete page</strong> icon at the top right of a node. Restore it with <strong>Undo</strong> in the notification after deletion. The last page cannot be deleted.</li>
-      <li><strong>Select a node:</strong> Select a card once to make it active. From another node, select the same card again to move to its Edit screen.</li>
+      <li><strong>Select a node:</strong> Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
       <li><strong>Disable Tree mode:</strong> A confirmation dialog appears because the tree data will be removed.</li>
       <li><strong>Add a parent tree:</strong> Create an independent root that is not connected to the existing branches. Use it to manage another set or loop in the same fumen.</li>
       <li><strong>Gray out with + button:</strong> When + creates a page, blocks after line clear are grayed out. You can enable <strong>Do not gray out on hard drop</strong>.</li>
@@ -226,10 +226,10 @@
 
     <h3>Enter a queue</h3>
     <ul>
-      <li>Select the Hold or Queue field, then enter pieces with the <strong>I O T L J S Z</strong> buttons.</li>
-      <li><strong>Clear</strong> removes the currently selected Hold or Queue.</li>
-      <li><strong>+1bag</strong> appends one bag of all seven pieces to Queue.</li>
-      <li><strong>B2B:</strong> Set the current Back-to-Back state. <strong>Combo:</strong> Set the current REN count.</li>
+      <li>Select the Hold, Current, or Next field, then enter pieces with the <strong>I O T L J S Z</strong> buttons.</li>
+      <li><strong>Clear</strong> removes the currently selected field.</li>
+      <li><strong>+1bag</strong> appends one bag of all seven pieces to Next.</li>
+      <li><strong>B2B:</strong> Set the current Back-to-Back state. <strong>Combo:</strong> Set the current Combo (REN) count.</li>
       <li>When a queue string is present in the comment, it is read automatically. Check existing ordinary comments before editing them.</li>
     </ul>
 
@@ -240,7 +240,7 @@
         <tbody>
           <tr><td>Hold usage</td><td>Allow Hold during search</td><td>Turn it on to match a real game</td></tr>
           <tr><td>NEXT limit</td><td>Limit known NEXT pieces passed to the AI from 0 to 30</td><td>Use it when comparing only the visible NEXT pieces</td></tr>
-          <tr><td>Think Time</td><td>Search for 200ms to 5s per move</td><td>Start with 1s; use less for speed and more for accuracy</td></tr>
+          <tr><td>Think Time</td><td>Search for 0.2 to 5 seconds per move</td><td>Start with 1 second; use less for speed and more for accuracy</td></tr>
           <tr><td>Weights Default</td><td>Standard evaluation strategy</td><td>Use this in most cases</td></tr>
           <tr><td>Weights Fast</td><td>An evaluation strategy that more readily favors digging and REN over T-spins</td><td>Use it for speed or digging comparisons</td></tr>
           <tr><td>Speculate</td><td>Predict and search pieces beyond the known queue</td><td>Expand candidates when NEXT is short</td></tr>
@@ -257,7 +257,7 @@
     <div class="cards">
       <div class="card"><h3>Insert from clipboard</h3><p>Add loaded content after the current position, or at the end in List or Tree. Use it when you want to keep the existing fumen and append to it.</p></div>
       <div class="card"><h3>Load from clipboard</h3><p>Replace all current pages with the loaded content. Confirm that replacement is intended before using it.</p></div>
-      <div class="card"><h3>Copy fumen data</h3><p>Copy all pages as an fumen v115 or later string for sharing with other fumen tools.</p></div>
+      <div class="card"><h3>Copy fumen data</h3><p>Copy all pages as a fumen v115 or later string for sharing with other fumen tools.</p></div>
       <div class="card"><h3>Share URL</h3><p>Open or copy a URL containing the current fumen. Use it for sharing or bookmarks.</p></div>
       <div class="card"><h3>PNG / GIF</h3><p>Save the page list as a still image or animation. Display settings such as Trim top blank are included.</p></div>
       <div class="card"><h3>External sites</h3><p>Open the current content in supported fumen sites. Available information may differ by site.</p></div>
@@ -270,7 +270,7 @@
       <li><strong>Import:</strong> <strong>Load from clipboard</strong> replaces the whole fumen, while <strong>Insert from clipboard</strong> appends it. tetgram RawData JSON is detected automatically. On PC, a short <kbd>Ctrl</kbd> + <kbd>V</kbd> press inserts, while holding it for at least 500ms loads the data.</li>
       <li><strong>Save image:</strong> Choose PNG or GIF. GIF export lets you set the page interval.</li>
       <li><strong>Pages to export:</strong> In List or Tree Import/Export, choose <strong>All pages</strong> or <strong>From root to selected page</strong> for images, sharing, and external sites.</li>
-      <li><strong>Sharing:</strong> Copy or open FUMEN data and URLs.</li>
+      <li><strong>Sharing:</strong> Copy or open fumen data and URLs.</li>
       <li><strong>tetgram:</strong> Copy tetgram raw data with the tree layout. Open in tetgram with the field loaded, but note that the tree layout is not included in the URL.</li>
       <li><strong>Short URL:</strong> Enable the TinyURL creation page when opening share, external, and tetgram URLs.</li>
     </ul>
@@ -294,8 +294,8 @@
         <tbody>
           <tr><td>Field</td><td><strong>Show FLAGS</strong>, <strong>Delete spawn mino when paint drag passes over it</strong>, <strong>Gray out with + button</strong>, <strong>Do not gray out on hard drop</strong>, and <strong>Block surface marker</strong></td></tr>
           <tr><td>List &amp; Tree</td><td><strong>Trim top blank</strong>, <strong>Gray out with + button</strong>, and <strong>Show side panel (PC)</strong></td></tr>
-          <tr><td>Shortcuts</td><td><strong>Show shortcut labels</strong>, palette, edit, and piece shortcuts, and the DAS setting for long-press movement</td></tr>
-          <tr><td>Piece</td><td><strong>Piece Shortcuts</strong>, <strong>Show the ghost</strong>, <strong>Kick table</strong>, ARR, DAS, DCD, and SDF</td></tr>
+          <tr><td>Shortcuts</td><td><strong>Show shortcut labels</strong>, palette, edit, and piece shortcuts</td></tr>
+          <tr><td>Piece</td><td><strong>Piece Shortcuts</strong>, <strong>Show the ghost</strong>, <strong>Kick table</strong>, and ARR, DAS, DCD, and SDF (frame units)</td></tr>
           <tr><td>Others</td><td><strong>Loop on page navigation [Reader]</strong>, <strong>Initial screen</strong>, <strong>Open fumen with tree data (#TREE) in Tree screen</strong>, and GIF page interval</td></tr>
         </tbody>
       </table>
@@ -304,7 +304,7 @@
       <li><strong>Show shortcut labels:</strong> Display the assigned key at the bottom right of each button.</li>
       <li><strong>Change a key:</strong> Select a field and press a key. Press Backspace to clear the assignment.</li>
       <li><strong>Kick table:</strong> Choose <strong>Classic</strong>, <strong>SRS</strong>, or <strong>SRS+</strong>. SRS+ also supports 180° rotation.</li>
-      <li><strong>Initial screen:</strong> Choose Reader, Editor, List, or Tree as the screen opened at startup. You can also open fumen data containing <code>#TREE</code> in Tree.</li>
+      <li><strong>Initial screen:</strong> Choose Reader, Edit, List, or Tree as the screen opened at startup. You can also open fumen data containing <code>#TREE</code> in Tree.</li>
       <li><strong>Gray out with + button:</strong> Changing this in either Field or List &amp; Tree updates the same setting.</li>
       <li><strong>Side panel:</strong> Enable the List or Tree panel beside Edit with <strong>Show side panel (PC)</strong>.</li>
       <li><strong>Saving settings:</strong> Settings are saved in the browser. Clearing browser data resets them.</li>
@@ -341,7 +341,7 @@
       <div class="card"><h3>An image cannot be imported</h3><p>Confirm that the image is on the clipboard and follows the field grid. Reduce margins and text, then select the field again.</p></div>
       <div class="card"><h3>The tree disappeared</h3><p>Check that <code>#TREE=...</code> remains in the first page comment. If you saved or shared after deleting it, the original tree data may not be recoverable.</p></div>
       <div class="card"><h3>Settings were reset</h3><p>Settings are saved in the browser. Clearing cache or site data, using another browser, or using another device does not carry them over.</p></div>
-      <div class="card"><h3>The shared result looks different</h3><p>Open the share URL again and check the rotation system, <strong>Trim top blank</strong>, and Tree mode settings.</p></div>
+      <div class="card"><h3>The shared result looks different</h3><p>Open the share URL again and check the kick table, <strong>Trim top blank</strong>, and Tree mode settings.</p></div>
     </div>
   </section>
 </main>

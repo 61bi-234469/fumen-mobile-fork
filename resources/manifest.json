@@ -1,7 +1,7 @@
 {
   "short_name": "Fumen Mobile Fork",
   "name": "Fumen Mobile Fork",
-  "description": "スマートフォンとPCで使えるテトリス用テト譜エディタ",
+  "description": "スマートフォンとPCで使える、テトリスのテト譜エディタ",
   "id": "./",
   "icons": [
     {

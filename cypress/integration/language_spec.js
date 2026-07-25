@@ -33,7 +33,7 @@ describe('SEO metadata', () => {
         + 'スマートフォンとPCでテト譜の作成・閲覧、リスト・ツリー編集、GIF出力、Cold Clearによる盤面分析に対応しています。';
     const enTitle = 'Tetris Fumen Editor | Fumen Mobile Fork';
     const enDescription = 'A Tetris fumen editor forked from fumen-for-mobile.'
-        + ' Create and view fumens on mobile and desktop, organize pages in lists or trees,'
+        + ' Create and view fumen data on mobile and desktop, organize pages in lists or trees,'
         + ' export GIFs, and analyze fields with Cold Clear.';
 
     it('ja', () => {

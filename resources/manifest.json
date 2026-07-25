@@ -1,6 +1,8 @@
 {
   "short_name": "Fumen Mobile Fork",
   "name": "Fumen Mobile Fork",
+  "description": "スマートフォンとPCで使えるテトリス用テト譜エディタ",
+  "id": "./",
   "icons": [
     {
       "src": "icons/android-icon-36x36.png",
@@ -42,5 +44,6 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "categories": ["utilities", "productivity"]
 }

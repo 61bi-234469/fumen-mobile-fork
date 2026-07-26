@@ -209,16 +209,24 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                 ]);
             }
             if (floating.firstTapPending) {
+                if (isOutsideFloatingRect) {
+                    // Tapping outside the preview settles the part where it is
+                    // shown, then the same touch starts a normal selection.
+                    return sequence(state, [
+                        commitFloating(floating),
+                        newState => actions.startRectSelection({ index })(newState),
+                    ]);
+                }
+                // Keep the tapped cell attached to the same cell of the part
+                // instead of snapping the part's bottom-left to the pointer.
                 return {
                     rectSelect: {
                         ...state.rectSelect,
                         anchorIndex: index,
                         floating: {
                             ...floating,
-                            targetX: pointerX,
-                            targetY: pointerY,
-                            pointerOffsetX: 0,
-                            pointerOffsetY: 0,
+                            pointerOffsetX: pointerX - floating.targetX,
+                            pointerOffsetY: pointerY - floating.targetY,
                             firstTapPending: false,
                             firstTapInProgress: true,
                         },

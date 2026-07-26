@@ -576,7 +576,8 @@ describe('Editor UI final concept', () => {
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
         cy.get(datatest('btn-piece-gray')).click();
         cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
-        operations.mode.block.click(5, 5);
+        // プレビュー内から掴んで運ぶ。掴んだセルとパーツのセルの相対位置は保たれる。
+        operations.mode.block.drag({ x: 4, y: 22 }, { x: 5, y: 5 });
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         // 移動したプレビューは「外側クリック」で初めてフィールドへ確定される仕様のため、
         // 範囲外をクリックしてコミットしてから undo で取り消せることを確認する。
@@ -587,6 +588,64 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-undo')).click();
         cy.get(block(5, 5)).should('not.have.attr', 'color', Color.T.Normal);
         cy.get(block(6, 5)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('keeps the grabbed cell of a SELECT part under the pointer', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+        cy.get(datatest('btn-piece-l')).click();
+        operations.mode.block.click(2, 1);
+        cy.get(datatest('btn-piece-i')).click();
+        operations.mode.block.click(1, 2);
+        cy.get(datatest('btn-piece-z')).click();
+        operations.mode.block.click(2, 2);
+
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 2, y: 2 });
+        cy.get(datatest('tray-selection-summary')).should('contain', '2×2');
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        // 2×2 のパーツはフィールド上部の x=4..5, y=21..22 に表示される。
+        cy.get(block(4, 21)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(5, 22)).should('have.attr', 'color', Color.Z.Normal);
+
+        // 画面上の右上セル（配列では x=5, y=22）を掴んで運ぶ。
+        operations.mode.block.drag({ x: 5, y: 22 }, { x: 7, y: 10 });
+
+        cy.get(block(6, 9)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(7, 9)).should('have.attr', 'color', Color.L.Normal);
+        cy.get(block(6, 10)).should('have.attr', 'color', Color.I.Normal);
+        cy.get(block(7, 10)).should('have.attr', 'color', Color.Z.Normal);
+        // 旧実装では掴んだセルが左下へ寄り、パーツはここに現れていた。
+        cy.get(block(8, 11)).should('not.have.attr', 'color', Color.Z.Normal);
+        cy.get(block(7, 11)).should('not.have.attr', 'color', Color.T.Normal);
+
+        operations.mode.block.click(0, 0);
+        cy.get(block(6, 9)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(7, 10)).should('have.attr', 'color', Color.Z.Normal);
+    });
+
+    it('settles a SELECT part in place when the first tap starts outside the preview', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+
+        // プレビュー外の初回タップは現在位置で確定し、同じタッチで矩形選択を始める。
+        operations.mode.block.drag({ x: 3, y: 5 }, { x: 5, y: 7 });
+
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(3, 5)).should('not.have.attr', 'color', Color.T.Normal);
+        cy.get(datatest('tray-selection-summary')).should('contain', '3×3');
+
+        cy.get(datatest('btn-undo')).click();
+        cy.get(block(4, 22)).should('not.have.attr', 'color', Color.T.Normal);
     });
 
     it('uses SELECT stock long press to toggle clipping without changing transparency', () => {

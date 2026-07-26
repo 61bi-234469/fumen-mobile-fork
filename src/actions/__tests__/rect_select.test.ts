@@ -1,7 +1,7 @@
 import { State } from '../../states';
 import { Piece } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
-import { initialRectSelectState } from '../../lib/rect_selection';
+import { floatingPartAtTop, initialRectSelectState } from '../../lib/rect_selection';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -159,5 +159,101 @@ describe('rectSelectActions', () => {
         expect(next.fumen).toBeUndefined();
         expect(field.get(1, 1)).toBe(Piece.T);
         expect(field.get(4, 5)).toBe(Piece.Empty);
+    });
+
+    describe('first tap on a part preview', () => {
+        // 2x2 part: floatingPartAtTop puts it at x=4..5, y=21..22.
+        const partCells = [Piece.T, Piece.L, Piece.Empty, Piece.I];
+        const partState = (): State => ({
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: new Field({}) },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'floating',
+                rect: null,
+                anchorIndex: null,
+                floating: floatingPartAtTop(partCells.slice(), 2, 2),
+                reselectOnNextTouch: false,
+            },
+            parts: { items: [], selectedId: 'part', blackTransparent: true },
+        } as unknown as State);
+
+        test('keeps the tapped cell attached to the same cell of the part', () => {
+            const state = partState();
+
+            // Top-right cell of the preview.
+            const next = rectSelectActions.startRectSelection({ index: 5 + 22 * 10 })(state) as any;
+
+            expect(next.rectSelect.floating.targetX).toBe(4);
+            expect(next.rectSelect.floating.targetY).toBe(21);
+            expect(next.rectSelect.floating.pointerOffsetX).toBe(1);
+            expect(next.rectSelect.floating.pointerOffsetY).toBe(1);
+            expect(next.rectSelect.floating.firstTapPending).toBe(false);
+            expect(next.rectSelect.floating.firstTapInProgress).toBe(true);
+            expect(next.rectSelect.anchorIndex).toBe(5 + 22 * 10);
+        });
+
+        test('moves the part so that the tapped cell follows the pointer', () => {
+            const state = partState();
+            const started = {
+                ...state,
+                ...(rectSelectActions.startRectSelection({ index: 5 + 22 * 10 })(state) as State),
+            } as State;
+
+            const moved = rectSelectActions.moveRectSelection({ index: 3 + 4 * 10 })(started) as any;
+
+            // The tapped cell stays the part's top-right cell.
+            expect(moved.rectSelect.floating.targetX).toBe(2);
+            expect(moved.rectSelect.floating.targetY).toBe(3);
+        });
+
+        test('keeps the first placement uncommitted after the pointer is released', () => {
+            const state = partState();
+            const started = {
+                ...state,
+                ...(rectSelectActions.startRectSelection({ index: 5 + 22 * 10 })(state) as State),
+            } as State;
+
+            const ended = rectSelectActions.endRectSelection()(started) as any;
+
+            expect(ended.rectSelect.status).toBe('floating');
+            expect(ended.rectSelect.floating.firstTapInProgress).toBe(false);
+            expect(ended.rectSelect.floating.targetX).toBe(4);
+            expect(ended.fumen).toBeUndefined();
+        });
+
+        test('commits the preview in place and starts a selection on an outside first tap', () => {
+            // tslint:disable-next-line:no-var-requires
+            const mocked = require('../../actions').actions;
+            const original = mocked.startRectSelection;
+            mocked.startRectSelection = ({ index }: { index: number }) => (
+                (current: State) => rectSelectActions.startRectSelection({ index })(current)
+            );
+
+            try {
+                const state = partState();
+
+                const next = rectSelectActions.startRectSelection({ index: 0 })(state) as any;
+
+                const committed = next.fumen.pages[0];
+                expect(committed.commands).toBeDefined();
+                expect(next.parts.selectedId).toBeNull();
+                expect(next.rectSelect).toEqual({
+                    status: 'selecting',
+                    rect: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+                    anchorIndex: 0,
+                    floating: null,
+                    reselectOnNextTouch: false,
+                });
+            } finally {
+                mocked.startRectSelection = original;
+            }
+        });
     });
 });

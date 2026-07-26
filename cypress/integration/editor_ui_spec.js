@@ -573,11 +573,12 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-inference')).click();
         cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'false');
         cy.get(datatest('btn-piece-gray')).click();
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+        // 占有列(x=4..5)は空なので、着地面 y=0 の3マス上に出る。
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
         cy.get(datatest('btn-piece-gray')).click();
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
         // プレビュー内から掴んで運ぶ。掴んだセルとパーツのセルの相対位置は保たれる。
-        operations.mode.block.drag({ x: 4, y: 22 }, { x: 5, y: 5 });
+        operations.mode.block.drag({ x: 4, y: 3 }, { x: 5, y: 5 });
         cy.get(block(5, 5)).should('have.attr', 'color', Color.T.Normal);
         // 移動したプレビューは「外側クリック」で初めてフィールドへ確定される仕様のため、
         // 範囲外をクリックしてコミットしてから undo で取り消せることを確認する。
@@ -606,12 +607,12 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('tray-selection-summary')).should('contain', '2×2');
         cy.get(datatest('tray-select-copy')).click();
         cy.get(datatest('btn-piece-i')).click();
-        // 2×2 のパーツはフィールド上部の x=4..5, y=21..22 に表示される。
-        cy.get(block(4, 21)).should('have.attr', 'color', Color.T.Normal);
-        cy.get(block(5, 22)).should('have.attr', 'color', Color.Z.Normal);
+        // 2×2 のパーツは占有列(x=4..5)の着地面 y=0 の3マス上、x=4..5, y=3..4 に表示される。
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(5, 4)).should('have.attr', 'color', Color.Z.Normal);
 
-        // 画面上の右上セル（配列では x=5, y=22）を掴んで運ぶ。
-        operations.mode.block.drag({ x: 5, y: 22 }, { x: 7, y: 10 });
+        // 画面上の右上セル（配列では x=5, y=4）を掴んで運ぶ。
+        operations.mode.block.drag({ x: 5, y: 4 }, { x: 7, y: 10 });
 
         cy.get(block(6, 9)).should('have.attr', 'color', Color.T.Normal);
         cy.get(block(7, 9)).should('have.attr', 'color', Color.L.Normal);
@@ -635,17 +636,51 @@ describe('Editor UI final concept', () => {
         operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
         cy.get(datatest('tray-select-copy')).click();
         cy.get(datatest('btn-piece-i')).click();
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
 
         // プレビュー外の初回タップは現在位置で確定し、同じタッチで矩形選択を始める。
         operations.mode.block.drag({ x: 3, y: 5 }, { x: 5, y: 7 });
 
-        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
         cy.get(block(3, 5)).should('not.have.attr', 'color', Color.T.Normal);
         cy.get(datatest('tray-selection-summary')).should('contain', '3×3');
 
         cy.get(datatest('btn-undo')).click();
-        cy.get(block(4, 22)).should('not.have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 3)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('spawns a SELECT part three rows above the landing surface', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        // 1×1 のパーツの占有列は x=4。空なので着地面 y=0 の3マス上に出る。
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
+
+        // 占有列に3段、占有列の外(x=0)にはより高い地形を作る。
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('btn-piece-gray')).click();
+        operations.mode.block.dragToUp(4, { from: 0, to: 2 });
+        operations.mode.block.dragToUp(0, { from: 0, to: 8 });
+
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        // 着地面 y=3 の3マス上。占有列の外の高さは影響しない。
+        cy.get(block(4, 6)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 2)).should('have.attr', 'color', Color.Gray.Normal);
+
+        // 天井付近では従来と同じ最上段に収まる。
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('btn-piece-gray')).click();
+        operations.mode.block.dragToUp(4, { from: 3, to: 21 });
+
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(block(4, 22)).should('have.attr', 'color', Color.T.Normal);
     });
 
     it('uses SELECT stock long press to toggle clipping without changing transparency', () => {

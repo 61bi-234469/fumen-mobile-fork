@@ -5,7 +5,7 @@ import { PageFieldOperation, Pages, parseToCommands } from '../lib/pages';
 import {
     floatingTargetForPointer,
     extractRectPieces,
-    floatingPartAtTop,
+    floatingPartSpawn,
     floatingRect,
     initialRectSelectState,
     isIndexInRect,
@@ -252,7 +252,9 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         }
         const part = selectedPart(state);
         if (part !== undefined) {
-            const floating: FloatingSelection = floatingPartAtTop(part.cells, part.width, part.height);
+            const floating: FloatingSelection = floatingPartSpawn(
+                part.cells, part.width, part.height, state.field,
+            );
             const pointerX = index % FieldConstants.Width;
             const pointerY = Math.floor(index / FieldConstants.Width);
             floating.targetX = pointerX;
@@ -486,7 +488,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             parts: { ...state.parts, selectedId: id },
             rectSelect: {
                 status: 'floating', rect: null, anchorIndex: null,
-                floating: floatingPartAtTop(part.cells, part.width, part.height),
+                floating: floatingPartSpawn(part.cells, part.width, part.height, state.field),
                 reselectOnNextTouch: false,
             },
         };

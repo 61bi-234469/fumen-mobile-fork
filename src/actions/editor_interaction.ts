@@ -10,7 +10,7 @@ import {
 import { ModeTypes, Piece, TouchTypes } from '../lib/enums';
 import { NextState, sequence } from './commons';
 import { isMinoPaletteSelection, legacyModeForPaintTool } from '../lib/editor_interaction';
-import { floatingPartAtTop, initialRectSelectState } from '../lib/rect_selection';
+import { floatingPartSpawn, initialRectSelectState } from '../lib/rect_selection';
 
 export interface EditorInteractionActions {
     changePrimaryTool(data: { tool: PrimaryTool }): action;
@@ -227,7 +227,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                         status: 'floating',
                         rect: null,
                         anchorIndex: null,
-                        floating: floatingPartAtTop(part.cells, part.width, part.height),
+                        floating: floatingPartSpawn(part.cells, part.width, part.height, state.field),
                         reselectOnNextTouch: false,
                     }
                     : initialRectSelectState,

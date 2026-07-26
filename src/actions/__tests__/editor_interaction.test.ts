@@ -43,6 +43,7 @@ const createState = (): State => ({
         currentIndex: 0,
         pages: [{ index: 0 }],
     },
+    field: Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty })),
     rectSelect: initialRectSelectState,
     parts: { items: [], selectedId: null, blackTransparent: true },
 } as unknown as State);
@@ -239,6 +240,27 @@ describe('editorInteractionActions', () => {
         const next = editorInteractionActions.selectEditorPalette({ selection: Piece.T })(state);
 
         expect(next).toBeUndefined();
+    });
+
+    test('spawns a palette part three rows above the terrain it covers', () => {
+        const state = createState();
+        state.editorUi.primaryTool = 'select';
+        state.parts = {
+            items: [{
+                id: 'part', slot: Piece.T, width: 2, height: 2,
+                cells: [Piece.T, Piece.T, Piece.T, Piece.T], pinned: false, createdAt: 1,
+            }],
+            selectedId: null,
+            blackTransparent: true,
+        };
+        for (let y = 0; y <= 2; y += 1) {
+            state.field[4 + y * 10] = { piece: Piece.Gray };
+        }
+
+        const next = editorInteractionActions.selectEditorPalette({ selection: Piece.T })(state);
+
+        expect(next.rectSelect.floating.targetX).toBe(4);
+        expect(next.rectSelect.floating.targetY).toBe(6);
     });
 
     test('transparency changes keep the floating selection preview active', () => {

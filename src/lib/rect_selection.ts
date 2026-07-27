@@ -114,6 +114,18 @@ export const floatingRect = (floating: FloatingSelection): SelectionRect => ({
     maxY: floating.targetY + floating.height - 1,
 });
 
+// 画面上で選択として見えている矩形。選択なしのときだけ null。
+// 消しゴム/右クリックはこの矩形を SPAWN ミノと同じ「まるごと消せる対象」として扱う。
+export const activeSelectionRect = (rectSelect: RectSelectState): SelectionRect | null => {
+    if (rectSelect.status === 'floating') {
+        return rectSelect.floating !== null ? floatingRect(rectSelect.floating) : null;
+    }
+    if (rectSelect.status === 'selecting' || rectSelect.status === 'selected') {
+        return rectSelect.rect;
+    }
+    return null;
+};
+
 export const mirrorPartCells = (cells: Piece[], width: number, height: number): Piece[] => {
     const mirrorPiece = (piece: Piece): Piece => {
         switch (piece) {

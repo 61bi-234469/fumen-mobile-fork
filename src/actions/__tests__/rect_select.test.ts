@@ -1,12 +1,15 @@
 import { State } from '../../states';
-import { Piece } from '../../lib/enums';
+import { Piece, Rotation } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
 import { floatingPartSpawn, initialRectSelectState } from '../../lib/rect_selection';
+
+const mockClearPiece = jest.fn(() => () => undefined);
 
 jest.mock('../../actions', () => ({
     actions: {
         registerHistoryTask: () => () => undefined,
         reopenCurrentPage: () => () => undefined,
+        clearPiece: mockClearPiece,
         startRectSelection: () => () => ({
             rectSelect: { status: 'selecting' },
         }),
@@ -15,6 +18,10 @@ jest.mock('../../actions', () => ({
 
 // tslint:disable-next-line:no-var-requires
 const { rectSelectActions } = require('../rect_select');
+
+beforeEach(() => {
+    mockClearPiece.mockClear();
+});
 
 describe('rectSelectActions', () => {
     test('does not add highlight darkening to transformed select previews', () => {
@@ -284,6 +291,103 @@ describe('rectSelectActions', () => {
             } finally {
                 mocked.startRectSelection = original;
             }
+        });
+
+        test('drops the part selection when the preview is cancelled', () => {
+            const state = partState();
+
+            const next = rectSelectActions.cancelRectSelectionPreview()(state) as any;
+
+            // 選択が残っていると、次の左クリックが再選択ではなく再配置になってしまう。
+            expect(next.parts.selectedId).toBeNull();
+            expect(next.rectSelect.status).toBe('none');
+        });
+
+        test('keeps the source selection when a moved selection is cancelled', () => {
+            const sourceRect = { minX: 1, minY: 1, maxX: 2, maxY: 2 };
+            const state = {
+                ...partState(),
+                rectSelect: {
+                    status: 'floating',
+                    rect: sourceRect,
+                    anchorIndex: null,
+                    floating: {
+                        sourceRect,
+                        cells: partCells.slice(),
+                        width: 2,
+                        height: 2,
+                        targetX: 5,
+                        targetY: 5,
+                        pointerOffsetX: 0,
+                        pointerOffsetY: 0,
+                    },
+                    reselectOnNextTouch: false,
+                },
+                parts: { items: [], selectedId: 'part', blackTransparent: true },
+            } as unknown as State;
+
+            const next = rectSelectActions.cancelRectSelectionPreview()(state) as any;
+
+            expect(next.rectSelect.status).toBe('selected');
+            expect(next.rectSelect.rect).toEqual(sourceRect);
+            expect(next.parts).toBeUndefined();
+        });
+    });
+
+    describe('deleteRectSelection', () => {
+        const selectedState = (options: { deleteSpawnMino: boolean; pieceY: number }): State => {
+            const field = new Field({});
+            field.add(1, 1, Piece.T);
+            return {
+                field: Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty })),
+                mode: { deleteSpawnMinoOnPaintDrag: options.deleteSpawnMino },
+                fumen: {
+                    currentIndex: 0,
+                    pages: [{
+                        index: 0,
+                        field: { obj: field },
+                        comment: { text: '' },
+                        flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                        piece: {
+                            type: Piece.T,
+                            rotation: Rotation.Spawn,
+                            coordinate: { x: 1, y: options.pieceY },
+                        },
+                    }],
+                },
+                rectSelect: {
+                    status: 'selected',
+                    rect: { minX: 0, minY: 0, maxX: 3, maxY: 3 },
+                    anchorIndex: null,
+                    floating: null,
+                    reselectOnNextTouch: false,
+                },
+                parts: { items: [], selectedId: null, blackTransparent: true },
+            } as unknown as State;
+        };
+
+        test('also deletes the SPAWN mino overlapping the deleted rect', () => {
+            const state = selectedState({ deleteSpawnMino: true, pieceY: 1 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).toHaveBeenCalledTimes(1);
+        });
+
+        test('keeps the SPAWN mino when the setting is off', () => {
+            const state = selectedState({ deleteSpawnMino: false, pieceY: 1 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).not.toHaveBeenCalled();
+        });
+
+        test('keeps a SPAWN mino that sits outside the deleted rect', () => {
+            const state = selectedState({ deleteSpawnMino: true, pieceY: 15 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).not.toHaveBeenCalled();
         });
     });
 });

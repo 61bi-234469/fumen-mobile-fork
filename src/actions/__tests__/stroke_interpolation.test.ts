@@ -74,6 +74,8 @@ const emptyBlocks = (count: number) => Array.from({ length: count }, () => ({
 
 interface StateOptions {
     touch?: TouchTypes;
+    primaryTool?: 'paint' | 'piece' | 'select';
+    paintTool?: 'pen' | 'fill' | 'fillRow';
     modePiece?: Piece;
     eventsPiece?: Piece;
     lastTouchedIndex?: number;
@@ -108,6 +110,10 @@ const createState = (options: StateOptions = {}) => {
         },
         cache: {
             currentInitField: new Field({}),
+        },
+        editorUi: {
+            primaryTool: options.primaryTool ?? 'paint',
+            paintTool: options.paintTool ?? 'pen',
         },
         field: options.fieldBlocks ?? emptyBlocks(240),
         sentLine: emptyBlocks(10),
@@ -220,6 +226,54 @@ describe('stroke interpolation on the field', () => {
         expect(pre['block-2']).toBeUndefined();
         expect(pre['block-3']).toBeUndefined();
         expect(pre['block-4']).toBeUndefined();
+    });
+
+    const rowEraseState = (primaryTool: 'paint' | 'select', page: Page) => {
+        page.commands = {
+            pre: {
+                'block-11': { x: 1, y: 1, piece: Piece.I, type: 'block' },
+                'block-15': { x: 5, y: 1, piece: Piece.I, type: 'block' },
+                'block-21': { x: 1, y: 2, piece: Piece.I, type: 'block' },
+                'block-25': { x: 5, y: 2, piece: Piece.I, type: 'block' },
+            },
+        };
+        const fieldBlocks = emptyBlocks(240);
+        for (const index of [11, 15, 21, 25]) {
+            fieldBlocks[index] = { piece: Piece.I, highlight: HighlightType.Normal };
+        }
+        return createState({
+            page,
+            fieldBlocks,
+            primaryTool,
+            paintTool: 'fillRow',
+            touch: primaryTool === 'select' ? TouchTypes.Select : TouchTypes.FillRow,
+            modePiece: Piece.Gray,
+            eventsPiece: Piece.Empty,
+            lastTouchedIndex: 5,
+        });
+    };
+
+    test('interpolates a right-drag row erase in PAINT when the paint tool is fillRow', () => {
+        const page = createPage();
+
+        fieldEditorActions.onrightMoveField({ index: 25 })(rowEraseState('paint', page));
+
+        const pre = page.commands!.pre;
+        expect(pre['block-11']).toBeUndefined();
+        expect(pre['block-21']).toBeUndefined();
+    });
+
+    test('erases only the traversed cells in SELECT even when fillRow is armed', () => {
+        const page = createPage();
+
+        fieldEditorActions.onrightMoveField({ index: 25 })(rowEraseState('select', page));
+
+        const pre = page.commands!.pre;
+        // The Bresenham line 5 → 15 → 25 is erased; the rest of the rows survive.
+        expect(pre['block-15']).toBeUndefined();
+        expect(pre['block-25']).toBeUndefined();
+        expect(pre['block-11']).toMatchObject({ piece: Piece.I });
+        expect(pre['block-21']).toMatchObject({ piece: Piece.I });
     });
 });
 

@@ -236,6 +236,43 @@ export const operations = {
                     body.trigger('mouseup', end.x, end.y);
                 });
             },
+            // 右クリック（button: 2）は主ツールに関係なく消しゴムとして働くため、
+            // PAINT / SELECT / PIECE のどのスペックからでも使う。
+            rightClick: (x, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
+                cy.get('#canvas-container').then(canvas => {
+                    const point = fieldPoint(canvas[0], x, y);
+                    const contentSelector = '#canvas-container .konvajs-content';
+                    cy.get(contentSelector).trigger('mousedown', point.x, point.y, { button: 2 });
+                    cy.get(contentSelector).trigger('mouseup', point.x, point.y, { button: 2 });
+                });
+            },
+            rightDrag: ({ x: fromX, y: fromY }, { x: toX, y: toY }) => {
+                if (fromY < 0 || toY < 0) {
+                    ensureSentLineVisible();
+                }
+                cy.get('#canvas-container').then(canvas => {
+                    const start = fieldPoint(canvas[0], fromX, fromY);
+                    const end = fieldPoint(canvas[0], toX, toY);
+                    // 盤面操作はページを開き直してKonvaのcontentノードを差し替えることがあるため、
+                    // dragToUpと同様にイベントごとに引き直す。
+                    const contentSelector = '#canvas-container .konvajs-content';
+                    cy.get(contentSelector).trigger('mousedown', start.x, start.y, { button: 2 });
+                    const maxCount = 10;
+                    for (let count = 0; count <= maxCount; count++) {
+                        const ratio = count / maxCount;
+                        cy.get(contentSelector).trigger(
+                            'mousemove',
+                            start.x + (end.x - start.x) * ratio,
+                            start.y + (end.y - start.y) * ratio,
+                            { button: 2 },
+                        );
+                    }
+                    cy.get(contentSelector).trigger('mouseup', end.x, end.y, { button: 2 });
+                });
+            },
         },
         fill: {
             open: ({ home = true } = {}) => {

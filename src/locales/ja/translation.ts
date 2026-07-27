@@ -45,7 +45,7 @@ export const resources = {
             On: () => '有効',
         },
         DeleteSpawnMinoOnPaintDrag: {
-            Title: '黒ペイントのドラッグでSPAWNミノも削除する',
+            Title: '消しゴムのドラッグでSPAWNミノも削除する',
         },
         ShowFlags: {
             Title: 'FLAGSを表示',

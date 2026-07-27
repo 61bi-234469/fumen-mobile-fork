@@ -1,4 +1,4 @@
-import { isMinoPiece, ModeTypes, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
+import { isMinoPiece, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
@@ -24,6 +24,7 @@ import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 import { intermediateCellIndices } from '../lib/grid_line';
 import { legacyModeForPaintTool } from '../lib/editor_interaction';
+import { activeSelectionRect, isIndexInRect } from '../lib/rect_selection';
 import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 import { activateDasCut, cutDasHolds } from '../lib/piece_das';
 
@@ -96,15 +97,38 @@ export interface FieldEditorActions {
     spawnNextPieceFromColdClearQueue(): action;
 }
 
-// Helper to determine right-click override mode based on current ModeType
-const getRightClickOverride = (state: State): { touch: TouchTypes; piece: Piece } => ({
-    touch: state.mode.type === ModeTypes.Fill ? TouchTypes.Fill
-        : state.mode.type === ModeTypes.FillRow ? TouchTypes.FillRow
+// Right-click is an eraser in every primary tool. Area erase (fill / fillRow) only
+// follows the paint tool inside PAINT, where the user can see which tool is armed.
+// SELECT and PIECE always erase a single cell so a right-click cannot wipe a region
+// by surprise.
+export const getRightClickOverride = (state: State): { touch: TouchTypes; piece: Piece } => ({
+    touch: state.editorUi?.primaryTool === 'paint'
+        ? legacyModeForPaintTool(state.editorUi.paintTool).touch
         : TouchTypes.Drawing,
     piece: Piece.Empty,
 });
 
-// Wrapper to run an action with overridden mode (for right-click erase)
+// A selection — a settled rect, a moved preview, or a part preview — is a single
+// deletable object for the eraser, exactly like the SPAWN mino: touching it deletes
+// the whole thing rather than the cell under the pointer.
+export const isSelectionCell = (state: State, index: number): boolean => {
+    if (state.rectSelect === undefined) {
+        return false;
+    }
+    const rect = activeSelectionRect(state.rectSelect);
+    return rect !== null && isIndexInRect(index, rect);
+};
+
+const setRightStroke = (rightStroke: 'erase' | 'suppressed' | undefined) => (state: State): NextState => {
+    if (state.events.rightStroke === rightStroke) {
+        return undefined;
+    }
+    return { events: { ...state.events, rightStroke } };
+};
+
+// Wrapper to run an action with overridden mode (for right-click erase). The
+// stroke marker is re-applied to the result so delegated actions that rebuild
+// `events` cannot drop it mid-stroke.
 const runWithOverride = (
     state: State,
     actionFn: (s: State) => NextState,
@@ -113,17 +137,28 @@ const runWithOverride = (
     const patched: State = {
         ...state,
         mode: { ...state.mode, touch: override.touch, piece: override.piece },
+        events: { ...state.events, rightStroke: 'erase' },
     };
-    return actionFn(patched);
+    const next = actionFn(patched);
+    if (next === undefined || next.events === undefined) {
+        return next;
+    }
+    return { ...next, events: { ...next.events, rightStroke: 'erase' } };
 };
 
 const FIELD_GRID_WIDTH = 10;
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
-    if (state.editorUi?.primaryTool === 'paint'
-        && state.mode.deleteSpawnMinoOnPaintDrag
-        && state.mode.piece === Piece.Empty
-        && isSpawnMinoCell(state, index)) {
-        return actions.clearPiece()(state);
+    // The eraser drag deletes the SPAWN mino and the selection it passes over, whether it
+    // comes from the paint tool or from a right-click in any primary tool.
+    const erasing = state.editorUi?.primaryTool === 'paint' || state.events.rightStroke === 'erase';
+    if (erasing && state.mode.deleteSpawnMinoOnPaintDrag && state.mode.piece === Piece.Empty) {
+        const removals: (action | undefined)[] = [
+            isSelectionCell(state, index) ? actions.deleteSelectionUnderEraser() : undefined,
+            isSpawnMinoCell(state, index) ? actions.clearPiece() : undefined,
+        ];
+        if (removals.some(removal => removal !== undefined)) {
+            return sequence(state, removals);
+        }
     }
     if (state.events.pieceDragFromPaint) {
         return movePieceActions.ontouchMoveField({ index })(state);
@@ -145,11 +180,9 @@ const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
     return undefined;
 };
 
+// Callers decide whether the current stroke may act on the SPAWN mino; this only
+// answers whether the cell belongs to it with no field block underneath.
 const isSpawnMinoCell = (state: State, index: number): boolean => {
-    const editorUi = (state as Partial<State>).editorUi;
-    if (editorUi?.primaryTool !== 'paint') {
-        return false;
-    }
     const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
     if (piece === undefined || !isMinoPiece(piece.type)) {
         return false;
@@ -259,7 +292,16 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     },
     ontouchStartField: ({ index }) => (state): NextState => {
         const dispatch = (newState: State): NextState => {
-            if (isSpawnMinoCell(newState, index)) {
+            // The paint eraser deletes a selection it is tapped on, like the SPAWN mino below.
+            // SELECT keeps its own left-click behaviour (grab and move the selection).
+            if (newState.editorUi?.primaryTool === 'paint'
+                && newState.mode.piece === Piece.Empty
+                && isSelectionCell(newState, index)) {
+                return actions.deleteSelectionUnderEraser()(newState);
+            }
+            // Left-click keeps the SPAWN mino tap/drag shortcut inside the paint tool only.
+            // Right-click handles the SPAWN mino itself in onrightStartField.
+            if (newState.editorUi?.primaryTool === 'paint' && isSpawnMinoCell(newState, index)) {
                 if (newState.mode.piece === Piece.Empty) {
                     return actions.clearPiece()(newState);
                 }
@@ -301,12 +343,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         };
 
-        // A stale trail (e.g. a lost touchend) must never bridge into a new stroke.
-        if (state.events.lastTouchedIndex === undefined && state.events.lastTouchedSentIndex === undefined) {
-            return dispatch(state);
-        }
+        // A stale trail or right-stroke marker (e.g. a lost mouseup) must never bridge
+        // into a new stroke. Both setters no-op when there is nothing to clear.
         return sequence(state, [
             setTouchTrail(undefined, undefined),
+            setRightStroke(undefined),
             dispatch,
         ]);
     },
@@ -373,11 +414,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         };
 
-        if (state.events.lastTouchedIndex === undefined && state.events.lastTouchedSentIndex === undefined) {
-            return dispatch(state);
-        }
         return sequence(state, [
             setTouchTrail(undefined, undefined),
+            setRightStroke(undefined),
             dispatch,
         ]);
     },
@@ -399,53 +438,75 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     resetFieldTouchTrail: () => (state): NextState => {
         return setTouchTrail(undefined, undefined)(state);
     },
+    // Right-click follows one policy in every primary tool (PAINT / SELECT / PIECE):
+    // inside a selection it cancels the preview or deletes the settled rect, otherwise it
+    // returns the SPAWN mino to the queue or erases.
     onrightStartField: ({ index }) => (state): NextState => {
-        if (state.mode.touch === TouchTypes.Select) {
-            return actions.cancelRectSelectionPreview()(state);
+        if (isSelectionCell(state, index)) {
+            return sequence(state, [
+                setRightStroke('suppressed'),
+                actions.deleteSelectionUnderEraser(),
+            ]);
         }
-        // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
-        // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
-        // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
-        if (state.mode.type === ModeTypes.Piece || state.mode.type === ModeTypes.DrawingTool) {
-            const page = state.fumen.pages[state.fumen.currentIndex];
-            if (page?.piece && isMinoPiece(page.piece.type)) {
-                const rawField = new Pages(state.fumen.pages)
-                    .getField(state.fumen.currentIndex, PageFieldOperation.Command);
-                const rawPiece = rawField.getAtIndex(index, true);
-                if (shouldReturnCurrentPieceOnRightClick(rawPiece, page.piece, index)) {
-                    return coldClearActions.returnCurrentPieceToQueue()(state);
-                }
+        // Only when the clicked cell is part of the SPAWN mino AND has no underlying field
+        // block. Normal blocks take priority: if a field block exists beneath the SPAWN
+        // mino, erase it instead.
+        const page = state.fumen.pages[state.fumen.currentIndex];
+        if (page?.piece && isMinoPiece(page.piece.type)) {
+            const rawField = new Pages(state.fumen.pages)
+                .getField(state.fumen.currentIndex, PageFieldOperation.Command);
+            const rawPiece = rawField.getAtIndex(index, true);
+            if (shouldReturnCurrentPieceOnRightClick(rawPiece, page.piece, index)) {
+                return sequence(state, [
+                    setRightStroke('erase'),
+                    coldClearActions.returnCurrentPieceToQueue(),
+                ]);
             }
         }
-        return runWithOverride(state, (patchedState) => {
-            return fieldEditorActions.ontouchStartField({ index })(patchedState);
-        });
+        return sequence(state, [
+            setRightStroke('erase'),
+            newState => runWithOverride(newState, (patchedState) => {
+                return fieldEditorActions.ontouchStartField({ index })(patchedState);
+            }),
+        ]);
     },
     onrightMoveField: ({ index }) => (state): NextState => {
-        if (state.mode.touch === TouchTypes.Select) {
+        if (state.events.rightStroke === 'suppressed') {
             return undefined;
         }
-        return runWithOverride(state, (patchedState) => {
-            return fieldEditorActions.ontouchMoveField({ index })(patchedState);
-        });
+        return sequence(state, [
+            setRightStroke('erase'),
+            newState => runWithOverride(newState, (patchedState) => {
+                return fieldEditorActions.ontouchMoveField({ index })(patchedState);
+            }),
+        ]);
     },
     onrightEnd: () => (state): NextState => {
-        if (state.mode.touch === TouchTypes.Select) {
-            return undefined;
+        if (state.events.rightStroke === 'suppressed') {
+            return setRightStroke(undefined)(state);
         }
-        return runWithOverride(state, (patchedState) => {
-            return fieldEditorActions.ontouchEnd()(patchedState);
-        });
+        return sequence(state, [
+            newState => runWithOverride(newState, (patchedState) => {
+                return fieldEditorActions.ontouchEnd()(patchedState);
+            }),
+            setRightStroke(undefined),
+        ]);
     },
     onrightStartSentLine: ({ index }) => (state): NextState => {
-        return runWithOverride(state, (patchedState) => {
-            return fieldEditorActions.ontouchStartSentLine({ index })(patchedState);
-        });
+        return sequence(state, [
+            setRightStroke('erase'),
+            newState => runWithOverride(newState, (patchedState) => {
+                return fieldEditorActions.ontouchStartSentLine({ index })(patchedState);
+            }),
+        ]);
     },
     onrightMoveSentLine: ({ index }) => (state): NextState => {
-        return runWithOverride(state, (patchedState) => {
-            return fieldEditorActions.ontouchMoveSentLine({ index })(patchedState);
-        });
+        return sequence(state, [
+            setRightStroke('erase'),
+            newState => runWithOverride(newState, (patchedState) => {
+                return fieldEditorActions.ontouchMoveSentLine({ index })(patchedState);
+            }),
+        ]);
     },
     selectPieceColor: ({ piece }) => (state): NextState => {
         return sequence(state, [

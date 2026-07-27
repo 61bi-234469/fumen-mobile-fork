@@ -49,7 +49,7 @@
             On: () => 'On',
         },
         DeleteSpawnMinoOnPaintDrag: {
-            Title: 'Delete spawn mino when paint drag passes over it',
+            Title: 'Delete spawn mino when an eraser drag passes over it',
         },
         ShowFlags: {
             Title: 'Show FLAGS',

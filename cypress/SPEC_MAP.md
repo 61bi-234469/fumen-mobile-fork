@@ -37,6 +37,7 @@
 | `piece_queue_spec.js` | HOLD/NEXTキュー（PIECEモード限定表示・infinite 7bag・キューモーダル編集） | `src/lib/piece_queue.ts`, `src/views/editor/piece_queue_overlay.ts`, `src/components/modals/piece_queue.tsx` | `mode.comment/piece/tools` | <30秒 | `#Q=` 同期（AGENTS.md invariant）に関わる |
 | `put_piece_spec.js` | ピース設置操作（キー/タッチ同時操作・DAS Cut・ハードドロップ・Reset・Inference・回転系） | `src/actions/put_piece.ts`, `src/actions/move_piece.ts`, `src/lib/piece_shortcut.ts`, `src/lib/rotation_system.ts`, `src/lib/srs.ts`, `src/lib/srs_plus.ts`, `src/lib/inference.ts` | `menu.openUserSettings/selectUserSettingsTab/setRotationSystem`, `mode.block/comment/piece/tools` | 0:48 | 557行。タイミング系（DAS Cut等）はCI環境依存でflakyになりやすい |
 | `quiz_spec.js` | Quiz（`#Q=`）表示のreadonly挙動（PC・不正quiz・最終ページLockオフ） | `src/lib/fumen/quiz.ts`, `src/views/reader.ts` | なし | 1:12 | readonly |
+| `right_click_spec.js` | 盤面の右クリック統合挙動（PAINT/SELECT/PIECE共通の消しゴム・SPAWNミノのキュー戻し/削除・選択やパーツのまるごと削除） | `src/actions/field_editor.ts`, `src/components/event/drawing_event_canvas.tsx`, `src/actions/rect_select.ts` | `mode.block.rightClick/rightDrag`, `mode.piece.spawn`, `menu.openUserSettings` | <30秒 | 右クリックは主ツールに依存しない単一ポリシー |
 | `sent_spec.js` | せり上がりライン（Highlight・Reverse・v110互換） | `src/lib/fumen/field.ts`（sentLine）, `src/lib/rotation_system.ts` | `menu.setRotationSystem` | <30秒 | readonly |
 | `slide_spec.js` | Slideモード（上下移動・UTILトレイを保持したままの全体ドラッグ） | `src/views/editor/context_tray.ts`（Slideトレイ）, `src/actions/convert.ts`（shiftTo系） | `mode.block/slide` | <30秒 | - |
 | `tree_mode_spec.js` | Tree（グラフ表示・ノードD&D・分岐/挿入・削除Undo・スコープ選択） | `src/actions/tree_operations.ts`, `src/components/tree/`, `src/lib/fumen/tree_utils.ts`, `src/lib/fumen/tree_types.ts` | `tree.setScope`（他は合成タッチイベント直接） | <30秒 | AGENTS.md「tree root仮想ノード/DFS pre-order」invariantに直結 |
@@ -53,6 +54,8 @@
 - `src/views/editor/`（rail/tray/overlay/context_tray/side_panel） →
   `editor_ui`, `editor_side_panel`, `drawing_tool`, `put_piece`, `history`, `draw`,
   `key_ref`, `utils`, `fill`, `fill_row`, `slide`, `piece_queue`, `comments`
+- `src/actions/field_editor.ts`（盤面ポインタ操作の分岐） →
+  `right_click`, `draw`, `fill`, `fill_row`, `put_piece`, `editor_ui`, `history`
 - `src/actions/tree_operations.ts`, `src/components/tree/` →
   `tree_mode`, `editor_side_panel`（treeタブ）, `history`
 - `src/actions/list_view.ts`, `src/lib/tetgram.ts`, `src/lib/clipboard_parser/` →

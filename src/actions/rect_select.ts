@@ -1,11 +1,12 @@
 /* tslint:disable:object-shorthand-properties-first */
 import { action, actions } from '../actions';
-import { FieldConstants, Piece } from '../lib/enums';
+import { FieldConstants, isMinoPiece, Piece, toPositionIndex } from '../lib/enums';
+import { getBlockPositions } from '../lib/piece';
 import { PageFieldOperation, Pages, parseToCommands } from '../lib/pages';
 import {
     floatingTargetForPointer,
     extractRectPieces,
-    floatingPartAtTop,
+    floatingPartSpawn,
     floatingRect,
     initialRectSelectState,
     isIndexInRect,
@@ -19,7 +20,7 @@ import {
 import { insertPart, repackParts, saveBlackTransparentPaste, saveParts } from '../lib/parts';
 import { generateKey } from '../lib/random';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
-import { EditorPart, FloatingSelection, SelectionRect, State } from '../states';
+import { EditorPart, FloatingSelection, RectSelectState, SelectionRect, State } from '../states';
 import { NextState, sequence } from './commons';
 
 export interface RectSelectActions {
@@ -30,6 +31,7 @@ export interface RectSelectActions {
     cancelRectSelectionPreview(): action;
     clearRectSelection(): action;
     deleteRectSelection(): action;
+    deleteSelectionUnderEraser(): action;
     mirrorRectSelection(): action;
     beginMoveRectSelection(): action;
     beginWholeFieldMove(): action;
@@ -164,6 +166,24 @@ const selectedPart = (state: State): EditorPart | undefined => (
     state.parts.items.find(part => part.id === state.parts.selectedId)
 );
 
+const spawnMinoOverlapsRect = (state: State, rect: SelectionRect): boolean => {
+    const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
+    if (piece === undefined || !isMinoPiece(piece.type)) {
+        return false;
+    }
+    return getBlockPositions(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)
+        .some(position => isIndexInRect(toPositionIndex(position), rect));
+};
+
+// 範囲削除は、設定がONなら削除範囲に重なるSPAWNミノも消す。消しゴムドラッグの
+// 「通過したSPAWNミノも消す」と同じ規則を、範囲削除にも適用する。
+const deleteFloating = (floating: FloatingSelection) => (state: State): NextState => {
+    if (state.mode.deleteSpawnMinoOnPaintDrag && spawnMinoOverlapsRect(state, floatingRect(floating))) {
+        return sequence(state, [actions.clearPiece(), commitFloating(floating)]);
+    }
+    return commitFloating(floating)(state);
+};
+
 const floatingForOperation = (state: State): FloatingSelection | undefined => {
     if (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null) {
         return state.rectSelect.floating;
@@ -209,16 +229,24 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
                 ]);
             }
             if (floating.firstTapPending) {
+                if (isOutsideFloatingRect) {
+                    // Tapping outside the preview settles the part where it is
+                    // shown, then the same touch starts a normal selection.
+                    return sequence(state, [
+                        commitFloating(floating),
+                        newState => actions.startRectSelection({ index })(newState),
+                    ]);
+                }
+                // Keep the tapped cell attached to the same cell of the part
+                // instead of snapping the part's bottom-left to the pointer.
                 return {
                     rectSelect: {
                         ...state.rectSelect,
                         anchorIndex: index,
                         floating: {
                             ...floating,
-                            targetX: pointerX,
-                            targetY: pointerY,
-                            pointerOffsetX: 0,
-                            pointerOffsetY: 0,
+                            pointerOffsetX: pointerX - floating.targetX,
+                            pointerOffsetY: pointerY - floating.targetY,
                             firstTapPending: false,
                             firstTapInProgress: true,
                         },
@@ -244,7 +272,9 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         }
         const part = selectedPart(state);
         if (part !== undefined) {
-            const floating: FloatingSelection = floatingPartAtTop(part.cells, part.width, part.height);
+            const floating: FloatingSelection = floatingPartSpawn(
+                part.cells, part.width, part.height, state.field,
+            );
             const pointerX = index % FieldConstants.Width;
             const pointerY = Math.floor(index / FieldConstants.Width);
             floating.targetX = pointerX;
@@ -342,16 +372,23 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             return { rectSelect: initialRectSelectState };
         }
         if (state.rectSelect.status === 'floating') {
-            const rect = state.rectSelect.floating?.sourceRect ?? state.rectSelect.rect;
-            return {
+            const floating = state.rectSelect.floating;
+            const rect = floating?.sourceRect ?? state.rectSelect.rect;
+            const next = {
                 rectSelect: {
-                    status: rect === null ? 'none' : 'selected',
+                    status: rect === null ? 'none' : 'selected' as RectSelectState['status'],
                     rect,
                     anchorIndex: null,
                     floating: null,
                     reselectOnNextTouch: false,
                 },
             };
+            // パーツから出したプレビュー（sourceRect === null）を取り消したときは、パーツの選択も外す。
+            // 選択が残っていると、次の左クリックが再選択ではなくパーツの再配置になってしまう。
+            if (floating !== null && floating.sourceRect === null && state.parts.selectedId !== null) {
+                return { ...next, parts: { ...state.parts, selectedId: null } };
+            }
+            return next;
         }
         return undefined;
     },
@@ -369,7 +406,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             const floating = { ...state.rectSelect.floating };
             floating.cells = floating.cells.map(() => Piece.Empty);
             floating.forceEmpty = true;
-            return commitFloating(floating)(state);
+            return deleteFloating(floating)(state);
         }
         const rect = state.rectSelect.rect;
         if (state.rectSelect.status !== 'selected' || rect === null) {
@@ -378,7 +415,21 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
         const floating = floatingFromSelection(state, rect);
         floating.cells = floating.cells.map(() => Piece.Empty);
         floating.forceEmpty = true;
-        return commitFloating(floating)(state);
+        return deleteFloating(floating)(state);
+    },
+    // 消しゴム / 右クリックが選択にかかったときの削除。SPAWNミノと同じく、対象を
+    // まるごと消したうえで選択状態そのものもリセットする（パーツの選択も外す）。
+    deleteSelectionUnderEraser: () => (state): NextState => {
+        if (state.rectSelect.status === 'none') {
+            return undefined;
+        }
+        return sequence(state, [
+            rectSelectActions.deleteRectSelection(),
+            rectSelectActions.clearRectSelection(),
+            newState => (newState.parts.selectedId !== null
+                ? { parts: { ...newState.parts, selectedId: null } }
+                : undefined),
+        ]);
     },
     mirrorRectSelection: () => (state): NextState => {
         const rect = state.rectSelect.rect;
@@ -478,7 +529,7 @@ export const rectSelectActions: Readonly<RectSelectActions> = {
             parts: { ...state.parts, selectedId: id },
             rectSelect: {
                 status: 'floating', rect: null, anchorIndex: null,
-                floating: floatingPartAtTop(part.cells, part.width, part.height),
+                floating: floatingPartSpawn(part.cells, part.width, part.height, state.field),
                 reselectOnNextTouch: false,
             },
         };

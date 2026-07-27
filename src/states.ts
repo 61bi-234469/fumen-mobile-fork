@@ -238,6 +238,9 @@ export interface State {
         piece?: Piece;
         drawing: boolean;
         pieceDragFromPaint?: boolean;
+        // 右クリックストロークの種別。'erase' は消しゴム継続、'suppressed' は選択プレビュー取消で
+        // 消費済み。ストローク補間の内側でも右クリック中だと分かるようにするために持つ。
+        rightStroke?: 'erase' | 'suppressed';
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
@@ -422,6 +425,7 @@ export const initState: Readonly<State> = {
         piece: undefined,  // 描画処理中のピースの種類
         drawing: false,
         pieceDragFromPaint: false,
+        rightStroke: undefined,
         inferences: [],
         prevPage: undefined,
         updated: false,

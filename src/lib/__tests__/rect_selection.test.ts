@@ -1,13 +1,29 @@
 import { Piece } from '../enums';
 import {
+    columnTopFilledRow,
     composeSelectionField,
+    floatingPartSpawn,
     floatingTargetForPointer,
     mirrorPartCells,
+    partLandingY,
     rectFromIndices,
     rotatePartCellsLeft,
     rotatePartCells,
 } from '../rect_selection';
+import { Block } from '../../state_types';
 import { State } from '../../states';
+
+const emptyField = (): Block[] => Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
+
+const filledField = (columns: number[], topRow: number): Block[] => {
+    const field = emptyField();
+    columns.forEach((x) => {
+        for (let y = 0; y <= topRow; y += 1) {
+            field[x + y * 10] = { piece: Piece.Gray };
+        }
+    });
+    return field;
+};
 
 describe('rect selection helpers', () => {
     test('normalizes a rectangle regardless of drag direction', () => {
@@ -183,5 +199,47 @@ describe('rect selection helpers', () => {
 
         expect(composed[24].highlight).toBeUndefined();
         expect(composed[25].highlight).toBeUndefined();
+    });
+
+    test('reads the top filled row of a single column', () => {
+        const field = emptyField();
+        expect(columnTopFilledRow(field, 4)).toBe(-1);
+
+        field[4 + 2 * 10] = { piece: Piece.T };
+        expect(columnTopFilledRow(field, 4)).toBe(2);
+        expect(columnTopFilledRow(field, 5)).toBe(-1);
+
+        field[4 + 7 * 10] = { piece: Piece.I };
+        expect(columnTopFilledRow(field, 4)).toBe(7);
+    });
+
+    test('lands a part on the highest of the columns it covers', () => {
+        const field = filledField([5], 2);
+        field[9 + 9 * 10] = { piece: Piece.L };
+
+        expect(partLandingY(field, 4, 2)).toBe(3);
+        // Terrain outside the covered columns does not raise the landing row.
+        expect(partLandingY(field, 0, 2)).toBe(0);
+    });
+
+    test('spawns a part three rows above its landing surface', () => {
+        const spawnOn = (field: Block[]) => floatingPartSpawn(
+            [Piece.T, Piece.L, Piece.I, Piece.Z], 2, 2, field,
+        );
+
+        const onEmpty = spawnOn(emptyField());
+        expect(onEmpty.targetX).toBe(4);
+        expect(onEmpty.targetY).toBe(3);
+        expect(onEmpty.pointerOffsetX).toBe(0);
+        expect(onEmpty.pointerOffsetY).toBe(0);
+        expect(onEmpty.firstTapPending).toBe(true);
+
+        expect(spawnOn(filledField([4, 5], 2)).targetY).toBe(6);
+        expect(spawnOn(filledField([5], 2)).targetY).toBe(6);
+        // Terrain outside the covered columns is ignored.
+        expect(spawnOn(filledField([0], 9)).targetY).toBe(3);
+        // The ceiling stays where it used to be.
+        expect(spawnOn(filledField([4], 22)).targetY).toBe(21);
+        expect(spawnOn(filledField([4], 18)).targetY).toBe(21);
     });
 });

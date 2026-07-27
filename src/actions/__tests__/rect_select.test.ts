@@ -1,12 +1,15 @@
 import { State } from '../../states';
-import { Piece } from '../../lib/enums';
+import { Piece, Rotation } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
-import { initialRectSelectState } from '../../lib/rect_selection';
+import { floatingPartSpawn, initialRectSelectState } from '../../lib/rect_selection';
+
+const mockClearPiece = jest.fn(() => () => undefined);
 
 jest.mock('../../actions', () => ({
     actions: {
         registerHistoryTask: () => () => undefined,
         reopenCurrentPage: () => () => undefined,
+        clearPiece: mockClearPiece,
         startRectSelection: () => () => ({
             rectSelect: { status: 'selecting' },
         }),
@@ -15,6 +18,10 @@ jest.mock('../../actions', () => ({
 
 // tslint:disable-next-line:no-var-requires
 const { rectSelectActions } = require('../rect_select');
+
+beforeEach(() => {
+    mockClearPiece.mockClear();
+});
 
 describe('rectSelectActions', () => {
     test('does not add highlight darkening to transformed select previews', () => {
@@ -159,5 +166,228 @@ describe('rectSelectActions', () => {
         expect(next.fumen).toBeUndefined();
         expect(field.get(1, 1)).toBe(Piece.T);
         expect(field.get(4, 5)).toBe(Piece.Empty);
+    });
+
+    test('spawns a selected part three rows above the terrain it covers', () => {
+        const field = Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
+        for (let y = 0; y <= 2; y += 1) {
+            field[5 + y * 10] = { piece: Piece.Gray };
+        }
+        const state = {
+            field,
+            rectSelect: initialRectSelectState,
+            parts: {
+                items: [{
+                    id: 'part', slot: Piece.I, width: 2, height: 2,
+                    cells: [Piece.T, Piece.L, Piece.Empty, Piece.I], pinned: false, createdAt: 1,
+                }],
+                selectedId: null,
+                blackTransparent: true,
+            },
+        } as unknown as State;
+
+        const next = rectSelectActions.selectPart({ id: 'part' })(state) as any;
+
+        expect(next.rectSelect.floating.targetX).toBe(4);
+        expect(next.rectSelect.floating.targetY).toBe(6);
+        expect(next.rectSelect.floating.firstTapPending).toBe(true);
+    });
+
+    describe('first tap on a part preview', () => {
+        // 2x2 part over an empty field: the spawn lands at x=4..5, y=3..4.
+        const partCells = [Piece.T, Piece.L, Piece.Empty, Piece.I];
+        const partState = (): State => {
+            const field = Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
+            return {
+                field,
+                fumen: {
+                    currentIndex: 0,
+                    pages: [{
+                        index: 0,
+                        field: { obj: new Field({}) },
+                        comment: { text: '' },
+                        flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                    }],
+                },
+                rectSelect: {
+                    status: 'floating',
+                    rect: null,
+                    anchorIndex: null,
+                    floating: floatingPartSpawn(partCells.slice(), 2, 2, field),
+                    reselectOnNextTouch: false,
+                },
+                parts: { items: [], selectedId: 'part', blackTransparent: true },
+            } as unknown as State;
+        };
+
+        test('keeps the tapped cell attached to the same cell of the part', () => {
+            const state = partState();
+
+            // Top-right cell of the preview.
+            const next = rectSelectActions.startRectSelection({ index: 5 + 4 * 10 })(state) as any;
+
+            expect(next.rectSelect.floating.targetX).toBe(4);
+            expect(next.rectSelect.floating.targetY).toBe(3);
+            expect(next.rectSelect.floating.pointerOffsetX).toBe(1);
+            expect(next.rectSelect.floating.pointerOffsetY).toBe(1);
+            expect(next.rectSelect.floating.firstTapPending).toBe(false);
+            expect(next.rectSelect.floating.firstTapInProgress).toBe(true);
+            expect(next.rectSelect.anchorIndex).toBe(5 + 4 * 10);
+        });
+
+        test('moves the part so that the tapped cell follows the pointer', () => {
+            const state = partState();
+            const started = {
+                ...state,
+                ...(rectSelectActions.startRectSelection({ index: 5 + 4 * 10 })(state) as State),
+            } as State;
+
+            const moved = rectSelectActions.moveRectSelection({ index: 3 + 10 * 10 })(started) as any;
+
+            // The tapped cell stays the part's top-right cell.
+            expect(moved.rectSelect.floating.targetX).toBe(2);
+            expect(moved.rectSelect.floating.targetY).toBe(9);
+        });
+
+        test('keeps the first placement uncommitted after the pointer is released', () => {
+            const state = partState();
+            const started = {
+                ...state,
+                ...(rectSelectActions.startRectSelection({ index: 5 + 4 * 10 })(state) as State),
+            } as State;
+
+            const ended = rectSelectActions.endRectSelection()(started) as any;
+
+            expect(ended.rectSelect.status).toBe('floating');
+            expect(ended.rectSelect.floating.firstTapInProgress).toBe(false);
+            expect(ended.rectSelect.floating.targetX).toBe(4);
+            expect(ended.rectSelect.floating.targetY).toBe(3);
+            expect(ended.fumen).toBeUndefined();
+        });
+
+        test('commits the preview in place and starts a selection on an outside first tap', () => {
+            // tslint:disable-next-line:no-var-requires
+            const mocked = require('../../actions').actions;
+            const original = mocked.startRectSelection;
+            mocked.startRectSelection = ({ index }: { index: number }) => (
+                (current: State) => rectSelectActions.startRectSelection({ index })(current)
+            );
+
+            try {
+                const state = partState();
+
+                const next = rectSelectActions.startRectSelection({ index: 0 })(state) as any;
+
+                const committed = next.fumen.pages[0];
+                expect(committed.commands).toBeDefined();
+                expect(next.parts.selectedId).toBeNull();
+                expect(next.rectSelect).toEqual({
+                    status: 'selecting',
+                    rect: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+                    anchorIndex: 0,
+                    floating: null,
+                    reselectOnNextTouch: false,
+                });
+            } finally {
+                mocked.startRectSelection = original;
+            }
+        });
+
+        test('drops the part selection when the preview is cancelled', () => {
+            const state = partState();
+
+            const next = rectSelectActions.cancelRectSelectionPreview()(state) as any;
+
+            // 選択が残っていると、次の左クリックが再選択ではなく再配置になってしまう。
+            expect(next.parts.selectedId).toBeNull();
+            expect(next.rectSelect.status).toBe('none');
+        });
+
+        test('keeps the source selection when a moved selection is cancelled', () => {
+            const sourceRect = { minX: 1, minY: 1, maxX: 2, maxY: 2 };
+            const state = {
+                ...partState(),
+                rectSelect: {
+                    status: 'floating',
+                    rect: sourceRect,
+                    anchorIndex: null,
+                    floating: {
+                        sourceRect,
+                        cells: partCells.slice(),
+                        width: 2,
+                        height: 2,
+                        targetX: 5,
+                        targetY: 5,
+                        pointerOffsetX: 0,
+                        pointerOffsetY: 0,
+                    },
+                    reselectOnNextTouch: false,
+                },
+                parts: { items: [], selectedId: 'part', blackTransparent: true },
+            } as unknown as State;
+
+            const next = rectSelectActions.cancelRectSelectionPreview()(state) as any;
+
+            expect(next.rectSelect.status).toBe('selected');
+            expect(next.rectSelect.rect).toEqual(sourceRect);
+            expect(next.parts).toBeUndefined();
+        });
+    });
+
+    describe('deleteRectSelection', () => {
+        const selectedState = (options: { deleteSpawnMino: boolean; pieceY: number }): State => {
+            const field = new Field({});
+            field.add(1, 1, Piece.T);
+            return {
+                field: Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty })),
+                mode: { deleteSpawnMinoOnPaintDrag: options.deleteSpawnMino },
+                fumen: {
+                    currentIndex: 0,
+                    pages: [{
+                        index: 0,
+                        field: { obj: field },
+                        comment: { text: '' },
+                        flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                        piece: {
+                            type: Piece.T,
+                            rotation: Rotation.Spawn,
+                            coordinate: { x: 1, y: options.pieceY },
+                        },
+                    }],
+                },
+                rectSelect: {
+                    status: 'selected',
+                    rect: { minX: 0, minY: 0, maxX: 3, maxY: 3 },
+                    anchorIndex: null,
+                    floating: null,
+                    reselectOnNextTouch: false,
+                },
+                parts: { items: [], selectedId: null, blackTransparent: true },
+            } as unknown as State;
+        };
+
+        test('also deletes the SPAWN mino overlapping the deleted rect', () => {
+            const state = selectedState({ deleteSpawnMino: true, pieceY: 1 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).toHaveBeenCalledTimes(1);
+        });
+
+        test('keeps the SPAWN mino when the setting is off', () => {
+            const state = selectedState({ deleteSpawnMino: false, pieceY: 1 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).not.toHaveBeenCalled();
+        });
+
+        test('keeps a SPAWN mino that sits outside the deleted rect', () => {
+            const state = selectedState({ deleteSpawnMino: true, pieceY: 15 });
+
+            rectSelectActions.deleteRectSelection()(state);
+
+            expect(mockClearPiece).not.toHaveBeenCalled();
+        });
     });
 });

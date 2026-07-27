@@ -57,19 +57,55 @@ export const floatingTargetForPointer = (
     };
 };
 
-export const floatingPartAtTop = (
-    cells: Piece[], width: number, height: number,
-): FloatingSelection => ({
-    cells,
-    width,
-    height,
-    sourceRect: null,
-    targetX: Math.floor((FieldConstants.Width - width) / 2),
-    targetY: FieldConstants.Height - height,
-    pointerOffsetX: 0,
-    pointerOffsetY: 0,
-    firstTapPending: true,
-});
+// Distance between the landing surface and the spawned part. The preview stays
+// within thumb reach on low terrain without looking glued to the stack.
+export const PART_SPAWN_GAP = 3;
+
+export const columnTopFilledRow = (field: Block[], x: number): number => {
+    for (let y = FieldConstants.Height - 1; 0 <= y; y -= 1) {
+        const block = field[x + y * FieldConstants.Width];
+        if (block !== undefined && block.piece !== Piece.Empty) {
+            return y;
+        }
+    }
+    return -1;
+};
+
+/** The row the part would rest on, judged by its bounding box. */
+export const partLandingY = (field: Block[], targetX: number, width: number): number => {
+    let landing = 0;
+    for (let x = targetX; x < targetX + width; x += 1) {
+        if (x < 0 || FieldConstants.Width <= x) {
+            continue;
+        }
+        landing = Math.max(landing, columnTopFilledRow(field, x) + 1);
+    }
+    return landing;
+};
+
+export const partSpawnTargetY = (
+    field: Block[], targetX: number, width: number, height: number,
+): number => Math.max(0, Math.min(
+    partLandingY(field, targetX, width) + PART_SPAWN_GAP,
+    FieldConstants.Height - height,
+));
+
+export const floatingPartSpawn = (
+    cells: Piece[], width: number, height: number, field: Block[],
+): FloatingSelection => {
+    const targetX = Math.floor((FieldConstants.Width - width) / 2);
+    return {
+        cells,
+        width,
+        height,
+        targetX,
+        sourceRect: null,
+        targetY: partSpawnTargetY(field, targetX, width, height),
+        pointerOffsetX: 0,
+        pointerOffsetY: 0,
+        firstTapPending: true,
+    };
+};
 
 export const floatingRect = (floating: FloatingSelection): SelectionRect => ({
     minX: floating.targetX,
@@ -77,6 +113,18 @@ export const floatingRect = (floating: FloatingSelection): SelectionRect => ({
     maxX: floating.targetX + floating.width - 1,
     maxY: floating.targetY + floating.height - 1,
 });
+
+// 画面上で選択として見えている矩形。選択なしのときだけ null。
+// 消しゴム/右クリックはこの矩形を SPAWN ミノと同じ「まるごと消せる対象」として扱う。
+export const activeSelectionRect = (rectSelect: RectSelectState): SelectionRect | null => {
+    if (rectSelect.status === 'floating') {
+        return rectSelect.floating !== null ? floatingRect(rectSelect.floating) : null;
+    }
+    if (rectSelect.status === 'selecting' || rectSelect.status === 'selected') {
+        return rectSelect.rect;
+    }
+    return null;
+};
 
 export const mirrorPartCells = (cells: Piece[], width: number, height: number): Piece[] => {
     const mirrorPiece = (piece: Piece): Piece => {

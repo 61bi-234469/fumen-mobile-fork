@@ -45,28 +45,64 @@ const assertPieceRailTwoColumns = () => {
         ['btn-piece-gray', 'btn-piece-reset'],
     ];
     const selectors = rowPairs.reduce((all, pair) => all.concat(pair), []);
-    cy.get([datatest('editor-rail'), ...selectors.map(datatest)].join(',')).then(elements => {
-        const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
-        const rail = rect('editor-rail');
-        rowPairs.forEach(([leftSelector, rightSelector]) => {
-            const left = rect(leftSelector);
-            const right = rect(rightSelector);
-            expect(Math.abs(left.top - right.top)).to.be.lessThan(1);
-            expect(left.right).to.be.at.most(right.left);
+    cy.get([datatest('editor-rail'), datatest('btn-piece-mode'), ...selectors.map(datatest)].join(','))
+        .then(elements => {
+            const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+            const rail = rect('editor-rail');
+            expect(rect('btn-piece-mode').top).to.be.at.least(rail.top - 1);
+            rowPairs.forEach(([leftSelector, rightSelector]) => {
+                const left = rect(leftSelector);
+                const right = rect(rightSelector);
+                expect(Math.abs(left.top - right.top)).to.be.lessThan(1);
+                expect(left.right).to.be.at.most(right.left);
+            });
+            selectors.map(rect).forEach(cell => {
+                expect(cell.left).to.be.at.least(rail.left);
+                expect(cell.right).to.be.at.most(rail.right);
+                expect(cell.width).to.be.at.least(28);
+                expect(cell.height).to.be.at.least(22);
+            });
         });
-        selectors.map(rect).forEach(cell => {
-            expect(cell.left).to.be.at.least(rail.left);
-            expect(cell.right).to.be.at.most(rail.right);
-            expect(cell.width).to.be.at.least(28);
-            expect(cell.height).to.be.at.least(22);
-        });
-    });
     cy.get(`${datatest('editor-rail')} button`).should('have.length', 14);
-    cy.get(`${datatest('editor-rail')},${datatest('btn-piece-gray')}`).then(elements => {
+    cy.get(`${datatest('editor-rail')},${datatest('btn-piece-reset')}`).then(elements => {
         const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
-        const lastCell = elements.filter(datatest('btn-piece-gray'))[0].getBoundingClientRect();
+        const lastCell = elements.filter(datatest('btn-piece-reset'))[0].getBoundingClientRect();
         expect(rail.bottom - lastCell.bottom).to.be.at.least(0);
     });
+};
+
+const assertPieceRailSingleColumn = () => {
+    const selectors = [
+        'btn-piece-i',
+        'btn-piece-l',
+        'btn-piece-o',
+        'btn-piece-z',
+        'btn-piece-t',
+        'btn-piece-j',
+        'btn-piece-s',
+        'btn-piece-empty',
+        'btn-piece-gray',
+        'btn-piece-reset',
+    ];
+    cy.get([datatest('editor-rail'), datatest('btn-piece-mode'), ...selectors.map(datatest)].join(','))
+        .then(elements => {
+            const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+            const rail = rect('editor-rail');
+            expect(rect('btn-piece-mode').top).to.be.at.least(rail.top - 1);
+            const cells = selectors.map(rect);
+            cells.forEach((cell, index) => {
+                expect(cell.left).to.be.closeTo(cells[0].left, 1);
+                expect(cell.width).to.be.closeTo(cells[0].width, 1);
+                expect(cell.left).to.be.at.least(rail.left);
+                expect(cell.right).to.be.at.most(rail.right);
+                expect(cell.height).to.be.at.least(22);
+                if (index > 0) {
+                    expect(cell.top).to.be.greaterThan(cells[index - 1].top);
+                }
+            });
+            expect(cells[cells.length - 1].bottom).to.be.at.most(rail.bottom);
+        });
+    cy.get(`${datatest('editor-rail')} button`).should('have.length', 14);
 };
 
 const assertInfiniteToggleFits = () => {
@@ -130,21 +166,27 @@ describe('Editor UI final concept', () => {
     });
 
     [
-        [320, 568, true, 68],
-        [375, 667, true, 69],
-        [390, 844, true, 79],
-        [844, 390, true, 17],
-        [1024, 768, false, 35],
-        [1920, 1080, false, 40],
-    ].forEach(([width, height, mobile, minimumTrayHeight]) => {
+        [320, 568, true, 78, '2'],
+        [375, 667, true, 78, '2'],
+        [390, 844, true, 78, '2'],
+        [844, 390, true, 44, '2'],
+        [1024, 768, false, 66, '1'],
+        [1920, 1080, false, 78, '1'],
+    ].forEach(([width, height, mobile, minimumTrayHeight, paletteColumns]) => {
         it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
             cy.viewport(width, height);
             visit({ mode: 'edit', mobile });
             cy.get(datatest('btn-piece-mode')).click();
 
-            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '2');
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', paletteColumns);
             cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
-            assertPieceRailTwoColumns();
+            if (paletteColumns === '1') {
+                assertPieceRailSingleColumn();
+                cy.get(datatest('btn-piece-gray')).should('contain.text', 'RESPAWN');
+                cy.get(datatest('btn-piece-reset')).should('contain.text', 'RESET');
+            } else {
+                assertPieceRailTwoColumns();
+            }
             assertInfiniteToggleFits();
             ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
                 'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode',
@@ -165,11 +207,63 @@ describe('Editor UI final concept', () => {
             cy.get(`${datatest('piece-queue-hold')},${datatest('piece-queue-next')}`).each(element => {
                 expect(element[0].getBoundingClientRect().width).to.be.at.least(60);
             });
+            cy.get(datatest('piece-queue-next-0')).then(nextRow => {
+                expect(nextRow[0].getBoundingClientRect().height).to.be.at.least(16);
+            });
             cy.get(datatest('tray-context')).then(tray => {
                 expect(tray[0].getBoundingClientRect().height).to.be.at.least(minimumTrayHeight);
                 cy.get(datatest('tools')).then(tools => {
                     expect(tray[0].getBoundingClientRect().bottom)
                         .to.be.at.most(tools[0].getBoundingClientRect().top);
+                });
+            });
+            cy.get(`${datatest('editor-rail')},${datatest('tools')}`).then(elements => {
+                const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
+                const tools = elements.filter(datatest('tools'))[0].getBoundingClientRect();
+                expect(rail.bottom).to.be.at.most(tools.top + 1);
+            });
+        });
+    });
+
+    it('aligns HOLD and NEXT with the 20-row ceiling', () => {
+        cy.viewport(1024, 768);
+        visit({ mode: 'edit', mobile: false });
+        cy.get(datatest('btn-piece-mode')).click();
+
+        cy.get([
+            datatest('editor-field-frame'),
+            datatest('piece-queue-hold'),
+            datatest('piece-queue-next'),
+        ].join(',')).then(elements => {
+            const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+            const field = rect('editor-field-frame');
+            const hold = rect('piece-queue-hold');
+            const next = rect('piece-queue-next');
+            const ceiling = field.top + ((field.height - 4.4) / 23.5) * 2.5 + 1;
+            expect(hold.top).to.be.closeTo(ceiling, 2);
+            expect(next.top).to.be.closeTo(ceiling, 2);
+            expect(hold.top).to.be.closeTo(next.top, 1);
+        });
+    });
+
+    it('keeps the field size stable across primary tools on a height-constrained desktop viewport', () => {
+        cy.viewport(1024, 768);
+        visit({ mode: 'edit', mobile: false });
+
+        cy.get(datatest('editor-field-frame')).then(paintField => {
+            const paint = paintField[0].getBoundingClientRect();
+            cy.get(datatest('btn-piece-mode')).click();
+            cy.get(datatest('editor-field-frame')).then(pieceField => {
+                const piece = pieceField[0].getBoundingClientRect();
+                ['width', 'height', 'top'].forEach(dimension => {
+                    expect(piece[dimension]).to.be.closeTo(paint[dimension], 1);
+                });
+                cy.get(datatest('btn-select-mode')).click();
+                cy.get(datatest('editor-field-frame')).then(selectField => {
+                    const select = selectField[0].getBoundingClientRect();
+                    ['width', 'height', 'top'].forEach(dimension => {
+                        expect(select[dimension]).to.be.closeTo(paint[dimension], 1);
+                    });
                 });
             });
         });

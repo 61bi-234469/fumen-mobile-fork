@@ -112,6 +112,29 @@ describe('PIECE queues', () => {
         cy.get(datatest('text-comment')).should('have.value', '#Q=[T]()IOZ');
     });
 
+    it('ignores a touch click retargeted to NEXT after a piece transition', () => {
+        cy.viewport(375, 667);
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)I').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.get(datatest('tray-piece-harddrop'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 })
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0, force: true });
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+
+        // Mobile browsers can retarget only the synthesized click after the
+        // pointerdown action has replaced the page beneath the finger.
+        cy.get(datatest('piece-queue-next'))
+            .trigger('click', { detail: 1, pointerType: 'touch' });
+        cy.get(datatest('mdl-piece-queue')).should('not.exist');
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+    });
+
     it('focuses the modal section matching the tapped queue panel', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-paint-mode')).click();

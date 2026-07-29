@@ -9,6 +9,7 @@ import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { HighlightType } from '../../state_types';
 import { PieceQueueFocus } from '../../states';
+import { INFINITE_TOGGLE_HEIGHT } from './responsive_layout';
 
 const NEXT_COUNT = 5;
 
@@ -81,36 +82,52 @@ const queueButton = ({
     children: VNode<{}>[];
     onclick: () => void;
     piece?: Piece;
-}) => button({
-    key,
-    datatest,
-    type: 'button',
-    className: 'editor-control waves-effect',
-    'aria-label': label,
-    'data-piece': piece === undefined ? '' : pieceQueuePieceToChar(piece),
-    onclick: (event: MouseEvent) => {
-        onclick();
-        event.preventDefault();
-        event.stopPropagation();
-    },
-    style: style({
-        background: '#fafafa',
-        border: '1px solid #333',
-        borderRadius: '0',
-        boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
-        boxSizing: 'border-box',
-        color: '#333',
-        cursor: 'pointer',
-        display: 'block',
-        flexShrink: 0,
-        fontFamily: 'inherit',
-        margin: '0',
-        minWidth: '0',
-        padding: '0',
-        textAlign: 'center',
-        width: px(width),
-    }),
-}, children);
+}) => {
+    let pointerStartedHere = false;
+    return button({
+        key,
+        datatest,
+        type: 'button',
+        className: 'editor-control waves-effect',
+        'aria-label': label,
+        'data-piece': piece === undefined ? '' : pieceQueuePieceToChar(piece),
+        onclick: (event: MouseEvent) => {
+            // PIECE操作はpointerdownで即時実行されるため、ページ遷移後の同じ指から
+            // 合成clickだけが再配置後のキュー枠へ届くことがある。枠内で始まった
+            // ポインター操作、またはキーボードによるclickだけを受け付ける。
+            if (event.detail === 0 || pointerStartedHere) {
+                onclick();
+            }
+            pointerStartedHere = false;
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => {
+            pointerStartedHere = true;
+            event.stopPropagation();
+        },
+        onpointercancel: () => {
+            pointerStartedHere = false;
+        },
+        style: style({
+            background: '#fafafa',
+            border: '1px solid #333',
+            borderRadius: '0',
+            boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
+            boxSizing: 'border-box',
+            color: '#333',
+            cursor: 'pointer',
+            display: 'block',
+            flexShrink: 0,
+            fontFamily: 'inherit',
+            margin: '0',
+            minWidth: '0',
+            padding: '0',
+            textAlign: 'center',
+            width: px(width),
+        }),
+    }, children);
+};
 
 const heading = (key: string, label: string) => div({
     key,
@@ -132,6 +149,7 @@ export const pieceQueueOverlays = ({
     width,
     gap,
     fieldHeight,
+    ceilingOffset,
     nextMinoHeight,
     guideLineColor,
     infinitePieceQueue,
@@ -142,6 +160,7 @@ export const pieceQueueOverlays = ({
     width: number;
     gap: number;
     fieldHeight: number;
+    ceilingOffset: number;
     nextMinoHeight: number;
     guideLineColor: boolean;
     infinitePieceQueue: boolean;
@@ -160,8 +179,10 @@ export const pieceQueueOverlays = ({
             alignItems: 'flex-start',
             display: 'flex',
             flex: `0 0 ${px(width)}`,
+            boxSizing: 'border-box',
             height: px(fieldHeight),
             marginRight: px(gap),
+            paddingTop: px(ceilingOffset),
         }),
     }, [queueButton({
         width,
@@ -172,7 +193,7 @@ export const pieceQueueOverlays = ({
         piece: hold,
         children: [
             heading('piece-queue-hold-heading', i18n.PieceQueue.HoldLabel()),
-            mino(hold, width, 'piece-queue-hold-piece', guideLineColor),
+            mino(hold, width, 'piece-queue-hold-piece', guideLineColor, nextMinoHeight),
         ],
     })]);
 
@@ -180,7 +201,7 @@ export const pieceQueueOverlays = ({
         key: 'piece-queue-infinite',
         datatest: 'piece-queue-infinite',
         style: style({
-            boxSizing: 'border-box', flexShrink: 0, minHeight: px(26), overflow: 'hidden',
+            boxSizing: 'border-box', flexShrink: 0, height: px(INFINITE_TOGGLE_HEIGHT), overflow: 'hidden',
             padding: compactInfiniteToggle ? '3px 0' : '3px 1px',
             width: px(width),
         }),

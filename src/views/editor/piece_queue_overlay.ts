@@ -82,36 +82,52 @@ const queueButton = ({
     children: VNode<{}>[];
     onclick: () => void;
     piece?: Piece;
-}) => button({
-    key,
-    datatest,
-    type: 'button',
-    className: 'editor-control waves-effect',
-    'aria-label': label,
-    'data-piece': piece === undefined ? '' : pieceQueuePieceToChar(piece),
-    onclick: (event: MouseEvent) => {
-        onclick();
-        event.preventDefault();
-        event.stopPropagation();
-    },
-    style: style({
-        background: '#fafafa',
-        border: '1px solid #333',
-        borderRadius: '0',
-        boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
-        boxSizing: 'border-box',
-        color: '#333',
-        cursor: 'pointer',
-        display: 'block',
-        flexShrink: 0,
-        fontFamily: 'inherit',
-        margin: '0',
-        minWidth: '0',
-        padding: '0',
-        textAlign: 'center',
-        width: px(width),
-    }),
-}, children);
+}) => {
+    let pointerStartedHere = false;
+    return button({
+        key,
+        datatest,
+        type: 'button',
+        className: 'editor-control waves-effect',
+        'aria-label': label,
+        'data-piece': piece === undefined ? '' : pieceQueuePieceToChar(piece),
+        onclick: (event: MouseEvent) => {
+            // PIECE操作はpointerdownで即時実行されるため、ページ遷移後の同じ指から
+            // 合成clickだけが再配置後のキュー枠へ届くことがある。枠内で始まった
+            // ポインター操作、またはキーボードによるclickだけを受け付ける。
+            if (event.detail === 0 || pointerStartedHere) {
+                onclick();
+            }
+            pointerStartedHere = false;
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => {
+            pointerStartedHere = true;
+            event.stopPropagation();
+        },
+        onpointercancel: () => {
+            pointerStartedHere = false;
+        },
+        style: style({
+            background: '#fafafa',
+            border: '1px solid #333',
+            borderRadius: '0',
+            boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
+            boxSizing: 'border-box',
+            color: '#333',
+            cursor: 'pointer',
+            display: 'block',
+            flexShrink: 0,
+            fontFamily: 'inherit',
+            margin: '0',
+            minWidth: '0',
+            padding: '0',
+            textAlign: 'center',
+            width: px(width),
+        }),
+    }, children);
+};
 
 const heading = (key: string, label: string) => div({
     key,

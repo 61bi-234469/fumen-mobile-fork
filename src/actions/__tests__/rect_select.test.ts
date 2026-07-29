@@ -1,6 +1,7 @@
 import { State } from '../../states';
 import { Piece, Rotation } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
+import { PageFieldOperation, Pages } from '../../lib/pages';
 import { floatingPartSpawn, initialRectSelectState } from '../../lib/rect_selection';
 
 const mockClearPiece = jest.fn(() => () => undefined);
@@ -166,6 +167,49 @@ describe('rectSelectActions', () => {
         expect(next.fumen).toBeUndefined();
         expect(field.get(1, 1)).toBe(Piece.T);
         expect(field.get(4, 5)).toBe(Piece.Empty);
+    });
+
+    test('does not duplicate source cells when a transparent move overlaps them', () => {
+        const field = new Field({});
+        field.add(0, 1, Piece.I);
+        field.add(1, 1, Piece.T);
+        const sourceRect = { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: field },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'floating',
+                rect: sourceRect,
+                anchorIndex: null,
+                floating: {
+                    sourceRect,
+                    cells: [Piece.Empty, Piece.Empty, Piece.I, Piece.T],
+                    width: 2,
+                    height: 2,
+                    targetX: 0,
+                    targetY: 1,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+            parts: { items: [], selectedId: null, blackTransparent: true },
+        } as unknown as State;
+
+        const next = rectSelectActions.commitRectSelection()(state) as any;
+        const committed = new Pages(next.fumen.pages)
+            .getField(0, PageFieldOperation.Command);
+
+        expect(committed.get(0, 1)).toBe(Piece.Empty);
+        expect(committed.get(1, 1)).toBe(Piece.Empty);
+        expect(committed.get(0, 2)).toBe(Piece.I);
+        expect(committed.get(1, 2)).toBe(Piece.T);
     });
 
     test('spawns a selected part three rows above the terrain it covers', () => {

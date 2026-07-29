@@ -93,7 +93,6 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
     }
     const pagesObj = new Pages(pages);
     const primitivePage = toPrimitivePage(page);
-    const originalField = pagesObj.getField(currentIndex, PageFieldOperation.Command);
     const goalField = pagesObj.getField(currentIndex, PageFieldOperation.Command);
     if (floating.sourceRect !== null) {
         for (let y = floating.sourceRect.minY; y <= floating.sourceRect.maxY; y += 1) {
@@ -115,9 +114,6 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
             const index = targetX + targetY * FieldConstants.Width;
             const piece = floating.cells[x + y * floating.width];
             if (state.parts.blackTransparent && floating.forceEmpty !== true && piece === Piece.Empty) {
-                if (floating.sourceRect !== null && isIndexInRect(index, floating.sourceRect)) {
-                    goalField.setToPlayField(index, originalField.getAtIndex(index, true));
-                }
                 continue;
             }
             goalField.setToPlayField(index, piece);

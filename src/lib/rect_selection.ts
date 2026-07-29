@@ -180,7 +180,6 @@ export const rotatePartCellsLeft = (
 
 export const composeSelectionField = (state: State): Block[] => {
     const field = state.field.map(block => ({ ...block }));
-    const originalField = state.field.map(block => ({ ...block }));
     const floating = state.rectSelect.floating;
     if (state.rectSelect.status !== 'floating' || floating === null) {
         return field;
@@ -205,9 +204,6 @@ export const composeSelectionField = (state: State): Block[] => {
             const index = targetX + targetY * FieldConstants.Width;
             const piece = floating.cells[x + y * floating.width];
             if (state.parts.blackTransparent && floating.forceEmpty !== true && piece === Piece.Empty) {
-                if (floating.sourceRect !== null && isIndexInRect(index, floating.sourceRect)) {
-                    field[index] = originalField[index];
-                }
                 continue;
             }
             field[index] = { piece };

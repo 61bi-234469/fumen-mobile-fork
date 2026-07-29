@@ -142,24 +142,23 @@ describe('rect selection helpers', () => {
         expect(composed[21].piece).toBe(Piece.S);
     });
 
-    test('keeps Empty cells transparent when moving a rectangle', () => {
+    test('does not restore source cells under transparent cells when a move overlaps', () => {
         const source = Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
-        source[0] = { piece: Piece.I };
-        source[1] = { piece: Piece.T };
-        source[22] = { piece: Piece.L };
+        source[10] = { piece: Piece.I };
+        source[11] = { piece: Piece.T };
         const state = {
             field: source,
             rectSelect: {
                 status: 'floating',
-                rect: { minX: 0, minY: 0, maxX: 1, maxY: 0 },
+                rect: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
                 anchorIndex: null,
                 floating: {
-                    cells: [Piece.Empty, Piece.S],
+                    cells: [Piece.Empty, Piece.Empty, Piece.I, Piece.T],
                     width: 2,
-                    height: 1,
-                    sourceRect: { minX: 0, minY: 0, maxX: 1, maxY: 0 },
+                    height: 2,
+                    sourceRect: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
                     targetX: 0,
-                    targetY: 0,
+                    targetY: 1,
                     pointerOffsetX: 0,
                     pointerOffsetY: 0,
                 },
@@ -169,8 +168,10 @@ describe('rect selection helpers', () => {
 
         const composed = composeSelectionField(state);
 
-        expect(composed[0].piece).toBe(Piece.I);
-        expect(composed[1].piece).toBe(Piece.S);
+        expect(composed[10].piece).toBe(Piece.Empty);
+        expect(composed[11].piece).toBe(Piece.Empty);
+        expect(composed[20].piece).toBe(Piece.I);
+        expect(composed[21].piece).toBe(Piece.T);
     });
 
     test('does not darken a selection preview', () => {

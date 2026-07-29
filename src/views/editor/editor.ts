@@ -21,8 +21,8 @@ import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
 import {
-    getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics, getPieceSideWidth, PIECE_RAIL_COLUMNS,
-    PIECE_RIGHT_COLUMN_GAP,
+    getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics, getPieceSideWidth,
+    getPlayfieldCeilingOffset, getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
 } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
@@ -56,10 +56,14 @@ export interface EditorLayout {
         nextMinoHeight: number;
         nextPanelHeight: number;
         railCellHeight: number;
+        railExtensionHeight: number;
+        ceilingOffset: number;
+        columns: 1 | 2;
     };
     comment: {
         topLeft: Coordinate;
         size: Size;
+        reservedHeight: number;
     };
     tools: {
         topLeft: Coordinate;
@@ -129,7 +133,7 @@ export const getLayout = (
 ): EditorLayout => {
     const bottomMetrics = getEditorBottomMetrics(height);
     const visibleCommentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
-    const commentHeight = reserveCommentHeight ? visibleCommentHeight : 0;
+    const reservedCommentHeight = reserveCommentHeight ? bottomMetrics.commentHeight : 0;
     const { toolsHeight } = bottomMetrics;
     const borderWidthBottomField = 2.4;
 
@@ -138,7 +142,7 @@ export const getLayout = (
     // 「せり上がり部と同じ枠」を重ねて表示するだけで、盤面の大きさには影響しない）。
     const canvasSize = {
         width: width - sidePanelWidth - rightInspectorWidth,
-        height: height - (toolsHeight + commentHeight + topLeftY),
+        height: height - (toolsHeight + reservedCommentHeight + topLeftY),
     };
 
     const rail = getEditorRailConfig(canvasSize.height);
@@ -163,9 +167,17 @@ export const getLayout = (
         height: (blockSize + 1) * 23.5 + 1 + borderWidthBottomField + 1,
     };
 
+    const pieceQueueCeilingOffset = pieceQueueVisible ? getPlayfieldCeilingOffset(blockSize) : 0;
+    const targetPieceRailCellHeight = getResponsiveRailCellHeight(fieldSize.height, 1);
+    const fieldBottomGap = Math.max(0, (canvasSize.height - fieldSize.height) / 2);
+    const maxPieceRailExtension = Math.max(0, reservedCommentHeight + fieldBottomGap - 1);
     const pieceRailMetrics = pieceQueueVisible
-        ? getPieceRailMetrics(fieldSize.height, pieceQueueWidth)
-        : { nextMinoHeight: 0, nextPanelHeight: 0, railCellHeight: 0 };
+        ? getPieceRailMetrics(fieldSize.height - pieceQueueCeilingOffset,
+            pieceQueueWidth, targetPieceRailCellHeight, maxPieceRailExtension)
+        : {
+            columns: rail.columns, nextMinoHeight: 0, nextPanelHeight: 0,
+            railCellHeight: 0, railExtensionHeight: 0,
+        };
 
     const pieceButtonsSize = {
         width: pieceQueueVisible ? pieceQueueWidth
@@ -203,7 +215,7 @@ export const getLayout = (
         },
         buttons: {
             size: pieceButtonsSize,
-            columns: pieceQueueVisible ? PIECE_RAIL_COLUMNS : rail.columns,
+            columns: pieceRailMetrics.columns,
         },
         pieceQueue: {
             visible: pieceQueueVisible,
@@ -212,6 +224,9 @@ export const getLayout = (
             nextMinoHeight: pieceRailMetrics.nextMinoHeight,
             nextPanelHeight: pieceRailMetrics.nextPanelHeight,
             railCellHeight: pieceRailMetrics.railCellHeight,
+            railExtensionHeight: pieceRailMetrics.railExtensionHeight,
+            ceilingOffset: pieceQueueCeilingOffset,
+            columns: pieceRailMetrics.columns,
         },
         comment: {
             topLeft: {
@@ -222,6 +237,7 @@ export const getLayout = (
                 width,
                 height: visibleCommentHeight,
             },
+            reservedHeight: reservedCommentHeight,
         },
         tools: {
             topLeft: {
@@ -256,7 +272,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const bandTop = layout.field.topLeft.y + (layout.field.blockSize + 1) * 22.5 + 1
         + layout.field.bottomBorderWidth;
     const bandHeight = layout.field.bottomBorderWidth + layout.field.blockSize;
-    const pieceTrayAvailableHeight = layout.canvas.size.height - bandTop + layout.comment.size.height - 1;
+    const pieceTrayAvailableHeight = layout.canvas.size.height - bandTop + layout.comment.reservedHeight - 1;
     const trayHeight = state.editorUi.primaryTool === 'piece'
         ? Math.min(CONTEXT_TRAY_HEIGHT * 2, Math.max(bandHeight, pieceTrayAvailableHeight))
         : bandHeight;
@@ -268,6 +284,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         width: layout.pieceQueue.width,
         gap: layout.pieceQueue.gap,
         fieldHeight: layout.field.size.height,
+        ceilingOffset: layout.pieceQueue.ceilingOffset,
         nextMinoHeight: layout.pieceQueue.nextMinoHeight,
         guideLineColor: state.fumen.guideLineColor,
         infinitePieceQueue: state.editorUi.infinitePieceQueue,
@@ -350,8 +367,11 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 display: 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
-                height: px(layout.field.size.height),
+                height: px(layout.field.size.height + layout.pieceQueue.railExtensionHeight),
                 marginLeft: px(PIECE_RIGHT_COLUMN_GAP),
+                paddingTop: px(layout.pieceQueue.ceilingOffset),
+                position: 'relative',
+                top: px(layout.pieceQueue.railExtensionHeight / 2),
                 width: px(layout.buttons.size.width),
             }),
         }, [
@@ -512,7 +532,7 @@ export const view: View<State, Actions> = (state, actions) => {
     const commentVisible = paintOrSelect
         || !contextTrayVisible
         || state.mode.type === ModeTypes.Comment;
-    const reserveCommentHeight = commentVisible;
+    const reserveCommentHeight = commentVisible || state.editorUi.primaryTool === 'piece';
 
     const layout = getLayout({
         rightInspectorWidth,
@@ -564,7 +584,12 @@ export const view: View<State, Actions> = (state, actions) => {
         div({
             key: 'menu-top',
         }, [
-            commentVisible ? getComment(state, actions, layout) : undefined as any,
+            commentVisible
+                ? getComment(state, actions, layout)
+                : layout.comment.reservedHeight > 0 ? div({
+                    key: 'reserved-comment-space',
+                    style: style({ height: px(layout.comment.reservedHeight) }),
+                }) : undefined as any,
 
             Tools(state, actions, layout.tools.size.height, palette),
         ]),

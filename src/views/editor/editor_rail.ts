@@ -12,7 +12,9 @@ import { BlockIcon } from '../../components/atomics/icons';
 import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
-import { getPieceRailMetrics, getResponsiveRailCellHeight, shouldUseCompactEditorRail } from './responsive_layout';
+import {
+    getPieceRailMetrics, getResponsiveRailCellHeight, PIECE_RAIL_GROUP_GAP_DUAL, shouldUseCompactEditorRail,
+} from './responsive_layout';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
 const LONG_PRESS_DURATION = 500;
@@ -202,7 +204,7 @@ const toolCell = ({
     }, Array.isArray(children) ? children : [children]);
 };
 
-const toolGroup = (key: string, rows: VNode<{}>[]) => div({
+const toolGroup = (key: string, rows: VNode<{}>[], preventShrink = false) => div({
     key,
     style: style({
         background: '#333',
@@ -210,6 +212,7 @@ const toolGroup = (key: string, rows: VNode<{}>[]) => div({
         borderRadius: '0',
         boxSizing: 'border-box',
         display: 'grid',
+        flexShrink: preventShrink ? 0 : undefined,
         gap: '1px',
         overflow: 'hidden',
         width: '100%',
@@ -472,7 +475,8 @@ const isPaletteCellSelected = (
 export const getRailCellHeight = (layout: EditorLayout, pieceModeVisible = layout.pieceQueue.visible): number => (
     pieceModeVisible
         ? layout.pieceQueue.railCellHeight
-            || getPieceRailMetrics(layout.field.size.height, layout.pieceQueue.width).railCellHeight
+            || getPieceRailMetrics(layout.field.size.height - layout.pieceQueue.ceilingOffset,
+                layout.pieceQueue.width, getResponsiveRailCellHeight(layout.field.size.height, 1)).railCellHeight
         : getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns)
 );
 
@@ -481,7 +485,9 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const cellHeight = getRailCellHeight(layout, pieceModeVisible);
     const twoColumns = layout.buttons.columns === 2;
     const compact = shouldUseCompactEditorRail(layout.canvas.size.height, layout.buttons.columns);
-    const text = (label: string) => compact ? '' : label;
+    const compactPairedCell = pieceModeVisible ? true : compact;
+    const compactPaletteCell = pieceModeVisible ? twoColumns : compact;
+    const text = (label: string) => compactPairedCell ? '' : label;
     const iconSize = Math.max(14, Math.min(21, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {
         if (compact || !state.mode.shortcutLabelVisible) {
@@ -576,7 +582,8 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         selected: state.editorUi.primaryTool === 'piece',
         onpress: actions.togglePieceMode,
         onlongpress: () => executePieceShortcut('Reset', actions),
-        children: [icon('extension', iconSize), ...(compact ? [] : [span({ key: 'piece' }, text('P'))])],
+        children: [icon('extension', iconSize), ...(compactPairedCell
+            ? [] : [span({ key: 'piece' }, text('P'))])],
     });
 
     const coldClearCell = toolCell({
@@ -585,7 +592,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         onpress: actions.openColdClearMenuModal,
         children: [
             icon(state.coldClear.isRunning ? 'hourglass_top' : 'auto_fix_high', iconSize),
-            ...(compact ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
+            ...(compactPairedCell ? [] : [span({ key: 'ai', style: style({ marginLeft: '3px' }) }, 'AI')]),
             ...(state.coldClear.progress ? [span({
                 key: 'progress-badge',
                 style: style({
@@ -607,7 +614,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const aiAndPieceCells = [pieceModeCell, coldClearCell];
     const aiAndPieceGroup = toolGroup(pieceModeVisible ? 'rail-ai-piece-piece' : 'rail-ai-piece', [
         row(pieceModeVisible ? 'rail-ai-piece-row-piece' : 'rail-ai-piece-row', aiAndPieceCells),
-    ]);
+    ], pieceModeVisible);
     const auxiliaryAndAiGroup = div({
         key: 'rail-auxiliary-ai',
         style: style({
@@ -623,7 +630,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
             selected: state.editorUi.primaryTool === 'select',
             onpress: () => actions.changePrimaryTool({ tool: 'select' }),
-            children: [icon('select_all', iconSize), ...(compact ? [] : [span({
+            children: [icon('select_all', iconSize), ...(compactPairedCell ? [] : [span({
                 key: 'select', style: style({ marginLeft: '3px' }),
             }, 'SELECT')])],
         }),
@@ -631,14 +638,14 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             key: 'btn-paint-mode', datatest: 'btn-paint-mode', label: 'PAINT', height: cellHeight,
             selected: state.editorUi.primaryTool === 'paint',
             onpress: () => actions.changePrimaryTool({ tool: 'paint' }),
-            children: [icon('brush', iconSize), ...(compact ? [] : [span({
+            children: [icon('brush', iconSize), ...(compactPairedCell ? [] : [span({
                 key: 'paint', style: style({ marginLeft: '3px' }),
             }, 'PAINT')])],
         }),
     ];
     const modeGroup = toolGroup('rail-modes', pieceModeVisible
         ? [row('rail-modes-row-piece', modeCells)]
-        : modeCells);
+        : modeCells, pieceModeVisible);
 
     const selections: PaletteSelection[] = [
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
@@ -675,7 +682,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             },
             children: withShortcut(paletteContent(selection, state, cellHeight, actions,
                 layout.buttons.size.width / (twoColumns ? 2 : 1)),
-                compact ? undefined : getPaletteShortcut(state, selection)),
+                compactPaletteCell ? undefined : getPaletteShortcut(state, selection)),
         });
     });
     if (pieceModeVisible) {
@@ -685,7 +692,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             label: i18n.EditorUi.ResetField(),
             height: cellHeight,
             onpress: () => actions.resetFieldAndPiece(),
-            children: compact ? icon('layers_clear', iconSize) : [span({
+            children: compactPaletteCell ? icon('layers_clear', iconSize) : [span({
                 key: 'reset-field-label',
                 style: style({ fontSize: px(Math.max(10, cellHeight * 0.3)), fontWeight: '600' }),
             }, i18n.EditorUi.ResetField())],
@@ -694,7 +701,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const paletteGroup = toolGroup('rail-palette', twoColumns
         ? [0, 1, 2, 3, 4].map(index => row(`rail-palette-row-${index + 1}`,
             paletteCells.slice(index * 2, index * 2 + 2)))
-        : paletteCells);
+        : paletteCells, pieceModeVisible);
 
     // PIECE時はキューと操作セルを広げるため、共有・設定・ページ・インスペクタ操作を描画しない
     const railGroups = pieceModeVisible
@@ -703,14 +710,14 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const railBottomPadding = Math.max(0, layout.field.size.height
         - (layout.comment.topLeft.y - layout.field.topLeft.y));
 
-    // PIECE時はNEXT枠の下（同じ右列）へ詰めて並べ、余りは最下部の空白として残す
+    // PIECE時はパレット下端をフィールド下端へ揃え、余白をNEXTとレールの間に置く
     const railStyle = pieceModeVisible ? style({
         boxSizing: 'border-box',
         display: 'flex',
         flex: '1 1 auto',
         flexDirection: 'column',
-        gap: px(6),
-        marginTop: px(4),
+        gap: px(twoColumns ? PIECE_RAIL_GROUP_GAP_DUAL : 6),
+        justifyContent: 'flex-end',
         minHeight: '0',
         overflow: 'hidden',
         width: '100%',

@@ -105,6 +105,32 @@
             white-space: nowrap;
         }
 
+        /*
+         * Tree node delete toast: bottom center, above the bottom toolbar. The
+         * `bottom` value is set inline per screen. Kept click-through so it never
+         * steals taps from the tree node buttons underneath.
+         */
+        .tree-delete-toast {
+            position: fixed;
+            /* Materialize animates `top` to 0 on show; with `bottom` set inline that
+               would stretch the toast over the whole screen height. */
+            top: auto !important;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            /* Wide enough that the common message stays on one line, narrow enough
+               to keep clear of the screen edges. */
+            min-width: min(330px, calc(100% - 24px));
+            max-width: calc(100% - 24px);
+            margin-top: 0;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        .tree-delete-toast .toast-action {
+            pointer-events: auto;
+        }
+
         /* Floating corner controls (list/tree views) */
         .corner-glass {
             background-color: rgba(255, 255, 255, 0.86);

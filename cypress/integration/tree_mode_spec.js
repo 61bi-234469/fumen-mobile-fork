@@ -129,6 +129,54 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
 
+    it('keeps the topmost lane delete buttons usable while the delete toast is shown', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildThreeNodeChain();
+
+        // A second top-level node gives the topmost lane two delete buttons
+        cy.get(datatest('btn-tree-root-add-ghost')).click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 4);
+
+        // The topmost lane sits ~28px below the viewport top
+        const inTopLane = ($buttons) => Array.from($buttons)
+            .filter(button => button.getBoundingClientRect().top < 100);
+
+        cy.get('[datatest^="btn-tree-node-delete-"]').then(($buttons) => {
+            const topLane = inTopLane($buttons);
+            expect(topLane.length, 'delete buttons in the topmost lane').to.be.at.least(2);
+            // No force: nothing covers the button before the first delete
+            cy.wrap(topLane[0]).click();
+        });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        // The toast is placed at the bottom, clear of the tree
+        cy.get('.toast.tree-delete-toast').should('exist').then(($toast) => {
+            const rect = $toast[0].getBoundingClientRect();
+            expect(rect.top, 'toast stays in the bottom half')
+                .to.be.greaterThan(Cypress.config('viewportHeight') / 2);
+        });
+
+        cy.get('[datatest^="btn-tree-node-delete-"]').then(($buttons) => {
+            const topLane = inTopLane($buttons);
+            expect(topLane.length, 'delete buttons in the topmost lane').to.be.at.least(1);
+
+            // The delete button, not the toast, is what a tap would hit
+            const rect = topLane[0].getBoundingClientRect();
+            cy.document().then((doc) => {
+                const hit = doc.elementFromPoint(
+                    rect.left + rect.width / 2, rect.top + rect.height / 2);
+                expect(hit && hit.closest('[datatest^="btn-tree-node-delete-"]'),
+                    'delete button is on top while the toast is visible').to.exist;
+            });
+
+            // Consecutive delete succeeds without force while the toast is still up
+            cy.wrap(topLane[0]).click();
+        });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+    });
+
     it('applies descendants scope to deletion and disables it for leaves', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 

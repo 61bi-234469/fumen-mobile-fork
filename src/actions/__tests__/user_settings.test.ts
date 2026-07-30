@@ -37,6 +37,8 @@ const baseUserSettings = {
     pieceShortcutDasFrames: 10,
     pieceShortcutArrFrames: 1,
     pieceShortcutDasCutFrames: 0,
+    pieceShortcutSdf: Infinity,
+    pieceShortcutSoftDropPriority: false,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     noGrayAfterHardDrop: false,
@@ -61,6 +63,8 @@ const createState = (override: any = {}) => ({
         pieceShortcutDasFrames: 10,
         pieceShortcutArrFrames: 1,
         pieceShortcutDasCutFrames: 0,
+        pieceShortcutSdf: Infinity,
+        pieceShortcutSoftDropPriority: false,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,
@@ -239,6 +243,15 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepPieceShortcutSoftDropPriority', () => {
+        test('updates the temporary toggle value', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceShortcutSoftDropPriority({ enable: true })(state);
+
+            expect(next.temporary.userSettings.pieceShortcutSoftDropPriority).toBe(true);
+        });
+    });
+
     describe('shared Space shortcut', () => {
         test('keeps page insertion when assigning Space to hard drop', () => {
             const state = createState();
@@ -308,7 +321,7 @@ describe('userSettingsActions', () => {
                 'changeOpenTreeScreenOnTreeData',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
-                'changePieceShortcutSdf',
+                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
                 'changeGifFrameDelay', 'changeRotationSystem',
                 'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
@@ -336,6 +349,7 @@ describe('userSettingsActions', () => {
             expect(mockActions.changePieceShortcutDas).toHaveBeenCalledWith({ dasFrames: 5.5 });
             expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
             expect(mockActions.changePieceShortcutDasCut).toHaveBeenCalledWith({ dasCutFrames: 2.5 });
+            expect(mockActions.changePieceShortcutSoftDropPriority).toHaveBeenCalledWith({ enable: false });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

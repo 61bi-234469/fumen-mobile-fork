@@ -175,6 +175,7 @@ interface UserSettings {
     pieceShortcutArrFrames: number;
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number | string;
+    pieceShortcutSoftDropPriority: boolean;
     pieceShortcutDasMs?: number;
     pieceShortcutArrMs?: number;
     gifFrameDelayMs: number;
@@ -263,6 +264,7 @@ export const localStorageWrapper = {
             pieceShortcutArrFrames: safer.number(obj.pieceShortcutArrFrames),
             pieceShortcutDasCutFrames: safer.number(obj.pieceShortcutDasCutFrames),
             pieceShortcutSdf: obj.pieceShortcutSdf === 'Infinity' ? Infinity : safer.number(obj.pieceShortcutSdf),
+            pieceShortcutSoftDropPriority: safer.boolean(obj.pieceShortcutSoftDropPriority),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),

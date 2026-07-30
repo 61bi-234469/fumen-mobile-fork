@@ -28,6 +28,7 @@ interface UserSettingsModalProps {
     pieceShortcutArrFrames: number;
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number;
+    pieceShortcutSoftDropPriority: boolean;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
@@ -54,6 +55,7 @@ interface UserSettingsModalProps {
         keepPieceShortcutArr: (data: { arrFrames: number }) => void;
         keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
         keepPieceShortcutSdf: (data: { sdf: number }) => void;
+        keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
@@ -146,6 +148,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutArrFrames,
         pieceShortcutDasCutFrames,
         pieceShortcutSdf,
+        pieceShortcutSoftDropPriority,
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
@@ -196,10 +199,13 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    const renderSwitch = ({ key, datatest, title, checked, offLabel, onLabel, onChange, disabled = false }: {
+    const renderSwitch = ({
+        key, datatest, title, description, checked, offLabel, onLabel, onChange, disabled = false,
+    }: {
         key: string;
         datatest: string;
         title: string;
+        description?: string;
         checked: boolean;
         offLabel: string;
         onLabel: string;
@@ -221,6 +227,11 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         return (
             <div key={key} class="switch">
                 <h6>{title}</h6>
+                {description !== undefined && <div style={style({
+                    color: '#666', fontSize: px(12), marginBottom: px(5),
+                })}>
+                    {description}
+                </div>}
 
                 <label>
                     {offLabel}
@@ -764,6 +775,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         <option value="Infinity">∞</option>
                                     </select>
                                 </div>
+
+                                {renderSwitch({
+                                    key: 'switch-row-piece-softdrop-priority',
+                                    datatest: 'switch-piece-softdrop-priority',
+                                    title: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title(),
+                                    description: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Description(),
+                                    checked: pieceShortcutSoftDropPriority,
+                                    offLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Off(),
+                                    onLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.On(),
+                                    onChange: checked => actions.keepPieceShortcutSoftDropPriority({ enable: checked }),
+                                })}
                             </div>
                         </div>
 

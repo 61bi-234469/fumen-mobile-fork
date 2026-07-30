@@ -25,6 +25,7 @@ export interface UserSettingsActions {
     keepPieceShortcutArr: (data: { arrFrames: number }) => action;
     keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     keepPieceShortcutSdf: (data: { sdf: number }) => action;
+    keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
@@ -72,6 +73,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
                     pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
                     pieceShortcutSdf: state.mode.pieceShortcutSdf,
+                    pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
@@ -115,6 +117,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 dasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             }),
             actions.changePieceShortcutSdf({ sdf: state.temporary.userSettings.pieceShortcutSdf }),
+            actions.changePieceShortcutSoftDropPriority({
+                enable: state.temporary.userSettings.pieceShortcutSoftDropPriority,
+            }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
@@ -254,6 +259,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepPieceShortcutArr: ({ arrFrames }) => keepTemporary({ pieceShortcutArrFrames: arrFrames }),
     keepPieceShortcutDasCut: ({ dasCutFrames }) => keepTemporary({ pieceShortcutDasCutFrames: dasCutFrames }),
     keepPieceShortcutSdf: ({ sdf }) => keepTemporary({ pieceShortcutSdf: sdf }),
+    keepPieceShortcutSoftDropPriority: ({ enable }) => keepTemporary({ pieceShortcutSoftDropPriority: enable }),
     keepGifFrameDelay: ({ delayMs }) => keepTemporary({ gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs) }),
     keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),
     keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
@@ -305,6 +311,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
         pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
         pieceShortcutSdf: state.mode.pieceShortcutSdf === Infinity ? 'Infinity' : state.mode.pieceShortcutSdf,
+        pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,

@@ -2,6 +2,7 @@ import type { PieceShortcuts } from '../states';
 import {
     endPieceHold,
     isPieceHoldActive,
+    setPieceShortcutSoftDropPriority,
     startDasHold,
     startSoftDropHold,
 } from './piece_das';
@@ -28,6 +29,7 @@ export interface PieceShortcutHoldOptions {
     dasFrames: number;
     arrFrames: number;
     sdf: number;
+    softDropPriority: boolean;
 }
 
 export const executePieceShortcut = (
@@ -78,6 +80,7 @@ export const startPieceShortcut = (
 ) => {
     // A reused input ID must not leave a previous kind of hold running.
     endPieceHold(id);
+    setPieceShortcutSoftDropPriority(options.softDropPriority);
 
     if (key === 'MoveLeft') {
         startDasHold(id, {
@@ -85,6 +88,7 @@ export const startPieceShortcut = (
             moveToEnd: () => getActions().moveToLeftEnd?.(),
             dasFrames: options.dasFrames,
             arrFrames: options.arrFrames,
+            softDropPriority: options.softDropPriority,
         });
         return;
     }
@@ -95,6 +99,7 @@ export const startPieceShortcut = (
             moveToEnd: () => getActions().moveToRightEnd?.(),
             dasFrames: options.dasFrames,
             arrFrames: options.arrFrames,
+            softDropPriority: options.softDropPriority,
         });
         return;
     }

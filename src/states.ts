@@ -108,10 +108,11 @@ export interface PartsState {
 }
 
 export const DEFAULT_PIECE_SHORTCUT_DAS_FRAMES = 10;
-// 0のときはDAS経過後に端まで即移動する（従来動作）
+// 0以下のときはDAS経過後、毎フレーム端まで移動を適用し続ける
 export const DEFAULT_PIECE_SHORTCUT_ARR_FRAMES = 1;
 export const DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES = 0;
 export const DEFAULT_PIECE_SHORTCUT_SDF = Infinity;
+export const DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY = false;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
@@ -220,6 +221,7 @@ export interface State {
             pieceShortcutArrFrames: number;
             pieceShortcutDasCutFrames: number;
             pieceShortcutSdf: number;
+            pieceShortcutSoftDropPriority: boolean;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
             noGrayAfterHardDrop: boolean;
@@ -271,6 +273,7 @@ export interface State {
         pieceShortcutArrFrames: number;
         pieceShortcutDasCutFrames: number;
         pieceShortcutSdf: number;
+        pieceShortcutSoftDropPriority: boolean;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
         noGrayAfterHardDrop: boolean;
@@ -407,6 +410,7 @@ export const initState: Readonly<State> = {
             pieceShortcutArrFrames: DEFAULT_PIECE_SHORTCUT_ARR_FRAMES,
             pieceShortcutDasCutFrames: DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES,
             pieceShortcutSdf: DEFAULT_PIECE_SHORTCUT_SDF,
+            pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
             noGrayAfterHardDrop: false,
@@ -453,6 +457,7 @@ export const initState: Readonly<State> = {
         pieceShortcutArrFrames: DEFAULT_PIECE_SHORTCUT_ARR_FRAMES,
         pieceShortcutDasCutFrames: DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES,
         pieceShortcutSdf: DEFAULT_PIECE_SHORTCUT_SDF,
+        pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,

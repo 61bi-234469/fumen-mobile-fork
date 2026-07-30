@@ -10,6 +10,7 @@ const holdOptions = {
     dasFrames: 10,
     arrFrames: 2,
     sdf: 5,
+    softDropPriority: false,
 };
 
 describe('piece input lifecycle', () => {
@@ -41,6 +42,39 @@ describe('piece input lifecycle', () => {
         expect(isPieceShortcutHoldActive('tray:left')).toBe(false);
         jest.advanceTimersByTime(1000);
         expect(moveToLeft).toHaveBeenCalledTimes(2);
+    });
+
+    test('re-evaluates MoveLeftEnd on every ARR=0 tick', () => {
+        const firstMoveToLeftEnd = jest.fn();
+        const secondMoveToLeftEnd = jest.fn();
+        let currentActions = {
+            moveToLeftEnd: firstMoveToLeftEnd,
+        };
+
+        startPieceShortcut('keyboard:left', 'MoveLeft', {
+            ...holdOptions,
+            arrFrames: 0,
+        }, () => currentActions);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS * holdOptions.dasFrames);
+        expect(firstMoveToLeftEnd).toHaveBeenCalledTimes(1);
+
+        currentActions = { moveToLeftEnd: secondMoveToLeftEnd };
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(firstMoveToLeftEnd).toHaveBeenCalledTimes(1);
+        expect(secondMoveToLeftEnd).toHaveBeenCalledTimes(1);
+    });
+
+    test('defers the initial horizontal move when soft drop has priority', () => {
+        const moveToLeft = jest.fn();
+        startPieceShortcut('keyboard:left', 'MoveLeft', {
+            ...holdOptions,
+            softDropPriority: true,
+        }, () => ({ moveToLeft }));
+
+        expect(moveToLeft).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(moveToLeft).toHaveBeenCalledTimes(1);
     });
 
     test('keeps independent input IDs active at the same time', () => {

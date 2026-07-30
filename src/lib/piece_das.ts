@@ -1,7 +1,10 @@
 // ミノの左右移動ホールド(DAS/ARR)を管理するエンジン
 // - 押下直後に1回移動し、DAS経過後はARR間隔でリピートする
-// - ARRが0以下のときはDAS経過後に端まで即移動する（従来動作）
+// - ARRが0以下のときはDAS経過後、毎フレーム端まで移動を適用し続ける
+// - ミノをドラッグしている間は自動横移動を抑止する
 // - ホールドはIDごとに独立して管理するため、複数ボタン/キーの同時押しが可能
+
+import { FieldConstants } from './enums';
 
 interface DasHoldCallbacks {
     // 1マス移動
@@ -13,21 +16,47 @@ interface DasHoldCallbacks {
 export interface DasHoldOptions extends DasHoldCallbacks {
     dasFrames: number;
     arrFrames: number;
+    softDropPriority?: boolean;
 }
 
 interface HoldState {
     dasTimer: ReturnType<typeof setTimeout> | null;
-    arrTimer: ReturnType<typeof setInterval> | null;
+    initialTask: RepeatTask | null;
+    arrTask: RepeatTask | null;
     cutTimer: ReturnType<typeof setTimeout> | null;
     arrActive: boolean;
     move: () => void;
     moveToEnd: () => void;
     arrFrames: number;
+    softDropPriority: boolean;
     cutVersion: number;
 }
 
 const holds = new Map<string, HoldState>();
-const softDropHolds = new Map<string, ReturnType<typeof setInterval>>();
+const softDropHolds = new Map<string, RepeatTask>();
+type RepeatKind = 'shift' | 'softDrop';
+
+interface RepeatTask {
+    kind: RepeatKind;
+    framesPerStep: number;
+    accumulated: number;
+    apply: () => void;
+}
+
+const repeatTasks = new Set<RepeatTask>();
+const instantSoftDropTasks = new Set<RepeatTask>();
+let repeatTicker: ReturnType<typeof setTimeout> | null = null;
+let repeatEpoch = 0;
+let repeatFrame = 0;
+let softDropPriority = false;
+let isPieceDragging: () => boolean = () => false;
+
+const repeatClock = (): number => typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+/** Register the live state predicate used to pause automatic movement during piece dragging. */
+export const registerPieceDragGuard = (guard: () => boolean) => {
+    isPieceDragging = guard;
+};
 
 export const FRAME_DURATION_MS = 1000 / 60;
 
@@ -39,39 +68,152 @@ export const millisecondsToFrames = (milliseconds: number): number => {
     return Math.max(0, Math.round(milliseconds / FRAME_DURATION_MS));
 };
 
+const repeatOrder = (): RepeatKind[] => softDropPriority
+    ? ['softDrop', 'shift']
+    : ['shift', 'softDrop'];
+
+const stopRepeatTickerIfIdle = () => {
+    if (repeatTasks.size === 0 && repeatTicker !== null) {
+        clearTimeout(repeatTicker);
+        repeatTicker = null;
+    }
+};
+
+const onRepeatFrame = () => {
+    for (const kind of repeatOrder()) {
+        for (const task of Array.from(repeatTasks)) {
+            if (task.kind !== kind || !repeatTasks.has(task)) {
+                continue;
+            }
+
+            task.accumulated += 1;
+            while (task.framesPerStep <= task.accumulated && repeatTasks.has(task)) {
+                task.accumulated -= task.framesPerStep;
+                task.apply();
+            }
+        }
+    }
+};
+
+const scheduleRepeatFrame = () => {
+    if (repeatTasks.size === 0) {
+        return;
+    }
+
+    const nextFrameAt = repeatEpoch + Math.floor(FRAME_DURATION_MS * (repeatFrame + 1));
+    repeatTicker = setTimeout(() => {
+        repeatTicker = null;
+        repeatFrame += 1;
+        onRepeatFrame();
+        scheduleRepeatFrame();
+    }, Math.max(0, nextFrameAt - repeatClock()));
+};
+
+const registerRepeatTask = (
+    kind: RepeatKind,
+    framesPerStep: number,
+    apply: () => void,
+): RepeatTask => {
+    const task: RepeatTask = {
+        kind,
+        apply,
+        framesPerStep,
+        accumulated: 0,
+    };
+    repeatTasks.add(task);
+    if (repeatTicker === null) {
+        repeatEpoch = repeatClock();
+        repeatFrame = 0;
+        scheduleRepeatFrame();
+    }
+    return task;
+};
+
+const unregisterRepeatTask = (task: RepeatTask | null) => {
+    if (task !== null) {
+        repeatTasks.delete(task);
+    }
+    stopRepeatTickerIfIdle();
+};
+
+/** Set the ordering used when horizontal movement and soft drop repeat together. */
+export const setPieceShortcutSoftDropPriority = (enable: boolean) => {
+    softDropPriority = enable;
+};
+
 export const startDasHold = (id: string, options: DasHoldOptions) => {
     endDasHold(id);
 
     const { dasFrames, arrFrames, move, moveToEnd } = options;
 
-    // 押下した瞬間に1回移動（レスポンス優先）
-    move();
-
     const hold: HoldState = {
         move,
         moveToEnd,
         arrFrames,
+        softDropPriority: options.softDropPriority === true,
         dasTimer: null,
-        arrTimer: null,
+        initialTask: null,
+        arrTask: null,
         cutTimer: null,
         arrActive: false,
         cutVersion: 0,
     };
+    holds.set(id, hold);
+    if (options.softDropPriority) {
+        hold.initialTask = registerRepeatTask('shift', 1, () => {
+            if (!holdsHasValue(hold)) {
+                return;
+            }
+            move();
+            unregisterRepeatTask(hold.initialTask);
+            hold.initialTask = null;
+        });
+    } else {
+        move();
+    }
     hold.dasTimer = setTimeout(() => {
         hold.dasTimer = null;
         startArr(hold);
     }, framesToMilliseconds(dasFrames));
-    holds.set(id, hold);
 };
 
 const startArr = (hold: HoldState) => {
+    unregisterRepeatTask(hold.initialTask);
+    hold.initialTask = null;
     hold.arrActive = true;
-    if (hold.arrFrames <= 0) {
-        hold.moveToEnd();
-    } else {
-        hold.move();
-        hold.arrTimer = setInterval(hold.move, framesToMilliseconds(hold.arrFrames));
-    }
+    const repeat = hold.arrFrames <= 0 ? () => {
+        if (!hold.softDropPriority || instantSoftDropTasks.size === 0) {
+            hold.moveToEnd();
+            return;
+        }
+
+        // ARR=0 normally resolves the whole horizontal path atomically. With
+        // infinite soft drop held, interleave both inputs so gaps between two
+        // ledges cannot be skipped at the original height.
+        for (let index = 0; index < FieldConstants.Width; index += 1) {
+            for (const task of Array.from(instantSoftDropTasks)) {
+                if (repeatTasks.has(task)) {
+                    task.apply();
+                }
+            }
+            hold.move();
+        }
+        for (const task of Array.from(instantSoftDropTasks)) {
+            if (repeatTasks.has(task)) {
+                task.apply();
+            }
+        }
+    } : hold.move;
+    const intervalFrames = hold.arrFrames <= 0 ? 1 : hold.arrFrames;
+    const applyAutoShift = () => {
+        if (isPieceDragging()) {
+            return;
+        }
+        repeat();
+    };
+
+    applyAutoShift();
+    hold.arrTask = registerRepeatTask('shift', intervalFrames, applyAutoShift);
 };
 
 export const endDasHold = (id: string) => {
@@ -83,9 +225,8 @@ export const endDasHold = (id: string) => {
     if (hold.dasTimer !== null) {
         clearTimeout(hold.dasTimer);
     }
-    if (hold.arrTimer !== null) {
-        clearInterval(hold.arrTimer);
-    }
+    unregisterRepeatTask(hold.initialTask);
+    unregisterRepeatTask(hold.arrTask);
     if (hold.cutTimer !== null) {
         clearTimeout(hold.cutTimer);
     }
@@ -102,13 +243,18 @@ export const startSoftDropHold = (id: string, move: () => void, sdf: number) => 
     endSoftDropHold(id);
     move();
     const intervalFrames = sdf === Infinity ? 1 : 60 / (sdf * SOFT_DROP_BASE_CELLS_PER_SECOND);
-    softDropHolds.set(id, setInterval(move, framesToMilliseconds(intervalFrames)));
+    const task = registerRepeatTask('softDrop', intervalFrames, move);
+    softDropHolds.set(id, task);
+    if (sdf === Infinity) {
+        instantSoftDropTasks.add(task);
+    }
 };
 
 export const endSoftDropHold = (id: string) => {
-    const timer = softDropHolds.get(id);
-    if (timer !== undefined) {
-        clearInterval(timer);
+    const task = softDropHolds.get(id);
+    if (task !== undefined) {
+        instantSoftDropTasks.delete(task);
+        unregisterRepeatTask(task);
         softDropHolds.delete(id);
     }
 };
@@ -142,10 +288,8 @@ export const cutDasHolds = (dcdFrames: number | undefined) => {
             continue;
         }
 
-        if (hold.arrTimer !== null) {
-            clearInterval(hold.arrTimer);
-        }
-        hold.arrTimer = null;
+        unregisterRepeatTask(hold.arrTask);
+        hold.arrTask = null;
         hold.arrActive = false;
         if (hold.cutTimer !== null) {
             clearTimeout(hold.cutTimer);
@@ -177,10 +321,10 @@ export const activateDasCut = (dcdFrames: number | undefined) => {
             clearTimeout(hold.dasTimer);
             hold.dasTimer = null;
         }
-        if (hold.arrTimer !== null) {
-            clearInterval(hold.arrTimer);
-            hold.arrTimer = null;
-        }
+        unregisterRepeatTask(hold.initialTask);
+        hold.initialTask = null;
+        unregisterRepeatTask(hold.arrTask);
+        hold.arrTask = null;
         if (hold.cutTimer !== null) {
             clearTimeout(hold.cutTimer);
             hold.cutTimer = null;

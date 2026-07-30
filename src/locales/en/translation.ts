@@ -127,6 +127,12 @@
             DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
             Sdf: 'SDF',
             SdfDescription: 'TETR.IO-style soft drop factor (SDF x 3 cells per second, from the 0.05G floor)',
+            SoftDropPriority: {
+                Title: 'Soft drop priority',
+                Description: 'Apply soft drop before horizontal movement when both are held',
+                Off: 'Horizontal movement first',
+                On: 'Soft drop first',
+            },
         },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {

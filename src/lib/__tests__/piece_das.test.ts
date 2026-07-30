@@ -9,7 +9,9 @@ import {
     isDasHoldActive,
     isPieceHoldActive,
     millisecondsToFrames,
+    registerPieceDragGuard,
     cutDasHolds,
+    setPieceShortcutSoftDropPriority,
     startDasHold,
     startSoftDropHold,
 } from '../piece_das';
@@ -35,6 +37,7 @@ describe('piece_das', () => {
 
     afterEach(() => {
         endAllDasHolds();
+        registerPieceDragGuard(() => false);
         jest.useRealTimers();
     });
 
@@ -60,10 +63,23 @@ describe('piece_das', () => {
         expect(moveToEnd).toHaveBeenCalledTimes(1);
         expect(move).toHaveBeenCalledTimes(1);
 
-        // 端まで移動後はリピートしない
-        jest.advanceTimersByTime(1000);
-        expect(moveToEnd).toHaveBeenCalledTimes(1);
+        // 以降は1フレーム間隔で端まで移動を再試行する
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        expect(moveToEnd).toHaveBeenCalledTimes(4);
         expect(move).toHaveBeenCalledTimes(1);
+    });
+
+    test('ARR=0のリピート中に離すとリピートが停止する', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+
+        endDasHold('test');
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
     });
 
     test('ARR>0のときDAS経過後にARR間隔でリピートする', () => {
@@ -304,6 +320,105 @@ describe('piece_das', () => {
         expect(moveToEnd).not.toHaveBeenCalled();
     });
 
+    test('DCD pauses and resumes ARR=0 repeats', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+
+        cutDasHolds(3);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3 - 1);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(1);
+        expect(moveToEnd).toHaveBeenCalledTimes(2);
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(moveToEnd).toHaveBeenCalledTimes(3);
+    });
+
+    test('zero-DCD DAS Cut restarts one ARR=0 repeat timer', async () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+
+        activateDasCut(0);
+        await Promise.resolve();
+        expect(moveToEnd).toHaveBeenCalledTimes(2);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(moveToEnd).toHaveBeenCalledTimes(3);
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(moveToEnd).toHaveBeenCalledTimes(4);
+    });
+
+    test('endAllDasHolds stops ARR=0 repeats', () => {
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+
+        endAllDasHolds();
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 3);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+    });
+
+    test('drag guard suppresses ARR=0 repeats while dragging', () => {
+        registerPieceDragGuard(() => true);
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        expect(move).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(FRAME_DURATION_MS * (DAS_FRAMES + 3));
+
+        expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('drag guard resumes ARR=0 repeats on the next tick', () => {
+        let dragging = true;
+        registerPieceDragGuard(() => dragging);
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: 0 });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * DAS_FRAMES);
+        expect(moveToEnd).not.toHaveBeenCalled();
+
+        dragging = false;
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+        expect(moveToEnd).toHaveBeenCalledTimes(1);
+    });
+
+    test('drag guard does not suppress the direct movement on hold start', () => {
+        registerPieceDragGuard(() => true);
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+
+        expect(move).toHaveBeenCalledTimes(1);
+        expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
+    test('drag guard suppresses the first ARR movement for ARR>0', () => {
+        registerPieceDragGuard(() => true);
+        const move = jest.fn();
+        const moveToEnd = jest.fn();
+
+        startDasHold('test', { move, moveToEnd, dasFrames: DAS_FRAMES, arrFrames: ARR_FRAMES });
+        jest.advanceTimersByTime(FRAME_DURATION_MS * (DAS_FRAMES + ARR_FRAMES * 2));
+
+        expect(move).toHaveBeenCalledTimes(1);
+        expect(moveToEnd).not.toHaveBeenCalled();
+    });
+
     test('SDFはTETR.IOの0.05G下限準拠でSDF×3マス/秒の落下間隔になる', () => {
         const move = jest.fn();
 
@@ -311,10 +426,9 @@ describe('piece_das', () => {
         startSoftDropHold('test', move, 5);
         expect(move).toHaveBeenCalledTimes(1);
 
-        jest.advanceTimersByTime(FRAME_DURATION_MS * 4 - 1);
-        expect(move).toHaveBeenCalledTimes(1);
-
-        jest.advanceTimersByTime(1);
+        // Repeats are driven by the shared frame scheduler, so the first
+        // repeat is observed after four scheduler frames.
+        jest.advanceTimersByTime(FRAME_DURATION_MS * 4);
         expect(move).toHaveBeenCalledTimes(2);
 
         // 以降も同じ間隔でリピートする
@@ -340,6 +454,96 @@ describe('piece_das', () => {
 
         jest.advanceTimersByTime(1000);
         expect(move).toHaveBeenCalledTimes(1);
+    });
+
+    test('shared scheduler applies horizontal movement before soft drop by default', () => {
+        const order: string[] = [];
+        setPieceShortcutSoftDropPriority(false);
+
+        startDasHold('shift', {
+            move: () => order.push('shift'),
+            moveToEnd: () => order.push('shift'),
+            dasFrames: 0,
+            arrFrames: 1,
+        });
+        jest.advanceTimersByTime(0);
+        startSoftDropHold('softDrop', () => order.push('softDrop'), Infinity);
+        order.length = 0;
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+
+        expect(order).toEqual(['shift', 'softDrop']);
+    });
+
+    test('soft drop priority reverses the shared scheduler order', () => {
+        const order: string[] = [];
+        setPieceShortcutSoftDropPriority(true);
+
+        startDasHold('shift', {
+            move: () => order.push('shift'),
+            moveToEnd: () => order.push('shift'),
+            dasFrames: 0,
+            arrFrames: 1,
+        });
+        jest.advanceTimersByTime(0);
+        startSoftDropHold('softDrop', () => order.push('softDrop'), Infinity);
+        order.length = 0;
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+
+        expect(order).toEqual(['softDrop', 'shift']);
+    });
+
+    test('ARR=0 interleaves infinite soft drop while crossing a gap between ledges', () => {
+        let x = 8;
+        let y = 4;
+        setPieceShortcutSoftDropPriority(true);
+
+        const moveLeft = () => {
+            const nextX = x - 1;
+            const overlapsLeftLedge = y < 4 && nextX - 1 <= 2;
+            if (1 <= nextX && !overlapsLeftLedge) {
+                x = nextX;
+            }
+        };
+        const softDrop = () => {
+            const overlapsLeftLedge = x - 1 <= 2;
+            const overlapsRightLedge = 7 <= x + 1;
+            if (!overlapsLeftLedge && !overlapsRightLedge) {
+                y = 0;
+            }
+        };
+
+        startDasHold('left', {
+            move: moveLeft,
+            moveToEnd: () => { x = 1; },
+            dasFrames: 0,
+            arrFrames: 0,
+            softDropPriority: true,
+        });
+        startSoftDropHold('softDrop', softDrop, Infinity);
+        jest.advanceTimersByTime(0);
+
+        expect({ x, y }).toEqual({ x: 4, y: 0 });
+    });
+
+    test('SDF=40 can apply multiple soft-drop steps in one scheduler frame', () => {
+        const move = jest.fn();
+        startSoftDropHold('test', move, 40);
+
+        jest.advanceTimersByTime(FRAME_DURATION_MS);
+
+        expect(move).toHaveBeenCalledTimes(3);
+    });
+
+    test('shared scheduler stops when the last repeat task ends', () => {
+        const move = jest.fn();
+        startSoftDropHold('softDrop', move, Infinity);
+        expect(jest.getTimerCount()).toBe(1);
+
+        endSoftDropHold('softDrop');
+
+        expect(jest.getTimerCount()).toBe(0);
     });
 
     test('DCD does not delay a hold that has not entered ARR yet', () => {

@@ -42,7 +42,7 @@
 | `slide_spec.js` | Slideモード（上下移動・UTILトレイを保持したままの全体ドラッグ） | `src/views/editor/context_tray.ts`（Slideトレイ）, `src/actions/convert.ts`（shiftTo系） | `mode.block/slide` | <30秒 | - |
 | `tree_mode_spec.js` | Tree（グラフ表示・ノードD&D・分岐/挿入・削除Undo・スコープ選択） | `src/actions/tree_operations.ts`, `src/components/tree/`, `src/lib/fumen/tree_utils.ts`, `src/lib/fumen/tree_types.ts` | `tree.setScope`（他は合成タッチイベント直接） | <30秒 | AGENTS.md「tree root仮想ノード/DFS pre-order」invariantに直結 |
 | `url_behavior_spec.js` | URL/hashパラメータの横断挙動（screen/tree/lng/mobile維持、モーダルキャンセル時のURL不変） | `src/actions.ts`, `src/memento.ts` | `menu.append/openPage/openUserSettings`, `mode.block` | <30秒 | 一部 `it.skip`（未実装のライブURL同期。e2e skill参照） |
-| `user_settings_spec.js` | ユーザー設定モーダル（DAS/ARR・グラデーション折りたたみ・Ghost・Loop・ライン消去後グレー） | `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts` | `menu.lastPage/loopOn/openUserSettings/selectUserSettingsTab`, `mode.block/piece/tools` | <30秒 | - |
+| `user_settings_spec.js` | ユーザー設定モーダル（DAS/ARR・ソフトドロップ優先・グラデーション折りたたみ・Ghost・Loop・ライン消去後グレー） | `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts` | `menu.lastPage/loopOn/openUserSettings/selectUserSettingsTab`, `mode.block/piece/tools` | <30秒 | - |
 | `utils_spec.js` | Utilsモード（Paintツールとの分離・スコープ別グルーピング・Mirror） | `src/views/editor/editor_overlay.ts` | `mode.tools/utils` | <30秒 | - |
 
 ## 逆引き: src 領域 → 見るべき spec

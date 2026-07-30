@@ -41,7 +41,7 @@ import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
-import { isValidSdf, millisecondsToFrames } from './lib/piece_das';
+import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -105,6 +105,7 @@ initShortcutHandlers(
     () => currentState,
     () => main,
 );
+registerPieceDragGuard(() => currentState.events.drawing);
 
 // Initialize Cold Clear actions reference
 initColdClearActions(main as any);
@@ -399,6 +400,10 @@ const loadUserSettings = () => {
     const sdf = settings.pieceShortcutSdf;
     if (isValidSdf(sdf)) {
         main.changePieceShortcutSdf({ sdf });
+        updated = true;
+    }
+    if (settings.pieceShortcutSoftDropPriority !== undefined) {
+        main.changePieceShortcutSoftDropPriority({ enable: settings.pieceShortcutSoftDropPriority });
         updated = true;
     }
 

@@ -112,7 +112,17 @@ interface StateOptions {
     rightStroke?: 'erase' | 'suppressed';
     deleteSpawnMinoOnPaintDrag?: boolean;
     fieldBlocks?: ReturnType<typeof emptyBlocks>;
+    inferences?: number[];
 }
+
+// COMP残骸: ミノとして解決していない推定セルは白い'inference'ブロックとして描画される。
+const inferenceDebrisBlocks = (indexes: number[]) => {
+    const blocks = emptyBlocks(240) as any[];
+    for (const index of indexes) {
+        blocks[index] = { piece: 'inference', highlight: HighlightType.Highlight2 };
+    }
+    return blocks;
+};
 
 const createState = (options: StateOptions = {}) => {
     const page = options.page ?? createPage();
@@ -129,7 +139,7 @@ const createState = (options: StateOptions = {}) => {
             piece: undefined,
             drawing: false,
             rightStroke: options.rightStroke,
-            inferences: [],
+            inferences: options.inferences ?? [],
             prevPage: undefined,
             updated: false,
             lastTouchedIndex: undefined,
@@ -396,6 +406,46 @@ describe('the PAINT eraser on a selection', () => {
         fieldEditorActions.ontouchMoveField({ index: 3 })(state);
 
         expect(mockDeleteSelectionUnderEraser).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('COMP debris', () => {
+    test('a right click drops the clicked cell from the inference set', () => {
+        const state = createState({
+            primaryTool: 'paint',
+            inferences: [4, 5],
+            fieldBlocks: inferenceDebrisBlocks([4, 5]),
+        });
+
+        const next = fieldEditorActions.onrightStartField({ index: 4 })(state) as any;
+
+        expect(next.events.inferences).toEqual([5]);
+        expect(next.events.rightStroke).toBe('erase');
+    });
+
+    test('a right drag drops every debris cell it passes over', () => {
+        const state = createState({
+            primaryTool: 'paint',
+            inferences: [4, 5],
+            fieldBlocks: inferenceDebrisBlocks([4, 5]),
+        });
+
+        const started = fieldEditorActions.onrightStartField({ index: 4 })(state) as any;
+        const moved = fieldEditorActions.onrightMoveField({ index: 5 })(merge(state, started)) as any;
+
+        expect(moved.events.inferences).toEqual([]);
+    });
+
+    test('a right click outside the debris keeps the inference set', () => {
+        const state = createState({
+            primaryTool: 'paint',
+            inferences: [4, 5],
+            fieldBlocks: inferenceDebrisBlocks([4, 5]),
+        });
+
+        const next = fieldEditorActions.onrightStartField({ index: 6 })(state) as any;
+
+        expect(next.events.inferences).toEqual([4, 5]);
     });
 });
 

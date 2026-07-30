@@ -215,6 +215,41 @@ describe('Right click', () => {
         cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
     });
 
+    it('erases COMP debris cell by cell in PAINT', () => {
+        visit({ mode: 'edit' });
+        operations.mode.block.Completion();
+
+        // ミノとして解決していない3マスは白いCOMP残骸として残る。
+        operations.mode.block.click(1, 1);
+        operations.mode.block.click(3, 1);
+        operations.mode.block.click(5, 1);
+        [1, 3, 5].forEach(x => {
+            cy.get(block(x, 1)).should('have.attr', 'color', Color.Completion.Highlight2);
+        });
+
+        operations.mode.block.rightClick(3, 1);
+
+        cy.get(block(3, 1)).should('have.attr', 'color', Color.Empty.Normal);
+        cy.get(block(1, 1)).should('have.attr', 'color', Color.Completion.Highlight2);
+        cy.get(block(5, 1)).should('have.attr', 'color', Color.Completion.Highlight2);
+    });
+
+    it('erases the COMP debris a right drag passes over', () => {
+        visit({ mode: 'edit' });
+        operations.mode.block.Completion();
+
+        operations.mode.block.click(1, 1);
+        operations.mode.block.click(3, 1);
+        operations.mode.block.click(5, 1);
+
+        operations.mode.block.rightDrag({ x: 0, y: 1 }, { x: 4, y: 1 });
+
+        [1, 3].forEach(x => {
+            cy.get(block(x, 1)).should('have.attr', 'color', Color.Empty.Normal);
+        });
+        cy.get(block(5, 1)).should('have.attr', 'color', Color.Completion.Highlight2);
+    });
+
     it('returns the SPAWN mino to the queue in SELECT', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();

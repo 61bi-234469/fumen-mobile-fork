@@ -56,6 +56,9 @@ export const i18n = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
         },
+        PaintPaletteMinoDesign: {
+            Title: () => t('UserSettings.PaintPaletteMinoDesign.Title'),
+        },
         ShowFlags: {
             Title: () => t('UserSettings.ShowFlags.Title'),
         },

@@ -51,6 +51,25 @@ describe('user settings FLAGS visibility', () => {
     });
 });
 
+describe('user settings PAINT palette design', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads a boolean paintPaletteMinoDesign value', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ paintPaletteMinoDesign: true }));
+
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBe(true);
+    });
+
+    test('rejects a missing or invalid paintPaletteMinoDesign value', () => {
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ paintPaletteMinoDesign: 'true' }));
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBeUndefined();
+    });
+});
+
 describe('user settings soft-drop priority', () => {
     beforeEach(() => {
         localStorage.clear();

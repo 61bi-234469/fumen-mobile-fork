@@ -354,5 +354,36 @@ describe('User settings', () => {
         cy.get(datatest('btn-save')).click();
         cy.get(datatest('btn-flags-mode')).should('not.exist');
     });
+
+    it('shows the PAINT mino design setting defaults off and persists it', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('have.text', 'I');
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('not.be.checked').check({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('not.exist');
+
+        // Cancel does not roll back a previously saved value or change the palette.
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+
+        // Reload restores the saved mino design.
+        visit({ mode: 'edit', reload: true });
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-save')).click();
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('have.text', 'I');
+    });
 });
 

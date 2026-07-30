@@ -47,6 +47,9 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
         },
+        PaintPaletteMinoDesign: {
+            Title: 'PAINTパレットをミノ画像で表示',
+        },
         ShowFlags: {
             Title: 'FLAGSを表示',
         },

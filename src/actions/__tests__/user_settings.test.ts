@@ -25,6 +25,7 @@ const { userSettingsActions } = require('../user_settings');
 const baseUserSettings = {
     ghostVisible: true,
     deleteSpawnMinoOnPaintDrag: true,
+    paintPaletteMinoDesign: false,
     flagsHidden: true,
     initialScreen: 'reader',
     openTreeScreenOnTreeData: true,
@@ -51,6 +52,7 @@ const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
+        paintPaletteMinoDesign: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
@@ -179,6 +181,21 @@ describe('userSettingsActions', () => {
             const next = userSettingsActions.keepDeleteSpawnMinoOnPaintDrag({ enable: false })(state);
 
             expect(next.temporary.userSettings.deleteSpawnMinoOnPaintDrag).toBe(false);
+        });
+    });
+
+    describe('keepPaintPaletteMinoDesign', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPaintPaletteMinoDesign({ enable: true })(state);
+
+            expect(next.temporary.userSettings.paintPaletteMinoDesign).toBe(true);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPaintPaletteMinoDesign({ enable: true })(state)).toBeUndefined();
         });
     });
 
@@ -316,7 +333,7 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
-                'changeDeleteSpawnMinoOnPaintDrag', 'changeFlagsHidden',
+                'changeDeleteSpawnMinoOnPaintDrag', 'changePaintPaletteMinoDesign', 'changeFlagsHidden',
                 'changeInitialScreen',
                 'changeOpenTreeScreenOnTreeData',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
@@ -342,6 +359,7 @@ describe('userSettingsActions', () => {
                 trimTopBlank: true,
                 editorSidePanel: true,
                 flagsHidden: false,
+                paintPaletteMinoDesign: true,
             };
 
             userSettingsActions.commitUserSettings()(state);
@@ -356,7 +374,12 @@ describe('userSettingsActions', () => {
             expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
             expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
             expect(saveUserSettingsMock).toHaveBeenCalled();
+            expect(saveUserSettingsMock.mock.calls[0][0]).toEqual(expect.objectContaining({
+                paintPaletteMinoDesign: false,
+                flagsHidden: true,
+            }));
             expect(mockActions.changeFlagsHidden).toHaveBeenCalledWith({ hidden: false });
+            expect(mockActions.changePaintPaletteMinoDesign).toHaveBeenCalledWith({ enable: true });
         });
     });
 });

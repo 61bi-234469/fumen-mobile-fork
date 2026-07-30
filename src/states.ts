@@ -209,6 +209,7 @@ export interface State {
         userSettings: {
             ghostVisible: boolean;
             deleteSpawnMinoOnPaintDrag: boolean;
+            paintPaletteMinoDesign: boolean;
             initialScreen: InitialScreenSetting;
             openTreeScreenOnTreeData: boolean;
             loop: boolean;
@@ -258,6 +259,7 @@ export interface State {
         comment: CommentType;
         ghostVisible: boolean;
         deleteSpawnMinoOnPaintDrag: boolean;
+        paintPaletteMinoDesign: boolean;
         flagsHidden: boolean;
         initialScreen: InitialScreenSetting;
         openTreeScreenOnTreeData: boolean;
@@ -398,6 +400,7 @@ export const initState: Readonly<State> = {
         userSettings: {
             ghostVisible: true,
             deleteSpawnMinoOnPaintDrag: true,
+            paintPaletteMinoDesign: false,
             initialScreen: 'reader',
             openTreeScreenOnTreeData: true,
             loop: false,
@@ -444,6 +447,7 @@ export const initState: Readonly<State> = {
         comment: CommentType.Writable,
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
+        paintPaletteMinoDesign: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,

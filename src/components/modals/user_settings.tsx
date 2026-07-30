@@ -15,6 +15,7 @@ declare const M: any;
 interface UserSettingsModalProps {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
+    paintPaletteMinoDesign: boolean;
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
@@ -42,6 +43,7 @@ interface UserSettingsModalProps {
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
+        keepPaintPaletteMinoDesign: (data: { enable: boolean }) => void;
         keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
@@ -135,6 +137,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     {
         ghostVisible,
         deleteSpawnMinoOnPaintDrag,
+        paintPaletteMinoDesign,
         flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
@@ -516,6 +519,16 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-paint-palette-mino-design',
+                                datatest: 'switch-paint-palette-mino-design',
+                                title: i18n.UserSettings.PaintPaletteMinoDesign.Title(),
+                                checked: paintPaletteMinoDesign,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepPaintPaletteMinoDesign({ enable: checked }),
                             })}
 
                             {renderSwitch({

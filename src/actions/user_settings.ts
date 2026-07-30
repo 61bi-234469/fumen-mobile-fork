@@ -12,6 +12,7 @@ export interface UserSettingsActions {
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    keepPaintPaletteMinoDesign: (data: { enable: boolean }) => action;
     keepFlagsHidden: (data: { hidden: boolean }) => action;
     keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
@@ -60,6 +61,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
                     deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+                    paintPaletteMinoDesign: state.mode.paintPaletteMinoDesign,
                     flagsHidden: state.mode.flagsHidden,
                     initialScreen: state.mode.initialScreen,
                     openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
@@ -89,6 +91,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
             actions.changeDeleteSpawnMinoOnPaintDrag({
                 enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            }),
+            actions.changePaintPaletteMinoDesign({
+                enable: state.temporary.userSettings.paintPaletteMinoDesign,
             }),
             actions.changeFlagsHidden({ hidden: state.temporary.userSettings.flagsHidden }),
             actions.changeInitialScreen({ initialScreen: state.temporary.userSettings.initialScreen }),
@@ -145,6 +150,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     },
     keepGhostVisible: ({ visible }) => keepTemporary({ ghostVisible: visible }),
     keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => keepTemporary({ deleteSpawnMinoOnPaintDrag: enable }),
+    keepPaintPaletteMinoDesign: ({ enable }) => keepTemporary({ paintPaletteMinoDesign: enable }),
     keepFlagsHidden: ({ hidden }) => keepTemporary({ flagsHidden: hidden }),
     keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
     keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
@@ -298,6 +304,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
         deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+        paintPaletteMinoDesign: state.mode.paintPaletteMinoDesign,
         flagsHidden: state.mode.flagsHidden,
         initialScreen: state.mode.initialScreen,
         openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,

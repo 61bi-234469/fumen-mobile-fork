@@ -827,6 +827,18 @@ export const operations = {
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
+        // PAINTパレットのミノデザイン表示を切り替える (フィールドタブ)
+        setPaintPaletteMinoDesign: (enabled) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
+            const target = cy.get(datatest('switch-paint-palette-mino-design'));
+            if (enabled) {
+                target.check({ force: true });
+            } else {
+                target.uncheck({ force: true });
+            }
+            cy.get(datatest('btn-save')).click();
+        },
     },
     listView: {
         openImport: () => {

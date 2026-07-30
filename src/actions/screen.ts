@@ -34,6 +34,7 @@ export interface ScreenActions {
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    changePaintPaletteMinoDesign: (data: { enable: boolean }) => action;
     changeFlagsHidden: (data: { hidden: boolean }) => action;
     changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
@@ -217,6 +218,17 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 deleteSpawnMinoOnPaintDrag: enable,
+            },
+        };
+    },
+    changePaintPaletteMinoDesign: ({ enable }) => (state): NextState => {
+        if (state.mode.paintPaletteMinoDesign === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                paintPaletteMinoDesign: enable,
             },
         };
     },

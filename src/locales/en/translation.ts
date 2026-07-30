@@ -51,6 +51,9 @@
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when an eraser drag passes over it',
         },
+        PaintPaletteMinoDesign: {
+            Title: 'Show PAINT palette as mino images',
+        },
         ShowFlags: {
             Title: 'Show FLAGS',
         },

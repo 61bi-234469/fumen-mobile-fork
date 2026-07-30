@@ -2,7 +2,7 @@ import { button, div, img, span } from '@hyperapp/html';
 import { VNode } from 'hyperapp';
 import { Actions } from '../../actions';
 import { decidePieceColor } from '../../lib/colors';
-import { isMinoPaletteSelection } from '../../lib/editor_interaction';
+import { isMinoPaletteSelection, paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { parsePieceName, Piece } from '../../lib/enums';
 import { displayShortcut } from '../../lib/shortcuts';
 import { px, style } from '../../lib/types';
@@ -251,6 +251,24 @@ const minoPaletteSwatch = (selection: Piece, height: number, guideLineColor: boo
     }, parsePieceName(selection) ?? '');
 };
 
+// PAINTのミノデザイン表示。ミノSVGは約2:1の横長なので、セル高だけでなく
+// セル幅からも上限を取り、狭いレールでもセル内へ収める。
+const minoPaletteImage = (selection: Piece, height: number, width: number, guideLineColor: boolean) => {
+    const imageHeight = Math.max(10, Math.min(height - 6, Math.floor((width - 6) / 2)));
+    return img({
+        'data-palette-swatch': 'mino-image',
+        src: paletteMinoImageSrc(selection, guideLineColor),
+        alt: parsePieceName(selection) ?? '',
+        style: style({
+            display: 'block',
+            height: px(imageHeight),
+            margin: 'auto',
+            maxWidth: '100%',
+            objectFit: 'contain',
+        }),
+    });
+};
+
 const partPaletteSwatch = (
     part: State['parts']['items'][number],
     state: State,
@@ -360,11 +378,9 @@ const paletteContent = (
         }, i18n.EditorUi.ResetPiece());
     }
     if (state.editorUi.primaryTool === 'piece' && isMinoPaletteSelection(selection)) {
-        const pieceName = parsePieceName(selection);
-        const src = state.fumen.guideLineColor ? `img/${pieceName}.svg` : `img/${pieceName}_classic.svg`;
         return img({
-            src,
-            alt: pieceName,
+            src: paletteMinoImageSrc(selection, state.fumen.guideLineColor),
+            alt: parsePieceName(selection),
             style: style({ display: 'block', height: px(Math.max(12, height - 6)), margin: 'auto' }),
         });
     }
@@ -429,6 +445,9 @@ const paletteContent = (
             BlockIcon({ key: 'comp-icon', iconSize: compact ? 12 : 15 }, 'image_aspect_ratio'),
             span({ key: 'comp-label' }, 'COMP'),
         ]);
+    }
+    if (state.editorUi.primaryTool === 'paint' && state.mode.paintPaletteMinoDesign) {
+        return minoPaletteImage(selection, height, width, state.fumen.guideLineColor);
     }
     return minoPaletteSwatch(selection, height, state.fumen.guideLineColor);
 };

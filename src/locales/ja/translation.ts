@@ -47,6 +47,9 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
         },
+        PaintPaletteMinoDesign: {
+            Title: 'PAINTパレットをミノ画像で表示',
+        },
         ShowFlags: {
             Title: 'FLAGSを表示',
         },
@@ -122,6 +125,12 @@ export const resources = {
             DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
             Sdf: 'SDF',
             SdfDescription: 'TETR.IO準拠のソフトドロップ倍率（下限0.05G × SDF = 3マス/秒 × SDF）',
+            SoftDropPriority: {
+                Title: 'ソフトドロップ優先',
+                Description: '左右移動とソフトドロップを同時に押したときの適用順',
+                Off: '横移動優先',
+                On: 'ソフトドロップ優先',
+            },
         },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {

@@ -19,6 +19,7 @@ import {
 } from '../tree_mouse_interaction';
 import { handleTreeNodeDelete } from '../tree_node_delete';
 import { getSidePanelWidthBounds, SIDE_PANEL_TAB_BAR_HEIGHT } from './side_panel_layout';
+import { getEditorBottomMetrics } from './responsive_layout';
 
 // フル画面と同時表示されないため、FumenGraph 内の datatest をそのまま共有する
 const PANEL_TREE_CONTAINER_SELECTOR = '[datatest="fumen-graph-container"]';
@@ -243,7 +244,9 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
                     actions.copyTreeNode({ nodeId });
                 },
                 onDeleteNode: (nodeId: TreeNodeId) => {
-                    handleTreeNodeDelete(state, actions, nodeId);
+                    // エディタ画面の下端はツールバー＋コメント欄で占められている
+                    const { commentHeight, toolsHeight } = getEditorBottomMetrics(state.display.height);
+                    handleTreeNodeDelete(state, actions, nodeId, toolsHeight + commentHeight);
                 },
                 onAddRoot: () => {
                     actions.addRootFromCurrentNode();

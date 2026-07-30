@@ -85,6 +85,7 @@ describe('clipboard insert shortcut', () => {
                 pieceShortcutArrFrames: 1,
                 pieceShortcutDasCutFrames: 0,
                 pieceShortcutSdf: 5,
+                pieceShortcutSoftDropPriority: false,
                 paletteShortcuts: {
                     Comp: 'KeyC',
                 },

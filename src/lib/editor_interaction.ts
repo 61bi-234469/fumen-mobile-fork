@@ -1,4 +1,4 @@
-import { ModeTypes, Piece, TouchTypes } from './enums';
+import { ModeTypes, parsePieceName, Piece, TouchTypes } from './enums';
 import {
     EditorInspector,
     PaintTool,
@@ -30,3 +30,8 @@ export const isMinoPaletteSelection = (
 ): selection is Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S => (
     selection !== 'comp' && selection !== Piece.Empty && selection !== Piece.Gray
 );
+
+export const paletteMinoImageSrc = (piece: Piece, guideLineColor: boolean): string => {
+    const name = parsePieceName(piece) ?? '';
+    return guideLineColor ? `img/${name}.svg` : `img/${name}_classic.svg`;
+};

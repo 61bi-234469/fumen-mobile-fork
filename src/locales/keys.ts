@@ -56,6 +56,9 @@ export const i18n = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
         },
+        PaintPaletteMinoDesign: {
+            Title: () => t('UserSettings.PaintPaletteMinoDesign.Title'),
+        },
         ShowFlags: {
             Title: () => t('UserSettings.ShowFlags.Title'),
         },
@@ -132,6 +135,12 @@ export const i18n = {
             DasCutDescription: () => t('UserSettings.PieceShortcuts.DasCutDescription'),
             Sdf: () => t('UserSettings.PieceShortcuts.Sdf'),
             SdfDescription: () => t('UserSettings.PieceShortcuts.SdfDescription'),
+            SoftDropPriority: {
+                Title: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Title'),
+                Description: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Description'),
+                Off: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Off'),
+                On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
+            },
         },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),

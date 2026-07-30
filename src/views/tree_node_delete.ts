@@ -6,14 +6,24 @@ import { canDeleteNode, findNode, getTreeOperationNodeIds, isVirtualNode } from 
 
 declare const M: any;
 
+// The toast sits above the bottom toolbar instead of the top-right corner: the
+// topmost tree lane starts ~28px below the viewport top, so a top toast covers
+// its delete buttons and blocks consecutive deletions.
+const TOAST_BOTTOM_GAP = 6;
+const DELETE_TOAST_DISPLAY_LENGTH = 2000;
+
 /**
  * Show the post-delete toast with an Undo action. The Undo listener is attached
  * to the created toast element and detached on click / when the toast finishes.
+ *
+ * `bottomOffset` is the height of the chrome the toast must clear (bottom
+ * toolbar, and the comment field in the editor screen).
  */
 export const showDeleteUndoToast = (
     actions: Actions,
     removedPageCount: number,
     scope: TreeOperationScope,
+    bottomOffset: number,
 ) => {
     const message = removedPageCount === 1
         ? i18n.TreeView.DeleteToast.DeletedOne()
@@ -29,9 +39,10 @@ export const showDeleteUndoToast = (
     const toast = M.toast({
         html: '<span class="tree-delete-toast-message"></span>'
             + '<button class="btn-flat toast-action" datatest="btn-tree-delete-undo"></button>',
-        classes: 'top-toast',
-        displayLength: 4000,
+        classes: 'tree-delete-toast',
+        displayLength: DELETE_TOAST_DISPLAY_LENGTH,
     });
+    toast.el.style.bottom = `${bottomOffset + TOAST_BOTTOM_GAP}px`;
 
     const messageElement = toast.el.querySelector('.tree-delete-toast-message');
     if (messageElement) {
@@ -56,7 +67,12 @@ export const showDeleteUndoToast = (
 // Delete a node from its permanent delete button, then offer Undo via toast.
 // Scope mirrors the removeTreeNode action so the permanent delete button and
 // the action use the same target set.
-export const handleTreeNodeDelete = (state: Readonly<State>, actions: Actions, nodeId: TreeNodeId) => {
+export const handleTreeNodeDelete = (
+    state: Readonly<State>,
+    actions: Actions,
+    nodeId: TreeNodeId,
+    toastBottomOffset: number,
+) => {
     const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
     const node = findNode(tree, nodeId);
     if (!node || isVirtualNode(node)) return;
@@ -74,5 +90,5 @@ export const handleTreeNodeDelete = (state: Readonly<State>, actions: Actions, n
     });
 
     actions.removeTreeNode({ nodeId });
-    showDeleteUndoToast(actions, removedPageIndices.size, scope);
+    showDeleteUndoToast(actions, removedPageIndices.size, scope, toastBottomOffset);
 };

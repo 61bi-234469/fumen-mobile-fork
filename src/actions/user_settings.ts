@@ -12,6 +12,7 @@ export interface UserSettingsActions {
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    keepPaintPaletteMinoDesign: (data: { enable: boolean }) => action;
     keepFlagsHidden: (data: { hidden: boolean }) => action;
     keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
@@ -25,6 +26,7 @@ export interface UserSettingsActions {
     keepPieceShortcutArr: (data: { arrFrames: number }) => action;
     keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     keepPieceShortcutSdf: (data: { sdf: number }) => action;
+    keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
@@ -59,6 +61,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
                     deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+                    paintPaletteMinoDesign: state.mode.paintPaletteMinoDesign,
                     flagsHidden: state.mode.flagsHidden,
                     initialScreen: state.mode.initialScreen,
                     openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
@@ -72,6 +75,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
                     pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
                     pieceShortcutSdf: state.mode.pieceShortcutSdf,
+                    pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
@@ -87,6 +91,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
             actions.changeDeleteSpawnMinoOnPaintDrag({
                 enable: state.temporary.userSettings.deleteSpawnMinoOnPaintDrag,
+            }),
+            actions.changePaintPaletteMinoDesign({
+                enable: state.temporary.userSettings.paintPaletteMinoDesign,
             }),
             actions.changeFlagsHidden({ hidden: state.temporary.userSettings.flagsHidden }),
             actions.changeInitialScreen({ initialScreen: state.temporary.userSettings.initialScreen }),
@@ -115,6 +122,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 dasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             }),
             actions.changePieceShortcutSdf({ sdf: state.temporary.userSettings.pieceShortcutSdf }),
+            actions.changePieceShortcutSoftDropPriority({
+                enable: state.temporary.userSettings.pieceShortcutSoftDropPriority,
+            }),
             actions.changeGifFrameDelay({
                 delayMs: state.temporary.userSettings.gifFrameDelayMs,
             }),
@@ -140,6 +150,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     },
     keepGhostVisible: ({ visible }) => keepTemporary({ ghostVisible: visible }),
     keepDeleteSpawnMinoOnPaintDrag: ({ enable }) => keepTemporary({ deleteSpawnMinoOnPaintDrag: enable }),
+    keepPaintPaletteMinoDesign: ({ enable }) => keepTemporary({ paintPaletteMinoDesign: enable }),
     keepFlagsHidden: ({ hidden }) => keepTemporary({ flagsHidden: hidden }),
     keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
     keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
@@ -254,6 +265,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepPieceShortcutArr: ({ arrFrames }) => keepTemporary({ pieceShortcutArrFrames: arrFrames }),
     keepPieceShortcutDasCut: ({ dasCutFrames }) => keepTemporary({ pieceShortcutDasCutFrames: dasCutFrames }),
     keepPieceShortcutSdf: ({ sdf }) => keepTemporary({ pieceShortcutSdf: sdf }),
+    keepPieceShortcutSoftDropPriority: ({ enable }) => keepTemporary({ pieceShortcutSoftDropPriority: enable }),
     keepGifFrameDelay: ({ delayMs }) => keepTemporary({ gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs) }),
     keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),
     keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
@@ -292,6 +304,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
         deleteSpawnMinoOnPaintDrag: state.mode.deleteSpawnMinoOnPaintDrag,
+        paintPaletteMinoDesign: state.mode.paintPaletteMinoDesign,
         flagsHidden: state.mode.flagsHidden,
         initialScreen: state.mode.initialScreen,
         openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
@@ -305,6 +318,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutArrFrames: state.mode.pieceShortcutArrFrames,
         pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
         pieceShortcutSdf: state.mode.pieceShortcutSdf === Infinity ? 'Infinity' : state.mode.pieceShortcutSdf,
+        pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,

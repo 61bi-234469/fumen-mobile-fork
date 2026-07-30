@@ -352,6 +352,66 @@ describe('Editor UI final concept', () => {
             .and('have.css', 'color', 'rgb(51, 51, 51)');
     });
 
+    it('replaces only the PAINT mino swatches when the mino design is enabled', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+        operations.menu.setPaintPaletteMinoDesign(true);
+
+        const minos = ['i', 'l', 'o', 'z', 't', 'j', 's'];
+        minos.forEach((name) => {
+            cy.get(datatest(`btn-piece-${name}`))
+                .find('[data-palette-swatch="mino-image"]')
+                .should('have.attr', 'alt', name.toUpperCase());
+        });
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('not.exist');
+
+        // Non-mino cells keep their current design.
+        cy.get(datatest('btn-piece-empty')).find('[data-palette-swatch="empty"]').should('exist');
+        cy.get(datatest('btn-piece-gray')).find('[data-palette-swatch="gray"]').should('exist');
+        cy.get(datatest('btn-piece-inference')).find('[data-palette-swatch="comp"]').should('contain', 'COMP');
+
+        // The image stays inside its cell.
+        cy.get(datatest('btn-piece-i')).then((cell) => {
+            const cellRect = cell[0].getBoundingClientRect();
+            cy.get(datatest('btn-piece-i')).find('img').then((image) => {
+                const imageRect = image[0].getBoundingClientRect();
+                expect(imageRect.width).to.be.lessThan(cellRect.width + 1);
+                expect(imageRect.height).to.be.lessThan(cellRect.height + 1);
+            });
+        });
+
+        // Behaviour is unchanged: the cell still selects the I piece and draws it.
+        cy.get(datatest('btn-piece-i')).click().should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('btn-piece-i')).should('have.attr', 'aria-label', 'I');
+        operations.mode.block.click(1, 1);
+        cy.get(block(1, 1)).should('have.attr', 'color', Color.I.Normal);
+
+        // SELECT and PIECE palettes are untouched by the setting.
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch]').should('not.exist');
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-i')).find('img').should('exist');
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('not.exist');
+    });
+
+    it('fits the PAINT mino images inside a two-column rail', () => {
+        cy.viewport(844, 390);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+        operations.menu.setPaintPaletteMinoDesign(true);
+
+        cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', '2');
+        cy.get(datatest('btn-piece-i')).then((cell) => {
+            const cellRect = cell[0].getBoundingClientRect();
+            cy.get(datatest('btn-piece-i')).find('img').then((image) => {
+                const imageRect = image[0].getBoundingClientRect();
+                expect(imageRect.width).to.be.greaterThan(0);
+                expect(imageRect.width).to.be.lessThan(cellRect.width + 1);
+                expect(imageRect.height).to.be.lessThan(cellRect.height + 1);
+            });
+        });
+    });
+
     it('opens the PIECE tray instead of settings on a phone tap', () => {
         cy.viewport(375, 667);
         visit({ mode: 'edit' });

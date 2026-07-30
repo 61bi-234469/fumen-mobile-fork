@@ -8,6 +8,21 @@ const configurePieceSdf = value => {
     cy.get(datatest('btn-save')).click();
 };
 
+const configurePieceHorizontalMove = (softDropPriority = false) => {
+    operations.menu.openUserSettings();
+    operations.menu.selectUserSettingsTab('piece');
+    cy.get(datatest('input-piece-arr')).clear().type('0').blur();
+    cy.get(datatest('input-piece-das')).clear().type('5').blur();
+    cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
+    const prioritySwitch = cy.get(datatest('switch-piece-softdrop-priority'));
+    if (softDropPriority) {
+        prioritySwitch.check({ force: true });
+    } else {
+        prioritySwitch.uncheck({ force: true });
+    }
+    cy.get(datatest('btn-save')).click();
+};
+
 // テト譜を開く
 describe('Put pieces', () => {
     it('combines keyboard movement and rotation while both keys are held', () => {
@@ -139,6 +154,169 @@ describe('Put pieces', () => {
             cy.get(selector).should('have.attr', 'color', Color.J.Highlight2);
         });
         cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+    });
+
+    it('continues ARR=0 horizontal movement after rotation opens a path', () => {
+        visit({ mode: 'edit' });
+        configurePieceHorizontalMove();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.softdrop();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowRight' });
+        cy.tick(5 * (1000 / 60) + 20);
+        mino(Piece.T, Rotation.Spawn)(8, 0).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.get('body').trigger('keydown', { code: 'KeyX' });
+        cy.get('body').trigger('keyup', { code: 'KeyX' });
+        cy.tick(0);
+        mino(Piece.T, Rotation.Right)(7, 1).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.tick(20);
+        mino(Piece.T, Rotation.Right)(8, 1).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+        cy.get('body').trigger('keyup', { code: 'ArrowRight' });
+        cy.clock().invoke('restore');
+    });
+
+    it('continues ARR=0 horizontal movement across touch rotation input', () => {
+        visit({ mode: 'edit' });
+        configurePieceHorizontalMove();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.softdrop();
+
+        cy.clock();
+        cy.get(datatest('tray-piece-move-right'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.tick(5 * (1000 / 60) + 20);
+        mino(Piece.T, Rotation.Spawn)(8, 0).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-rotate-right'))
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0 });
+        cy.tick(0);
+        mino(Piece.T, Rotation.Right)(7, 1).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.tick(20);
+        mino(Piece.T, Rotation.Right)(8, 1).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+        cy.get(datatest('tray-piece-move-right'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.clock().invoke('restore');
+    });
+
+    it('suppresses ARR=0 horizontal movement while dragging a piece', () => {
+        visit({ mode: 'edit' });
+        configurePieceHorizontalMove();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowRight' });
+        cy.tick(5 * (1000 / 60) + 20);
+        mino(Piece.T, Rotation.Spawn)(8, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        operations.mode.block.dragHoldStart({ from: 8, to: 2 }, 20);
+        cy.tick(0);
+        mino(Piece.T, Rotation.Spawn)(2, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+        cy.tick(50);
+        mino(Piece.T, Rotation.Spawn)(2, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        operations.mode.block.dragHoldEnd(2, 20);
+        cy.get('body').trigger('keyup', { code: 'ArrowRight' });
+        cy.clock().invoke('restore');
+    });
+
+    const runSimultaneousMoveAndSoftDrop = softDropPriority => {
+        visit({ mode: 'edit' });
+        configurePieceHorizontalMove(softDropPriority);
+
+        operations.mode.tools.home();
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.block.click(1, 0);
+        operations.mode.block.click(2, 0);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowLeft' });
+        cy.get('body').trigger('keydown', { code: 'ArrowDown' });
+        cy.tick(5 * (1000 / 60) + 20);
+        cy.get('body').trigger('keyup', { code: 'ArrowDown' });
+        cy.get('body').trigger('keyup', { code: 'ArrowLeft' });
+        cy.clock().invoke('restore');
+    };
+
+    it('prioritizes horizontal movement when the soft-drop priority toggle is off', () => {
+        runSimultaneousMoveAndSoftDrop(false);
+
+        mino(Piece.T, Rotation.Spawn)(1, 1).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('prioritizes soft drop when the soft-drop priority toggle is on', () => {
+        runSimultaneousMoveAndSoftDrop(true);
+
+        mino(Piece.T, Rotation.Spawn)(4, 0).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('drops through a gap while touch ARR=0 and infinite soft drop are held', () => {
+        visit({ mode: 'edit' });
+        configurePieceHorizontalMove(true);
+
+        operations.mode.tools.home();
+        operations.mode.block.T();
+        for (let y = 0; y < 4; y += 1) {
+            [0, 1, 2, 7, 8, 9].forEach(x => operations.mode.block.click(x, y));
+        }
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        cy.clock();
+        cy.get('body').trigger('keydown', { code: 'ArrowRight' });
+        cy.tick(6 * (1000 / 60) + 20);
+        cy.get('body').trigger('keyup', { code: 'ArrowRight' });
+        cy.get('body').trigger('keydown', { code: 'ArrowDown' });
+        cy.get('body').trigger('keyup', { code: 'ArrowDown' });
+
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerdown', { pointerId: 2, pointerType: 'touch', button: 0 });
+        cy.tick(6 * (1000 / 60) + 20);
+
+        mino(Piece.T, Rotation.Spawn)(4, 0).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        cy.get(datatest('tray-piece-softdrop'))
+            .trigger('pointerup', { pointerId: 2, pointerType: 'touch', button: 0, force: true });
+        cy.get(datatest('tray-piece-move-left'))
+            .trigger('pointerup', { pointerId: 1, pointerType: 'touch', button: 0, force: true });
+        cy.clock().invoke('restore');
     });
 
     it('keeps a touch direction held while hard-dropping with another pointer', () => {

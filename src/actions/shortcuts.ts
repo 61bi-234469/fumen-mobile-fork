@@ -309,6 +309,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                 dasFrames: state.mode.pieceShortcutDasFrames,
                 arrFrames: state.mode.pieceShortcutArrFrames,
                 sdf: state.mode.pieceShortcutSdf,
+                softDropPriority: state.mode.pieceShortcutSoftDropPriority,
             }, getActions);
         }
         return;

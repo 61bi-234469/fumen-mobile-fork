@@ -119,6 +119,28 @@ export const isSelectionCell = (state: State, index: number): boolean => {
     return rect !== null && isIndexInRect(index, rect);
 };
 
+// COMP leftovers: while an inference set has not resolved into a mino, its cells render
+// as white 'inference' blocks. They live in `events.inferences`, not in the field, so the
+// eraser override cannot reach them.
+export const isInferenceDebrisCell = (state: State, index: number): boolean => (
+    state.field[index]?.piece === 'inference'
+);
+
+const eraseInferenceDebris = (index: number) => (state: State): NextState => {
+    if (!isInferenceDebrisCell(state, index)) {
+        return undefined;
+    }
+    return sequence(state, [
+        () => ({
+            events: {
+                ...state.events,
+                inferences: state.events.inferences.filter(e => e !== index),
+            },
+        }),
+        actions.openPage({ index: state.fumen.currentIndex }),
+    ]);
+};
+
 const setRightStroke = (rightStroke: 'erase' | 'suppressed' | undefined) => (state: State): NextState => {
     if (state.events.rightStroke === rightStroke) {
         return undefined;
@@ -465,6 +487,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         }
         return sequence(state, [
             setRightStroke('erase'),
+            eraseInferenceDebris(index),
             newState => runWithOverride(newState, (patchedState) => {
                 return fieldEditorActions.ontouchStartField({ index })(patchedState);
             }),
@@ -476,6 +499,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         }
         return sequence(state, [
             setRightStroke('erase'),
+            eraseInferenceDebris(index),
             newState => runWithOverride(newState, (patchedState) => {
                 return fieldEditorActions.ontouchMoveField({ index })(patchedState);
             }),

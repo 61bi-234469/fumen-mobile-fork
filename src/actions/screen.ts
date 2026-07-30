@@ -34,6 +34,7 @@ export interface ScreenActions {
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
+    changePaintPaletteMinoDesign: (data: { enable: boolean }) => action;
     changeFlagsHidden: (data: { hidden: boolean }) => action;
     changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
@@ -49,6 +50,7 @@ export interface ScreenActions {
     changePieceShortcutArr: (data: { arrFrames: number }) => action;
     changePieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     changePieceShortcutSdf: (data: { sdf: number }) => action;
+    changePieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     changeGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
@@ -219,6 +221,17 @@ export const modeActions: Readonly<ScreenActions> = {
             },
         };
     },
+    changePaintPaletteMinoDesign: ({ enable }) => (state): NextState => {
+        if (state.mode.paintPaletteMinoDesign === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                paintPaletteMinoDesign: enable,
+            },
+        };
+    },
     changeFlagsHidden: ({ hidden }) => (state): NextState => {
         if (state.mode.flagsHidden === hidden && !(hidden && state.editorUi.inspector === 'flags')) {
             return undefined;
@@ -381,6 +394,9 @@ export const modeActions: Readonly<ScreenActions> = {
     },
     changePieceShortcutSdf: ({ sdf }) => (state): NextState => ({
         mode: { ...state.mode, pieceShortcutSdf: sdf },
+    }),
+    changePieceShortcutSoftDropPriority: ({ enable }) => (state): NextState => ({
+        mode: { ...state.mode, pieceShortcutSoftDropPriority: enable },
     }),
     changeGifFrameDelay: ({ delayMs }) => (state): NextState => {
         return {

@@ -50,3 +50,38 @@ describe('user settings FLAGS visibility', () => {
         expect(localStorageWrapper.loadUserSettings().flagsHidden).toBeUndefined();
     });
 });
+
+describe('user settings PAINT palette design', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads a boolean paintPaletteMinoDesign value', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ paintPaletteMinoDesign: true }));
+
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBe(true);
+    });
+
+    test('rejects a missing or invalid paintPaletteMinoDesign value', () => {
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ paintPaletteMinoDesign: 'true' }));
+        expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBeUndefined();
+    });
+});
+
+describe('user settings soft-drop priority', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads a boolean soft-drop priority value', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ pieceShortcutSoftDropPriority: true }));
+
+        expect(localStorageWrapper.loadUserSettings().pieceShortcutSoftDropPriority).toBe(true);
+    });
+
+    test('keeps the default path undefined for older settings', () => {
+        expect(localStorageWrapper.loadUserSettings().pieceShortcutSoftDropPriority).toBeUndefined();
+    });
+});

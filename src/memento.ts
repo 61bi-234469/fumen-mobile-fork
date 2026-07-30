@@ -162,6 +162,7 @@ export const memento = (() => {
 interface UserSettings {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
+    paintPaletteMinoDesign: boolean;
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
@@ -175,6 +176,7 @@ interface UserSettings {
     pieceShortcutArrFrames: number;
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number | string;
+    pieceShortcutSoftDropPriority: boolean;
     pieceShortcutDasMs?: number;
     pieceShortcutArrMs?: number;
     gifFrameDelayMs: number;
@@ -250,6 +252,7 @@ export const localStorageWrapper = {
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
             deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
+            paintPaletteMinoDesign: safer.boolean(obj.paintPaletteMinoDesign),
             flagsHidden: safer.boolean(obj.flagsHidden),
             initialScreen: initialScreenSettingFrom(obj),
             openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),
@@ -263,6 +266,7 @@ export const localStorageWrapper = {
             pieceShortcutArrFrames: safer.number(obj.pieceShortcutArrFrames),
             pieceShortcutDasCutFrames: safer.number(obj.pieceShortcutDasCutFrames),
             pieceShortcutSdf: obj.pieceShortcutSdf === 'Infinity' ? Infinity : safer.number(obj.pieceShortcutSdf),
+            pieceShortcutSoftDropPriority: safer.boolean(obj.pieceShortcutSoftDropPriority),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),

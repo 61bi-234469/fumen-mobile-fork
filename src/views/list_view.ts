@@ -515,7 +515,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     } else if (buttonHit.type === 'copy') {
                         actions.copyTreeNode({ nodeId: buttonHit.nodeId });
                     } else {
-                        handleTreeNodeDelete(state, actions, buttonHit.nodeId);
+                        handleTreeNodeDelete(state, actions, buttonHit.nodeId, TOOLS_HEIGHT);
                     }
                     pinchState.active = false;
                     stopTreeDragFeedback();
@@ -831,7 +831,7 @@ export const view: View<State, Actions> = (state, actions) => {
                             actions.copyTreeNode({ nodeId });
                         },
                         onDeleteNode: (nodeId) => {
-                            handleTreeNodeDelete(state, actions, nodeId);
+                            handleTreeNodeDelete(state, actions, nodeId, TOOLS_HEIGHT);
                         },
                         onAddRoot: () => {
                             actions.addRootFromCurrentNode();

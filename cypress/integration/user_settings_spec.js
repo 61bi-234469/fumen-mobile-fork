@@ -19,6 +19,7 @@ describe('User settings', () => {
                 'input-piece-arr',
                 'input-piece-das',
                 'input-piece-sdf',
+                'switch-piece-softdrop-priority',
             ];
             const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
             const indexes = expectedOrder.map(value => datatests.findIndex(element =>
@@ -39,6 +40,8 @@ describe('User settings', () => {
         // and breaks Hyperapp patching (settings modal fails to close).
         cy.get(datatest('input-piece-sdf')).should('be.visible')
             .and('have.value', 'Infinity').select('10');
+        cy.get(datatest('switch-piece-softdrop-priority')).should('not.be.checked')
+            .check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
@@ -46,6 +49,7 @@ describe('User settings', () => {
         cy.get(datatest('input-piece-das')).should('have.value', '5.5');
         cy.get(datatest('input-piece-arr')).should('have.value', '1.5');
         cy.get(datatest('input-piece-sdf')).should('have.value', '10');
+        cy.get(datatest('switch-piece-softdrop-priority')).should('be.checked');
         cy.get(datatest('btn-save')).click();
 
         cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
@@ -349,6 +353,37 @@ describe('User settings', () => {
         cy.get(datatest('switch-flags-hidden')).should('be.checked').uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
         cy.get(datatest('btn-flags-mode')).should('not.exist');
+    });
+
+    it('shows the PAINT mino design setting defaults off and persists it', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('have.text', 'I');
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('not.be.checked').check({ force: true });
+        cy.get(datatest('btn-save')).click();
+
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('not.exist');
+
+        // Cancel does not roll back a previously saved value or change the palette.
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+
+        // Reload restores the saved mino design.
+        visit({ mode: 'edit', reload: true });
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino-image"]').should('exist');
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('switch-paint-palette-mino-design')).should('be.checked').uncheck({ force: true });
+        cy.get(datatest('btn-save')).click();
+        cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
+        cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('have.text', 'I');
     });
 });
 

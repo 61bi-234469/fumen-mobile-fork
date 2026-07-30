@@ -200,6 +200,35 @@ export const operations = {
                     body.trigger('mouseup', end.x, end.y);
                 });
             },
+            // Start a piece drag and leave the pointer held at the destination.
+            // This is used to verify behavior while the field drag is still active.
+            dragHoldStart: ({ from, to }, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
+                cy.get('#canvas-container').then(canvas => {
+                    const start = fieldPoint(canvas[0], from, y);
+                    const end = fieldPoint(canvas[0], to, y);
+                    const contentSelector = '#canvas-container .konvajs-content';
+                    cy.get(contentSelector).trigger('mousedown', start.x, start.y);
+                    const maxCount = 10;
+                    for (let count = 0; count <= maxCount; count++) {
+                        const ratio = count / maxCount;
+                        cy.get(contentSelector).trigger(
+                            'mousemove', start.x + (end.x - start.x) * ratio, start.y,
+                        );
+                    }
+                });
+            },
+            dragHoldEnd: (x, y) => {
+                if (y < 0) {
+                    ensureSentLineVisible();
+                }
+                cy.get('#canvas-container').then(canvas => {
+                    const point = fieldPoint(canvas[0], x, y);
+                    cy.get('#canvas-container .konvajs-content').trigger('mouseup', point.x, point.y);
+                });
+            },
             dragToUp: (x, { from, to }) => {
                 if (from < 0 || to < 0) {
                     ensureSentLineVisible();
@@ -322,6 +351,12 @@ export const operations = {
             },
             dragToRight: ({ from, to }, y) => {
                 operations.mode.block.dragToRight({ from, to }, y);
+            },
+            dragHoldStart: ({ from, to }, y) => {
+                operations.mode.block.dragHoldStart({ from, to }, y);
+            },
+            dragHoldEnd: (x, y) => {
+                operations.mode.block.dragHoldEnd(x, y);
             },
             dragToUp: (x, { from, to }) => {
                 operations.mode.block.dragToUp(x, { from, to });
@@ -790,6 +825,18 @@ export const operations = {
             operations.menu.openUserSettings();
             operations.menu.selectUserSettingsTab('piece');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
+            cy.get(datatest('btn-save')).click();
+        },
+        // PAINTパレットのミノデザイン表示を切り替える (フィールドタブ)
+        setPaintPaletteMinoDesign: (enabled) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('field');
+            const target = cy.get(datatest('switch-paint-palette-mino-design'));
+            if (enabled) {
+                target.check({ force: true });
+            } else {
+                target.uncheck({ force: true });
+            }
             cy.get(datatest('btn-save')).click();
         },
     },

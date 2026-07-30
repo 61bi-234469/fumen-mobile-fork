@@ -25,6 +25,7 @@ const { userSettingsActions } = require('../user_settings');
 const baseUserSettings = {
     ghostVisible: true,
     deleteSpawnMinoOnPaintDrag: true,
+    paintPaletteMinoDesign: false,
     flagsHidden: true,
     initialScreen: 'reader',
     openTreeScreenOnTreeData: true,
@@ -37,6 +38,8 @@ const baseUserSettings = {
     pieceShortcutDasFrames: 10,
     pieceShortcutArrFrames: 1,
     pieceShortcutDasCutFrames: 0,
+    pieceShortcutSdf: Infinity,
+    pieceShortcutSoftDropPriority: false,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     noGrayAfterHardDrop: false,
@@ -49,6 +52,7 @@ const createState = (override: any = {}) => ({
     mode: {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
+        paintPaletteMinoDesign: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
@@ -61,6 +65,8 @@ const createState = (override: any = {}) => ({
         pieceShortcutDasFrames: 10,
         pieceShortcutArrFrames: 1,
         pieceShortcutDasCutFrames: 0,
+        pieceShortcutSdf: Infinity,
+        pieceShortcutSoftDropPriority: false,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         noGrayAfterHardDrop: false,
@@ -178,6 +184,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepPaintPaletteMinoDesign', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPaintPaletteMinoDesign({ enable: true })(state);
+
+            expect(next.temporary.userSettings.paintPaletteMinoDesign).toBe(true);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPaintPaletteMinoDesign({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
     describe('keepFlagsHidden', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
@@ -236,6 +257,15 @@ describe('userSettingsActions', () => {
             const state = createState({ modal: { userSettings: false } });
 
             expect(userSettingsActions.keepPieceShortcutArr({ arrFrames: 2 })(state)).toBeUndefined();
+        });
+    });
+
+    describe('keepPieceShortcutSoftDropPriority', () => {
+        test('updates the temporary toggle value', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceShortcutSoftDropPriority({ enable: true })(state);
+
+            expect(next.temporary.userSettings.pieceShortcutSoftDropPriority).toBe(true);
         });
     });
 
@@ -303,12 +333,12 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
-                'changeDeleteSpawnMinoOnPaintDrag', 'changeFlagsHidden',
+                'changeDeleteSpawnMinoOnPaintDrag', 'changePaintPaletteMinoDesign', 'changeFlagsHidden',
                 'changeInitialScreen',
                 'changeOpenTreeScreenOnTreeData',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
-                'changePieceShortcutSdf',
+                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
                 'changeGifFrameDelay', 'changeRotationSystem',
                 'changeNoGrayAfterHardDrop',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
@@ -329,6 +359,7 @@ describe('userSettingsActions', () => {
                 trimTopBlank: true,
                 editorSidePanel: true,
                 flagsHidden: false,
+                paintPaletteMinoDesign: true,
             };
 
             userSettingsActions.commitUserSettings()(state);
@@ -336,13 +367,19 @@ describe('userSettingsActions', () => {
             expect(mockActions.changePieceShortcutDas).toHaveBeenCalledWith({ dasFrames: 5.5 });
             expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
             expect(mockActions.changePieceShortcutDasCut).toHaveBeenCalledWith({ dasCutFrames: 2.5 });
+            expect(mockActions.changePieceShortcutSoftDropPriority).toHaveBeenCalledWith({ enable: false });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });
             expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
             expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
             expect(saveUserSettingsMock).toHaveBeenCalled();
+            expect(saveUserSettingsMock.mock.calls[0][0]).toEqual(expect.objectContaining({
+                paintPaletteMinoDesign: false,
+                flagsHidden: true,
+            }));
             expect(mockActions.changeFlagsHidden).toHaveBeenCalledWith({ hidden: false });
+            expect(mockActions.changePaintPaletteMinoDesign).toHaveBeenCalledWith({ enable: true });
         });
     });
 });

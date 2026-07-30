@@ -320,6 +320,7 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
             dasFrames: state.mode.pieceShortcutDasFrames,
             arrFrames: state.mode.pieceShortcutArrFrames,
             sdf: state.mode.pieceShortcutSdf,
+            softDropPriority: state.mode.pieceShortcutSoftDropPriority,
         },
     });
     const canContinuePieceHold = (key: string) => isPieceShortcutHoldActive(`tray:${key}`);

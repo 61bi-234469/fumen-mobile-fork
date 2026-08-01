@@ -3,7 +3,7 @@ import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
 import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
-import { EditorSidePanelTab, RotationSystem } from './states';
+import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import lodash from 'lodash';
 
@@ -193,6 +193,7 @@ interface ViewSettings {
     editorSidePanel: boolean;
     editorSidePanelTab: EditorSidePanelTab;
     editorSidePanelWidth: number | null;
+    pieceLayout: PieceLayoutMode;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -225,6 +226,9 @@ const safer = {
     },
     listViewMenuTab: (value: any): 'export' | 'import' | undefined => {
         return value === 'export' || value === 'import' ? value : undefined;
+    },
+    pieceLayout: (value: any): PieceLayoutMode | undefined => {
+        return value === 'play' || value === 'select' ? value : undefined;
     },
     treeOperationScope: (value: any): TreeOperationScope | undefined => {
         return value === 'node' || value === 'subtree' || value === 'descendants' ? value : undefined;
@@ -303,6 +307,7 @@ export const localStorageWrapper = {
             editorSidePanelWidth: obj.editorSidePanelWidth === null
                 ? null
                 : safer.number(obj.editorSidePanelWidth),
+            pieceLayout: safer.pieceLayout(obj.pieceLayout),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
             coldClearHoldAllowed: safer.boolean(obj.coldClearHoldAllowed),
             coldClearSpeculate: safer.boolean(obj.coldClearSpeculate),

@@ -4,21 +4,30 @@ const MIN_RAIL_CELL_HEIGHT = 18;
 const MAX_RAIL_CELL_HEIGHT = 32;
 const RAIL_GROUP_GAPS_HEIGHT = 16;
 
-// PIECE時の右列はPIECE・AI、SELECT・PAINTに続けてパレット10セルを並べる
-export const PIECE_RAIL_ROWS_SINGLE = 12;
-export const PIECE_RAIL_ROWS_DUAL = 7;
 export const PIECE_RIGHT_COLUMN_GAP = 10;
 export const MIN_PIECE_RAIL_CELL_HEIGHT = 22;
-const MIN_SINGLE_COLUMN_RAIL_CELL_HEIGHT = 24;
 export const PIECE_RAIL_GROUP_GAP_DUAL = 4;
-// 3グループの枠線、パレット行区切り、グループ間gap
-export const PIECE_RAIL_CHROME_HEIGHT = 18;
-export const PIECE_RAIL_CHROME_HEIGHT_SINGLE = 27;
 // NEXT見出し・枠線・行区切り。∞7bagトグルは別枠で確保する
 export const NEXT_PANEL_CHROME_HEIGHT = 26;
 export const INFINITE_TOGGLE_HEIGHT = 32;
-export const MIN_NEXT_MINO_HEIGHT = 16;
-export const MIN_SINGLE_COLUMN_MINO_HEIGHT = 20;
+
+// 操作重視レイアウト。AI、[PIECE|Play]、[PAINT|SELECT]、非常操作の4行を載せる。
+export const PLAY_RAIL_ROWS = 4;
+// 4グループの枠線とグループ間gap
+export const PLAY_RAIL_CHROME_HEIGHT = 26;
+export const MAX_PLAY_NEXT_MINO_HEIGHT = 96;
+export const MIN_PLAY_NEXT_MINO_HEIGHT = 20;
+// HOLD／NEXT列は他クライアントと同じく盤面3.4マス幅を基準にする
+export const PIECE_QUEUE_COLUMN_UNITS = 3.4;
+export const MIN_PIECE_QUEUE_WIDTH = 66;
+export const MAX_PIECE_QUEUE_WIDTH = 132;
+
+// PAINT/SELECTの共通レール行数
+const RAIL_ROWS_SINGLE = 20;
+const RAIL_ROWS_DUAL = 13;
+// PIECE通常レイアウトはSELECT/PAINTを各1行にし、パレット11セルを並べるため1行多い
+const PIECE_SELECT_RAIL_ROWS_SINGLE = 21;
+const PIECE_SELECT_RAIL_ROWS_DUAL = 14;
 
 export const getEditorBottomMetrics = (displayHeight: number) => {
     const compact = displayHeight < EDITOR_COMPACT_HEIGHT;
@@ -45,8 +54,14 @@ export const getEditorRailConfig = (canvasHeight: number) => {
     };
 };
 
-export const getPieceSideWidth = (canvasWidth: number): number => (
-    Math.min(80, Math.max(60, canvasWidth * .192))
+// 幅律速時の1マス寸法。canvasWidth = 盤面10.5マス + キュー2列(各3.4マス) + 列間gap を解いたもの
+export const getPlayPieceUnitBound = (canvasWidth: number, gap: number): number => (
+    (canvasWidth - gap - PIECE_RIGHT_COLUMN_GAP) / (10.5 + 2 * PIECE_QUEUE_COLUMN_UNITS)
+);
+
+export const getPlayPieceQueueWidth = (unit: number): number => Math.min(
+    MAX_PIECE_QUEUE_WIDTH,
+    Math.max(MIN_PIECE_QUEUE_WIDTH, Math.round(unit * PIECE_QUEUE_COLUMN_UNITS)),
 );
 
 export const shouldUseCompactEditorRail = (canvasHeight: number, columns: 1 | 2): boolean => (
@@ -57,41 +72,42 @@ export const getPlayfieldCeilingOffset = (blockSize: number): number => (
     (blockSize + 1) * 2.5 + 1
 );
 
-export const getPieceRailMetrics = (
+export const getPlayPieceRailMetrics = (
     availableHeight: number,
-    nextWidth: number,
+    queueWidth: number,
     targetCellHeight: number,
     maxExtensionHeight = 0,
 ) => {
-    const singleNeedHeight = PIECE_RAIL_ROWS_SINGLE * MIN_SINGLE_COLUMN_RAIL_CELL_HEIGHT
-        + PIECE_RAIL_CHROME_HEIGHT_SINGLE + INFINITE_TOGGLE_HEIGHT
-        + NEXT_PANEL_CHROME_HEIGHT + 5 * MIN_SINGLE_COLUMN_MINO_HEIGHT;
-    const columns: 1 | 2 = singleNeedHeight <= availableHeight ? 1 : 2;
-    const rows = columns === 1 ? PIECE_RAIL_ROWS_SINGLE : PIECE_RAIL_ROWS_DUAL;
-    const chromeHeight = columns === 1 ? PIECE_RAIL_CHROME_HEIGHT_SINGLE : PIECE_RAIL_CHROME_HEIGHT;
-    const reservedNextMinoHeight = columns === 1 ? MIN_SINGLE_COLUMN_MINO_HEIGHT : MIN_NEXT_MINO_HEIGHT;
-    const minCellHeight = columns === 1 ? MIN_SINGLE_COLUMN_RAIL_CELL_HEIGHT : MIN_PIECE_RAIL_CELL_HEIGHT;
-    const minimumLayoutHeight = rows * minCellHeight + chromeHeight + INFINITE_TOGGLE_HEIGHT
-        + NEXT_PANEL_CHROME_HEIGHT + 5 * reservedNextMinoHeight;
+    const fixedHeight = PLAY_RAIL_CHROME_HEIGHT + INFINITE_TOGGLE_HEIGHT + NEXT_PANEL_CHROME_HEIGHT;
+    const minimumLayoutHeight = fixedHeight + PLAY_RAIL_ROWS * MIN_PIECE_RAIL_CELL_HEIGHT
+        + 5 * MIN_PLAY_NEXT_MINO_HEIGHT;
     const railExtensionHeight = Math.min(Math.max(0, maxExtensionHeight),
         Math.max(0, minimumLayoutHeight - availableHeight));
     const effectiveAvailableHeight = availableHeight + railExtensionHeight;
-    const targetPieceCellHeight = Math.max(minCellHeight, targetCellHeight);
-    const fittingCellHeight = Math.floor((effectiveAvailableHeight - INFINITE_TOGGLE_HEIGHT
-        - chromeHeight - NEXT_PANEL_CHROME_HEIGHT - 5 * reservedNextMinoHeight) / rows);
-    const railCellHeight = Math.min(MAX_RAIL_CELL_HEIGHT, targetPieceCellHeight,
-        Math.max(minCellHeight, fittingCellHeight));
-    const maxMinoHeight = Math.min(38, Math.floor(nextWidth * .72));
-    const nextMinoHeight = Math.min(maxMinoHeight, Math.max(reservedNextMinoHeight,
-        Math.floor((effectiveAvailableHeight - INFINITE_TOGGLE_HEIGHT - chromeHeight
-            - rows * railCellHeight - NEXT_PANEL_CHROME_HEIGHT) / 5)));
+    const fittingCellHeight = Math.floor((effectiveAvailableHeight - fixedHeight
+        - 5 * MIN_PLAY_NEXT_MINO_HEIGHT) / PLAY_RAIL_ROWS);
+    const railCellHeight = Math.min(MAX_RAIL_CELL_HEIGHT,
+        Math.max(MIN_PIECE_RAIL_CELL_HEIGHT, targetCellHeight),
+        Math.max(MIN_PIECE_RAIL_CELL_HEIGHT, fittingCellHeight));
+    // ミノ描画は最大4マス幅なので、枠幅の9割までを1個分の高さの上限にする
+    const maxMinoHeight = Math.min(MAX_PLAY_NEXT_MINO_HEIGHT, Math.floor(queueWidth * .9));
+    const nextMinoHeight = Math.min(maxMinoHeight, Math.max(MIN_PLAY_NEXT_MINO_HEIGHT,
+        Math.floor((effectiveAvailableHeight - fixedHeight
+            - PLAY_RAIL_ROWS * railCellHeight) / 5)));
     const nextPanelHeight = NEXT_PANEL_CHROME_HEIGHT + nextMinoHeight * 5;
-    return { columns, nextMinoHeight, nextPanelHeight, railCellHeight, railExtensionHeight };
+    return { nextMinoHeight, nextPanelHeight, railCellHeight, railExtensionHeight };
 };
 
 export const getResponsiveRailCellHeight = (fieldHeight: number, columns: 1 | 2): number => {
-    const rows = columns === 2 ? 12 : 19;
+    const railRows = columns === 2 ? RAIL_ROWS_DUAL : RAIL_ROWS_SINGLE;
     const chromeHeight = columns === 2 ? 17 : 24;
     return Math.min(MAX_RAIL_CELL_HEIGHT, Math.max(MIN_RAIL_CELL_HEIGHT,
-        Math.floor((fieldHeight - chromeHeight - RAIL_GROUP_GAPS_HEIGHT) / rows)));
+        Math.floor((fieldHeight - chromeHeight - RAIL_GROUP_GAPS_HEIGHT) / railRows)));
+};
+
+export const getPieceSelectRailCellHeight = (fieldHeight: number, columns: 1 | 2): number => {
+    const railRows = columns === 2 ? PIECE_SELECT_RAIL_ROWS_DUAL : PIECE_SELECT_RAIL_ROWS_SINGLE;
+    const chromeHeight = columns === 2 ? 17 : 24;
+    return Math.min(MAX_RAIL_CELL_HEIGHT, Math.max(MIN_RAIL_CELL_HEIGHT,
+        Math.floor((fieldHeight - chromeHeight - RAIL_GROUP_GAPS_HEIGHT) / railRows)));
 };

@@ -1,4 +1,4 @@
-import { EditorSidePanelTab, State } from '../states';
+import { EditorSidePanelTab, PieceLayoutMode, State } from '../states';
 import { localStorageWrapper } from '../memento';
 import { TreeOperationScope } from '../lib/fumen/tree_types';
 
@@ -11,6 +11,7 @@ type ViewSettingsOverrides = Partial<{
     editorSidePanel: boolean;
     editorSidePanelTab: EditorSidePanelTab;
     editorSidePanelWidth: number | null;
+    pieceLayout: PieceLayoutMode;
     coldClearTopBranchCount: number;
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
@@ -31,6 +32,7 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         editorSidePanelTab: overrides.editorSidePanelTab ?? state.editorPanel.tab,
         editorSidePanelWidth: overrides.editorSidePanelWidth !== undefined
             ? overrides.editorSidePanelWidth : state.editorPanel.width,
+        pieceLayout: overrides.pieceLayout ?? state.editorUi.pieceLayout,
         coldClearTopBranchCount: overrides.coldClearTopBranchCount ?? state.coldClear.topBranchCount,
         coldClearHoldAllowed: overrides.coldClearHoldAllowed ?? state.coldClear.holdAllowed,
         coldClearSpeculate: overrides.coldClearSpeculate ?? state.coldClear.speculate,

@@ -13,7 +13,7 @@ import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
 import {
-    getPieceRailMetrics, getResponsiveRailCellHeight, PIECE_RAIL_GROUP_GAP_DUAL, shouldUseCompactEditorRail,
+    getResponsiveRailCellHeight, PIECE_RAIL_GROUP_GAP_DUAL, shouldUseCompactEditorRail,
 } from './responsive_layout';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 
@@ -71,6 +71,8 @@ interface CellOptions {
     status?: boolean;
     disabled?: boolean;
     title?: string;
+    // 押してもフィールドのフォーカスを奪わない（キーボードのピース操作を継続させる）
+    preserveFieldFocus?: boolean;
     onpress: () => void;
     onlongpress?: () => void;
     children: VNode<{}> | VNode<{}>[] | string;
@@ -86,6 +88,7 @@ const toolCell = ({
     status = false,
     disabled = false,
     title,
+    preserveFieldFocus = false,
     onpress,
     onlongpress,
     children,
@@ -134,6 +137,11 @@ const toolCell = ({
         event.preventDefault();
         event.stopPropagation();
     };
+
+    // mousedownの既定動作（フォーカス移動）だけを止める。clickは通常どおり発火する。
+    const focusHandlers = preserveFieldFocus ? {
+        onmousedown: (event: MouseEvent) => event.preventDefault(),
+    } : {};
 
     const pointerHandlers = onlongpress === undefined ? {
         onclick: (event: MouseEvent) => {
@@ -201,6 +209,7 @@ const toolCell = ({
             width: '100%',
         }),
         ...pointerHandlers,
+        ...focusHandlers,
     }, Array.isArray(children) ? children : [children]);
 };
 
@@ -491,21 +500,19 @@ const isPaletteCellSelected = (
     return state.editorUi.paletteSelection === selection;
 };
 
-export const getRailCellHeight = (layout: EditorLayout, pieceModeVisible = layout.pieceQueue.visible): number => (
-    pieceModeVisible
-        ? layout.pieceQueue.railCellHeight
-            || getPieceRailMetrics(layout.field.size.height - layout.pieceQueue.ceilingOffset,
-                layout.pieceQueue.width, getResponsiveRailCellHeight(layout.field.size.height, 1)).railCellHeight
-        : getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns)
+export const getRailCellHeight = (layout: EditorLayout): number => (
+    layout.buttons.cellHeight || getResponsiveRailCellHeight(layout.field.size.height, layout.buttons.columns)
 );
 
 export const editorRail = (state: State, actions: Actions, layout: EditorLayout) => {
     const pieceModeVisible = state.editorUi.primaryTool === 'piece';
-    const cellHeight = getRailCellHeight(layout, pieceModeVisible);
+    // 操作重視レイアウト。キュー枠を出し、ミノパレットは持たない。
+    const playLayout = pieceModeVisible && layout.pieceQueue.visible;
+    const cellHeight = getRailCellHeight(layout);
     const twoColumns = layout.buttons.columns === 2;
     const compact = shouldUseCompactEditorRail(layout.canvas.size.height, layout.buttons.columns);
-    const compactPairedCell = pieceModeVisible ? true : compact;
-    const compactPaletteCell = pieceModeVisible ? twoColumns : compact;
+    const compactPairedCell = playLayout ? true : compact;
+    const compactPaletteCell = playLayout ? true : compact;
     const text = (label: string) => compactPairedCell ? '' : label;
     const iconSize = Math.max(14, Math.min(21, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {
@@ -557,9 +564,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             children: icon('file_upload', iconSize),
         }),
     ];
-    const systemGroup = toolGroup(pieceModeVisible ? 'rail-system-piece' : 'rail-system', pieceModeVisible
-        ? systemCells
-        : [row('rail-system-row', systemCells)]);
+    const systemGroup = toolGroup('rail-system', [row('rail-system-row', systemCells)]);
 
     const pageCells = [
         pageCell('btn-insert-new-page', i18n.EditorUi.Add() || 'ADD', 'note_add', 'Add',
@@ -598,11 +603,22 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
 
     const pieceModeCell = toolCell({
         key: 'btn-piece-mode', datatest: 'btn-piece-mode', label: 'PIECE', height: cellHeight,
-        selected: state.editorUi.primaryTool === 'piece',
-        onpress: actions.togglePieceMode,
+        selected: state.editorUi.primaryTool === 'piece' && state.editorUi.pieceLayout === 'select',
+        onpress: () => actions.selectPieceLayout({ layout: 'select' }),
         onlongpress: () => executePieceShortcut('Reset', actions),
         children: [icon('extension', iconSize), ...(compactPairedCell
             ? [] : [span({ key: 'piece' }, text('P'))])],
+    });
+
+    // PIECEとPlayは対等な直接入口。どちらのレイアウトにも常に並べる。
+    const playLayoutCell = toolCell({
+        key: 'btn-piece-layout', datatest: 'btn-piece-layout', label: i18n.EditorUi.PieceLayoutPlay(),
+        height: cellHeight,
+        selected: state.editorUi.primaryTool === 'piece' && state.editorUi.pieceLayout === 'play',
+        onpress: () => actions.selectPieceLayout({ layout: 'play' }),
+        children: [icon('view_column', iconSize), ...(compactPairedCell
+            ? [] : [span({ key: 'play', style: style({ marginLeft: '3px' }) },
+                i18n.EditorUi.PieceLayoutPlay())])],
     });
 
     const coldClearCell = toolCell({
@@ -630,10 +646,11 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             ) : ''),
         ],
     });
-    const aiAndPieceCells = [pieceModeCell, coldClearCell];
-    const aiAndPieceGroup = toolGroup(pieceModeVisible ? 'rail-ai-piece-piece' : 'rail-ai-piece', [
-        row(pieceModeVisible ? 'rail-ai-piece-row-piece' : 'rail-ai-piece-row', aiAndPieceCells),
-    ], pieceModeVisible);
+    // AIは全レイアウトで独立行にし、PIECEとPlayを常に同じ分割行へ置く。
+    const aiAndPieceGroup = toolGroup('rail-piece-layout', [
+        row('rail-piece-layout-row', [pieceModeCell, playLayoutCell]),
+    ], playLayout);
+    const coldClearGroup = toolGroup('rail-cold-clear', [coldClearCell]);
     const auxiliaryAndAiGroup = div({
         key: 'rail-auxiliary-ai',
         style: style({
@@ -642,7 +659,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             gap: px(4),
             width: '100%',
         }),
-    }, [auxiliaryGroup, aiAndPieceGroup]);
+    }, [auxiliaryGroup, coldClearGroup, aiAndPieceGroup]);
 
     const modeCells = [
         toolCell({
@@ -662,16 +679,22 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             }, 'PAINT')])],
         }),
     ];
-    const modeGroup = toolGroup('rail-modes', pieceModeVisible
-        ? [row('rail-modes-row-piece', modeCells)]
-        : modeCells, pieceModeVisible);
+    // PIECE通常はPAINT/SELECTと同じ縦並び。Playだけは右下を [PAINT|SELECT] にする。
+    const modeGroup = toolGroup('rail-modes', playLayout
+        ? [row('rail-modes-row-play', [modeCells[1], modeCells[0]])]
+        : modeCells, playLayout);
 
     const selections: PaletteSelection[] = [
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
     ];
-    const visibleSelections = state.editorUi.primaryTool === 'piece'
-        ? selections.filter(selection => selection !== 'comp')
+    // 操作重視はカレントミノをキューから決めるため、ミノ選択セルを持たない。
+    // 削除・リスポーン・盤面リセットだけを非常口として1行に残す。
+    const visibleSelections = playLayout
+        ? [Piece.Empty, Piece.Gray] as PaletteSelection[]
         : selections;
+    const paletteCellWidth = playLayout
+        ? layout.buttons.size.width / 3
+        : layout.buttons.size.width / (twoColumns ? 2 : 1);
     const paletteCells: VNode<{}>[] = visibleSelections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
         const part = selection === 'comp' ? undefined : state.parts.items.find(item => item.slot === selection);
@@ -685,6 +708,8 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             height: cellHeight,
             key: `btn-piece-${name}`,
             datatest: `btn-piece-${name}`,
+            // ∞7bagは表示切替と同じ扱い。押してもキーボードのピース操作を止めない。
+            preserveFieldFocus: state.editorUi.primaryTool === 'piece' && selection === 'comp',
             selected: isPaletteCellSelected(state, selection, part),
             selectionKind: 'palette',
             onpress: () => {
@@ -699,8 +724,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 }
                 actions.selectEditorPalette({ selection });
             },
-            children: withShortcut(paletteContent(selection, state, cellHeight, actions,
-                layout.buttons.size.width / (twoColumns ? 2 : 1)),
+            children: withShortcut(paletteContent(selection, state, cellHeight, actions, paletteCellWidth),
                 compactPaletteCell ? undefined : getPaletteShortcut(state, selection)),
         });
     });
@@ -711,26 +735,30 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
             label: i18n.EditorUi.ResetField(),
             height: cellHeight,
             onpress: () => actions.resetFieldAndPiece(),
-            children: compactPaletteCell ? icon('layers_clear', iconSize) : [span({
+            children: compactPaletteCell ? icon('delete_sweep', iconSize) : [span({
                 key: 'reset-field-label',
                 style: style({ fontSize: px(Math.max(10, cellHeight * 0.3)), fontWeight: '600' }),
             }, i18n.EditorUi.ResetField())],
         }));
     }
-    const paletteGroup = toolGroup('rail-palette', twoColumns
-        ? [0, 1, 2, 3, 4].map(index => row(`rail-palette-row-${index + 1}`,
-            paletteCells.slice(index * 2, index * 2 + 2)))
-        : paletteCells, pieceModeVisible);
+    const paletteRowCount = Math.ceil(paletteCells.length / 2);
+    const paletteGroup = toolGroup('rail-palette', playLayout
+        ? [row('rail-palette-row-play', paletteCells)]
+        : twoColumns
+            ? Array.from({ length: paletteRowCount }).map((_, index) => row(`rail-palette-row-${index + 1}`,
+                paletteCells.slice(index * 2, index * 2 + 2)))
+            : paletteCells, playLayout);
 
-    // PIECE時はキューと操作セルを広げるため、共有・設定・ページ・インスペクタ操作を描画しない
-    const railGroups = pieceModeVisible
-        ? [aiAndPieceGroup, modeGroup, paletteGroup]
+    // Playレイアウトではキューと操作セルを広げるため、共有・設定・ページ・インスペクタ操作を描画しない
+    const railGroups = playLayout
+        ? [coldClearGroup, aiAndPieceGroup, modeGroup, paletteGroup]
         : [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup];
     const railBottomPadding = Math.max(0, layout.field.size.height
         - (layout.comment.topLeft.y - layout.field.topLeft.y));
 
-    // PIECE時はパレット下端をフィールド下端へ揃え、余白をNEXTとレールの間に置く
-    const railStyle = pieceModeVisible ? style({
+    // Playレイアウトは操作セル下端をフィールド下端へ揃え、余白をNEXTとレールの間に置く。
+    // 通常レイアウトはPAINT/SELECTと同じスタイルをそのまま使う。
+    const railStyle = playLayout ? style({
         boxSizing: 'border-box',
         display: 'flex',
         flex: '1 1 auto',
@@ -758,11 +786,12 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     });
 
     return div({
-        // PIECE切替時は子構造（縦積み／通常レスポンシブ）が変わるため、
+        // レイアウト切替時は子構造（縦積み／通常レスポンシブ）が変わるため、
         // Hyperappに同じDOMを再利用させずレール全体を置き換える。
-        key: pieceModeVisible ? 'editor-rail-piece' : 'editor-rail',
+        key: pieceModeVisible ? `editor-rail-piece-${state.editorUi.pieceLayout}` : 'editor-rail',
         datatest: 'editor-rail',
         'data-columns': String(layout.buttons.columns),
+        'data-piece-layout': pieceModeVisible ? state.editorUi.pieceLayout : 'none',
         style: railStyle,
     }, railGroups);
 };

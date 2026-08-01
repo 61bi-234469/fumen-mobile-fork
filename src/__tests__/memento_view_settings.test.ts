@@ -37,6 +37,7 @@ describe('view settings tree operation scope migration', () => {
             editorSidePanel: false,
             editorSidePanelTab: 'list',
             editorSidePanelWidth: null,
+            pieceLayout: 'play',
             coldClearTopBranchCount: 3,
             coldClearHoldAllowed: true,
             coldClearSpeculate: true,
@@ -48,7 +49,20 @@ describe('view settings tree operation scope migration', () => {
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
         expect(saved.treeOperationScope).toBe('descendants');
         expect(saved.listViewMenuTab).toBe('import');
+        expect(saved.pieceLayout).toBe('play');
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
+        expect(localStorageWrapper.loadViewSettings().pieceLayout).toBe('play');
+    });
+
+    test('loads a valid PIECE layout and rejects anything else', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({ pieceLayout: 'select' }));
+        expect(localStorageWrapper.loadViewSettings().pieceLayout).toBe('select');
+
+        localStorage.setItem('view-settings@1', JSON.stringify({ pieceLayout: 'queue' }));
+        expect(localStorageWrapper.loadViewSettings().pieceLayout).toBeUndefined();
+
+        localStorage.setItem('view-settings@1', JSON.stringify({}));
+        expect(localStorageWrapper.loadViewSettings().pieceLayout).toBeUndefined();
     });
 
     test('loads valid import/export tabs and rejects invalid values', () => {

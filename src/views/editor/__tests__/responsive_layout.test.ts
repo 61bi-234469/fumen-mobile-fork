@@ -1,17 +1,20 @@
 import {
     getEditorBottomMetrics,
     getEditorRailConfig,
-    getPieceRailMetrics,
-    getPieceSideWidth,
     getPlayfieldCeilingOffset,
+    getPlayPieceQueueWidth,
+    getPlayPieceRailMetrics,
+    getPlayPieceUnitBound,
+    getPieceSelectRailCellHeight,
     getResponsiveRailCellHeight,
     INFINITE_TOGGLE_HEIGHT,
+    MAX_PIECE_QUEUE_WIDTH,
+    MIN_PIECE_QUEUE_WIDTH,
     MIN_PIECE_RAIL_CELL_HEIGHT,
+    MIN_PLAY_NEXT_MINO_HEIGHT,
     NEXT_PANEL_CHROME_HEIGHT,
-    PIECE_RAIL_CHROME_HEIGHT,
-    PIECE_RAIL_CHROME_HEIGHT_SINGLE,
-    PIECE_RAIL_ROWS_DUAL,
-    PIECE_RAIL_ROWS_SINGLE,
+    PLAY_RAIL_CHROME_HEIGHT,
+    PLAY_RAIL_ROWS,
 } from '../responsive_layout';
 
 describe('editor responsive layout', () => {
@@ -40,17 +43,24 @@ describe('editor responsive layout', () => {
         });
     });
 
-    test('widens the PIECE side columns without exceeding the desktop cap', () => {
-        expect(getPieceSideWidth(300)).toBe(60);
-        expect(getPieceSideWidth(320)).toBeCloseTo(61.44);
-        expect(getPieceSideWidth(375)).toBe(72);
-        expect(getPieceSideWidth(500)).toBe(80);
+    test('keeps usable rail cell heights for representative field sizes', () => {
+        expect(getResponsiveRailCellHeight(676, 1)).toBe(31);
+        expect(getResponsiveRailCellHeight(456, 1)).toBe(20);
+        expect(getResponsiveRailCellHeight(282, 2)).toBe(19);
     });
 
-    test('keeps usable rail cell heights for representative field sizes', () => {
-        expect(getResponsiveRailCellHeight(676, 1)).toBe(32);
-        expect(getResponsiveRailCellHeight(456, 1)).toBe(21);
-        expect(getResponsiveRailCellHeight(282, 2)).toBe(20);
+    test('reserves one more row for the PIECE normal layout', () => {
+        // PIECE通常はSELECT/PAINTを各1行にしてパレット11セルを並べる
+        expect(getPieceSelectRailCellHeight(672.78, 1)).toBe(30);
+        expect(getPieceSelectRailCellHeight(569.97, 1)).toBe(25);
+        expect(getPieceSelectRailCellHeight(473.0, 1)).toBe(20);
+        expect(getPieceSelectRailCellHeight(311.47, 2)).toBe(19);
+
+        // PAINT/SELECTは従来どおり20/13行
+        expect(getResponsiveRailCellHeight(672.78, 1)).toBe(31);
+        expect(getResponsiveRailCellHeight(569.97, 1)).toBe(26);
+        expect(getResponsiveRailCellHeight(473.0, 1)).toBe(21);
+        expect(getResponsiveRailCellHeight(311.47, 2)).toBe(21);
     });
 
     test('matches the field drawing formula for the 20-row ceiling', () => {
@@ -62,57 +72,64 @@ describe('editor responsive layout', () => {
         expect(getPlayfieldCeilingOffset(19.62)).toBeCloseTo(52.55, 8);
     });
 
-    test('uses a single-column PIECE palette when the rail has enough height', () => {
-        expect(getPieceRailMetrics(600, 80, 32)).toEqual({
-            columns: 1,
-            nextMinoHeight: 26,
-            nextPanelHeight: 156,
-            railCellHeight: 32,
-            railExtensionHeight: 0,
+    test('sizes the PIECE queue columns from the board cell, not a fixed cap', () => {
+        expect(getPlayPieceQueueWidth(20)).toBe(68);
+        expect(getPlayPieceQueueWidth(28.4417)).toBe(97);
+        expect(getPlayPieceQueueWidth(15)).toBe(MIN_PIECE_QUEUE_WIDTH);
+        expect(getPlayPieceQueueWidth(40)).toBe(MAX_PIECE_QUEUE_WIDTH);
+    });
+
+    test('solves the width bound for the board and both queue columns', () => {
+        expect(getPlayPieceUnitBound(674, 6)).toBeCloseTo(38.035, 3);
+        expect(getPlayPieceUnitBound(375, 4.5)).toBeCloseTo(20.838, 3);
+        // 解いた1マス寸法で並べると canvasWidth にちょうど収まる（盤面は従来式と同じ10.5マス相当）
+        const unit = getPlayPieceUnitBound(674, 6);
+        expect(unit * 10.5 + 2 * (unit * 3.4) + 6 + 10).toBeCloseTo(674, 6);
+    });
+
+    test('keeps usable NEXT and rail sizes after adding the AI row', () => {
+        [
+            getPlayPieceRailMetrics(600.68, 97, 32, 41.11),
+            getPlayPieceRailMetrics(441, 71, 23),
+            getPlayPieceRailMetrics(277.8, 66, 18, 33),
+        ].forEach((metrics) => {
+            expect(metrics.railCellHeight).toBeGreaterThanOrEqual(MIN_PIECE_RAIL_CELL_HEIGHT);
+            expect(metrics.nextMinoHeight).toBeGreaterThanOrEqual(MIN_PLAY_NEXT_MINO_HEIGHT);
+            expect(metrics.nextPanelHeight).toBe(NEXT_PANEL_CHROME_HEIGHT + metrics.nextMinoHeight * 5);
         });
     });
 
-    test('falls back to a two-column PIECE palette on a small display', () => {
-        const metrics = getPieceRailMetrics(436, 72, 24);
+    test('caps the NEXT mino height by the column width', () => {
+        // 高さは十分でも枠幅の9割を超えない
+        expect(getPlayPieceRailMetrics(900, 66, 32).nextMinoHeight).toBe(59);
+        expect(getPlayPieceRailMetrics(900, 132, 32).nextMinoHeight).toBe(96);
+    });
+
+    test('falls back to the minimum heights when even the extension cannot cover them', () => {
+        // 最小値まで詰めたうえで延長を使い切っても足りない極端な画面
+        const metrics = getPlayPieceRailMetrics(170, 66, 18, 40);
         expect(metrics).toEqual({
-            columns: 2,
-            nextMinoHeight: 38,
-            nextPanelHeight: 216,
-            railCellHeight: 24,
-            railExtensionHeight: 0,
-        });
-        expect(metrics.railCellHeight).toBeGreaterThanOrEqual(MIN_PIECE_RAIL_CELL_HEIGHT);
-    });
-
-    test('fits the two-column PIECE rail into a short landscape display', () => {
-        expect(getPieceRailMetrics(277, 80, 18, 33)).toEqual({
-            columns: 2,
-            nextMinoHeight: 16,
-            nextPanelHeight: 106,
-            railCellHeight: 22,
-            railExtensionHeight: 33,
+            nextMinoHeight: MIN_PLAY_NEXT_MINO_HEIGHT,
+            nextPanelHeight: NEXT_PANEL_CHROME_HEIGHT + MIN_PLAY_NEXT_MINO_HEIGHT * 5,
+            railCellHeight: MIN_PIECE_RAIL_CELL_HEIGHT,
+            railExtensionHeight: 40,
         });
     });
 
     test.each([
-        [600, 80, 32, 0],
-        [436, 72, 24, 0],
-        [277, 80, 18, 33],
+        [600.68, 97, 32, 41.11],
+        [441, 71, 23, 0],
+        [277.8, 66, 18, 33],
     ])('keeps the PIECE queue and rail within %ipx', (
-        availableHeight, nextWidth, targetCellHeight, maxExtensionHeight,
+        availableHeight, queueWidth, targetCellHeight, maxExtensionHeight,
     ) => {
-        const metrics = getPieceRailMetrics(availableHeight, nextWidth, targetCellHeight, maxExtensionHeight);
-        const rows = metrics.columns === 1 ? PIECE_RAIL_ROWS_SINGLE : PIECE_RAIL_ROWS_DUAL;
-        const chrome = metrics.columns === 1
-            ? PIECE_RAIL_CHROME_HEIGHT_SINGLE : PIECE_RAIL_CHROME_HEIGHT;
-        expect(metrics.nextPanelHeight + INFINITE_TOGGLE_HEIGHT
-            + metrics.railCellHeight * rows + chrome)
+        const metrics = getPlayPieceRailMetrics(availableHeight, queueWidth, targetCellHeight,
+            maxExtensionHeight);
+        expect(metrics.railCellHeight).toBeGreaterThanOrEqual(MIN_PIECE_RAIL_CELL_HEIGHT);
+        expect(metrics.nextMinoHeight).toBeGreaterThanOrEqual(MIN_PLAY_NEXT_MINO_HEIGHT);
+        expect(PLAY_RAIL_CHROME_HEIGHT + INFINITE_TOGGLE_HEIGHT
+            + NEXT_PANEL_CHROME_HEIGHT + PLAY_RAIL_ROWS * metrics.railCellHeight
+            + metrics.nextMinoHeight * 5)
             .toBeLessThanOrEqual(availableHeight + metrics.railExtensionHeight);
-    });
-
-    test('switches to one column at the minimum available height', () => {
-        expect(getPieceRailMetrics(472, 80, 32).columns).toBe(2);
-        expect(getPieceRailMetrics(473, 80, 32).columns).toBe(1);
-        expect(NEXT_PANEL_CHROME_HEIGHT).toBe(26);
     });
 });

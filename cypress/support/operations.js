@@ -87,7 +87,22 @@ const longPress = (selector) => {
     cy.wait(550);
     cy.get(datatest(selector)).trigger('pointerup', { pointerId: 1, button: 0 });
 };
+// PIECE状態のレイアウトを揃える。ミノパレット(btn-piece-i など)は通常レイアウトだけに、
+// HOLD/NEXTキューはPlayレイアウトだけに存在する。PIECE状態でないときは何もしない。
+// Playへは Play セル、通常へは PIECE セル（Playレイアウトでは戻るボタンを兼ねる）を押す。
+const ensurePieceLayout = (layout) => {
+    cy.get('body').then(($body) => {
+        const rail = $body.find('[datatest="editor-rail"][data-piece-layout]');
+        const current = rail.length > 0 ? rail.attr('data-piece-layout') : 'none';
+        if (current === 'none' || current === layout) {
+            return;
+        }
+        cy.get(datatest(layout === 'play' ? 'btn-piece-layout' : 'btn-piece-mode')).click();
+    });
+};
+
 const spawnPieceForScenario = (selector) => {
+    ensurePieceLayout('select');
     cy.get(datatest('tray-piece-harddrop')).then(dropButton => {
         if (!dropButton.prop('disabled')) {
             operations.mode.tools.nextPage();
@@ -422,8 +437,23 @@ export const operations = {
             open: () => {
                 ensureModeActive('btn-piece-mode');
             },
+            // HOLD/NEXTキューを使うシナリオ向け。PIECE状態に入ってから操作重視へ切り替える。
+            openWithQueues: () => {
+                ensureModeActive('btn-piece-mode');
+                ensurePieceLayout('play');
+            },
+            layout: (layout) => {
+                ensurePieceLayout(layout);
+            },
             toggleInfiniteQueue: () => {
-                cy.get(datatest('piece-queue-infinite-checkbox')).click();
+                // ∞7bagは操作重視ではNEXT直下、選択重視ではパレット末尾のセル
+                cy.get('body').then(($body) => {
+                    if ($body.find('[datatest="piece-queue-infinite-checkbox"]').length > 0) {
+                        cy.get(datatest('piece-queue-infinite-checkbox')).click();
+                    } else {
+                        cy.get(datatest('btn-piece-inference')).click();
+                    }
+                });
                 cy.wait(100);
             },
             resetBoard: () => {
@@ -437,6 +467,7 @@ export const operations = {
                 cy.get(datatest('tray-piece-move-left')).should('be.visible');
             },
             draw: () => {
+                ensurePieceLayout('select');
                 cy.get(datatest('btn-piece-t')).click();
             },
             rotateToRight: () => {

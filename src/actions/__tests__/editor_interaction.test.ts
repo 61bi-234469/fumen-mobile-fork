@@ -19,8 +19,14 @@ jest.mock('../../actions', () => ({
     },
 }));
 
+jest.mock('../view_settings', () => ({
+    persistViewSettings: jest.fn(),
+}));
+
 // tslint:disable-next-line:no-var-requires
 const { editorInteractionActions } = require('../editor_interaction');
+// tslint:disable-next-line:no-var-requires
+const { persistViewSettings } = require('../view_settings');
 
 const createState = (): State => ({
     mode: {
@@ -37,6 +43,7 @@ const createState = (): State => ({
         paletteSelection: 'comp',
         lastMino: Piece.T,
         infinitePieceQueue: false,
+        pieceLayout: 'select',
         bottomSlot: 'tray',
     },
     fumen: {
@@ -54,6 +61,62 @@ const apply = (state: State, action: (state: State) => Partial<State> | undefine
 };
 
 describe('editorInteractionActions', () => {
+    beforeEach(() => {
+        (persistViewSettings as jest.Mock).mockClear();
+    });
+
+    test('toggles the PIECE layout without touching the tool, the tray or the pages', () => {
+        const state = createState();
+        state.mode.type = ModeTypes.Piece;
+        state.mode.touch = TouchTypes.MovePiece;
+        state.editorUi.primaryTool = 'piece';
+
+        const play = apply(state, editorInteractionActions.togglePieceLayout());
+
+        expect(play.editorUi.pieceLayout).toBe('play');
+        expect(play.editorUi.primaryTool).toBe('piece');
+        expect(play.editorUi.bottomSlot).toBe('tray');
+        expect(play.editorUi.infinitePieceQueue).toBe(false);
+        expect(play.mode.type).toBe(ModeTypes.Piece);
+        expect(play.mode.touch).toBe(TouchTypes.MovePiece);
+        expect(play.fumen.pages).toBe(state.fumen.pages);
+        expect(persistViewSettings).toHaveBeenCalledWith(state, { pieceLayout: 'play' });
+
+        const back = apply(play, editorInteractionActions.togglePieceLayout());
+        expect(back.editorUi.pieceLayout).toBe('select');
+    });
+
+    test('selects PIECE normally from Play and stays in PIECE when it is selected again', () => {
+        const state = createState();
+        state.mode.type = ModeTypes.Piece;
+        state.mode.touch = TouchTypes.MovePiece;
+        state.editorUi.primaryTool = 'piece';
+        state.editorUi.pieceLayout = 'play';
+
+        const back = apply(state, editorInteractionActions.selectPieceLayout({ layout: 'select' }));
+
+        expect(back.editorUi.pieceLayout).toBe('select');
+        expect(back.editorUi.primaryTool).toBe('piece');
+        expect(back.editorUi.bottomSlot).toBe('tray');
+
+        const repeated = apply(back, editorInteractionActions.selectPieceLayout({ layout: 'select' }));
+        expect(repeated.editorUi.primaryTool).toBe('piece');
+        expect(repeated.editorUi.pieceLayout).toBe('select');
+    });
+
+    test('skips the write when restoring the same layout from view settings', () => {
+        const state = createState();
+
+        expect(editorInteractionActions.changePieceLayout({ layout: 'select' })(state)).toBeUndefined();
+        expect(persistViewSettings).not.toHaveBeenCalled();
+
+        const restored = apply(state, editorInteractionActions.changePieceLayout({
+            layout: 'play', persist: false,
+        }));
+        expect(restored.editorUi.pieceLayout).toBe('play');
+        expect(persistViewSettings).not.toHaveBeenCalled();
+    });
+
     test('opens an inspector without changing the active tool or legacy touch mode', () => {
         const state = createState();
         state.mode.type = ModeTypes.Piece;
@@ -150,17 +213,23 @@ describe('editorInteractionActions', () => {
         expect(drag.mode.touch).toBe(TouchTypes.MovePiece);
     });
 
-    test('toggling PIECE returns to the previous PAINT or SELECT tool', () => {
+    test('selects PIECE and Play directly from PAINT or SELECT', () => {
         const paintState = createState();
-        const paintPiece = apply(paintState, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        const paintPiece = apply(paintState, editorInteractionActions.selectPieceLayout({ layout: 'select' }));
         expect(paintPiece.editorUi.previousPrimaryTool).toBe('paint');
-        expect(apply(paintPiece, editorInteractionActions.togglePieceMode()).editorUi.primaryTool).toBe('paint');
+        expect(paintPiece.editorUi.primaryTool).toBe('piece');
+        expect(paintPiece.editorUi.pieceLayout).toBe('select');
+        expect(apply(paintPiece, editorInteractionActions.selectPieceLayout({ layout: 'play' }))
+            .editorUi.pieceLayout).toBe('play');
 
         const selectState = createState();
         selectState.editorUi.primaryTool = 'select';
-        const selectPiece = apply(selectState, editorInteractionActions.changePrimaryTool({ tool: 'piece' }));
+        const selectPiece = apply(selectState, editorInteractionActions.selectPieceLayout({ layout: 'play' }));
         expect(selectPiece.editorUi.previousPrimaryTool).toBe('select');
-        expect(apply(selectPiece, editorInteractionActions.togglePieceMode()).editorUi.primaryTool).toBe('select');
+        expect(selectPiece.editorUi.primaryTool).toBe('piece');
+        expect(selectPiece.editorUi.pieceLayout).toBe('play');
+        expect(apply(selectPiece, editorInteractionActions.selectPieceLayout({ layout: 'select' }))
+            .editorUi.pieceLayout).toBe('select');
     });
 
     test('clicking a mino palette entry keeps PIECE mode active', () => {

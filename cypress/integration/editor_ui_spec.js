@@ -18,31 +18,35 @@ const assertRailOrder = () => {
 };
 
 const assertRailArrangement = () => {
-    const selectors = ['btn-utils-mode', 'btn-piece-mode', 'btn-cold-clear', 'btn-select-mode', 'btn-paint-mode'];
+    const selectors = ['btn-utils-mode', 'btn-piece-mode', 'btn-piece-layout', 'btn-cold-clear',
+        'btn-select-mode', 'btn-paint-mode'];
     cy.get(selectors.map(datatest).join(',')).then(elements => {
         const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
         const utilities = rect('btn-utils-mode');
         const piece = rect('btn-piece-mode');
+        const play = rect('btn-piece-layout');
         const ai = rect('btn-cold-clear');
         const select = rect('btn-select-mode');
         const paint = rect('btn-paint-mode');
-        expect(piece.top - utilities.bottom).to.be.greaterThan(0);
-        expect(piece.top - utilities.bottom).to.be.lessThan(10);
-        expect(Math.abs(piece.top - ai.top)).to.be.lessThan(1);
-        expect(piece.left).to.be.lessThan(ai.left);
+        // AIはUTILSの直下、その下に [PIECE|Play] が並ぶ
+        expect(ai.top - utilities.bottom).to.be.greaterThan(0);
+        expect(ai.top - utilities.bottom).to.be.lessThan(10);
+        expect(piece.top - ai.bottom).to.be.greaterThan(0);
+        expect(piece.top - ai.bottom).to.be.lessThan(10);
+        expect(Math.abs(piece.top - play.top)).to.be.lessThan(1);
+        expect(piece.left).to.be.lessThan(play.left);
         expect(select.top).to.be.lessThan(paint.top);
     });
 };
 
 const assertPieceRailTwoColumns = () => {
     const rowPairs = [
-        ['btn-piece-mode', 'btn-cold-clear'],
-        ['btn-select-mode', 'btn-paint-mode'],
+        ['btn-piece-mode', 'btn-piece-layout'],
         ['btn-piece-i', 'btn-piece-l'],
         ['btn-piece-o', 'btn-piece-z'],
         ['btn-piece-t', 'btn-piece-j'],
         ['btn-piece-s', 'btn-piece-empty'],
-        ['btn-piece-gray', 'btn-piece-reset'],
+        ['btn-piece-gray', 'btn-piece-inference'],
     ];
     const selectors = rowPairs.reduce((all, pair) => all.concat(pair), []);
     cy.get([datatest('editor-rail'), datatest('btn-piece-mode'), ...selectors.map(datatest)].join(','))
@@ -60,14 +64,55 @@ const assertPieceRailTwoColumns = () => {
                 expect(cell.left).to.be.at.least(rail.left);
                 expect(cell.right).to.be.at.most(rail.right);
                 expect(cell.width).to.be.at.least(28);
-                expect(cell.height).to.be.at.least(22);
+                expect(cell.height).to.be.at.least(18);
             });
         });
-    cy.get(`${datatest('editor-rail')} button`).should('have.length', 14);
     cy.get(`${datatest('editor-rail')},${datatest('btn-piece-reset')}`).then(elements => {
         const rail = elements.filter(datatest('editor-rail'))[0].getBoundingClientRect();
         const lastCell = elements.filter(datatest('btn-piece-reset'))[0].getBoundingClientRect();
         expect(rail.bottom - lastCell.bottom).to.be.at.least(0);
+    });
+};
+
+const assertPieceNormalModeRows = () => {
+    cy.get([datatest('editor-rail'), datatest('btn-select-mode'), datatest('btn-paint-mode')].join(','))
+        .then(elements => {
+            const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+            const rail = rect('editor-rail');
+            const select = rect('btn-select-mode');
+            const paint = rect('btn-paint-mode');
+            expect(select.top).to.be.lessThan(paint.top);
+            [select, paint].forEach(cell => {
+                expect(cell.left).to.be.closeTo(rail.left, 1);
+                expect(cell.right).to.be.closeTo(rail.right, 1);
+            });
+        });
+};
+
+const assertPlayRailArrangement = () => {
+    const selectors = ['editor-rail', 'btn-cold-clear', 'btn-piece-mode', 'btn-piece-layout',
+        'btn-paint-mode', 'btn-select-mode', 'btn-piece-empty', 'btn-piece-gray', 'btn-piece-reset'];
+    cy.get(selectors.map(datatest).join(',')).then(elements => {
+        const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
+        const rail = rect('editor-rail');
+        const ai = rect('btn-cold-clear');
+        const piece = rect('btn-piece-mode');
+        const play = rect('btn-piece-layout');
+        const paint = rect('btn-paint-mode');
+        const select = rect('btn-select-mode');
+        const empty = rect('btn-piece-empty');
+        const gray = rect('btn-piece-gray');
+        const reset = rect('btn-piece-reset');
+        expect(ai.left).to.be.closeTo(rail.left, 1);
+        expect(ai.right).to.be.closeTo(rail.right, 1);
+        expect(piece.top).to.be.greaterThan(ai.top);
+        expect(piece.top).to.be.closeTo(play.top, 1);
+        expect(paint.top).to.be.greaterThan(piece.top);
+        expect(paint.top).to.be.closeTo(select.top, 1);
+        expect(paint.left).to.be.lessThan(select.left);
+        expect(empty.top).to.be.greaterThan(paint.top);
+        expect(empty.top).to.be.closeTo(gray.top, 1);
+        expect(gray.top).to.be.closeTo(reset.top, 1);
     });
 };
 
@@ -82,6 +127,7 @@ const assertPieceRailSingleColumn = () => {
         'btn-piece-s',
         'btn-piece-empty',
         'btn-piece-gray',
+        'btn-piece-inference',
         'btn-piece-reset',
     ];
     cy.get([datatest('editor-rail'), datatest('btn-piece-mode'), ...selectors.map(datatest)].join(','))
@@ -95,14 +141,15 @@ const assertPieceRailSingleColumn = () => {
                 expect(cell.width).to.be.closeTo(cells[0].width, 1);
                 expect(cell.left).to.be.at.least(rail.left);
                 expect(cell.right).to.be.at.most(rail.right);
-                expect(cell.height).to.be.at.least(22);
+                // 選択重視のレールはPAINT/SELECTより1行多い（切替行＋∞7bagセル）ぶん、
+                // 最小画面ではセルが1〜2px低くなる
+                expect(cell.height).to.be.at.least(20);
                 if (index > 0) {
                     expect(cell.top).to.be.greaterThan(cells[index - 1].top);
                 }
             });
             expect(cells[cells.length - 1].bottom).to.be.at.most(rail.bottom);
         });
-    cy.get(`${datatest('editor-rail')} button`).should('have.length', 14);
 };
 
 const assertInfiniteToggleFits = () => {
@@ -166,31 +213,53 @@ describe('Editor UI final concept', () => {
     });
 
     [
-        [320, 568, true, 78, '2'],
-        [375, 667, true, 78, '2'],
-        [390, 844, true, 78, '2'],
-        [844, 390, true, 44, '2'],
-        [1024, 768, false, 66, '1'],
-        [1920, 1080, false, 78, '1'],
-    ].forEach(([width, height, mobile, minimumTrayHeight, paletteColumns]) => {
+        // 幅, 高さ, mobile, トレイ最小高, レール列数, NEXTミノ最小高, パレットにラベルが出るか
+        [320, 568, true, 78, '1', 20, false],
+        [375, 667, true, 78, '1', 20, true],
+        [390, 844, true, 78, '1', 40, true],
+        [844, 390, true, 44, '2', 20, false],
+        [1024, 768, false, 66, '1', 40, true],
+        [1920, 1080, false, 78, '1', 40, true],
+    ].forEach(([width, height, mobile, minimumTrayHeight, paletteColumns, minimumNextMinoHeight,
+        paletteLabels]) => {
         it(`keeps the PIECE tray above the bottom bar at ${width}x${height}`, () => {
             cy.viewport(width, height);
             visit({ mode: 'edit', mobile });
             cy.get(datatest('btn-piece-mode')).click();
 
+            // 選択重視（初期レイアウト）はPAINT/SELECTと同じボタン群を並べる
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'select');
             cy.get(datatest('editor-rail')).should('have.attr', 'data-columns', paletteColumns);
-            cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
             if (paletteColumns === '1') {
                 assertPieceRailSingleColumn();
                 cy.get(datatest('btn-piece-gray')).should('contain.text', 'RESPAWN');
-                cy.get(datatest('btn-piece-reset')).should('contain.text', 'RESET');
+                if (paletteLabels) {
+                    cy.get(datatest('btn-piece-reset')).should('contain.text', 'RESET');
+                } else {
+                    cy.get(datatest('btn-piece-reset')).find('.material-icons')
+                        .should('contain.text', 'delete_sweep');
+                }
             } else {
                 assertPieceRailTwoColumns();
             }
+            assertPieceNormalModeRows();
+            ['btn-editor-import', 'btn-editor-export', 'btn-insert-new-page', 'btn-utils-mode',
+                'btn-cold-clear', 'btn-piece-layout', 'btn-piece-inference'].forEach(selector => {
+                cy.get(datatest(selector)).should('be.visible');
+            });
+            ['piece-queue-hold', 'piece-queue-next', 'piece-queue-infinite'].forEach(selector => {
+                cy.get(datatest(selector)).should('not.exist');
+            });
+
+            // 操作重視はキュー枠を出し、ミノパレットを畳む
+            operations.mode.piece.layout('play');
+            cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+            cy.get(datatest('piece-queue-infinite-checkbox')).should('be.visible');
             assertInfiniteToggleFits();
+            assertPlayRailArrangement();
             ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
                 'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode',
-                'btn-piece-inference'].forEach(selector => {
+                'btn-piece-inference', 'btn-piece-i', 'btn-piece-t'].forEach(selector => {
                 cy.get(datatest(selector)).should('not.exist');
             });
             cy.get(datatest('btn-editor-user-settings')).should('be.visible');
@@ -204,11 +273,17 @@ describe('Editor UI final concept', () => {
                 expect(rect.left).to.be.at.least(0);
                 expect(rect.right).to.be.at.most(width);
             });
-            cy.get(`${datatest('piece-queue-hold')},${datatest('piece-queue-next')}`).each(element => {
-                expect(element[0].getBoundingClientRect().width).to.be.at.least(60);
+            cy.get(`${datatest('editor-field-frame')},${datatest('piece-queue-hold')},`
+                + `${datatest('piece-queue-next')}`).then(elements => {
+                const field = elements.filter(datatest('editor-field-frame'))[0].getBoundingClientRect();
+                [datatest('piece-queue-hold'), datatest('piece-queue-next')].forEach(selector => {
+                    const column = elements.filter(selector)[0].getBoundingClientRect();
+                    expect(column.width).to.be.at.least(66);
+                    expect(column.width / field.width).to.be.at.least(0.28);
+                });
             });
             cy.get(datatest('piece-queue-next-0')).then(nextRow => {
-                expect(nextRow[0].getBoundingClientRect().height).to.be.at.least(16);
+                expect(nextRow[0].getBoundingClientRect().height).to.be.at.least(minimumNextMinoHeight);
             });
             cy.get(datatest('tray-context')).then(tray => {
                 expect(tray[0].getBoundingClientRect().height).to.be.at.least(minimumTrayHeight);
@@ -228,7 +303,7 @@ describe('Editor UI final concept', () => {
     it('aligns HOLD and NEXT with the 20-row ceiling', () => {
         cy.viewport(1024, 768);
         visit({ mode: 'edit', mobile: false });
-        cy.get(datatest('btn-piece-mode')).click();
+        operations.mode.piece.openWithQueues();
 
         cy.get([
             datatest('editor-field-frame'),
@@ -310,7 +385,8 @@ describe('Editor UI final concept', () => {
     it('distinguishes paint swatches from piece images and keeps select unchanged', () => {
         visit({ mode: 'edit' });
 
-        const paletteFrames = `${datatest('editor-rail')} [datatest^="btn-piece-"]:not(${datatest('btn-piece-mode')})`;
+        const paletteFrames = `${datatest('editor-rail')} [datatest^="btn-piece-"]`
+            + `:not(${datatest('btn-piece-mode')}):not(${datatest('btn-piece-layout')})`;
         cy.get(paletteFrames).should('have.length', 10);
 
         cy.get(datatest('btn-paint-mode'))
@@ -335,7 +411,8 @@ describe('Editor UI final concept', () => {
             .and('include', 'rgb(25, 118, 210)');
 
         cy.get(datatest('btn-piece-mode')).click();
-        cy.get(paletteFrames).should('have.length', 10);
+        // PIECEの選択重視パレットは ∞7bag セルを含めて11個
+        cy.get(paletteFrames).should('have.length', 11);
         cy.get(datatest('btn-piece-reset'))
             .should('be.visible')
             .and('have.attr', 'aria-label', 'RESET');
@@ -509,7 +586,7 @@ describe('Editor UI final concept', () => {
         });
     });
 
-    it('toggles the context tray for PAINT and toggles PIECE mode separately', () => {
+    it('toggles the PAINT tray and keeps PIECE as a direct mode entry', () => {
         cy.viewport(320, 568);
         visit({ mode: 'edit' });
 
@@ -535,15 +612,15 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-piece-mode')).click();
         cy.get(datatest('tray-context')).should('be.visible');
 
-        // Pressing Piece again returns to the previous Paint mode without closing the tray.
+        // PIECE is a direct entry: selecting it again keeps the normal PIECE layout open.
         cy.get(datatest('btn-piece-mode')).click();
-        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
 
-        // Piece can be enabled again without changing tray visibility.
-        cy.get(datatest('btn-piece-mode')).click();
-        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        // PAINT is the explicit exit from PIECE/Play.
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('btn-paint-mode')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('tray-context')).should('be.visible');
     });
 

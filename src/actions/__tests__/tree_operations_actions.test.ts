@@ -1,10 +1,18 @@
 import { Field } from '../../lib/fumen/field';
+import { decode, encode } from '../../lib/fumen/fumen';
 import { Page } from '../../lib/fumen/types';
 import { Piece } from '../../lib/enums';
 import { createSpawnMove } from '../../lib/piece';
-import { PageFieldOperation, Pages } from '../../lib/pages';
-import { AddMode, TreeOperationScope, TreeViewMode, initialTreeDragState } from '../../lib/fumen/tree_types';
+import { PageFieldOperation, Pages, resolvePageCommentText } from '../../lib/pages';
+import {
+    AddMode,
+    SerializedTree,
+    TreeOperationScope,
+    TreeViewMode,
+    initialTreeDragState,
+} from '../../lib/fumen/tree_types';
 import { addBranchNode, createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
+import { toPrimitivePage } from '../../history_task';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -44,7 +52,7 @@ jest.mock('../memento', () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { treeOperationActions } = require('../tree_operations');
+const { removePagesByIndices, treeOperationActions } = require('../tree_operations');
 
 const defaultFlags = {
     lock: false,
@@ -345,7 +353,239 @@ const createThreeChainState = (operationScope: TreeOperationScope) => {
     } as any;
 };
 
+type FieldPhases = {
+    none: Field;
+    command: Field;
+    all: Field;
+};
+
+const getFieldPhases = (pages: Page[], pageIndex: number): FieldPhases => {
+    const pagesObj = new Pages(pages);
+    return {
+        none: pagesObj.getField(pageIndex, PageFieldOperation.None),
+        command: pagesObj.getField(pageIndex, PageFieldOperation.Command),
+        all: pagesObj.getField(pageIndex, PageFieldOperation.All),
+    };
+};
+
+const expectFieldPhases = (actual: FieldPhases, expected: FieldPhases) => {
+    expect(actual.none.equals(expected.none)).toBe(true);
+    expect(actual.command.equals(expected.command)).toBe(true);
+    expect(actual.all.equals(expected.all)).toBe(true);
+};
+
+const expectResolvableBackwardRefs = (pages: Page[]) => {
+    pages.forEach((page, index) => {
+        if (page.field.ref !== undefined) {
+            expect(page.field.ref).toBeLessThan(index);
+            expect(pages[page.field.ref].field.obj).toBeDefined();
+        }
+        if (page.comment.ref !== undefined) {
+            expect(page.comment.ref).toBeLessThan(index);
+            expect(pages[page.comment.ref].comment.text).toBeDefined();
+        }
+    });
+};
+
+const createFieldPreservationPages = (): Page[] => [
+    {
+        index: 0,
+        field: { obj: new Field({}) },
+        comment: { text: 'root' },
+        flags: { ...defaultFlags },
+    },
+    {
+        index: 1,
+        field: { ref: 0 },
+        comment: { text: 'removed comment' },
+        flags: { ...defaultFlags, lock: true },
+        piece: createSpawnMove(Piece.I, false),
+    },
+    {
+        index: 2,
+        field: { ref: 0 },
+        comment: { ref: 1 },
+        flags: { ...defaultFlags, lock: true },
+        piece: createSpawnMove(Piece.O, false),
+    },
+    {
+        index: 3,
+        field: { ref: 0 },
+        comment: { ref: 1 },
+        flags: { ...defaultFlags },
+    },
+];
+
+const createTreeState = (
+    pages: Page[],
+    tree: SerializedTree,
+    activeNodeId: string,
+    operationScope: TreeOperationScope = 'node',
+) => ({
+    fumen: {
+        pages,
+        currentIndex: findNode(tree, activeNodeId)?.pageIndex ?? 0,
+        maxPage: pages.length,
+        guideLineColor: true,
+    },
+    tree: {
+        operationScope,
+        activeNodeId,
+        enabled: true,
+        nodes: tree.nodes,
+        rootId: tree.rootId,
+        addMode: AddMode.Branch,
+        viewMode: TreeViewMode.Tree,
+        dragState: initialTreeDragState,
+        grayAfterLineClear: false,
+        scale: 1.0,
+        autoFocusPending: false,
+    },
+}) as any;
+
 describe('removeTreeNode', () => {
+    test('preserves promoted fields, comments, refs, encoding, and source state', async () => {
+        const pages = createFieldPreservationPages();
+        const tree = createTreeFromPages(pages);
+        const removedNode = findNodeByPageIndex(tree, 1)!;
+        const survivingNodes = [0, 2, 3].map(index => findNodeByPageIndex(tree, index)!);
+        const expectedFields = new Map(survivingNodes.map(node => [
+            node.id,
+            getFieldPhases(pages, node.pageIndex),
+        ]));
+        const sourceBefore = pages.map(toPrimitivePage);
+        const originalKeyPageCount = pages.filter(page => page.field.obj !== undefined).length;
+        const state = createTreeState(pages, tree, removedNode.id);
+
+        const next = treeOperationActions.removeTreeNode({ nodeId: removedNode.id })(state) as any;
+        const nextPages: Page[] = next.fumen.pages;
+        const nextTree: SerializedTree = {
+            nodes: next.tree.nodes,
+            rootId: next.tree.rootId,
+            version: 1,
+        };
+
+        survivingNodes.forEach((node) => {
+            const nextNode = findNode(nextTree, node.id)!;
+            expectFieldPhases(getFieldPhases(nextPages, nextNode.pageIndex), expectedFields.get(node.id)!);
+        });
+        const promotedNode = findNode(nextTree, survivingNodes[1].id)!;
+        expect(resolvePageCommentText(nextPages, promotedNode.pageIndex)).toBe('removed comment');
+        expect(resolvePageCommentText(nextPages, promotedNode.pageIndex + 1)).toBe('removed comment');
+        expectResolvableBackwardRefs(nextPages);
+        expect(nextPages.filter(page => page.field.obj !== undefined).length)
+            .toBeLessThanOrEqual(originalKeyPageCount + 1);
+        expect(pages.map(toPrimitivePage)).toEqual(sourceBefore);
+
+        const encoded = await encode(nextPages);
+        const decoded = await decode(`v115@${encoded}`);
+        expect(decoded).toHaveLength(nextPages.length);
+        decoded.forEach((_page, index) => {
+            expect(new Pages(decoded).getField(index, PageFieldOperation.None)
+                .equals(new Pages(nextPages).getField(index, PageFieldOperation.None))).toBe(true);
+        });
+    });
+
+    test('preserves both promoted child branches with one boundary key page', () => {
+        const pages = [
+            ...createFieldPreservationPages(),
+            {
+                index: 4,
+                field: { ref: 0 },
+                comment: { ref: 1 },
+                flags: { ...defaultFlags, lock: true },
+                piece: createSpawnMove(Piece.T, false),
+            },
+        ];
+        const chain = createTreeFromPages(pages);
+        const p0 = findNodeByPageIndex(chain, 0)!;
+        const removed = findNodeByPageIndex(chain, 1)!;
+        const childA = findNodeByPageIndex(chain, 2)!;
+        const grandchildA = findNodeByPageIndex(chain, 3)!;
+        const childB = findNodeByPageIndex(chain, 4)!;
+        const tree: SerializedTree = {
+            ...chain,
+            nodes: chain.nodes.map((node) => {
+                if (node.id === removed.id) return { ...node, childrenIds: [childA.id, childB.id] };
+                if (node.id === childA.id) return { ...node, parentId: removed.id, childrenIds: [grandchildA.id] };
+                if (node.id === grandchildA.id) return { ...node, parentId: childA.id, childrenIds: [] };
+                if (node.id === childB.id) return { ...node, parentId: removed.id, childrenIds: [] };
+                if (node.id === p0.id) return { ...node, childrenIds: [removed.id] };
+                return node;
+            }),
+        };
+        const survivors = [p0, childA, grandchildA, childB];
+        const expectedFields = new Map(survivors.map(node => [node.id, getFieldPhases(pages, node.pageIndex)]));
+        const state = createTreeState(pages, tree, removed.id);
+
+        const next = treeOperationActions.removeTreeNode({ nodeId: removed.id })(state) as any;
+        const nextTree: SerializedTree = {
+            nodes: next.tree.nodes,
+            rootId: next.tree.rootId,
+            version: 1,
+        };
+
+        survivors.forEach((node) => {
+            const nextNode = findNode(nextTree, node.id)!;
+            expectFieldPhases(getFieldPhases(next.fumen.pages, nextNode.pageIndex), expectedFields.get(node.id)!);
+        });
+        expect(findNode(nextTree, p0.id)!.childrenIds).toEqual([childA.id, childB.id]);
+        expect(next.fumen.pages.filter((page: Page) => page.field.obj !== undefined)).toHaveLength(2);
+        expectResolvableBackwardRefs(next.fumen.pages);
+    });
+
+    test('preserves fields across non-contiguous descending page removal', () => {
+        const pages: Page[] = [
+            {
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: 'root' },
+                flags: { ...defaultFlags },
+            },
+            ...[Piece.I, Piece.O, Piece.T, Piece.L, Piece.J].map((piece, offset): Page => ({
+                index: offset + 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true },
+                piece: createSpawnMove(piece, false),
+            })),
+        ];
+        const removed = new Set([1, 4]);
+        const survivingIndices = pages.map(page => page.index).filter(index => !removed.has(index));
+        const expectedFields = survivingIndices.map(index => getFieldPhases(pages, index));
+        const sourceBefore = pages.map(toPrimitivePage);
+
+        const nextPages: Page[] = removePagesByIndices(pages, Array.from(removed));
+
+        expectedFields.forEach((expected, index) => {
+            expectFieldPhases(getFieldPhases(nextPages, index), expected);
+        });
+        expect(nextPages.filter(page => page.field.obj !== undefined)).toHaveLength(3);
+        expectResolvableBackwardRefs(nextPages);
+        expect(pages.map(toPrimitivePage)).toEqual(sourceBefore);
+    });
+
+    test('preserves fumen-wide colorize when deleting the first node', () => {
+        const pages = createFieldPreservationPages();
+        pages[0].flags.colorize = false;
+        const tree = createTreeFromPages(pages);
+        const removed = findNodeByPageIndex(tree, 0)!;
+        const promoted = findNodeByPageIndex(tree, 1)!;
+        const expected = getFieldPhases(pages, promoted.pageIndex);
+        const state = createTreeState(pages, tree, removed.id);
+
+        const next = treeOperationActions.removeTreeNode({ nodeId: removed.id })(state) as any;
+        const nextTree: SerializedTree = {
+            nodes: next.tree.nodes,
+            rootId: next.tree.rootId,
+            version: 1,
+        };
+        const nextPromoted = findNode(nextTree, promoted.id)!;
+
+        expect(next.fumen.pages[0].flags.colorize).toBe(false);
+        expectFieldPhases(getFieldPhases(next.fumen.pages, nextPromoted.pageIndex), expected);
+    });
+
     test('materializes only quiz refs whose replay span crosses a removed page', () => {
         const pages: Page[] = [
             {

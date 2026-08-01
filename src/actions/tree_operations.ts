@@ -413,12 +413,32 @@ const collectRemovedPageIndices = (
     return Array.from(indices).sort((a, b) => b - a);
 };
 
-const removePagesByIndices = (pages: Page[], removedIndices: number[]): Page[] => {
+export const removePagesByIndices = (pages: Page[], removedIndices: number[]): Page[] => {
     if (removedIndices.length === 0) return pages;
-    const pagesObj = new Pages([...pages]);
+    // Pages mutates page indexes and refs in place. Work on detached pages so a tree
+    // operation cannot leak intermediate ref updates back into state.fumen.pages.
+    const pagesObj = new Pages(pages.map(page => toPage(toPrimitivePage(page))));
     const sortedIndices = [...removedIndices].sort((a, b) => b - a);
     sortedIndices.forEach((index) => {
         if (index >= 0 && index < pagesObj.pages.length) {
+            const currentPage = pagesObj.pages[index];
+            const nextPageIndex = index + 1;
+            const nextPage = pagesObj.pages[nextPageIndex];
+
+            // Preserve the boundary state before removing a page from the linear
+            // fumen replay span. Later ref pages can then replay from this key page.
+            if (nextPage !== undefined) {
+                if (nextPage.field.obj === undefined) {
+                    pagesObj.toKeyPage(nextPageIndex);
+                }
+                if (nextPage.comment.ref !== undefined) {
+                    pagesObj.freezeComment(nextPageIndex);
+                }
+                if (index === 0) {
+                    nextPage.flags.colorize = currentPage.flags.colorize;
+                }
+            }
+
             pagesObj.deletePage(index, index + 1);
         }
     });

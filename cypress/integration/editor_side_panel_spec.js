@@ -1,4 +1,4 @@
-import { datatest, visit } from '../support/common';
+import { block, Color, datatest, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 // エディットモード左サイドパネル（リスト/ツリー）
@@ -268,5 +268,38 @@ describe('Editor side panel', () => {
         // リストタブへ戻ると、ツリーモード中は並べ替え不可のままリストが表示される
         operations.editorPanel.selectTab('list');
         cy.get(datatest('list-view-item-0')).should('exist');
+    });
+
+    it('settles a completed COMP before tree page creation and page navigation', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhAAgH' });
+
+        operations.editorPanel.enable();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+
+        operations.mode.block.open();
+        operations.mode.block.Completion();
+        [5, 6, 7, 8].forEach(y => operations.mode.block.click(4, y));
+
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Highlight2);
+        });
+        [0, 1, 2, 3].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.Empty.Normal);
+        });
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Normal);
+        });
+
+        cy.get('[datatest^="tree-node-"]').first().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 2');
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Normal);
+        });
     });
 });

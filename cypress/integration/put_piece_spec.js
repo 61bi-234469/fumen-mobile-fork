@@ -452,7 +452,7 @@ describe('Put pieces', () => {
         visit({ mode: 'edit' });
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('T:I');
-        operations.mode.piece.open();
+        operations.mode.piece.openWithQueues();
 
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-infinite-checkbox'))
@@ -469,7 +469,7 @@ describe('Put pieces', () => {
 
     it('seeds one 7bag and spawns the first one when the queue is empty', () => {
         visit({ mode: 'edit' });
-        operations.mode.piece.open();
+        operations.mode.piece.openWithQueues();
 
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-infinite-checkbox'))
@@ -496,6 +496,7 @@ describe('Put pieces', () => {
         cy.get(datatest('text-comment')).clear().type('T:IOTLJSZIOTLJSZIOTLJSZ');
         operations.mode.piece.open();
         operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-infinite-checkbox'))
             .should('have.attr', 'aria-pressed', 'true');

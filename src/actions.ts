@@ -446,6 +446,9 @@ const loadUserSettings = () => {
     if (viewSettings.editorSidePanelWidth !== undefined) {
         main.setEditorSidePanelWidth({ width: viewSettings.editorSidePanelWidth, persist: false });
     }
+    if (viewSettings.pieceLayout !== undefined) {
+        main.changePieceLayout({ layout: viewSettings.pieceLayout, persist: false });
+    }
     if (viewSettings.coldClearTopBranchCount !== undefined) {
         main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });
     }

@@ -1,7 +1,7 @@
 import { CommentType, GradientPattern, ModeTypes, Piece, Screens } from '../../lib/enums';
 import { Coordinate, getNavigatorHeight, Size } from '../commons';
 import { View } from 'hyperapp';
-import { resources, State } from '../../states';
+import { PieceLayoutMode, resources, State } from '../../states';
 import { EditorTools } from '../../components/tools/editor_tools';
 import { ColorPalette, Palette } from '../../lib/colors';
 import { Actions } from '../../actions';
@@ -21,8 +21,8 @@ import { CONTEXT_TRAY_HEIGHT, contextTray } from './context_tray';
 import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
 import {
-    getEditorBottomMetrics, getEditorRailConfig, getPieceRailMetrics, getPieceSideWidth,
-    getPlayfieldCeilingOffset, getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
+    getEditorBottomMetrics, getEditorRailConfig, getPlayfieldCeilingOffset, getPlayPieceQueueWidth,
+    getPlayPieceRailMetrics, getPlayPieceUnitBound, getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
 } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
@@ -48,6 +48,7 @@ export interface EditorLayout {
     buttons: {
         size: Size;
         columns: 1 | 2;
+        cellHeight: number;
     };
     pieceQueue: {
         visible: boolean;
@@ -55,10 +56,8 @@ export interface EditorLayout {
         gap: number;
         nextMinoHeight: number;
         nextPanelHeight: number;
-        railCellHeight: number;
         railExtensionHeight: number;
         ceilingOffset: number;
-        columns: 1 | 2;
     };
     comment: {
         topLeft: Coordinate;
@@ -113,7 +112,9 @@ interface LayoutParams {
     sidePanelWidth: number;
     rightInspectorWidth: number;
     trayInBottom: boolean;
-    pieceQueueVisible?: boolean;
+    // PIECE状態かどうかと、その表示レイアウト
+    pieceModeVisible?: boolean;
+    pieceLayout?: PieceLayoutMode;
     commentVisible?: boolean;
     reserveCommentHeight?: boolean;
 }
@@ -126,11 +127,13 @@ export const getLayout = (
         sidePanelWidth,
         rightInspectorWidth,
         trayInBottom,
-        pieceQueueVisible = false,
+        pieceModeVisible = false,
+        pieceLayout = 'select',
         commentVisible = true,
         reserveCommentHeight = commentVisible,
     }: LayoutParams,
 ): EditorLayout => {
+    const pieceQueueVisible = pieceModeVisible && pieceLayout === 'play';
     const bottomMetrics = getEditorBottomMetrics(height);
     const visibleCommentHeight = commentVisible ? bottomMetrics.commentHeight : 0;
     const reservedCommentHeight = reserveCommentHeight ? bottomMetrics.commentHeight : 0;
@@ -146,21 +149,25 @@ export const getLayout = (
     };
 
     const rail = getEditorRailConfig(canvasSize.height);
-    const pieceQueueWidth = pieceQueueVisible
-        ? getPieceSideWidth(canvasSize.width)
-        : 0;
     const pieceQueueGap = pieceQueueVisible
         ? Math.min(6, Math.max(2, canvasSize.width * .012))
         : 0;
-    // PIECE時はHOLD列とNEXT／レール列を同じ幅にし、実DOMと同じgapを横幅計算へ反映する
-    const horizontalReserve = pieceQueueVisible
-        ? pieceQueueWidth * 2 + pieceQueueGap + PIECE_RIGHT_COLUMN_GAP
-        : rail.reserve;
+    const heightBoundUnit = (canvasSize.height - borderWidthBottomField - 2) / 24;
 
-    const blockSize = Math.min(
-        (canvasSize.height - borderWidthBottomField - 2) / 24,
-        (canvasSize.width - horizontalReserve) / 10.5,
-    ) - 1;
+    // 操作重視ではHOLD列とNEXT列を盤面のマス基準（各3.4マス）で確保する。
+    // 幅・高さの両制約を同時に解いてから列幅を決め、下限クランプで溢れる場合だけ従来式へ戻す。
+    let blockSize: number;
+    let pieceQueueWidth = 0;
+    if (pieceQueueVisible) {
+        const unit = Math.min(heightBoundUnit, getPlayPieceUnitBound(canvasSize.width, pieceQueueGap));
+        pieceQueueWidth = getPlayPieceQueueWidth(unit);
+        const horizontalReserve = pieceQueueWidth * 2 + pieceQueueGap + PIECE_RIGHT_COLUMN_GAP;
+        blockSize = unit * 10 + 1 + horizontalReserve <= canvasSize.width
+            ? unit - 1
+            : Math.min(heightBoundUnit, (canvasSize.width - horizontalReserve) / 10.5) - 1;
+    } else {
+        blockSize = Math.min(heightBoundUnit, (canvasSize.width - rail.reserve) / 10.5) - 1;
+    }
 
     const fieldSize = {
         width: (blockSize + 1) * 10 + 1,
@@ -172,12 +179,14 @@ export const getLayout = (
     const fieldBottomGap = Math.max(0, (canvasSize.height - fieldSize.height) / 2);
     const maxPieceRailExtension = Math.max(0, reservedCommentHeight + fieldBottomGap - 1);
     const pieceRailMetrics = pieceQueueVisible
-        ? getPieceRailMetrics(fieldSize.height - pieceQueueCeilingOffset,
-            pieceQueueWidth, targetPieceRailCellHeight, maxPieceRailExtension)
-        : {
-            columns: rail.columns, nextMinoHeight: 0, nextPanelHeight: 0,
-            railCellHeight: 0, railExtensionHeight: 0,
-        };
+        ? getPlayPieceRailMetrics(fieldSize.height - pieceQueueCeilingOffset, pieceQueueWidth,
+            targetPieceRailCellHeight, maxPieceRailExtension)
+        : { nextMinoHeight: 0, nextPanelHeight: 0, railCellHeight: 0, railExtensionHeight: 0 };
+
+    const railColumns: 1 | 2 = pieceQueueVisible ? 1 : rail.columns;
+    const railCellHeight = pieceQueueVisible
+        ? pieceRailMetrics.railCellHeight
+        : getResponsiveRailCellHeight(fieldSize.height, railColumns);
 
     const pieceButtonsSize = {
         width: pieceQueueVisible ? pieceQueueWidth
@@ -215,7 +224,8 @@ export const getLayout = (
         },
         buttons: {
             size: pieceButtonsSize,
-            columns: pieceRailMetrics.columns,
+            columns: railColumns,
+            cellHeight: railCellHeight,
         },
         pieceQueue: {
             visible: pieceQueueVisible,
@@ -223,10 +233,8 @@ export const getLayout = (
             gap: pieceQueueGap,
             nextMinoHeight: pieceRailMetrics.nextMinoHeight,
             nextPanelHeight: pieceRailMetrics.nextPanelHeight,
-            railCellHeight: pieceRailMetrics.railCellHeight,
             railExtensionHeight: pieceRailMetrics.railExtensionHeight,
             ceilingOffset: pieceQueueCeilingOffset,
-            columns: pieceRailMetrics.columns,
         },
         comment: {
             topLeft: {
@@ -273,7 +281,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         + layout.field.bottomBorderWidth;
     const bandHeight = layout.field.bottomBorderWidth + layout.field.blockSize;
     const pieceTrayAvailableHeight = layout.canvas.size.height - bandTop + layout.comment.reservedHeight - 1;
-    const trayHeight = state.editorUi.primaryTool === 'piece'
+    const pieceModeVisible = state.editorUi.primaryTool === 'piece';
+    const trayHeight = pieceModeVisible
         ? Math.min(CONTEXT_TRAY_HEIGHT * 2, Math.max(bandHeight, pieceTrayAvailableHeight))
         : bandHeight;
     const queueState = layout.pieceQueue.visible
@@ -356,7 +365,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         }, [contextTray(state, actions, trayHeight)])] : []),
     ]);
 
-    // PIECE時はNEXT枠・∞7bag・レールを右側の1列にまとめる
+    // Playレイアウトのときだけ、NEXT枠・∞7bag・レールを右側の1列にまとめる
     const rightColumn = queueOverlays === null
         ? editorRail(state, actions, layout)
         : div({
@@ -540,7 +549,8 @@ export const view: View<State, Actions> = (state, actions) => {
         trayInBottom,
         commentVisible,
         reserveCommentHeight,
-        pieceQueueVisible: state.editorUi.primaryTool === 'piece',
+        pieceModeVisible: state.editorUi.primaryTool === 'piece',
+        pieceLayout: state.editorUi.pieceLayout,
         ...state.display,
         topLeftY: navigatorHeight,
     });

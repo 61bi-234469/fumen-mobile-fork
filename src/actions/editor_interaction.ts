@@ -4,6 +4,7 @@ import {
     PaintTool,
     PaletteSelection,
     PieceAction,
+    PieceLayoutMode,
     PrimaryTool,
     State,
 } from '../states';
@@ -11,10 +12,14 @@ import { ModeTypes, Piece, TouchTypes } from '../lib/enums';
 import { NextState, sequence } from './commons';
 import { isMinoPaletteSelection, legacyModeForPaintTool } from '../lib/editor_interaction';
 import { floatingPartSpawn, initialRectSelectState } from '../lib/rect_selection';
+import { persistViewSettings } from './view_settings';
 
 export interface EditorInteractionActions {
     changePrimaryTool(data: { tool: PrimaryTool }): action;
     togglePieceMode(): action;
+    selectPieceLayout(data: { layout: PieceLayoutMode }): action;
+    changePieceLayout(data: { layout: PieceLayoutMode; persist?: boolean }): action;
+    togglePieceLayout(): action;
     changePaintTool(data: { tool: PaintTool; restorePalette?: boolean }): action;
     changePieceAction(data: { pieceAction: PieceAction }): action;
     openEditorInspector(data: { inspector: Exclude<EditorInspector, 'none'> }): action;
@@ -125,11 +130,56 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             },
         };
     }),
+    // PIECEとPlayは対等な画面入口。押された行先を常に直接選び、PIECE状態をトグルしない。
+    selectPieceLayout: ({ layout }) => cancelSelectionPreviewAndSet((state) => {
+        if (state.editorUi.pieceLayout !== layout) {
+            persistViewSettings(state, { pieceLayout: layout });
+        }
+        const page = state.fumen.pages[state.fumen.currentIndex];
+        const pieceAction: PieceAction = page?.piece !== undefined ? 'drag' : 'spawn';
+        return {
+            editorUi: {
+                ...state.editorUi,
+                pieceAction,
+                bottomSlot: 'tray',
+                previousPrimaryTool: previousPrimaryTool(state),
+                primaryTool: 'piece',
+                inspector: 'none',
+                pieceLayout: layout,
+            },
+            mode: {
+                ...state.mode,
+                type: ModeTypes.Piece,
+                touch: pieceAction === 'drag' ? TouchTypes.MovePiece : TouchTypes.Piece,
+            },
+            parts: { ...state.parts, selectedId: null },
+            rectSelect: initialRectSelectState,
+        };
+    }),
+    // 既存のショートカット／呼び出し元との互換性を保つ。
+    // 直接入口ではないため、復元済みのレイアウト設定をそのまま使う。
     togglePieceMode: () => (state): NextState => (
-        editorInteractionActions.changePrimaryTool({
-            tool: state.editorUi.primaryTool === 'piece'
-                ? state.editorUi.previousPrimaryTool ?? 'paint'
-                : 'piece',
+        editorInteractionActions.changePrimaryTool({ tool: 'piece' })(state)
+    ),
+    // PIECE状態の表示切替のみ。ページ内容・#Q=・primaryTool には触れない。
+    changePieceLayout: ({ layout, persist = true }) => (state): NextState => {
+        if (state.editorUi.pieceLayout === layout) {
+            return undefined;
+        }
+
+        if (persist) {
+            persistViewSettings(state, { pieceLayout: layout });
+        }
+        return {
+            editorUi: {
+                ...state.editorUi,
+                pieceLayout: layout,
+            },
+        };
+    },
+    togglePieceLayout: () => (state): NextState => (
+        editorInteractionActions.changePieceLayout({
+            layout: state.editorUi.pieceLayout === 'play' ? 'select' : 'play',
         })(state)
     ),
     changePaintTool: ({ tool, restorePalette = false }) => cancelSelectionPreviewAndSet((state) => {

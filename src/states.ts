@@ -61,6 +61,9 @@ export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
 export type PaletteSelection = Piece | 'comp';
 export type PieceQueueFocus = 'hold' | 'current' | 'next';
+// PIECE状態の右列レイアウト。'select'＝カレントミノ選択重視（パレット表示）、
+// 'play'＝テトリス操作重視（HOLD/NEXTキュー表示）
+export type PieceLayoutMode = 'play' | 'select';
 
 export interface SelectionRect {
     minX: number;
@@ -311,6 +314,7 @@ export interface State {
         previousPaletteSelection?: PaletteSelection;
         lastMino: Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S;
         infinitePieceQueue: boolean;
+        pieceLayout: PieceLayoutMode;
         bottomSlot: 'sentLine' | 'tray';
     };
     rectSelect: RectSelectState;
@@ -497,6 +501,7 @@ export const initState: Readonly<State> = {
         previousPaletteSelection: undefined,
         lastMino: Piece.T,
         infinitePieceQueue: false,
+        pieceLayout: 'select',
         bottomSlot: 'tray',
     },
     rectSelect: initialRectSelectState,

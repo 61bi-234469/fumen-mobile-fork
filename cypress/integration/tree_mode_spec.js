@@ -22,6 +22,14 @@ const buildWideTree = () => {
     }
 };
 
+const findTreeNodeIdByPageNumber = pageNumber => (
+    cy.get('[datatest^="tree-page-link-"]').then(($links) => {
+        const link = Array.from($links).find(element => element.textContent.trim() === `#${pageNumber}`);
+        expect(link, `tree node for page #${pageNumber}`).to.exist;
+        return link.getAttribute('datatest').replace('tree-page-link-', '');
+    })
+);
+
 const createTouchDispatcher = (win, target) => (type, point) => {
     const touch = new win.Touch({
         identifier: 987,
@@ -127,6 +135,51 @@ describe('Tree mode in list view', () => {
         // Deleting the last remaining page is rejected (button disabled)
         cy.get('[datatest^="btn-tree-node-delete-"]').first().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
+    });
+
+    it('preserves a promoted page field after node-only deletion and undo/redo', () => {
+        visit({
+            mode: 'edit',
+            fumen: 'v115@vhDAg0EAynTeERnWHAy4WNE2oaCADnHFnl',
+            lng: 'en',
+        });
+
+        enterTreeGraphView();
+        operations.tree.setScope('node');
+
+        let promotedNodeId;
+        let promotedThumbnail;
+        findTreeNodeIdByPageNumber(3).then((nodeId) => {
+            promotedNodeId = nodeId;
+            cy.get(datatest(`tree-node-${nodeId}`)).find('image')
+                .should('have.attr', 'href')
+                .then(href => {
+                    promotedThumbnail = href;
+                });
+        });
+
+        findTreeNodeIdByPageNumber(2).then((nodeId) => {
+            cy.get(datatest(`btn-tree-node-delete-${nodeId}`)).click({ force: true });
+        });
+        cy.then(() => {
+            cy.get(datatest(`tree-page-link-${promotedNodeId}`)).should('contain.text', '#2');
+            cy.get(datatest(`tree-node-${promotedNodeId}`)).find('image')
+                .should('have.attr', 'href', promotedThumbnail);
+        });
+
+        cy.get(datatest('btn-undo')).click();
+        cy.then(() => {
+            cy.get(datatest(`tree-page-link-${promotedNodeId}`)).should('contain.text', '#3');
+            cy.get(datatest(`tree-node-${promotedNodeId}`)).find('image')
+                .should('have.attr', 'href', promotedThumbnail);
+        });
+
+        cy.get(datatest('btn-redo')).click();
+        cy.then(() => {
+            cy.get(datatest(`tree-page-link-${promotedNodeId}`)).should('contain.text', '#2');
+            cy.get(datatest(`tree-node-${promotedNodeId}`)).find('image')
+                .should('have.attr', 'href', promotedThumbnail);
+        });
     });
 
     it('keeps the topmost lane delete buttons usable while the delete toast is shown', () => {

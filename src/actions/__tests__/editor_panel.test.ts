@@ -48,6 +48,9 @@ const createState = (override: any = {}) => ({
         tab: 'list',
         width: null,
     },
+    editorUi: {
+        pieceLayout: 'select',
+    },
     ...override,
 });
 
@@ -71,6 +74,7 @@ describe('editorPanelActions', () => {
                 editorSidePanel: true,
                 editorSidePanelTab: 'list',
                 editorSidePanelWidth: null,
+                pieceLayout: 'select',
                 coldClearTopBranchCount: 5,
                 coldClearHoldAllowed: true,
                 coldClearSpeculate: true,

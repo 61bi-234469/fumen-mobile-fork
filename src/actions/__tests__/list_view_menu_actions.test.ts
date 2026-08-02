@@ -117,6 +117,9 @@ const createState = (overrides: any = {}) => ({
         enabled: false,
         tab: 'list',
     },
+    editorUi: {
+        pieceLayout: 'select',
+    },
     mode: { gifFrameDelayMs: 100 },
     coldClear: {
         topBranchCount: 3,

@@ -38,7 +38,8 @@ const mino = (
     const maxY = Math.max(...ys);
     const pieceWidth = Math.max(...xs) - minX + 1;
     const pieceHeight = maxY - Math.min(...ys) + 1;
-    const blockSize = Math.max(4, Math.min(10,
+    // 枠が広い操作重視レイアウトではミノも大きく描く（上限16pxで4マス64px）
+    const blockSize = Math.max(4, Math.min(16,
         Math.floor((width - 10) / Math.max(4, pieceWidth)),
         Math.floor((height - 6) / pieceHeight)));
     const shapeWidth = pieceWidth * blockSize;

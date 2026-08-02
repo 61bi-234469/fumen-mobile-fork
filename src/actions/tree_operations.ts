@@ -832,8 +832,8 @@ const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState =>
 };
 
 // Tree operations may replace pages, change their order, or switch the editor to a
-// different page. Commit the editor's transient state first so COMP results, comments,
-// and selection previews cannot be lost or leak into the target page.
+// different page. Commit the editor's transient state first so selection previews, COMP
+// results, and comments cannot be lost or leak into the target page.
 const withSettledEditorPage = (operation: action) => (state: State): NextState => {
     // Full-screen List/Tree views have no editable field to settle. Keeping their
     // existing action path intact also preserves their tree-history semantics.
@@ -841,6 +841,7 @@ const withSettledEditorPage = (operation: action) => (state: State): NextState =
         return operation(state);
     }
     const settled = sequence(state, [
+        actions.commitRectSelection(),
         actions.removeUnsettledItems(),
         actions.commitCommentText(),
     ]);

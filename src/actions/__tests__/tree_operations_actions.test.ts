@@ -16,6 +16,7 @@ import { toPrimitivePage } from '../../history_task';
 
 jest.mock('../../actions', () => ({
     actions: {
+        commitRectSelection: jest.fn(() => () => undefined),
         removeUnsettledItems: jest.fn(() => () => undefined),
         commitCommentText: jest.fn(() => () => undefined),
         reopenCurrentPage: jest.fn(() => () => undefined),
@@ -448,6 +449,7 @@ const createTreeState = (
 }) as any;
 
 beforeEach(() => {
+    mockedActions.commitRectSelection.mockClear();
     mockedActions.removeUnsettledItems.mockClear();
     mockedActions.commitCommentText.mockClear();
     mockedActions.reopenCurrentPage.mockClear();
@@ -455,8 +457,13 @@ beforeEach(() => {
 
 describe('tree editor boundary', () => {
     const expectSettled = () => {
+        expect(mockedActions.commitRectSelection).toHaveBeenCalledTimes(1);
         expect(mockedActions.removeUnsettledItems).toHaveBeenCalledTimes(1);
         expect(mockedActions.commitCommentText).toHaveBeenCalledTimes(1);
+        expect(mockedActions.commitRectSelection.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.removeUnsettledItems.mock.invocationCallOrder[0]);
+        expect(mockedActions.removeUnsettledItems.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.commitCommentText.mock.invocationCallOrder[0]);
     };
 
     test('settles before tree navigation and reopens the selected page', () => {
@@ -475,6 +482,7 @@ describe('tree editor boundary', () => {
         treeOperationActions.addBranchFromCurrentNode()(addState);
         expectSettled();
 
+        mockedActions.commitRectSelection.mockClear();
         mockedActions.removeUnsettledItems.mockClear();
         mockedActions.commitCommentText.mockClear();
         const copyState = createBaseState();
@@ -482,6 +490,7 @@ describe('tree editor boundary', () => {
         treeOperationActions.copyTreeNode({ nodeId: findNodeByPageIndex(copyTree, 1)!.id })(copyState);
         expectSettled();
 
+        mockedActions.commitRectSelection.mockClear();
         mockedActions.removeUnsettledItems.mockClear();
         mockedActions.commitCommentText.mockClear();
         const deleteState = createBaseState();
@@ -489,6 +498,7 @@ describe('tree editor boundary', () => {
         treeOperationActions.removeTreeNode({ nodeId: findNodeByPageIndex(deleteTree, 1)!.id })(deleteState);
         expectSettled();
 
+        mockedActions.commitRectSelection.mockClear();
         mockedActions.removeUnsettledItems.mockClear();
         mockedActions.commitCommentText.mockClear();
         const dragState = createThreeChainState('node');

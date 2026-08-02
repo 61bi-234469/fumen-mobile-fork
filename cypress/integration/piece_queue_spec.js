@@ -99,7 +99,7 @@ describe('PIECE queues', () => {
         });
     });
 
-    it('keeps the queue contents across a layout round trip and remembers the layout', () => {
+    it('keeps the queue contents across a layout round trip', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-paint-mode')).click();
         cy.get(datatest('text-comment')).clear().type('#Q=[T](I)OLJ').blur();
@@ -116,7 +116,7 @@ describe('PIECE queues', () => {
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[T](I)OLJ');
 
-        // 表示設定は復元され、PlayセルはPAINTからも直接Playへ入る
+        // リロード後もINPUTセルはPAINTから直接操作重視へ入る
         cy.reload();
         cy.get(datatest('btn-piece-layout')).click();
         cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');

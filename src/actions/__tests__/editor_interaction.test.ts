@@ -104,7 +104,7 @@ describe('editorInteractionActions', () => {
         expect(repeated.editorUi.pieceLayout).toBe('select');
     });
 
-    test('skips the write when restoring the same layout from view settings', () => {
+    test('restores a saved layout without writing it again and uses it on the generic PIECE entry', () => {
         const state = createState();
 
         expect(editorInteractionActions.changePieceLayout({ layout: 'select' })(state)).toBeUndefined();
@@ -115,6 +115,10 @@ describe('editorInteractionActions', () => {
         }));
         expect(restored.editorUi.pieceLayout).toBe('play');
         expect(persistViewSettings).not.toHaveBeenCalled();
+
+        const entered = apply(restored, editorInteractionActions.togglePieceMode());
+        expect(entered.editorUi.primaryTool).toBe('piece');
+        expect(entered.editorUi.pieceLayout).toBe('play');
     });
 
     test('opens an inspector without changing the active tool or legacy touch mode', () => {

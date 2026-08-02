@@ -1,0 +1,2489 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIECE状態 レイアウト切替（選択重視／操作重視）実装設計書</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1f24;
+    --muted: #5b6672;
+    --line: #d8dee6;
+    --line-soft: #eceff3;
+    --accent: #1565c0;
+    --accent-soft: #e8f1fb;
+    --warn: #b26a00;
+    --warn-soft: #fff5e0;
+    --ok: #1b7f4b;
+    --ok-soft: #e6f5ec;
+    --code-bg: #f4f6f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --fg: #e7ebef;
+      --muted: #9aa6b2;
+      --line: #333b44;
+      --line-soft: #232a31;
+      --accent: #6fb2ff;
+      --accent-soft: #16283c;
+      --warn: #f0b45e;
+      --warn-soft: #33270f;
+      --ok: #6fd39b;
+      --ok-soft: #14301f;
+      --code-bg: #1b2027;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 96px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+    line-height: 1.75;
+    font-size: 15px;
+  }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 {
+    font-size: 26px; line-height: 1.4; margin: 0 0 8px;
+    border-bottom: 3px solid var(--accent); padding-bottom: 12px;
+  }
+  h2 {
+    font-size: 20px; margin: 48px 0 12px; padding-left: 12px;
+    border-left: 5px solid var(--accent);
+  }
+  h3 { font-size: 16px; margin: 28px 0 8px; color: var(--accent); }
+  h4 { font-size: 14px; margin: 18px 0 6px; }
+  p, li { margin: 6px 0; }
+  ul, ol { padding-left: 22px; }
+  code {
+    background: var(--code-bg); border-radius: 3px; padding: 1px 5px;
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 6px;
+    padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; }
+  .meta {
+    display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px;
+    background: var(--line-soft); border-radius: 8px; padding: 16px 20px; margin: 20px 0 8px;
+    font-size: 14px;
+  }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; }
+  .tablewrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--line-soft); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .note, .warn, .ok {
+    border-left: 4px solid var(--accent); background: var(--accent-soft);
+    padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0;
+  }
+  .warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .ok { border-left-color: var(--ok); background: var(--ok-soft); }
+  .mockups {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px; margin: 20px 0;
+  }
+  figure { margin: 0; }
+  figcaption {
+    font-size: 13px; color: var(--muted); margin-top: 8px; text-align: center;
+  }
+  figcaption strong { color: var(--fg); display: block; font-size: 14px; margin-bottom: 2px; }
+  svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 14px; border-radius: 2px; display: inline-block; border: 1px solid rgba(128,128,128,.5); }
+  .toc { background: var(--line-soft); border-radius: 8px; padding: 12px 20px; font-size: 14px; }
+  .toc ol { margin: 4px 0; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
+  .small { font-size: 13px; color: var(--muted); }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    padding: 1px 8px; border-radius: 999px; color: #fff; vertical-align: middle;
+  }
+  .tag.play { background: #1565c0; }
+  .tag.select { background: #6a1b9a; }
+  .tag.both { background: #455a64; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>PIECE状態 レイアウト切替<br>― 「カレントミノ選択重視」／「テトリス操作重視」の2レイアウトとインライントグル</h1>
+
+<dl class="meta">
+  <dt>作成日</dt><dd>2026-07-31</dd>
+  <dt>状態</dt><dd>第1版：実装済み ／ 第2版（<a href="#s9">§9</a> UI調整）：実装済み ／
+      第3版（<a href="#s10">§10</a> モード対等化・右列再整理）：実装済み ／
+      第4版（<a href="#s11">§11</a> モード4セルの配置調整）：<strong>実装済み</strong></dd>
+  <dt>対象ブランチ</dt><dd><code>develop</code></dd>
+  <dt>設計作成者</dt><dd>Claude Opus 5（第1・2・4版）／ GPT-5（第3版）</dd>
+  <dt>レビュー者</dt><dd>依頼者レビュー（第1〜3版）／ 未実施（第4版）</dd>
+  <dt>実装者</dt><dd>Claude Opus 5（第1・2・4版）／ GPT-5（第3版）</dd>
+  <dt>関連文書</dt><dd>
+    <a href="./2026_07_29_piece-ui-ceiling-alignment-and-single-column-rail.html">PIECEモード UI調整（天井合わせ・1列パレット）</a>（本設計の直接の前提）/
+    <a href="./2026_07_20_piece-mode-queue-layout.md">PIECEモード HOLD・NEXT視認性改善</a> /
+    <a href="./piece-ui-tidy-and-infinite-7bag.md">Pieceの整頓と∞7bag</a> /
+    <a href="./2026_07_22_mobile-piece-tray-input-parity.md">スマホPIECEトレイ入力のキー操作追従</a>
+  </dd>
+</dl>
+
+<div class="toc">
+  <ol>
+    <li><a href="#s1">目的</a></li>
+    <li><a href="#s2">対象範囲</a></li>
+    <li><a href="#s3">現状と変更後の差分（モックアップ・計算式・実測値）</a></li>
+    <li><a href="#s4">影響ファイルとデータフロー</a></li>
+    <li><a href="#s5">不変条件の確認</a></li>
+    <li><a href="#s6">テスト計画</a></li>
+    <li><a href="#s7">未確定事項・リスク</a></li>
+    <li><a href="#s8">進捗・結果・課題</a></li>
+    <li><a href="#s9">UI調整（第2版・2026-08-01 依頼者フィードバック）</a></li>
+    <li><a href="#s10">UI再調整（第3版・2026-08-02 モード対等化・右列再整理）</a></li>
+    <li><a href="#s11">UI再調整（第4版・2026-08-02 PIECE／PAINT／SELECTの縦並びとPLAY／AIの併置）</a></li>
+  </ol>
+</div>
+
+<div class="warn">
+<strong>第2版について。</strong>第1版の実装後、依頼者から右列の配置と名称に関する調整依頼があった。
+<a href="#s9">§9</a> がその設計で、<strong>§3-4（切替行の仕様）と§3-7（右列の構成）を上書きする</strong>。
+§1〜§2の目的・範囲、§3-5の寸法計算、§5の不変条件は第1版のまま有効。
+</div>
+
+<div class="warn">
+<strong>第3版について。</strong>第2版の実装確認後、PIECEとPlayが親子・往復トグルのように見えること、
+PIECE通常レイアウトとPlayレイアウトの右列に不揃いが残ることが指摘された。
+<a href="#s10">§10</a> が最新設計であり、<strong>§9-2〜§9-7の遷移・右列構成・テスト計画を上書きする</strong>。
+第1・2版の背景、キュー領域、状態の永続化方式、不変条件、実装結果の記録は引き続き有効。
+</div>
+
+<div class="warn">
+<strong>第4版について。</strong>第3版の実装確認後、PIECE・PAINT・SELECT・PLAY・AIの5セルについて
+配置と文言の調整依頼があった。<a href="#s11">§11</a> が最新設計であり、
+<strong>§10-3「右列の最終構成」の行順と、PIECE／Playセルの表示文言を上書きする</strong>。
+第3版で確定した「PIECEとPlayは対等な直接入口」という遷移仕様、選択状態の排他性、RESETアイコン、
+キュー領域の寸法計算は変更しない。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s1">1. 目的</h2>
+
+<p>
+依頼内容は次の4点。
+</p>
+
+<ol>
+  <li>ピース状態（<code>editorUi.primaryTool === 'piece'</code>）に、<strong>カレントミノ選択重視のUI</strong>と
+      <strong>テトリス操作重視のUI</strong>の切り替え機能を追加する。</li>
+  <li>選択重視ではNEXT／HOLDキューを表示しない。右列は<strong>PAINT状態・SELECT状態に近いボタン群</strong>にする。</li>
+  <li>操作重視では、添付画像（他テトリスライククライアント）と同じ比率のNEXT／HOLDキューとフィールドにする。</li>
+  <li>切り替えは<strong>ピース状態に表示されたトグル</strong>で行う。</li>
+</ol>
+
+<p>
+背景は「NEXT／HOLDキューが狭い」という体感で、これは現状の実装から数値で裏付けられる。
+現在のPIECE状態は<strong>1つの右列にNEXT枠・∞7bag・レール（モード2行＋パレット10行）を全部積む</strong>設計のため、
+キューの幅も高さもレールに従属している。
+</p>
+
+<div class="tablewrap">
+<table>
+  <caption class="small" style="text-align:left; margin-bottom:6px;">現状PIECE状態の実測値（コードの計算式から算出。単位px）</caption>
+  <thead>
+    <tr><th>viewport</th><th class="num">フィールド幅</th><th class="num">HOLD／NEXT列幅</th>
+        <th class="num">列幅／盤面幅</th><th class="num">NEXTミノ1個の高さ</th><th>レール</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>674×802（PC）</td><td class="num">285.4</td><td class="num">80.0</td><td class="num">0.28</td><td class="num">26</td><td>1列12行</td></tr>
+    <tr><td>1920×1080（PC）</td><td class="num">401.3</td><td class="num">80.0</td><td class="num">0.20</td><td class="num">38</td><td>1列12行</td></tr>
+    <tr><td>375×667（モバイル）</td><td class="num">207.2</td><td class="num">72.0</td><td class="num">0.35</td><td class="num">38</td><td>2列7行</td></tr>
+    <tr><td>844×390（横持ち）</td><td class="num">131.7</td><td class="num">80.0</td><td class="num">0.61</td><td class="num">16</td><td>2列7行（33px延長）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+添付画像3点のキュー枠幅／盤面幅はいずれも <strong>0.31〜0.37</strong>、NEXTのミノ1個の高さは
+<strong>盤面2マス前後（40〜60px相当）</strong>である。<br>
+つまり狭さの正体は主に次の2つで、どちらも「1列にパレットを同居させている」ことが原因である。
+</p>
+
+<ul>
+  <li><strong>幅</strong>：<code>getPieceSideWidth()</code> の上限が80pxで固定されている。PC・デスクトップでは盤面が高さ律速のため
+      左右に180px以上の余白が残っているのに、キューは80pxで頭打ちになる（1920幅で比率0.20）。</li>
+  <li><strong>高さ</strong>：右列の縦方向予算をパレット10行＋モード2行が食う（PCで32px×12行＝384px）。
+      残りをNEXT5個で割るため、PCではミノ1個26pxまで潰れる。</li>
+</ul>
+
+<p>
+一方で「カレントミノを選んで置く」使い方（＝現在のパレット主体の操作）では、NEXT／HOLDはそもそも不要である。
+そこで<strong>2つの用途を1画面に同居させるのをやめ、レイアウトを切り替える</strong>のが本設計の方針である。
+パレット10行とキューは、同じ縦方向予算を奪い合う関係にあるため、排他にすると双方が広くなる。
+</p>
+
+<!-- ============================================================ -->
+<h2 id="s2">2. 対象範囲</h2>
+
+<h3>対象</h3>
+<ul>
+  <li>PIECE状態のレイアウトモード <code>editorUi.pieceLayout: 'play' | 'select'</code> の新設と、その永続化（view-settings）。</li>
+  <li>PIECE状態の右列最上部に置く<strong>レイアウト切替トグル</strong>（<code>btn-piece-layout</code>）と、
+      キュー編集モーダルの入口ボタン（<code>btn-piece-queue</code>）の追加。</li>
+  <li>操作重視レイアウト：HOLD／NEXT列幅を盤面マス基準で再計算、NEXTミノ高の上限引き上げ、
+      右列からミノパレット7セルを撤去（削除／リスポーン／盤面リセットの3セルは1行に残す）。</li>
+  <li>選択重視レイアウト：HOLD列・NEXT枠・∞7bagトグルを非表示にし、右列をPAINT／SELECTと同構成
+      （インポート／エクスポート、ページ操作、UTILS／FLAGS、AI／PIECE、SELECT／PAINT、パレット）へ戻す。
+      ∞7bagは既存の <code>comp</code> セル（PIECE時は「∞」表示）で扱う。</li>
+  <li><code>src/views/editor/responsive_layout.ts</code> のPIECE系レイアウト計算の再定義。</li>
+  <li>上記に対応するJest・Cypress・<code>cypress/support/operations.js</code> の更新。</li>
+  <li>日本語／英語の新規文言追加。</li>
+</ul>
+
+<h3>対象外</h3>
+<ul>
+  <li>HOLD／CURRENT／NEXTの<strong>意味・<code>#Q=</code>構文・∞7bagの生成規則・Cold Clear探索</strong>。表示の有無と寸法のみを変える。</li>
+  <li>PIECE操作トレイのボタン構成・入力処理（DAS／ARR／SDF、<code>piece_shortcut.ts</code>）。
+      トレイは両レイアウトで現行のまま。</li>
+  <li>PAINT／SELECT／Slide／Comment各モードのレール構成・パレット順序・ボタン機能。これらは「揃える基準」であり動かさない。</li>
+  <li>キーボードショートカットへのレイアウト切替の割り当て（<code>editShortcuts</code> / <code>pieceShortcuts</code> への追加）。</li>
+  <li>ユーザー設定モーダルへの露出。切替はインライントグルのみとする。</li>
+  <li>サイドパネル、リスト／ツリー画面、下部ツールバー、ナビゲータ、各モーダルの内部。</li>
+  <li>ユーザーマニュアルとスクリーンショットの更新、リリース、コミット、push。</li>
+</ul>
+
+<h3>前提</h3>
+<ul>
+  <li>「20段目の天井」＝プレイフィールド20段の上端。<code>src/components/field.tsx</code> が
+      <code>yIndex &lt; 20</code> を黒、それ以上を灰で描くため、盤面の黒／灰の境界がそのまま天井である。
+      キュー上端をここへ揃える方針は
+      <a href="./2026_07_29_piece-ui-ceiling-alignment-and-single-column-rail.html">2026-07-29の設計</a>で確定済みであり、本設計でも維持する。</li>
+  <li>PIECE状態はコメント欄を非表示にしつつ<strong>高さは予約する</strong>（<code>reserveCommentHeight</code>）。
+      これによりPAINT／SELECTと盤面サイズが一致する。本設計の選択重視レイアウトはこの一致を維持し、
+      操作重視レイアウトのみ横方向の取り分が変わる。</li>
+  <li>本文中の数値はすべてCSS pixel。PCは <code>Platforms.PC</code>（ナビゲータ30px）、
+      モバイルはナビゲータ0pxで計算している。</li>
+  <li>キュー編集モーダル（<code>mdl-piece-queue</code>）の唯一の入口は現在HOLD枠／NEXT枠のタップである
+      （<code>openPieceQueueModal</code> の呼び出し元は <code>src/views/editor/editor.ts:291</code> のみ）。
+      キューを消す選択重視レイアウトでは代替の入口が必須である。</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="s3">3. 現状と変更後の差分</h2>
+
+<h3>3-1. 2レイアウトの定義</h3>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th></th><th>操作重視 <span class="tag play">play</span></th><th>選択重視 <span class="tag select">select</span></th></tr>
+  </thead>
+  <tbody>
+    <tr><td>想定用途</td><td>NEXT／HOLDを見ながらキーボード・トレイで積む</td><td>ミノを選んで盤面に置く／消す（現行PAINT的な編集）</td></tr>
+    <tr><td>HOLD列（盤面左）</td><td>あり（天井合わせ）</td><td>なし</td></tr>
+    <tr><td>NEXT枠</td><td>あり（天井合わせ・5個）</td><td>なし</td></tr>
+    <tr><td>∞7bagトグル</td><td>NEXT直下（現行どおり <code>piece-queue-infinite</code>）</td><td>パレットの <code>comp</code> セル（「∞」表示・既存実装）</td></tr>
+    <tr><td>ミノパレット7セル</td><td><strong>なし</strong>（カレントミノはキュー／ショートカットで決める）</td><td>あり（PAINT／SELECTと同じ並び）</td></tr>
+    <tr><td>削除／リスポーン／盤面リセット</td><td>最下部に3セル1行</td><td>パレット末尾に各1行</td></tr>
+    <tr><td>インポート／エクスポート・ページ操作・UTILS／FLAGS</td><td>なし（現行PIECEと同じ）</td><td>あり（PAINT／SELECTと同じ）</td></tr>
+    <tr><td>PIECE／AI・SELECT／PAINT</td><td>あり（2行）</td><td>あり（2行）</td></tr>
+    <tr><td>盤面サイズ</td><td>横方向にキュー2列分を確保するぶん、幅律速の画面では小さくなる</td><td>PAINT／SELECTと完全一致</td></tr>
+    <tr><td>初期値</td><td>—</td><td><strong>こちらが初期レイアウト</strong>（依頼者確認済み）</td></tr>
+    <tr><td>PIECE操作トレイ</td><td colspan="2">両レイアウトとも現行のまま（盤面下部のせり上がり枠に重畳、PC最大80px）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+<strong>操作重視でミノパレットを外す理由。</strong>
+添付画像のクライアントはいずれもパレットを持たない。操作重視でカレントミノを決める手段は
+「キューを消費する」「HOLDする」「キュー編集モーダルで直接指定する」の3つで足り、
+7セル分（PCで224px）を丸ごとNEXTへ回せる。削除・リスポーン・盤面リセットは編集操作の非常口として3セル1行だけ残す。
+なお <code>paletteShortcuts</code> によるキーボードからのミノ選択は<strong>両レイアウトで有効のまま</strong>で、
+セルが見えないだけである（<a href="#s7">§7</a>に代替案を記載）。
+</div>
+
+<h3>3-2. 画面モックアップ（674×802 / PC）</h3>
+
+<p class="small">
+現状は実測値、変更後は<a href="#s3-4">3-4の計算式</a>による計算値をそのままCSS pixelで描画したもの。
+破線＝20段目の天井（黒／灰の境界）。<span style="color:#c62828">赤破線</span>＝無駄になっている余白。
+</p>
+
+<div class="legend">
+  <span><i style="background:#000"></i>プレイフィールド20段</span>
+  <span><i style="background:#333"></i>天井上（21〜23.5段）</span>
+  <span><i style="background:#fafafa"></i>キュー枠／レールセル</span>
+  <span><i style="background:#e8f1fb"></i>新規要素（トグル・キュー入口）</span>
+  <span><i style="background:#fce4ec"></i>ナビゲータ</span>
+  <span><i style="background:#f44336"></i>下部ツールバー</span>
+</div>
+
+<div class="mockups">
+
+<figure>
+<svg viewBox="0 0 674 802" width="320" role="img" aria-label="現状のPIECE状態">
+  <rect x="0" y="0" width="674" height="802" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="0" y="0" width="674" height="30" fill="#fce4ec"/>
+  <text x="337" y="21" font-size="13" fill="#c2185b" text-anchor="middle" font-family="sans-serif">サイドパネルを表示</text>
+
+  <!-- field 192.29..477.71 / 37.11..709.89 -->
+  <rect x="192" y="37" width="285" height="72" fill="#333333"/>
+  <rect x="192" y="109" width="285" height="601" fill="#000000"/>
+  <g stroke="#3a3a3a" stroke-width="1">
+    <path d="M221 37V710M249 37V710M278 37V710M306 37V710M335 37V710M363 37V710M392 37V710M420 37V710M449 37V710"/>
+  </g>
+  <path d="M192 109H477" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <!-- hold 106.29..186.29 -->
+  <rect x="106" y="109" width="80" height="46" fill="#fafafa" stroke="#333"/>
+  <rect x="106" y="109" width="80" height="20" fill="#333"/>
+  <text x="146" y="123" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">HOLD</text>
+  <text x="146" y="147" font-size="12" fill="#bdbdbd" text-anchor="middle" font-family="sans-serif">—</text>
+
+  <!-- next 487.71..567.71, 26 + 5*26 -->
+  <rect x="488" y="109" width="80" height="156" fill="#fafafa" stroke="#333"/>
+  <rect x="488" y="109" width="80" height="20" fill="#333"/>
+  <text x="528" y="123" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">NEXT</text>
+  <g stroke="#e0e0e0"><path d="M488 155H568M488 181H568M488 207H568M488 233H568"/></g>
+  <g fill="#26c6da"><rect x="509" y="137" width="38" height="9"/></g>
+  <g fill="#ffb300"><rect x="513" y="164" width="29" height="10"/></g>
+  <g fill="#ffee58"><rect x="518" y="188" width="19" height="19"/></g>
+  <g fill="#ef5350"><rect x="513" y="216" width="29" height="10"/></g>
+  <g fill="#ab47bc"><rect x="513" y="242" width="29" height="10"/></g>
+  <text x="596" y="195" font-size="12" fill="#c62828" font-family="sans-serif">26px</text>
+
+  <rect x="488" y="265" width="80" height="32" fill="none" stroke="#bbb" stroke-dasharray="3 2"/>
+  <text x="528" y="286" font-size="10" fill="#555" text-anchor="middle" font-family="sans-serif">∞ 7bag</text>
+
+  <!-- rail 12 rows bottom aligned -->
+  <g stroke="#333" fill="#fafafa">
+    <rect x="488" y="308" width="39" height="32"/><rect x="529" y="308" width="39" height="32"/>
+    <rect x="488" y="348" width="39" height="32"/><rect x="529" y="348" width="39" height="32"/>
+  </g>
+  <text x="507" y="329" font-size="9" text-anchor="middle" font-family="sans-serif">P</text>
+  <text x="548" y="329" font-size="9" text-anchor="middle" font-family="sans-serif">AI</text>
+  <text x="507" y="369" font-size="9" text-anchor="middle" font-family="sans-serif">SEL</text>
+  <text x="548" y="369" font-size="9" text-anchor="middle" font-family="sans-serif">PNT</text>
+  <g stroke="#333" fill="#fafafa">
+    <rect x="488" y="388" width="80" height="32"/><rect x="488" y="420" width="80" height="32"/>
+    <rect x="488" y="452" width="80" height="32"/><rect x="488" y="484" width="80" height="32"/>
+    <rect x="488" y="516" width="80" height="32"/><rect x="488" y="548" width="80" height="32"/>
+    <rect x="488" y="580" width="80" height="32"/><rect x="488" y="612" width="80" height="32"/>
+    <rect x="488" y="644" width="80" height="32"/><rect x="488" y="676" width="80" height="32"/>
+  </g>
+  <text x="528" y="536" font-size="11" fill="#555" text-anchor="middle" font-family="sans-serif">パレット10行</text>
+
+  <!-- tray -->
+  <rect x="192" y="680" width="285" height="71" fill="#ffffff" stroke="#333"/>
+  <text x="335" y="720" font-size="11" fill="#333" text-anchor="middle" font-family="sans-serif">PIECE操作トレイ 71px</text>
+
+  <!-- unused margins -->
+  <rect x="8" y="120" width="90" height="560" fill="none" stroke="#e57373" stroke-dasharray="5 4"/>
+  <text x="53" y="400" font-size="11" fill="#c62828" text-anchor="middle" font-family="sans-serif">余白 98px</text>
+  <rect x="576" y="120" width="90" height="560" fill="none" stroke="#e57373" stroke-dasharray="5 4"/>
+  <text x="621" y="400" font-size="11" fill="#c62828" text-anchor="middle" font-family="sans-serif">余白 98px</text>
+
+  <rect x="0" y="717" width="674" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <text x="337" y="740" font-size="11" fill="#999" text-anchor="middle" font-family="sans-serif">コメント欄（非表示・高さ予約 35px）</text>
+  <rect x="0" y="752" width="674" height="50" fill="#f44336"/>
+  <text x="337" y="783" font-size="13" fill="#fff" text-anchor="middle" font-family="sans-serif">1 / 1</text>
+</svg>
+<figcaption><strong>現状</strong>盤面285.4 ／ キュー80（比0.28）／ NEXTミノ26px<br>左右に98pxずつ余らせたままキューが頭打ち</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 674 802" width="320" role="img" aria-label="変更後・操作重視レイアウト">
+  <rect x="0" y="0" width="674" height="802" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="0" y="0" width="674" height="30" fill="#fce4ec"/>
+  <text x="337" y="21" font-size="13" fill="#c2185b" text-anchor="middle" font-family="sans-serif">サイドパネルを表示</text>
+
+  <!-- field unchanged: 192.29..477.71 -->
+  <rect x="192" y="37" width="285" height="72" fill="#333333"/>
+  <rect x="192" y="109" width="285" height="601" fill="#000000"/>
+  <g stroke="#3a3a3a" stroke-width="1">
+    <path d="M221 37V710M249 37V710M278 37V710M306 37V710M335 37V710M363 37V710M392 37V710M420 37V710M449 37V710"/>
+  </g>
+  <path d="M192 109H477" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <!-- hold 89.29..186.29 (97) -->
+  <rect x="89" y="109" width="97" height="100" fill="#fafafa" stroke="#333"/>
+  <rect x="89" y="109" width="97" height="20" fill="#333"/>
+  <text x="137" y="123" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">HOLD</text>
+  <g fill="#ab47bc"><rect x="113" y="152" width="48" height="16"/><rect x="129" y="136" width="16" height="16"/></g>
+
+  <!-- toggle row above ceiling -->
+  <rect x="488" y="79" width="48" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <rect x="536" y="79" width="49" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="512" y="97" font-size="9" fill="#1565c0" text-anchor="middle" font-family="sans-serif">切替</text>
+  <text x="560" y="97" font-size="9" fill="#1565c0" text-anchor="middle" font-family="sans-serif">キュー</text>
+
+  <!-- next 487.71..584.71 : 26 + 5*80 -->
+  <rect x="488" y="109" width="97" height="426" fill="#fafafa" stroke="#333"/>
+  <rect x="488" y="109" width="97" height="20" fill="#333"/>
+  <text x="536" y="123" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">NEXT</text>
+  <g stroke="#e0e0e0"><path d="M488 209H585M488 289H585M488 369H585M488 449H585"/></g>
+  <g fill="#26c6da"><rect x="504" y="162" width="64" height="16"/></g>
+  <g fill="#ffb300"><rect x="512" y="241" width="48" height="16"/><rect x="544" y="225" width="16" height="16"/></g>
+  <g fill="#ffee58"><rect x="520" y="313" width="32" height="32"/></g>
+  <g fill="#ef5350"><rect x="512" y="401" width="48" height="16"/><rect x="528" y="385" width="48" height="16"/></g>
+  <g fill="#66bb6a"><rect x="512" y="481" width="48" height="16"/><rect x="528" y="465" width="32" height="16"/></g>
+  <text x="612" y="325" font-size="12" fill="#1b7f4b" font-family="sans-serif">80px</text>
+
+  <rect x="488" y="535" width="97" height="32" fill="none" stroke="#bbb" stroke-dasharray="3 2"/>
+  <text x="536" y="556" font-size="10" fill="#555" text-anchor="middle" font-family="sans-serif">∞ 7bag</text>
+
+  <!-- bottom aligned control rows -->
+  <g stroke="#333" fill="#fafafa">
+    <rect x="488" y="596" width="48" height="32"/><rect x="537" y="596" width="48" height="32"/>
+    <rect x="488" y="636" width="48" height="32"/><rect x="537" y="636" width="48" height="32"/>
+    <rect x="488" y="676" width="32" height="32"/><rect x="521" y="676" width="32" height="32"/><rect x="554" y="676" width="31" height="32"/>
+  </g>
+  <text x="512" y="617" font-size="9" text-anchor="middle" font-family="sans-serif">P</text>
+  <text x="561" y="617" font-size="9" text-anchor="middle" font-family="sans-serif">AI</text>
+  <text x="512" y="657" font-size="9" text-anchor="middle" font-family="sans-serif">SEL</text>
+  <text x="561" y="657" font-size="9" text-anchor="middle" font-family="sans-serif">PNT</text>
+  <text x="504" y="697" font-size="8" text-anchor="middle" font-family="sans-serif">DEL</text>
+  <text x="537" y="697" font-size="8" text-anchor="middle" font-family="sans-serif">RSP</text>
+  <text x="570" y="697" font-size="8" text-anchor="middle" font-family="sans-serif">RST</text>
+
+  <rect x="192" y="680" width="285" height="71" fill="#ffffff" stroke="#333"/>
+  <text x="335" y="720" font-size="11" fill="#333" text-anchor="middle" font-family="sans-serif">PIECE操作トレイ 71px</text>
+
+  <rect x="0" y="717" width="674" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <text x="337" y="740" font-size="11" fill="#999" text-anchor="middle" font-family="sans-serif">コメント欄（非表示・高さ予約 35px）</text>
+  <rect x="0" y="752" width="674" height="50" fill="#f44336"/>
+  <text x="337" y="783" font-size="13" fill="#fff" text-anchor="middle" font-family="sans-serif">1 / 1</text>
+</svg>
+<figcaption><strong>変更後：操作重視</strong>盤面285.4（不変）／ キュー97（比0.34）／ NEXTミノ80px<br>盤面を1pxも削らずキュー幅+21%・ミノ高3.1倍</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 674 802" width="320" role="img" aria-label="変更後・選択重視レイアウト">
+  <rect x="0" y="0" width="674" height="802" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="0" y="0" width="674" height="30" fill="#fce4ec"/>
+  <text x="337" y="21" font-size="13" fill="#c2185b" text-anchor="middle" font-family="sans-serif">サイドパネルを表示</text>
+
+  <!-- field 150.29..435.71 -->
+  <rect x="150" y="37" width="285" height="72" fill="#333333"/>
+  <rect x="150" y="109" width="285" height="601" fill="#000000"/>
+  <g stroke="#3a3a3a" stroke-width="1">
+    <path d="M179 37V710M207 37V710M236 37V710M264 37V710M293 37V710M321 37V710M350 37V710M378 37V710M407 37V710"/>
+  </g>
+  <path d="M150 109H435" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+  <!-- rail 443.71..523.71, 20 rows of 31 -->
+  <rect x="444" y="37" width="40" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <rect x="484" y="37" width="40" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="464" y="55" font-size="9" fill="#1565c0" text-anchor="middle" font-family="sans-serif">切替</text>
+  <text x="504" y="55" font-size="9" fill="#1565c0" text-anchor="middle" font-family="sans-serif">キュー</text>
+
+  <g stroke="#333" fill="#fafafa">
+    <rect x="444" y="69" width="40" height="31"/><rect x="484" y="69" width="40" height="31"/>
+    <rect x="444" y="106" width="80" height="31"/><rect x="444" y="137" width="80" height="31"/>
+    <rect x="444" y="168" width="80" height="31"/><rect x="444" y="199" width="80" height="31"/>
+    <rect x="444" y="236" width="40" height="31"/><rect x="484" y="236" width="40" height="31"/>
+    <rect x="444" y="273" width="40" height="31"/><rect x="484" y="273" width="40" height="31"/>
+    <rect x="444" y="310" width="40" height="31"/><rect x="484" y="310" width="40" height="31"/>
+  </g>
+  <text x="464" y="89" font-size="8" text-anchor="middle" font-family="sans-serif">IMP</text>
+  <text x="504" y="89" font-size="8" text-anchor="middle" font-family="sans-serif">EXP</text>
+  <text x="484" y="126" font-size="9" text-anchor="middle" font-family="sans-serif">ADD</text>
+  <text x="484" y="157" font-size="9" text-anchor="middle" font-family="sans-serif">INSERT</text>
+  <text x="484" y="188" font-size="9" text-anchor="middle" font-family="sans-serif">COPY</text>
+  <text x="484" y="219" font-size="9" text-anchor="middle" font-family="sans-serif">CUT</text>
+  <text x="464" y="256" font-size="8" text-anchor="middle" font-family="sans-serif">U</text>
+  <text x="504" y="256" font-size="8" text-anchor="middle" font-family="sans-serif">F</text>
+  <text x="464" y="293" font-size="8" text-anchor="middle" font-family="sans-serif">P</text>
+  <text x="504" y="293" font-size="8" text-anchor="middle" font-family="sans-serif">AI</text>
+  <text x="464" y="330" font-size="8" text-anchor="middle" font-family="sans-serif">SEL</text>
+  <text x="504" y="330" font-size="8" text-anchor="middle" font-family="sans-serif">PNT</text>
+
+  <g stroke="#333" fill="#fafafa">
+    <rect x="444" y="369" width="80" height="31"/><rect x="444" y="400" width="80" height="31"/>
+    <rect x="444" y="431" width="80" height="31"/><rect x="444" y="462" width="80" height="31"/>
+    <rect x="444" y="493" width="80" height="31"/><rect x="444" y="524" width="80" height="31"/>
+    <rect x="444" y="555" width="80" height="31"/><rect x="444" y="586" width="80" height="31"/>
+    <rect x="444" y="617" width="80" height="31"/><rect x="444" y="648" width="80" height="31"/>
+    <rect x="444" y="679" width="80" height="31"/>
+  </g>
+  <text x="484" y="500" font-size="11" fill="#555" text-anchor="middle" font-family="sans-serif">パレット11行</text>
+  <text x="484" y="700" font-size="9" text-anchor="middle" font-family="sans-serif">RESET</text>
+
+  <rect x="150" y="680" width="285" height="71" fill="#ffffff" stroke="#333"/>
+  <text x="292" y="720" font-size="11" fill="#333" text-anchor="middle" font-family="sans-serif">PIECE操作トレイ 71px</text>
+
+  <rect x="0" y="717" width="674" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <text x="337" y="740" font-size="11" fill="#999" text-anchor="middle" font-family="sans-serif">コメント欄（非表示・高さ予約 35px）</text>
+  <rect x="0" y="752" width="674" height="50" fill="#f44336"/>
+  <text x="337" y="783" font-size="13" fill="#fff" text-anchor="middle" font-family="sans-serif">1 / 1</text>
+</svg>
+<figcaption><strong>変更後：選択重視</strong>盤面285.4（PAINT／SELECTと完全一致）／ キューなし<br>右列はPAINT／SELECTと同じボタン群＋トグル行</figcaption>
+</figure>
+
+</div>
+
+<h3>3-3. 画面モックアップ（375×667 / モバイル縦）</h3>
+
+<p class="small">
+モバイル縦では現状も比率0.35で、添付画像に近い。操作重視レイアウトの主効果は
+<strong>NEXTミノ高 38px → 53px</strong>と<strong>右レールの2列→1列化</strong>である（パレット撤去により2列フォールバックが不要になる）。
+</p>
+
+<div class="mockups">
+
+<figure>
+<svg viewBox="0 0 375 667" width="230" role="img" aria-label="現状のPIECE状態（モバイル）">
+  <rect x="0" y="0" width="375" height="667" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="81" y="47" width="207" height="52" fill="#333333"/>
+  <rect x="81" y="99" width="207" height="437" fill="#000000"/>
+  <path d="M81 99H288" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <rect x="5" y="99" width="72" height="46" fill="#fafafa" stroke="#333"/>
+  <rect x="5" y="99" width="72" height="20" fill="#333"/>
+  <text x="41" y="113" font-size="9" fill="#fff" text-anchor="middle" font-family="sans-serif">HOLD</text>
+  <rect x="298" y="99" width="72" height="216" fill="#fafafa" stroke="#333"/>
+  <rect x="298" y="99" width="72" height="20" fill="#333"/>
+  <text x="334" y="113" font-size="9" fill="#fff" text-anchor="middle" font-family="sans-serif">NEXT</text>
+  <g stroke="#e0e0e0"><path d="M298 157H370M298 195H370M298 233H370M298 271H370"/></g>
+  <text x="334" y="200" font-size="10" fill="#c62828" text-anchor="middle" font-family="sans-serif">38px</text>
+  <rect x="298" y="315" width="72" height="32" fill="none" stroke="#bbb" stroke-dasharray="3 2"/>
+  <text x="334" y="336" font-size="9" fill="#555" text-anchor="middle" font-family="sans-serif">∞ 7bag</text>
+  <g stroke="#333" fill="#fafafa">
+    <rect x="298" y="360" width="35" height="23"/><rect x="335" y="360" width="35" height="23"/>
+    <rect x="298" y="385" width="35" height="23"/><rect x="335" y="385" width="35" height="23"/>
+    <rect x="298" y="412" width="35" height="23"/><rect x="335" y="412" width="35" height="23"/>
+    <rect x="298" y="437" width="35" height="23"/><rect x="335" y="437" width="35" height="23"/>
+    <rect x="298" y="462" width="35" height="23"/><rect x="335" y="462" width="35" height="23"/>
+    <rect x="298" y="487" width="35" height="23"/><rect x="335" y="487" width="35" height="23"/>
+    <rect x="298" y="512" width="35" height="23"/><rect x="335" y="512" width="35" height="23"/>
+  </g>
+  <text x="334" y="455" font-size="9" fill="#555" text-anchor="middle" font-family="sans-serif">2列</text>
+  <rect x="81" y="514" width="207" height="80" fill="#ffffff" stroke="#333"/>
+  <text x="184" y="558" font-size="10" fill="#333" text-anchor="middle" font-family="sans-serif">トレイ 80px</text>
+  <rect x="0" y="582" width="375" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <rect x="0" y="617" width="375" height="50" fill="#f44336"/>
+</svg>
+<figcaption><strong>現状</strong>盤面207.2／キュー72（比0.35）／ミノ38px／レール2列7行</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 375 667" width="230" role="img" aria-label="変更後・操作重視（モバイル）">
+  <rect x="0" y="0" width="375" height="667" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="80" y="44" width="209" height="53" fill="#333333"/>
+  <rect x="80" y="97" width="209" height="441" fill="#000000"/>
+  <path d="M80 97H289" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <rect x="5" y="97" width="71" height="73" fill="#fafafa" stroke="#333"/>
+  <rect x="5" y="97" width="71" height="20" fill="#333"/>
+  <text x="40" y="111" font-size="9" fill="#fff" text-anchor="middle" font-family="sans-serif">HOLD</text>
+  <rect x="299" y="67" width="35" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <rect x="335" y="67" width="35" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="317" y="84" font-size="8" fill="#1565c0" text-anchor="middle" font-family="sans-serif">切替</text>
+  <text x="353" y="84" font-size="8" fill="#1565c0" text-anchor="middle" font-family="sans-serif">Q</text>
+  <rect x="299" y="97" width="71" height="291" fill="#fafafa" stroke="#333"/>
+  <rect x="299" y="97" width="71" height="20" fill="#333"/>
+  <text x="334" y="111" font-size="9" fill="#fff" text-anchor="middle" font-family="sans-serif">NEXT</text>
+  <g stroke="#e0e0e0"><path d="M299 170H370M299 223H370M299 276H370M299 329H370"/></g>
+  <text x="334" y="250" font-size="10" fill="#1b7f4b" text-anchor="middle" font-family="sans-serif">53px</text>
+  <rect x="299" y="388" width="71" height="32" fill="none" stroke="#bbb" stroke-dasharray="3 2"/>
+  <text x="334" y="409" font-size="9" fill="#555" text-anchor="middle" font-family="sans-serif">∞ 7bag</text>
+  <g stroke="#333" fill="#fafafa">
+    <rect x="299" y="459" width="35" height="23"/><rect x="335" y="459" width="35" height="23"/>
+    <rect x="299" y="486" width="35" height="23"/><rect x="335" y="486" width="35" height="23"/>
+    <rect x="299" y="513" width="23" height="23"/><rect x="323" y="513" width="23" height="23"/><rect x="347" y="513" width="23" height="23"/>
+  </g>
+  <rect x="80" y="516" width="209" height="80" fill="#ffffff" stroke="#333"/>
+  <text x="184" y="560" font-size="10" fill="#333" text-anchor="middle" font-family="sans-serif">トレイ 80px</text>
+  <rect x="0" y="582" width="375" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <rect x="0" y="617" width="375" height="50" fill="#f44336"/>
+</svg>
+<figcaption><strong>操作重視</strong>盤面209.4／キュー71（比0.34）／ミノ53px／レール1列3行</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 375 667" width="230" role="img" aria-label="変更後・選択重視（モバイル）">
+  <rect x="0" y="0" width="375" height="667" fill="#ffffff" stroke="#9aa6b2"/>
+  <rect x="23" y="6" width="242" height="60" fill="#333333"/>
+  <rect x="23" y="66" width="242" height="510" fill="#000000"/>
+  <path d="M23 66H265" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <rect x="272" y="6" width="40" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <rect x="312" y="6" width="40" height="26" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="292" y="24" font-size="8" fill="#1565c0" text-anchor="middle" font-family="sans-serif">切替</text>
+  <text x="332" y="24" font-size="8" fill="#1565c0" text-anchor="middle" font-family="sans-serif">キュー</text>
+  <g stroke="#333" fill="#fafafa">
+    <rect x="272" y="38" width="40" height="26"/><rect x="312" y="38" width="40" height="26"/>
+    <rect x="272" y="70" width="80" height="26"/><rect x="272" y="96" width="80" height="26"/>
+    <rect x="272" y="122" width="80" height="26"/><rect x="272" y="148" width="80" height="26"/>
+    <rect x="272" y="180" width="40" height="26"/><rect x="312" y="180" width="40" height="26"/>
+    <rect x="272" y="212" width="40" height="26"/><rect x="312" y="212" width="40" height="26"/>
+    <rect x="272" y="244" width="40" height="26"/><rect x="312" y="244" width="40" height="26"/>
+  </g>
+  <g stroke="#333" fill="#fafafa">
+    <rect x="272" y="290" width="80" height="26"/><rect x="272" y="316" width="80" height="26"/>
+    <rect x="272" y="342" width="80" height="26"/><rect x="272" y="368" width="80" height="26"/>
+    <rect x="272" y="394" width="80" height="26"/><rect x="272" y="420" width="80" height="26"/>
+    <rect x="272" y="446" width="80" height="26"/><rect x="272" y="472" width="80" height="26"/>
+    <rect x="272" y="498" width="80" height="26"/><rect x="272" y="524" width="80" height="26"/>
+    <rect x="272" y="550" width="80" height="26"/>
+  </g>
+  <text x="312" y="420" font-size="9" fill="#555" text-anchor="middle" font-family="sans-serif">パレット11行</text>
+  <rect x="23" y="551" width="242" height="65" fill="#ffffff" stroke="#333"/>
+  <text x="144" y="588" font-size="10" fill="#333" text-anchor="middle" font-family="sans-serif">トレイ 65px</text>
+  <rect x="0" y="582" width="375" height="35" fill="#f7f7f7" stroke="#e0e0e0"/>
+  <rect x="0" y="617" width="375" height="50" fill="#f44336"/>
+</svg>
+<figcaption><strong>選択重視</strong>盤面241.7（PAINT／SELECTと一致・操作重視より15%広い）</figcaption>
+</figure>
+
+</div>
+
+<h3>3-4. トグルとキュー入口の仕様<span class="tag both" style="margin-left:8px">第2版で改訂</span></h3>
+
+<p class="small">以下は第1版の仕様。切替行の2セル構成とキュー入口ボタンは
+<a href="#s9">§9</a> で廃止される。</p>
+
+<p>
+右列の最上部に<strong>2セル1行</strong>を新設し、両レイアウトで同じ位置に置く。
+操作重視ではこの行は「天井より上」の余白（PCで72px、モバイル縦で53px）に収まるため、
+<strong>NEXT枠の天井合わせを崩さず、縦方向の予算も消費しない</strong>。
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>要素</th><th><code>datatest</code></th><th>挙動</th><th>状態表現</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>レイアウト切替トグル</td>
+      <td><code>btn-piece-layout</code></td>
+      <td>押すたびに <code>play</code> ⇄ <code>select</code>。<code>togglePieceLayout()</code> を呼ぶ。</td>
+      <td><code>aria-pressed</code> ＝ <code>play</code>（キュー表示中）。アイコンは <code>view_column</code>（play）／
+          <code>grid_view</code>（select）。レール幅に余裕があるとき（<code>compactPairedCell</code> が false）だけ短いラベルを添える。</td>
+    </tr>
+    <tr>
+      <td>キュー編集モーダル入口</td>
+      <td><code>btn-piece-queue</code></td>
+      <td><code>openPieceQueueModal({ focus: 'current' })</code>。</td>
+      <td>アイコン <code>edit_note</code>、<code>aria-label</code> は既存の <code>PieceQueue.OpenSettings</code> を再利用。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<ul>
+  <li>操作重視ではHOLD枠／NEXT枠のタップ（既存の <code>focus: 'hold' | 'next'</code>）も従来どおり残すため、
+      <code>btn-piece-queue</code> は冗長な入口になる。<strong>両レイアウトで同じ位置に出す</strong>ことを優先し、
+      切替直後にボタンが消えない構成にする。</li>
+  <li>トグルは<strong>PIECE状態でのみ描画</strong>する。PAINT／SELECTのレールには一切追加しない（基準側を動かさないため）。</li>
+  <li>行の高さは <code>PIECE_LAYOUT_TOGGLE_HEIGHT = 26</code>。天井上の余白が
+      <code>26 + 4</code> px未満になる画面（<code>ceilingOffset &lt; 30</code>）では、行を天井の下・NEXT枠の上へ落とし、
+      NEXT枠の高さ計算からその分を差し引く（844×390でも <code>ceilingOffset</code> は33.7pxのため、実質的には保険）。</li>
+</ul>
+
+<h3 id="s3-4">3-5. 新しいレイアウト計算</h3>
+
+<h4>(a) 操作重視：列幅を「盤面のマス」基準にする</h4>
+
+<p>
+添付画像のキュー枠はいずれも<strong>盤面3.3〜3.7マス幅</strong>である（ミノ最大4マス＋余白）。
+そこで固定px上限ではなく、盤面1マス <code>unit = blockSize + 1</code> の倍数で決める。
+盤面幅 <code>10.5 unit</code> 相当と左右2列 <code>2 × 3.4 unit</code> を同時に解くと、幅律速時のマス寸法が一意に決まる。
+</p>
+
+<pre><code>// responsive_layout.ts（新規・抜粋）
+export const PIECE_QUEUE_COLUMN_UNITS = 3.4;   // キュー列幅＝盤面3.4マス
+export const MIN_PIECE_QUEUE_WIDTH = 66;
+export const MAX_PIECE_QUEUE_WIDTH = 132;
+export const PIECE_LAYOUT_TOGGLE_HEIGHT = 26;
+export const PLAY_RAIL_ROWS = 3;               // [PIECE|AI] [SELECT|PAINT] [DEL|RESPAWN|RESET]
+export const PLAY_RAIL_CHROME_HEIGHT = 20;     // 3グループの枠線＋グループ間gap
+export const MAX_PLAY_NEXT_MINO_HEIGHT = 96;
+export const MIN_PLAY_NEXT_MINO_HEIGHT = 20;
+
+// 幅律速時のマス寸法：canvasWidth = 10.5u + 2 × 3.4u + gaps
+export const getPlayPieceUnitBound = (canvasWidth: number, gap: number): number =&gt; (
+    (canvasWidth - gap - PIECE_RIGHT_COLUMN_GAP) / (10.5 + 2 * PIECE_QUEUE_COLUMN_UNITS)
+);
+
+export const getPlayPieceQueueWidth = (unit: number): number =&gt; Math.min(
+    MAX_PIECE_QUEUE_WIDTH,
+    Math.max(MIN_PIECE_QUEUE_WIDTH, Math.round(unit * PIECE_QUEUE_COLUMN_UNITS)),
+);</code></pre>
+
+<p><code>getLayout()</code> 側の手順（操作重視のとき）：</p>
+<ol>
+  <li><code>heightUnit = (canvasHeight - 2.4 - 2) / 24</code>、<code>widthUnit = getPlayPieceUnitBound(canvasWidth, gap)</code>。</li>
+  <li><code>unit = Math.min(heightUnit, widthUnit)</code>、<code>blockSize = unit - 1</code>。</li>
+  <li><code>queueWidth = getPlayPieceQueueWidth(unit)</code>。</li>
+  <li>下限66pxが効いて <code>fieldWidth + 2 × queueWidth + gaps &gt; canvasWidth</code> になった場合のみ、
+      確定した <code>queueWidth</code> を <code>horizontalReserve</code> として<strong>従来式で1回だけ再計算</strong>する
+      （320×568などの極小幅の保険。反復は1回で収束する）。</li>
+</ol>
+
+<h4>(b) 操作重視：縦方向はパレット撤去分をNEXTへ回す</h4>
+
+<pre><code>const available = fieldHeight - ceilingOffset;   // 天井合わせは維持
+const cellHeight = clamp(22, targetCellHeight, 32);
+const nextMinoHeight = clamp(
+    MIN_PLAY_NEXT_MINO_HEIGHT,
+    Math.floor((available
+        - PIECE_LAYOUT_TOGGLE_HEIGHT          // 天井上に載る場合は 0
+        - PLAY_RAIL_CHROME_HEIGHT
+        - INFINITE_TOGGLE_HEIGHT              // 32
+        - PLAY_RAIL_ROWS * cellHeight
+        - NEXT_PANEL_CHROME_HEIGHT) / 5),     // 26
+    Math.min(MAX_PLAY_NEXT_MINO_HEIGHT, Math.floor(queueWidth * 0.9)),
+);</code></pre>
+
+<p>
+既存の <code>getPieceRailMetrics()</code> は「パレット12行／7行の2列フォールバック」を前提にしているため、
+<strong>本設計で置き換える</strong>（<code>PIECE_RAIL_ROWS_SINGLE</code> / <code>PIECE_RAIL_ROWS_DUAL</code> /
+<code>PIECE_RAIL_CHROME_HEIGHT*</code> / <code>MIN_SINGLE_COLUMN_*</code> は操作重視では不要になる）。
+<code>railExtensionHeight</code>（短い横持ち画面で右列をコメント予約領域へはみ出させる仕組み）は残すが、
+必要行数が12→3に減るため実際にはほぼ発火しない。
+</p>
+
+<h4>(c) 選択重視：PAINT／SELECTの計算をそのまま使う</h4>
+
+<ul>
+  <li><code>pieceQueueVisible = false</code> となるため <code>horizontalReserve = getEditorRailConfig(canvasHeight).reserve</code>。
+      盤面サイズ・盤面位置・レール幅はPAINT／SELECTと<strong>完全一致</strong>する。</li>
+  <li>レール行数だけがPAINTと異なる（トグル行＋パレット11行）。
+      <code>getResponsiveRailCellHeight()</code> に行数を渡せるようにし、
+      <code>SELECT_RAIL_ROWS_SINGLE = 20</code> / <code>SELECT_RAIL_ROWS_DUAL = 13</code> を使う。</li>
+</ul>
+
+<h3>3-6. 代表viewportでの計算値</h3>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th rowspan="2">viewport</th><th colspan="4">操作重視（新）</th><th colspan="2">選択重視（新）</th><th colspan="2">現状PIECE</th></tr>
+    <tr><th class="num">盤面幅</th><th class="num">キュー幅</th><th class="num">比</th><th class="num">NEXTミノ高</th>
+        <th class="num">盤面幅</th><th class="num">セル高</th><th class="num">盤面幅</th><th class="num">ミノ高</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>674×802（PC）</td><td class="num">285.4</td><td class="num">97</td><td class="num">0.34</td><td class="num">80</td>
+        <td class="num">285.4</td><td class="num">31</td><td class="num">285.4</td><td class="num">26</td></tr>
+    <tr><td>1920×1080（PC）</td><td class="num">401.3</td><td class="num">132</td><td class="num">0.33</td><td class="num">96</td>
+        <td class="num">401.3</td><td class="num">32</td><td class="num">401.3</td><td class="num">38</td></tr>
+    <tr><td>1024×768（PC）</td><td class="num">276.5</td><td class="num">94</td><td class="num">0.34</td><td class="num">76</td>
+        <td class="num">276.5</td><td class="num">31</td><td class="num">276.5</td><td class="num">25</td></tr>
+    <tr><td>375×667（モバイル）</td><td class="num">209.4</td><td class="num">71</td><td class="num">0.34</td><td class="num">53</td>
+        <td class="num">241.7</td><td class="num">26</td><td class="num">207.2</td><td class="num">38</td></tr>
+    <tr><td>320×568（モバイル）</td><td class="num">177.2</td><td class="num">66</td><td class="num">0.37</td><td class="num">42</td>
+        <td class="num">205.5</td><td class="num">22</td><td class="num">177.2</td><td class="num">38</td></tr>
+    <tr><td>844×390（横持ち）</td><td class="num">131.7</td><td class="num">66</td><td class="num">0.50</td><td class="num">21</td>
+        <td class="num">131.7</td><td class="num">21</td><td class="num">131.7</td><td class="num">16</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="ok">
+<strong>効果。</strong>PC・デスクトップでは<strong>盤面を1pxも削らずに</strong>キュー幅+21%、NEXTミノ高が26→80px（3.1倍）。
+モバイル縦でも盤面が2px広がったうえでミノ高38→53px。横持ちでも16→21px。
+選択重視では盤面がPAINT／SELECTと同一（モバイル縦で241.7px＝操作重視より15%広い）になり、
+モード切替時の盤面ジャンプが消える。
+</div>
+
+<div class="warn">
+<strong>トレードオフ。</strong>320×568のような極小幅では、キュー下限66pxが効いて操作重視の盤面が177.2pxまで縮む
+（現状と同値だが、選択重視の205.5pxより13%狭い）。
+「狭い画面ではキューを畳んで選択重視で編集する」という使い分けが成立するため許容する。
+</div>
+
+<h3>3-7. 右列の構成（上から順）<span class="tag both" style="margin-left:8px">第2版で改訂</span></h3>
+
+<p class="small">以下は第1版の構成。最新は <a href="#s9-2">§9-2</a> を参照。</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th class="num">行</th><th>操作重視 <span class="tag play">play</span></th><th>選択重視 <span class="tag select">select</span></th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td colspan="2"><code>btn-piece-layout</code> ／ <code>btn-piece-queue</code>（26px・天井上）</td></tr>
+    <tr><td class="num">2</td><td><code>piece-queue-next</code>（見出し20px＋5行）</td><td><code>btn-editor-import</code> ／ <code>btn-editor-export</code></td></tr>
+    <tr><td class="num">3</td><td><code>piece-queue-infinite</code>（32px）</td><td><code>btn-insert-new-page</code></td></tr>
+    <tr><td class="num">4</td><td>（可変スペーサ）</td><td><code>btn-insert-from-clipboard</code></td></tr>
+    <tr><td class="num">5</td><td><code>btn-piece-mode</code> ／ <code>btn-cold-clear</code></td><td><code>btn-copy-to-clipboard</code></td></tr>
+    <tr><td class="num">6</td><td><code>btn-select-mode</code> ／ <code>btn-paint-mode</code></td><td><code>btn-cut-page</code></td></tr>
+    <tr><td class="num">7</td><td><code>btn-piece-empty</code> ／ <code>btn-piece-gray</code> ／ <code>btn-piece-reset</code></td>
+        <td><code>btn-utils-mode</code> ／ <code>btn-flags-mode</code></td></tr>
+    <tr><td class="num">8</td><td>—</td><td><code>btn-piece-mode</code> ／ <code>btn-cold-clear</code></td></tr>
+    <tr><td class="num">9</td><td>—</td><td><code>btn-select-mode</code> ／ <code>btn-paint-mode</code></td></tr>
+    <tr><td class="num">10-20</td><td>—</td><td>パレット11行：I / L / O / Z / T / J / S / <code>btn-piece-empty</code> /
+        <code>btn-piece-gray</code> / <code>btn-piece-inference</code>（∞7bag） / <code>btn-piece-reset</code></td></tr>
+    <tr><td>盤面左</td><td><code>piece-queue-hold</code>（天井合わせ）</td><td>なし</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p class="small">
+選択重視の1列時は20行、2列時（<code>getEditorRailConfig().columns === 2</code>）は13行。
+PAINT／SELECTは19行／12行なので、セル高が1行あたり1〜2px低くなる。
+パレットは下端揃えのため最下段は一致し、上に行くほど最大10px程度ずれる（<a href="#s7">§7</a>の代替案参照）。
+</p>
+
+<!-- ============================================================ -->
+<h2 id="s4">4. 影響ファイルとデータフロー</h2>
+
+<h3>4-1. 変更ファイル</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>変更内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/states.ts</code></td>
+        <td><code>export type PieceLayoutMode = 'play' | 'select';</code> を追加。
+            <code>editorUi</code> に <code>pieceLayout: PieceLayoutMode</code> を追加（初期値 <code>'play'</code>＝現行挙動）。</td></tr>
+    <tr><td><code>src/actions/editor_interaction.ts</code></td>
+        <td><code>changePieceLayout({ layout, persist = true })</code> と <code>togglePieceLayout()</code> を追加。
+            <code>persist</code> 時のみ <code>persistViewSettings(state, { pieceLayout })</code>。
+            <code>primaryTool</code> や <code>#Q=</code>、ページ状態には触れない。</td></tr>
+    <tr><td><code>src/actions/view_settings.ts</code></td>
+        <td><code>ViewSettingsOverrides</code> と保存ペイロードに <code>pieceLayout</code> を追加
+            （<strong>部分保存禁止</strong>のため必ずこの関数経由）。</td></tr>
+    <tr><td><code>src/memento.ts</code></td>
+        <td><code>interface ViewSettings</code> に <code>pieceLayout</code>、
+            <code>safer.pieceLayout()</code>（<code>'play' | 'select'</code> 以外は <code>undefined</code>）、
+            <code>loadViewSettings()</code> の返却に追加。</td></tr>
+    <tr><td><code>src/actions.ts</code></td>
+        <td>起動時の view-settings 復元ブロック（現行430行付近）に
+            <code>if (viewSettings.pieceLayout !== undefined) main.changePieceLayout({ layout, persist: false })</code> を追加。</td></tr>
+    <tr><td><code>src/views/editor/responsive_layout.ts</code></td>
+        <td>3-5の定数・関数を追加。<code>getPieceRailMetrics()</code> を操作重視用へ置換。
+            <code>getResponsiveRailCellHeight()</code> に行数引数を追加。
+            <code>getPieceSideWidth()</code> は <code>getPlayPieceQueueWidth()</code> に置き換えて削除。</td></tr>
+    <tr><td><code>src/views/editor/editor.ts</code></td>
+        <td><code>LayoutParams</code> / <code>EditorLayout</code> に <code>pieceLayout</code> を追加。
+            <code>pieceQueueVisible = primaryTool === 'piece' &amp;&amp; pieceLayout === 'play'</code>。
+            右列の組み立て（トグル行の挿入、選択重視ではHOLD列とNEXT枠を描画しない）。</td></tr>
+    <tr><td><code>src/views/editor/piece_queue_overlay.ts</code></td>
+        <td>NEXTミノ高の上限を <code>Math.min(38, width * .72)</code> から
+            <code>Math.min(MAX_PLAY_NEXT_MINO_HEIGHT, width * .9)</code> へ。
+            トグル行（<code>pieceLayoutToggleRow</code>）をこのモジュールに追加し、両レイアウトから使う。</td></tr>
+    <tr><td><code>src/views/editor/editor_rail.ts</code></td>
+        <td>レイアウト別のグループ構成（<code>railGroups</code>）。操作重視は
+            <code>[aiAndPieceGroup, modeGroup, pieceOpsRow]</code>、選択重視は非PIECEと同じ5グループ＋パレット。
+            <code>visibleSelections</code> の <code>comp</code> フィルタをレイアウト条件へ変更。
+            ルート要素に <code>data-piece-layout</code> を追加。</td></tr>
+    <tr><td><code>src/locales/keys.ts</code>, <code>src/locales/ja/translation.ts</code>, <code>src/locales/en/translation.ts</code></td>
+        <td><code>EditorUi.PieceLayout</code>（ja「ピース表示」/ en「Piece layout」）、
+            <code>EditorUi.PieceLayoutPlay</code>（「操作重視」/「Play」）、
+            <code>EditorUi.PieceLayoutSelect</code>（「選択重視」/「Select」）を追加。
+            キュー入口は既存の <code>PieceQueue.OpenSettings</code> を再利用。</td></tr>
+    <tr><td><code>cypress/support/operations.js</code></td>
+        <td><code>mode.piece.ensureLayout('select' | 'play')</code> を追加し、
+            <code>piece.draw()</code> / <code>resetPiece()</code> / <code>resetBoard()</code> / <code>toggleInfiniteQueue()</code> から呼ぶ。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4-2. データフロー</h3>
+
+<pre><code>[切替]
+btn-piece-layout (view: piece_queue_overlay.ts)
+  → actions.togglePieceLayout()            (actions/editor_interaction.ts)
+    → state.editorUi.pieceLayout 更新
+    → persistViewSettings(state, { pieceLayout })   (actions/view_settings.ts)
+      → localStorageWrapper.saveViewSettings(全項目)  (memento.ts) → localStorage 'view-settings@1'
+  → 再描画: view.ts → views/editor/editor.ts
+      getLayout({ ..., pieceLayout })       (views/editor/editor.ts)
+        → responsive_layout.ts で寸法確定（列幅・セル高・NEXTミノ高・天井オフセット）
+        → pieceQueueOverlays()（play のみ） / editorRail()（両方・グループ構成が分岐）
+
+[復元]
+起動 → localStorageWrapper.loadViewSettings()  (memento.ts)
+  → src/actions.ts の復元ブロック
+    → main.changePieceLayout({ layout, persist: false })   ※再保存しない
+
+[非経路（意図的に触れないもの）]
+pieceLayout は fumen文字列・URL・#Q= コメント・undo/redoスナップショット・
+memento の履歴（history.ts）には一切載せない。表示設定であり、ページ内容ではない。</code></pre>
+
+<p>
+Cold Clear／トレイHOLDが参照する <code>resolveCurrentColdClearMenuQueueState(state)</code> は
+<strong>選択重視では呼ばれなくなる</strong>（描画時のみの呼び出しのため）。
+キュー状態そのものは <code>#Q=</code> コメントとして保持され続けるので、レイアウトを戻せば同じ内容が表示される。
+</p>
+
+<!-- ============================================================ -->
+<h2 id="s5">5. 不変条件の確認</h2>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>AGENTS.md「Data And State Invariants」</th><th>本変更の関与</th></tr></thead>
+  <tbody>
+    <tr><td><code>field.ref</code> / <code>comment.ref</code> は必ず前のページを指す</td>
+        <td>触れない。ページの追加・並べ替え・抽出を行わない。</td></tr>
+    <tr><td>先頭ページの <code>colorize</code> の維持／回転法則は別設定</td>
+        <td>触れない。<code>state.mode.rotationSystem</code> も読み書きしない。</td></tr>
+    <tr><td>ツリーのルートは仮想ノード、<code>normalizeTreeAndPages</code> の事後条件</td>
+        <td>触れない。ツリー操作を行わない。</td></tr>
+    <tr><td><code>#TREE=</code> の埋め込み形式</td>
+        <td>触れない。</td></tr>
+    <tr><td>ツリー有効時のリスト並べ替え禁止</td>
+        <td>触れない。</td></tr>
+    <tr><td><strong>PIECE／HOLD／NEXTキューは <code>#Q=</code> クイズコメントで表現され、
+        エディタとCold Clearが消費する</strong></td>
+        <td><strong>関与するが構文は変更しない。</strong>本変更は「表示するか」だけを切り替える。
+        選択重視でもキュー状態は保持され、トレイの <code>tray-piece-hold</code>、
+        <code>canSwapCurrentPieceWithHoldQueue</code>、Cold Clearの探索、∞7bag生成は従来どおり動く。
+        ただし<strong>キュー編集モーダルの唯一の入口がHOLD／NEXT枠のタップである</strong>ため、
+        <code>btn-piece-queue</code> を新設して入口を確保する（これが無いと選択重視でキュー編集が不能になる）。</td></tr>
+    <tr><td><strong><code>saveViewSettings</code> は全置換。部分オブジェクトで呼ばない</strong></td>
+        <td><strong>関与する。</strong><code>persistViewSettings</code> に <code>pieceLayout</code> を追加し、
+        呼び出しは必ず同関数経由にする。<code>saveViewSettings</code> の直接呼び出しは追加しない。</td></tr>
+    <tr><td>URL／hash解析・localStorage復元・履歴スナップショット・画面遷移は横断的挙動</td>
+        <td><strong>関与する（復元のみ）。</strong>復元は <code>src/actions.ts</code> の既存 view-settings ブロックに1件追加し、
+        復元時は <code>persist: false</code> で再保存を防ぐ（<code>setEditorSidePanelWidth</code> と同じ流儀）。
+        URL・fumen文字列・undo/redoには載せない。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+<strong>追加で守る取り決め（本設計固有）。</strong>
+<ul>
+  <li>レイアウト切替は<strong>ページ内容を一切変更しない</strong>。<code>commitCommentText()</code> のような
+      コメント確定処理も伴わない（∞7bagトグルとは異なる）。</li>
+  <li>切替時に <code>primaryTool</code> は <code>'piece'</code> のまま。<code>previousPrimaryTool</code>、
+      <code>bottomSlot</code>、<code>rectSelect</code>、<code>parts</code> も変更しない。</li>
+  <li>盤面の描画式（<code>Field</code> コンポーネントの座標計算）は変更しない。
+      <code>cypress/support/operations.js</code> の <code>fieldPoint()</code> が同じ式に依存しているため、
+      盤面の式を変えると全E2Eのクリック座標がずれる。</li>
+</ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s6">6. テスト計画</h2>
+
+<h3>Jest</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>検証内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/views/editor/__tests__/responsive_layout.test.ts</code>（更新）</td>
+        <td>
+          <ul>
+            <li><code>getPlayPieceQueueWidth()</code>：<code>unit</code> 20/28/40 に対し 68/97/132（上限・下限のクランプ）。</li>
+            <li><code>getPlayPieceUnitBound()</code>：674幅・gap6で 38.03、375幅・gap4.5で 20.84。</li>
+            <li>操作重視メトリクス：代表3ケースで
+                <code>toggle + chrome + ∞ + rows×cell + NEXT chrome + 5×mino ≤ available + extension</code>。</li>
+            <li><code>nextMinoHeight ≥ MIN_PLAY_NEXT_MINO_HEIGHT</code>、<code>cellHeight ≥ 22</code>。</li>
+            <li>既存の <code>getPieceRailMetrics</code>（2列フォールバック）系テストは置換・削除する
+                （<code>'falls back to a two-column PIECE palette on a small display'</code>、
+                <code>'switches to one column at the minimum available height'</code> ほか）。</li>
+            <li><code>getPlayfieldCeilingOffset()</code> の式は現行テストのまま維持（天井合わせの回帰防止）。</li>
+          </ul>
+        </td></tr>
+    <tr><td><code>src/views/editor/__tests__/editor_layout.test.ts</code>（更新）</td>
+        <td>
+          <ul>
+            <li>選択重視の <code>getLayout()</code> の <code>field.size</code> / <code>field.topLeft</code> が
+                PAINTと<strong>厳密一致</strong>し、<code>pieceQueue.visible === false</code>。</li>
+            <li>操作重視：674×802 と 1920×1080 で <code>pieceQueue.width / field.size.width</code> が 0.30〜0.36。</li>
+            <li>操作重視：674×802 で <code>nextMinoHeight ≥ 50</code>（今回の依頼＝狭さ解消の回帰ガード）。</li>
+            <li>操作重視：320×568 で <code>fieldWidth + 2 × queueWidth + gaps ≤ canvasWidth</code>（下限クランプ時の再計算）。</li>
+            <li>844×390 で <code>ceilingOffset ≥ PIECE_LAYOUT_TOGGLE_HEIGHT + 4</code>（トグルが天井上に載る条件）。</li>
+          </ul>
+        </td></tr>
+    <tr><td><code>src/actions/__tests__/editor_interaction.test.ts</code>（更新）</td>
+        <td><code>togglePieceLayout()</code> が <code>'play' ⇄ 'select'</code> を往復し、
+            <code>primaryTool</code>・<code>bottomSlot</code>・<code>rectSelect</code>・<code>fumen.pages</code> を変えないこと。
+            <code>changePieceLayout({ persist: false })</code> が localStorage を書かないこと
+            （<code>localStorage.setItem</code> の spy）。</td></tr>
+    <tr><td><code>src/__tests__/memento_view_settings.test.ts</code>（更新）</td>
+        <td><code>pieceLayout</code> の読み込み（<code>'select'</code> は通し、<code>'foo'</code> / 数値 / 欠損は <code>undefined</code>）。
+            <code>saveViewSettings</code> → <code>loadViewSettings</code> の往復で <code>pieceLayout</code> が保持され、
+            既存キーが欠落しないこと（全置換ルールの担保）。</td></tr>
+    <tr><td><code>src/__tests__/e2e_selector_contract.test.ts</code>（変更不要・確認のみ）</td>
+        <td>新規 <code>btn-piece-layout</code> / <code>btn-piece-queue</code> は src 側に literal で存在するため自動的に通る。
+            <code>btn-piece-i</code> 等は選択重視で描画され続けるため契約は壊れない。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Cypress</h3>
+
+<h4>共通ヘルパー（<code>cypress/support/operations.js</code>）</h4>
+
+<pre><code>// mode.piece に追加
+ensureLayout: (layout) =&gt; {
+    // 'play' のとき btn-piece-layout は aria-pressed="true"
+    cy.get('body').then(($body) =&gt; {
+        const pressed = $body.find('[datatest="btn-piece-layout"][aria-pressed="true"]').length &gt; 0;
+        if ((layout === 'play') !== pressed) {
+            cy.get(datatest('btn-piece-layout')).click();
+        }
+    });
+},</code></pre>
+
+<ul>
+  <li><code>piece.draw()</code>（<code>btn-piece-t</code> 依存）、<code>piece.resetPiece()</code>（<code>btn-piece-gray</code>）、
+      <code>piece.resetBoard()</code>（<code>btn-piece-reset</code>）は <code>ensureLayout('select')</code> を先に呼ぶ。
+      <code>resetPiece</code> / <code>resetBoard</code> は操作重視にも同じ <code>datatest</code> が残るため、
+      厳密には <code>draw()</code> のみ必須だが、既存スペックの意図（パレットからの選択）に合わせて統一する。</li>
+  <li><code>piece.toggleInfiniteQueue()</code> は現在 <code>piece-queue-infinite-checkbox</code> 固定。
+      レイアウトに応じて <code>btn-piece-inference</code>（選択重視）へ切り替えるか、
+      <code>ensureLayout('play')</code> を前置する。</li>
+  <li>影響を受ける既存スペック：<code>put_piece_spec.js</code>、<code>right_click_spec.js</code>、
+      <code>editor_side_panel_spec.js</code>、<code>slide_spec.js</code>、<code>cold_clear_spec.js</code>、
+      <code>drawing_tool_spec.js</code>、<code>history_spec.js</code>、<code>comments_spec.js</code>、<code>open_spec.js</code>。
+      いずれもヘルパー経由のため、原則スペック本文の書き換えは不要（直接 <code>datatest</code> を叩いている箇所のみ個別対応）。</li>
+</ul>
+
+<h4>スペックの追加・更新</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>spec</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>piece_queue_spec.js</code>（更新＋追加）</td>
+        <td>
+          <ul>
+            <li>既存 <code>'shows Hold and nearest-first NEXT only in PIECE mode'</code>：
+                初期レイアウトが <code>play</code> であること（<code>btn-piece-layout</code> が
+                <code>aria-pressed="true"</code>）を明示し、
+                キュー幅の下限アサーション（現行 <code>at.least(60)</code>）を
+                <strong>盤面幅比0.28以上</strong>へ強化する。</li>
+            <li>新規：選択重視へ切り替えると <code>piece-queue-hold</code> / <code>piece-queue-next</code> /
+                <code>piece-queue-infinite</code> が消え、<code>btn-editor-import</code> / <code>btn-insert-new-page</code> /
+                <code>btn-utils-mode</code> / <code>btn-piece-i</code> / <code>btn-piece-inference</code> が現れる。</li>
+            <li>新規：選択重視でも <code>#Q=</code> が保持され、操作重視へ戻すと同じHOLD／NEXTが表示される
+                （<code>data-piece</code> 属性で確認）。</li>
+            <li>新規：<code>btn-piece-queue</code> で <code>mdl-piece-queue</code> が開き、編集が
+                コメントへ反映される（既存の編集フローを選択重視で1本通す）。</li>
+            <li>新規：リロード後もレイアウトが復元される（<code>localStorage</code> の <code>view-settings@1</code>）。</li>
+            <li>新規：選択重視で <code>btn-piece-inference</code>（∞）が <code>aria-pressed</code> を切り替え、
+                操作重視の <code>piece-queue-infinite-checkbox</code> と同じ状態を共有する。</li>
+          </ul>
+        </td></tr>
+    <tr><td><code>editor_ui_spec.js</code>（更新）</td>
+        <td>
+          <ul>
+            <li><code>'keeps the PIECE tray above the bottom bar at ...'</code>：
+                <code>data-columns</code> の期待値（現行 <code>'2'</code>／<code>'1'</code>）を
+                <code>data-piece-layout="play"</code> 前提の新構成へ更新。
+                レール内ボタン数（現行14）も再算出する。</li>
+            <li><code>assertPieceRailSingleColumn()</code> / <code>assertPieceRailTwoColumns()</code> を
+                操作重視の3行構成用と選択重視用に作り直す。</li>
+            <li>操作重視で <code>piece-queue-next</code> の幅が盤面幅の0.28以上、
+                <code>piece-queue-next-0</code> の高さが40px以上（横持ちは20px以上）であること。</li>
+            <li>選択重視でレール上端・下端が盤面の上端・下端と一致すること
+                （PAINTと同じ既存アサーションを流用）。</li>
+            <li>全viewportで <code>btn-piece-layout</code> / <code>btn-piece-queue</code> が可視かつ
+                <code>aria-label</code> が空でないこと。</li>
+          </ul>
+        </td></tr>
+    <tr><td><code>user_settings_spec.js</code>（確認のみ）</td>
+        <td>ユーザー設定モーダルには何も追加しないため変更なし。既存の PIECE 関連参照が壊れていないか確認する。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p class="small">
+実行手順は <code>.agents/skills/e2e/SKILL.md</code> に従う（<code>dest/</code> の再ビルド必須）。
+本変更はUI寸法に触れるため、少なくとも <code>piece_queue_spec.js</code>、<code>editor_ui_spec.js</code>、
+<code>put_piece_spec.js</code>、<code>right_click_spec.js</code> は必ず流す。
+</p>
+
+<!-- ============================================================ -->
+<h2 id="s7">7. 未確定事項・リスク</h2>
+
+<h3>依頼者への確認事項</h3>
+
+<ol>
+  <li><strong>操作重視でミノパレット7セルを消してよいか。</strong>
+      本設計は「消す」前提（削除／リスポーン／盤面リセットの3セルのみ残す）。
+      これがNEXTミノ高を26→80pxにできる主因である。
+      残す場合は代替案Aを参照。</li>
+  <li><strong>初期値をどちらにするか。</strong>
+      本設計は <code>'play'</code>（＝現行どおりキュー表示）を初期値とし、既存ユーザーの見た目を変えない。
+      「まず選択重視で開きたい」場合は <code>'select'</code> に変更できる（永続化されるので初回のみの差）。</li>
+  <li><strong>トグルの位置。</strong>
+      右列最上部（操作重視では天井より上の余白）を推奨。
+      「盤面左のHOLD枠の上」「トレイ内の空きセル」も物理的には可能だが、
+      前者は選択重視で置き場所が無くなり、後者は横スクロールするトレイ内で発見しにくい。</li>
+  <li><strong>キュー列幅の係数 3.4（盤面3.4マス）と上限132px。</strong>
+      添付画像は3.3〜3.7マス。数値は §3-6 の表で確認のうえ調整可能。</li>
+  <li><strong>ラベル文言。</strong>「操作重視／選択重視」で確定してよいか
+      （代案：「プレイ／編集」「キュー表示／パレット表示」）。</li>
+</ol>
+
+<h3>代替案</h3>
+
+<ul>
+  <li><strong>A：操作重視でもパレットを残す（2列5行）。</strong>
+      右列がキュー幅（PCで97px）になるため2列パレットは収まるが、
+      縦方向を160px消費しNEXTミノ高は80→48px程度に留まる。依頼の「画像の比率」からは遠ざかる。</li>
+  <li><strong>B：選択重視のレール行数をPAINTと完全に揃える（19行）。</strong>
+      トグル行を独立行にせず、<code>btn-piece-queue</code> を廃してトグルを既存の
+      <code>[UTILS|FLAGS]</code> 行に3セル目として同居させる案。
+      行ズレは消えるが、キュー編集モーダルの入口が失われるため、
+      別途キーボードショートカットの割り当てが必要になる。</li>
+  <li><strong>C：レイアウトを永続化せず、セッション内のみ保持する。</strong>
+      実装は最小になるが、リロードのたびに戻るため常用しづらい。非推奨。</li>
+  <li><strong>D：∞7bagを両レイアウトでトグル行に置く。</strong>
+      2レイアウトで∞の位置が変わる問題は解消するが、操作重視のNEXT直下という現在の定位置
+      （2026-07-19の設計で確定）を崩すため、本設計では採らない。</li>
+</ul>
+
+<h3>退行の懸念</h3>
+
+<ul>
+  <li><strong>E2Eヘルパー経由の広範な影響。</strong>
+      <code>operations.mode.piece.draw()</code> はPIECE状態でパレットの <code>btn-piece-t</code> を押す前提で、
+      9スペックが依存している。<code>ensureLayout('select')</code> の前置を漏らすと
+      「要素が存在しない」で連鎖的に落ちる。ヘルパー修正を最初のコミットに含める。</li>
+  <li><strong><code>getPieceRailMetrics()</code> の置換。</strong>
+      <code>editor_rail.ts</code> の <code>getRailCellHeight()</code> が同関数をフォールバックとして呼んでいる。
+      置換時に呼び出し側の引数（<code>columns</code> の消滅）を追従し損ねると、
+      セル高が0や極小になり<strong>Cypressが「見えているのに押せない」形で落ちる</strong>。</li>
+  <li><strong>NEXTミノの描画スケール。</strong>
+      <code>mino()</code> の <code>blockSize</code> は <code>Math.min(10, ...)</code> で頭打ちのため、
+      枠を80pxに広げてもミノ自体は最大40px角（4マス×10px）で止まり、余白だけが増える。
+      上限10pxの引き上げ（例：<code>Math.min(16, ...)</code>）を本変更に含めること。
+      <strong>これを忘れると「枠は広いがミノは小さい」という中途半端な結果になる。</strong></li>
+  <li><strong>横持ち（844×390）の縦方向。</strong>
+      トグル行26pxに対し天井上の余白は33.7pxしかない。フォント／枠線の実測で溢れる場合は
+      トグル高を22pxへ落とす分岐が必要。Cypressの横持ちケースで実寸を確認する。</li>
+  <li><strong>選択重視での <code>comp</code> セル復活。</strong>
+      <code>editor_ui_spec.js</code> / <code>piece_queue_spec.js</code> は
+      「PIECE状態に <code>btn-piece-inference</code> は存在しない」ことを明示的にアサートしている。
+      選択重視では存在するため、アサーションをレイアウト条件付きに書き換える必要がある。</li>
+  <li><strong>盤面サイズがレイアウトで変わること。</strong>
+      操作重視⇄選択重視の切替で（幅律速の画面では）盤面が伸縮する。
+      これは仕様だが、切替直後に <code>konva</code> のステージ再描画が必要になる。
+      既存の <code>batchDraw</code>（<code>view.ts</code> の <code>oncreate</code> / <code>onupdate</code>）で足りるはずだが、
+      切替直後にゴーストや選択枠がずれないかを実機で確認する。</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="s8">8. 進捗・結果・課題</h2>
+
+<h3>依頼者レビューの結果（2026-07-31）</h3>
+<ul>
+  <li>操作重視でミノパレット7セルを撤去：<strong>承認</strong>。</li>
+  <li>初期レイアウト：<strong><code>'select'</code>（選択重視・パレット表示）</strong>へ変更。設計時の <code>'play'</code> 案から差し替えた。</li>
+  <li>トグルの位置：右列最上部で<strong>承認</strong>。</li>
+</ul>
+
+<h3>実装結果</h3>
+<p>設計どおり実装し、実DOMの実測値が設計の計算値と一致することを確認した（674×802 / PC）。</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>項目</th><th class="num">設計値</th><th class="num">実測値</th></tr></thead>
+  <tbody>
+    <tr><td>操作重視 HOLD／NEXT列幅</td><td class="num">97</td><td class="num">97</td></tr>
+    <tr><td>操作重視 NEXT1行の高さ</td><td class="num">85</td><td class="num">85</td></tr>
+    <tr><td>操作重視 盤面幅（PAINT比）</td><td class="num">285.4（同値）</td><td class="num">285（同値）</td></tr>
+    <tr><td>選択重視 盤面（PAINT比）</td><td class="num">完全一致</td><td class="num">x150 w285 h673（一致）</td></tr>
+    <tr><td>選択重視 レールセル高</td><td class="num">31</td><td class="num">31</td></tr>
+    <tr><td>切替行の位置</td><td>天井上の余白</td><td>y79〜105（天井 y109）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>設計から変えた点</h4>
+<ul>
+  <li><strong>NEXTミノの描画上限。</strong>設計の懸念どおり <code>mino()</code> の <code>blockSize</code> が
+      <code>Math.min(10, …)</code> で頭打ちだったため、上限を16pxへ引き上げた（4マスで64px）。</li>
+  <li><strong>∞7bagセルのフォーカス保持。</strong>選択重視では∞がレールの <code>comp</code> セルに戻るため、
+      2026-07-20の「∞7bag操作後もフィールドのフォーカスを保つ」挙動が失われてE2Eが落ちた。
+      <code>toolCell</code> に <code>preserveFieldFocus</code>（mousedownの既定動作のみ抑止）を追加して復帰させた。</li>
+  <li><strong>選択重視のレール列数。</strong>PIECE専用の2列フォールバックを廃し、PAINT/SELECTと同じ
+      <code>getEditorRailConfig()</code> の条件（画面高420px未満で2列）に統一した。
+      その結果、モバイル縦（320×568〜390×844）のPIECEレールは2列から<strong>1列</strong>に変わる。</li>
+  <li><strong>最小画面のセル高。</strong>選択重視はPAINTより1行多い（切替行＋∞セル）ため、
+      320×568でセル高が23→21pxになる。Cypressの下限アサーションを22→20pxへ緩めた
+      （PAINT系レールの下限は元々18px）。</li>
+</ul>
+
+<h4>テスト結果</h4>
+<ul>
+  <li><code>yarn lint</code>：pass。</li>
+  <li><code>yarn test</code>：925件 pass（1 skipped）。
+      <code>responsive_layout.test.ts</code> を新レイアウト用に書き換え、
+      <code>editor_layout.test.ts</code> に選択重視＝PAINT一致／操作重視の比率・ミノ高の回帰ガードを追加。
+      <code>editor_interaction.test.ts</code> に切替と永続化スキップ、
+      <code>memento_view_settings.test.ts</code> に <code>pieceLayout</code> の読み書きを追加。</li>
+  <li>Cypress：<code>yarn webpack-prod</code> でビルドし直したうえで<strong>全スペック pass</strong>
+      （261件中258件 pass・3件は既存のpending、17分08秒）。<code>operations.js</code> を変更したため
+      個別スペック（<code>piece_queue_spec.js</code> 12件、<code>editor_ui_spec.js</code> 38件、
+      <code>put_piece_spec.js</code> 32件）に加えて全体を実行した。</li>
+</ul>
+
+<h4>E2Eヘルパーの変更</h4>
+<ul>
+  <li><code>ensurePieceLayout(layout)</code> を追加。<code>spawnPieceForScenario()</code> と
+      <code>piece.draw()</code> が自動で選択重視へ切り替えるため、ミノパレットに依存する既存スペックは無修正で動く。</li>
+  <li><code>piece.openWithQueues()</code> / <code>piece.layout(layout)</code> を追加。
+      <code>piece.toggleInfiniteQueue()</code> は両レイアウト対応（NEXT直下のチェックボックス／パレットの∞セル）。</li>
+</ul>
+
+<h4>残課題</h4>
+<ul>
+  <li>キーボードショートカットによるレイアウト切替は未実装（設計どおり対象外）。</li>
+  <li>ユーザーマニュアルとスクリーンショットは未更新（明示依頼時のみ）。</li>
+  <li>デスクトップ（1920×1080）ではPlayレイアウトのNEXTミノが上限96pxに達し、∞7bagと操作3行の間に
+      余白が残る。必要なら上限の再検討、または余白の分配方法を変える。</li>
+  <li>右列の配置と名称について追加依頼あり → <a href="#s9">§9</a>（第2版・実装待ち）。</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="s9">9. UI調整（第2版・2026-08-01 依頼者フィードバック）</h2>
+
+<h3 id="s9-1">9-1. 依頼内容</h3>
+
+<p>実装後の画面キャプチャに対する指摘は4点。</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th class="num">#</th><th>指摘</th><th>対象</th><th>本設計での対応</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="num">1</td>
+      <td>AIをUTILSの下に移動する</td>
+      <td>共通レール（PAINT／SELECT／PIECE通常）</td>
+      <td>AIを <code>[PIECE|AI]</code> 行から外し、UTILS／FLAGS行の直下へ独立した1行として置く。</td>
+    </tr>
+    <tr>
+      <td class="num">2</td>
+      <td>PIECEの右にPlayを置く</td>
+      <td>共通レール</td>
+      <td>AIが抜けた枠へ切替ボタンを入れ、<code>[PIECE|Play]</code> 行にする。
+          PAINT／SELECTからはPlayが「キュー表示のPIECE状態へ直接入る」入口になる。</td>
+    </tr>
+    <tr>
+      <td class="num">3</td>
+      <td>「操作重視」という名称は使わない（Play等にする）</td>
+      <td>文言</td>
+      <td>UIに出す文字列は <strong>Play</strong> のみにする。「選択重視」「操作重視」はUIから消す
+          （状態値 <code>'play' / 'select'</code> はコード内部名として残す）。</td>
+    </tr>
+    <tr>
+      <td class="num">4</td>
+      <td>右列最上部の切替行は廃止。キューを開くボタンは省く（ボタンを分割しない）</td>
+      <td>PIECE状態の右列</td>
+      <td>通常レイアウトでは切替行そのものを削除（切替はレールの <code>[PIECE|Play]</code> が担う）。
+          <code>btn-piece-queue</code> は削除する。</td>
+    </tr>
+    <tr>
+      <td class="num">5</td>
+      <td>Playレイアウト最上部のボタンも不要なので削除する</td>
+      <td>PIECE Playレイアウト</td>
+      <td>最上部の行を完全に削除し、NEXT枠を天井の位置から直接始める。
+          切替行のための高さ予約（<code>PIECE_LAYOUT_TOGGLE_*</code>）も不要になる。
+          <strong>Playから通常へ戻る導線</strong>は <a href="#s9-3">§9-3</a> のとおり
+          レールの <code>btn-piece-mode</code>（PIECE）が担う。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+<strong>Playレイアウトからの戻り道。</strong>Playレイアウトには切替ボタンが一切無くなるため、
+<strong>PIECEセルの意味を「PIECE状態のオン／オフ」から一段広げる</strong>のが本設計の要点である。
+Playレイアウト中にPIECEを押すと通常レイアウト（パレット表示）へ戻り、
+もう一度押すとこれまでどおりPIECE状態を抜ける。
+PAINT／SELECTはPlayレイアウトのレールにも並んでいるため、PIECE状態を抜けるのは従来どおり1タップでできる。
+</div>
+
+<div class="note">
+<strong>用語。</strong>以降、キュー表示のレイアウトを<strong>Playレイアウト</strong>（内部値 <code>'play'</code>）、
+パレット表示のレイアウトを<strong>通常レイアウト</strong>（内部値 <code>'select'</code>）と呼ぶ。
+第1版の「操作重視／選択重視」と同じものを指す。
+</div>
+
+<h3 id="s9-2">9-2. 変更後の右列構成</h3>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th class="num">行</th><th>PAINT／SELECT（共通レール）</th><th>PIECE 通常 <span class="tag select">select</span></th>
+        <th>PIECE Play <span class="tag play">play</span></th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="num">最上部</td><td>—</td><td><strong>なし</strong>（第1版の切替行を廃止）</td>
+        <td><strong>なし</strong>（第1版の切替行・第2版初稿の全幅ボタンとも廃止。
+        NEXT枠が天井の位置から直接始まる）</td></tr>
+    <tr><td class="num">1</td><td><code>btn-editor-import</code> ／ <code>btn-editor-export</code></td>
+        <td>同左</td><td rowspan="6" style="vertical-align:middle">（可変スペーサ）<br>
+        <code>piece-queue-next</code>（5行）と <code>piece-queue-infinite</code> は現行のまま</td></tr>
+    <tr><td class="num">2-5</td><td>ADD ／ INSERT ／ COPY ／ CUT</td><td>同左</td></tr>
+    <tr><td class="num">6</td><td><code>btn-utils-mode</code>（／ <code>btn-flags-mode</code>）</td><td>同左</td></tr>
+    <tr><td class="num">7</td><td><strong><code>btn-cold-clear</code>（AI・全幅）</strong> ←移動</td><td>同左</td></tr>
+    <tr><td class="num">8</td><td><strong><code>btn-piece-mode</code> ／ <code>btn-piece-layout</code>（Play）</strong></td>
+        <td>同左</td></tr>
+    <tr><td class="num">9</td><td><code>btn-select-mode</code> ／ <code>btn-paint-mode</code>（2行）</td>
+        <td>同左（PIECEは1行2セル）</td></tr>
+    <tr><td class="num">10-</td><td>パレット10セル</td><td>パレット11セル（∞7bag・RESET込み）</td>
+        <td><code>btn-piece-mode</code> ／ <code>btn-cold-clear</code><br>
+            <code>btn-select-mode</code> ／ <code>btn-paint-mode</code><br>
+            <code>btn-piece-empty</code> ／ <code>btn-piece-gray</code> ／ <code>btn-piece-reset</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p class="small">
+PlayレイアウトのレールはAIをUTILSの下へ動かせない（UTILS自体が無い）ため、
+<code>[PIECE|AI]</code> の並びを現行どおり維持する。添付キャプチャの下部3行と一致する。
+</p>
+
+<div class="mockups">
+<figure>
+<svg viewBox="0 0 240 300" width="220" role="img" aria-label="第1版と第2版のレール上部の比較">
+  <text x="60" y="14" font-size="11" text-anchor="middle" font-family="sans-serif" fill="#888">第1版</text>
+  <text x="180" y="14" font-size="11" text-anchor="middle" font-family="sans-serif" fill="#1565c0">第2版</text>
+
+  <!-- v1 -->
+  <g stroke="#333" fill="#fafafa">
+    <rect x="20" y="22" width="40" height="24"/><rect x="60" y="22" width="40" height="24"/>
+    <rect x="20" y="52" width="40" height="24"/><rect x="60" y="52" width="40" height="24"/>
+    <rect x="20" y="82" width="80" height="24"/>
+    <rect x="20" y="112" width="80" height="24"/>
+    <rect x="20" y="142" width="40" height="24"/><rect x="60" y="142" width="40" height="24"/>
+    <rect x="20" y="172" width="40" height="24"/><rect x="60" y="172" width="40" height="24"/>
+  </g>
+  <rect x="20" y="22" width="80" height="24" fill="#ffe9e9" stroke="#e57373"/>
+  <text x="60" y="38" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#c62828">切替 | キュー</text>
+  <text x="60" y="68" font-size="8" text-anchor="middle" font-family="sans-serif">IMP | EXP</text>
+  <text x="60" y="98" font-size="8" text-anchor="middle" font-family="sans-serif">ADD…（4行）</text>
+  <text x="60" y="128" font-size="8" text-anchor="middle" font-family="sans-serif">UTILS</text>
+  <text x="40" y="158" font-size="8" text-anchor="middle" font-family="sans-serif">P</text>
+  <text x="80" y="158" font-size="8" text-anchor="middle" font-family="sans-serif">AI</text>
+  <text x="40" y="188" font-size="8" text-anchor="middle" font-family="sans-serif">SEL</text>
+  <text x="80" y="188" font-size="8" text-anchor="middle" font-family="sans-serif">PNT</text>
+  <text x="60" y="215" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#888">パレット11行</text>
+
+  <!-- v2 -->
+  <g stroke="#333" fill="#fafafa">
+    <rect x="140" y="22" width="40" height="24"/><rect x="180" y="22" width="40" height="24"/>
+    <rect x="140" y="52" width="80" height="24"/>
+    <rect x="140" y="82" width="80" height="24"/>
+    <rect x="140" y="112" width="80" height="24"/>
+    <rect x="140" y="142" width="40" height="24"/><rect x="180" y="142" width="40" height="24"/>
+    <rect x="140" y="172" width="40" height="24"/><rect x="180" y="172" width="40" height="24"/>
+  </g>
+  <text x="180" y="38" font-size="8" text-anchor="middle" font-family="sans-serif">IMP | EXP</text>
+  <text x="180" y="68" font-size="8" text-anchor="middle" font-family="sans-serif">ADD…（4行）</text>
+  <text x="180" y="98" font-size="8" text-anchor="middle" font-family="sans-serif">UTILS</text>
+  <rect x="140" y="112" width="80" height="24" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="180" y="128" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1565c0">AI</text>
+  <text x="160" y="158" font-size="8" text-anchor="middle" font-family="sans-serif">P</text>
+  <rect x="180" y="142" width="40" height="24" fill="#e8f1fb" stroke="#1565c0"/>
+  <text x="200" y="158" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#1565c0">Play</text>
+  <text x="160" y="188" font-size="8" text-anchor="middle" font-family="sans-serif">SEL</text>
+  <text x="200" y="188" font-size="8" text-anchor="middle" font-family="sans-serif">PNT</text>
+  <text x="180" y="215" font-size="8" text-anchor="middle" font-family="sans-serif" fill="#888">パレット11行</text>
+
+  <text x="120" y="250" font-size="9" text-anchor="middle" font-family="sans-serif" fill="#5b6672">
+    切替行1行を削り、AI行1行を足す（行数は同じ）</text>
+</svg>
+<figcaption><strong>PIECE通常レイアウトのレール</strong>上部の変化</figcaption>
+</figure>
+</div>
+
+<h3 id="s9-3">9-3. 切替ボタンの仕様</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ボタン</th><th>現在の状態</th><th>押したときの動作</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><code>btn-piece-layout</code>（Play）<br>
+        <span class="small">レール <code>[PIECE|Play]</code> の右セル。Playレイアウトには存在しない</span></td>
+        <td>PAINT／SELECT</td>
+        <td>PIECE状態へ入り、同時にレイアウトを <code>'play'</code> にする（1タップでキュー表示へ）。</td></tr>
+    <tr><td>PIECE 通常</td><td>レイアウトを <code>'play'</code> にする。</td></tr>
+    <tr><td rowspan="3"><code>btn-piece-mode</code>（PIECE）<br>
+        <span class="small">全レイアウトに存在</span></td>
+        <td>PAINT／SELECT</td><td>PIECE状態へ入る（レイアウトは保存値に従う）。現行どおり。</td></tr>
+    <tr><td>PIECE 通常</td><td>PIECE状態を抜ける（現行どおりのトグル）。</td></tr>
+    <tr><td>PIECE Play</td><td><strong>通常レイアウトへ戻す</strong>（<code>'select'</code>）。第2版で追加する分岐。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<ul>
+  <li>ラベルは常に <code>Play</code>（ja/en共通）。アイコンは <code>view_column</code>。
+      レールが狭いとき（<code>compact</code>）はアイコンのみ。
+      <code>aria-pressed</code> は「キュー表示中か」を表すため、レールに出ている間は常に <code>false</code>。</li>
+  <li><strong>Cypressのレイアウト判定を変更する。</strong>Playレイアウトでは <code>btn-piece-layout</code> が
+      存在しなくなるため、<code>ensurePieceLayout()</code> は
+      <code>editor-rail</code> の <code>data-piece-layout</code> 属性で現在のレイアウトを判定し、
+      Playへは <code>btn-piece-layout</code>、通常へは <code>btn-piece-mode</code> を押す方式にする。</li>
+  <li>削除するもの：<code>btn-piece-queue</code>、<code>piece-layout-toggle</code>（行のコンテナ）、
+      Playレイアウト最上部のボタン、<code>EditorUi.PieceLayoutSelect</code>（文言）、
+      <code>PIECE_LAYOUT_TOGGLE_HEIGHT</code> / <code>PIECE_LAYOUT_TOGGLE_GAP</code> /
+      <code>getPieceLayoutToggleReservedHeight()</code> / <code>pieceQueue.toggleReservedHeight</code>。</li>
+</ul>
+
+<h3 id="s9-4">9-4. レイアウト計算への影響</h3>
+
+<p>
+共通レールに1行（AI行）が増え、PIECE通常レイアウトからは切替行（26px＋gap4px）が消える。
+行数の定数を次のように置き換える。
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>レール</th><th class="num">第1版の行数</th><th class="num">第2版の行数</th><th>内訳（1列時）</th></tr></thead>
+  <tbody>
+    <tr><td>PAINT／SELECT 1列</td><td class="num">19</td><td class="num">20</td>
+        <td>system1 + pages4 + aux1 + <strong>AI1</strong> + <strong>[PIECE|Play]1</strong> + modes2 + palette10</td></tr>
+    <tr><td>PAINT／SELECT 2列</td><td class="num">12</td><td class="num">13</td>
+        <td>system1 + pages2 + aux1 + AI1 + [PIECE|Play]1 + modes2 + palette5</td></tr>
+    <tr><td>PIECE 通常 1列</td><td class="num">20（切替行を含む）</td><td class="num">20</td>
+        <td>system1 + pages4 + aux1 + AI1 + [PIECE|Play]1 + modes1 + palette11</td></tr>
+    <tr><td>PIECE 通常 2列</td><td class="num">13（切替行を含む）</td><td class="num">13</td>
+        <td>system1 + pages2 + aux1 + AI1 + [PIECE|Play]1 + modes1 + palette6</td></tr>
+    <tr><td>PIECE Play</td><td class="num">3</td><td class="num">3</td><td>変更なし</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="ok">
+<strong>副次的な単純化。</strong>共通レールとPIECE通常レイアウトの行数が<strong>20／13で一致する</strong>ため、
+第1版で追加した <code>SELECT_RAIL_ROWS_SINGLE</code> / <code>SELECT_RAIL_ROWS_DUAL</code> /
+<code>getSelectPieceRailRows()</code> は不要になる。
+<code>getResponsiveRailCellHeight()</code> の既定行数を 19／12 → <strong>20／13</strong> に変えるだけでよく、
+<code>editor.ts</code> の行数分岐も消せる。
+</div>
+
+<h4>セル高の変化（計算値）</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>viewport</th><th class="num">PAINT 現行</th><th class="num">PAINT 第2版</th>
+      <th class="num">PIECE通常 現行</th><th class="num">PIECE通常 第2版</th></tr></thead>
+  <tbody>
+    <tr><td>674×802（PC）</td><td class="num">32</td><td class="num">31</td><td class="num">31</td><td class="num">31</td></tr>
+    <tr><td>375×667</td><td class="num">27</td><td class="num">26</td><td class="num">26</td><td class="num">26</td></tr>
+    <tr><td>320×568</td><td class="num">22</td><td class="num">21</td><td class="num">21</td><td class="num">21</td></tr>
+    <tr><td>844×390（2列）</td><td class="num">23</td><td class="num">21</td><td class="num">21</td><td class="num">21</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="warn">
+<strong>PAINT／SELECTのセルが1〜2px低くなる。</strong>これは第2版で初めてPIECE以外のレールに影響が出る点である。
+最小画面（320×568）で21px、横持ち2列でも21pxを保ち、レールの下限18pxは下回らない。
+PIECE通常レイアウトのセル高は<strong>すべてのviewportで変わらない</strong>
+（切替行が消えるぶん、レール自身が1行増えても縦の収まりはむしろ楽になる）。
+結果として、第1版で残っていた「PIECE通常のセルだけPAINTより1px低い」というズレが解消し、
+<strong>PAINTとPIECE通常のレールが完全に同じ寸法</strong>になる。
+</div>
+
+<h3 id="s9-5">9-5. 影響ファイル（第1版からの差分）</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>変更内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/views/editor/editor_rail.ts</code></td>
+        <td>AIセルを <code>aiAndPieceGroup</code> から外し、<code>auxiliaryGroup</code> の下の独立行にする
+            （Playレイアウトのときだけ現行の <code>[PIECE|AI]</code> を維持）。
+            <code>[PIECE|Play]</code> 行を追加し、Playセルの <code>onpress</code> で
+            <code>changePrimaryTool({ tool: 'piece' })</code>＋<code>changePieceLayout({ layout: 'play' })</code> を実行する。</td></tr>
+    <tr><td><code>src/views/editor/piece_queue_overlay.ts</code></td>
+        <td><code>pieceLayoutToggle()</code> を丸ごと削除する（第1版で追加した切替行・キュー入口とも不要）。
+            NEXT枠・HOLD枠・∞7bagは現行のまま。</td></tr>
+    <tr><td><code>src/views/editor/editor.ts</code></td>
+        <td>通常レイアウトの右列を第1版以前の構造（<code>editorRail()</code> をそのまま返す）へ戻し、
+            <code>piece-right-column</code> のラッパはPlayレイアウト専用にする。
+            切替行のぶんの <code>paddingTop</code> 補正と行数分岐を削除。</td></tr>
+    <tr><td><code>src/views/editor/responsive_layout.ts</code></td>
+        <td><code>getResponsiveRailCellHeight()</code> の既定行数を20／13へ。
+            <code>SELECT_RAIL_ROWS_*</code>、<code>getSelectPieceRailRows()</code>、
+            <code>PIECE_LAYOUT_TOGGLE_*</code>、<code>getPieceLayoutToggleReservedHeight()</code> を削除し、
+            <code>getPlayPieceRailMetrics()</code> から <code>toggleReservedHeight</code> 引数を外す。</td></tr>
+    <tr><td><code>src/locales/*</code></td>
+        <td><code>EditorUi.PieceLayoutPlay</code> を ja/en とも <code>'Play'</code> に統一。
+            <code>EditorUi.PieceLayoutSelect</code> を削除。</td></tr>
+    <tr><td><code>src/actions/editor_interaction.ts</code></td>
+        <td><code>togglePieceMode()</code> に「PIECE Playレイアウト中なら通常レイアウトへ戻す」分岐を追加する。
+            Playセルは既存の <code>changePrimaryTool</code> と <code>changePieceLayout</code> を順に呼ぶ
+            （新しいアクションは追加しない）。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="s9-6">9-6. テスト計画（第2版の差分）</h3>
+
+<h4>Jest</h4>
+<ul>
+  <li><code>responsive_layout.test.ts</code>：<code>getResponsiveRailCellHeight()</code> の既定行数変更に伴う期待値更新
+      （674px高で32→31など）。<code>getSelectPieceRailRows()</code> のテストを削除。</li>
+  <li><code>editor_layout.test.ts</code>：「選択重視のセル高31／PAINT 32」の対比を「両方31」に更新し、
+      <strong>PIECE通常レイアウトとPAINTのレール行数・セル高が完全一致すること</strong>を新たな回帰ガードにする。
+      盤面サイズ一致のアサーションはそのまま維持。</li>
+</ul>
+
+<h4>Cypress</h4>
+<ul>
+  <li><code>cypress/support/operations.js</code>：<code>ensurePieceLayout()</code> を
+      <code>data-piece-layout</code> 判定へ変更する（Playレイアウトには <code>btn-piece-layout</code> が無いため）。
+      Playへは <code>btn-piece-layout</code>、通常へは <code>btn-piece-mode</code> を押す。</li>
+  <li><code>piece_queue_spec.js</code>：第1版で追加した
+      「<code>btn-piece-queue</code> でモーダルを開く」テストを削除し、
+      <strong>PAINTのPlayボタンから1タップでキュー表示のPIECE状態へ入る</strong>テストに置き換える。
+      通常レイアウトの検証から <code>piece-layout-toggle</code> の存在確認を外す。</li>
+  <li><code>editor_ui_spec.js</code>：<code>piece-layout-toggle</code> 参照を <code>btn-piece-layout</code> に置換。
+      <code>assertRailOrder()</code> にAI行の位置（UTILSとPIECEの間）を追加。
+      レール内ボタン数・セル高の期待値を新しい行数で更新。</li>
+  <li><code>user_settings_spec.js</code> ほかレール座標に依存するスペックは、
+      共通レールの行数変更の影響を受ける可能性があるため<strong>全スペックを流す</strong>。</li>
+</ul>
+
+<h3 id="s9-7">9-7. 未確定事項・リスク（第2版）</h3>
+
+<ul>
+  <li><strong>キュー編集モーダルの入口が通常レイアウトから消える。</strong>
+      <code>btn-piece-queue</code> を削除するため、<code>#Q=</code> を編集する手段は
+      「Playへ切り替えてHOLD／NEXT枠をタップ」または「コメント欄を直接編集」だけになる。
+      ご依頼どおり省くが、通常レイアウトからワンタップで開きたい場合は
+      <strong>Playセルの長押しでモーダルを開く</strong>案を用意できる（実装コストは小）。</li>
+  <li><strong>PAINT／SELECTのレールが1行増える。</strong>これまで「基準側は動かさない」としてきた
+      PAINT／SELECTの配置を初めて変更する。セル高が1〜2px下がるほか、
+      AIの位置が変わるため既存ユーザーの手の記憶とはズレる。</li>
+  <li><strong>PAINTのPlayボタンの意味。</strong>「PIECE状態へ入る＋Playレイアウトにする」の複合操作にする案で設計した。
+      「レイアウトを切り替えるだけ（PIECE状態には入らない）」にすると、PAINT時に押しても見た目が変わらず
+      押し損に見えるため、複合操作を推奨する。</li>
+  <li><strong>Playレイアウト中のPIECEボタンの意味が変わる。</strong>
+      これまで「もう一度押すとPIECE状態を抜ける（トレイを閉じる）」だったのが、
+      Playレイアウトでは「通常レイアウトへ戻る」になる。抜けたいときはPAINT／SELECTを押す
+      （Playレイアウトのレールにも並んでいるので1タップ）。</li>
+  <li><strong>保存済みレイアウトの効き方。</strong>PIECEボタンでPIECE状態へ入るときは保存値に従うため、
+      前回Playで終えていればPIECEを押してもキュー表示で開く。その状態でもう一度PIECEを押せば
+      通常レイアウトへ切り替わる。</li>
+  <li>ラベルを <code>Play</code> に統一するため、ja翻訳も英語表記のままになる
+      （AGENTS.mdの「英語の製品用語はそのままでよい」に沿う）。</li>
+</ul>
+
+<h3 id="s9-8">9-8. 第2版の実装結果</h3>
+
+<p>設計どおり実装し、実DOMで両レイアウトの寸法と遷移を確認した（674×802 / PC）。</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>確認項目</th><th>実測</th></tr></thead>
+  <tbody>
+    <tr><td>共通レールの並び（PAINT）</td><td>UTILS y426 → AI y464（直下・全幅） → [PIECE|Play] y502（同一行）</td></tr>
+    <tr><td>PIECE通常レイアウト</td><td>盤面 x150 w285 h673（PAINTと一致）／レール x444 w80／セル高31（PAINTと一致）<br>
+        UTILS y209 → AI y246 → [PIECE|Play] y283 → パレット11行（RESET下端 y709＝盤面下端）</td></tr>
+    <tr><td>PIECE Playレイアウト</td><td>最上部ボタンなし。NEXTが天井 y109 から直接始まる（枠 97×451、1行85px）。
+        HOLD 97×107、∞7bag、レール7ボタン（[PIECE|AI][SELECT|PAINT][削除|リスポーン|リセット]）、トレイ71px</td></tr>
+    <tr><td>PAINTからPlayへ1タップ</td><td>PIECE状態＋Playレイアウト＋トレイ表示まで一度の押下で遷移</td></tr>
+    <tr><td>Playから通常への戻り</td><td>PIECEを押すと <code>data-piece-layout="select"</code> ／ PIECE状態は維持 ／ 保存値も <code>select</code> に更新</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>設計から追加で直した点</h4>
+<ul>
+  <li><strong>通常レイアウトのレールstyle。</strong>第1版では右列ラッパの内側に置く前提で
+      <code>flex: 1 1 auto / width: 100%</code> のスタイルを当てていた。ラッパを廃した第2版でそのままだと
+      レールが横に伸びて盤面を左端へ押しやるため、通常レイアウトはPAINT/SELECTと同じstyleを使うようにした。</li>
+  <li><strong>Cypressのパレット数え上げ。</strong><code>[datatest^="btn-piece-"]</code> という前方一致セレクタが
+      新しい <code>btn-piece-layout</code> も拾ってしまうため、<code>btn-piece-mode</code> と同様に除外した。</li>
+</ul>
+
+<h4>変更ファイル（第2版）</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>第2版での変更</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/views/editor/editor_rail.ts</code></td>
+        <td>AIを独立行（<code>coldClearGroup</code>）としてUTILSの下へ移動。
+            <code>playLayoutCell</code>（<code>btn-piece-layout</code>）を追加し、非Playレールでは
+            <code>[PIECE|Play]</code>、Playレールでは従来どおり <code>[PIECE|AI]</code> を並べる。
+            通常レイアウトのレールstyleをPAINT/SELECTと共通化。</td></tr>
+    <tr><td><code>src/views/editor/piece_queue_overlay.ts</code></td>
+        <td><code>pieceLayoutToggle()</code>（切替行・キュー入口）を削除。
+            NEXT/HOLD/∞7bagと、第1版で入れたミノ描画上限16pxはそのまま。</td></tr>
+    <tr><td><code>src/views/editor/editor.ts</code></td>
+        <td>右列ラッパをPlayレイアウト専用へ戻し、切替行ぶんの <code>paddingTop</code> 補正と
+            <code>pieceQueue.toggleReservedHeight</code>、レール行数の分岐を削除。</td></tr>
+    <tr><td><code>src/views/editor/responsive_layout.ts</code></td>
+        <td>既定行数を20／13へ。<code>SELECT_RAIL_ROWS_*</code>／<code>getSelectPieceRailRows()</code>／
+            <code>PIECE_LAYOUT_TOGGLE_*</code>／<code>getPieceLayoutToggleReservedHeight()</code> を削除し、
+            <code>getPlayPieceRailMetrics()</code> の引数も1つ減らした。</td></tr>
+    <tr><td><code>src/actions/editor_interaction.ts</code></td>
+        <td><code>togglePieceMode()</code> に「PIECE＋Playなら通常レイアウトへ戻す」分岐を追加。</td></tr>
+    <tr><td><code>src/locales/*</code></td>
+        <td><code>PieceLayoutPlay</code> を ja/en とも <code>'Play'</code> に。<code>PieceLayoutSelect</code> を削除。</td></tr>
+    <tr><td><code>cypress/support/operations.js</code></td>
+        <td><code>ensurePieceLayout()</code> を <code>data-piece-layout</code> 判定へ変更。</td></tr>
+    <tr><td><code>cypress/integration/*.js</code></td>
+        <td><code>assertRailArrangement()</code> をUTILS→AI→[PIECE|Play]の順序検証に更新。
+            2列レールの行ペアを <code>[PIECE|Play]</code> に変更。パレット数え上げからPlayセルを除外。
+            <code>piece-layout-toggle</code>／<code>btn-piece-queue</code> の参照を削除し、
+            「PAINTからPlayへ1タップ」「PlayからPIECEで通常へ戻る」テストを追加。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>テスト結果（第2版）</h4>
+<ul>
+  <li><code>yarn lint</code>：pass。</li>
+  <li><code>yarn test</code>：928件 pass（1 skipped）。</li>
+  <li><code>e2e_selector_contract.test.ts</code> が、削除した <code>piece-layout-toggle</code> への参照残りを検出。
+      Cypressを回す前にスペック側を修正できた（この契約テストの想定どおりの働き）。</li>
+  <li>Cypress（<code>yarn webpack-prod</code> 後）：<code>piece_queue_spec.js</code>（12件）、
+      <code>editor_ui_spec.js</code>（38件）、<code>put_piece_spec.js</code>（32件）pass。</li>
+  <li>共通レールを変更したため全スペックを実行：<strong>262件中257件 pass、3件は既存のpending、
+      <code>tree_mode_spec.js</code> の2件が失敗</strong>（19分12秒）。
+      本設計が触れた26スペックは全て pass している。</li>
+</ul>
+
+<h4>未解決：<code>tree_mode_spec.js</code> の2件（本設計の対象外と判断）</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>失敗したテスト</th><th>症状</th></tr></thead>
+  <tbody>
+    <tr><td><code>preserves a promoted page field after node-only deletion and undo/redo</code></td>
+        <td><code>tree-page-link-&lt;nodeId&gt;</code> が見つからない（削除→undo/redo後）</td></tr>
+    <tr><td><code>auto-scrolls the tree while dragging near the container edge</code></td>
+        <td>ドラッグ開始前の前提 <code>scrollLeft === 0</code> が 240 になっている</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>本設計の変更が原因ではないと判断した根拠：</p>
+<ul>
+  <li>失敗した2件はいずれも<strong>ツリービュー単体の挙動</strong>（ノード削除・undo/redo・グラフの自動スクロール）で、
+      本設計が触れたエディタ右レール／PIECEレイアウト／<code>editorUi.pieceLayout</code> を一切参照していない。
+      <code>operations.mode.piece.*</code>（今回変更したヘルパー）も使っていない。</li>
+  <li><code>cypress/integration/tree_mode_spec.js</code> は<strong>本作業で一度も編集していない</strong>
+      （<code>git status</code> でも未変更＝HEADと一致）。</li>
+  <li>ただし同ファイルは<strong>作業中の 2026-08-01 23:44 にディスク上で更新されている</strong>。
+      第1版のフルラン時点では13件だったテストが、今回は14件（HEADの
+      <code>2a9426d Fix tree node deletion field preservation</code> が追加したものを含む）実行されている。
+      第1版のフルランがこの2件を検証していなかっただけで、以前から失敗していた可能性が高い。</li>
+</ul>
+
+<div class="warn">
+<strong>未検証。</strong>「HEADのソースだけで同じ2件が失敗するか」は確認していない。
+作業ツリーには依頼者自身の未コミット変更が含まれ、しかも作業中に外部から編集されたファイルがあるため、
+<code>git stash</code> による切り分けは依頼者の作業を壊す恐れがあると判断して実施しなかった。
+必要であれば、依頼者の作業が一段落した時点で clean な HEAD ビルドに対して
+<code>tree_mode_spec.js</code> 単体を流して切り分けられる。
+</div>
+
+<div class="warn">
+<strong>検証時の注意（実装メモ）。</strong>本アプリはService Workerでバンドルをプリキャッシュするため、
+<code>yarn webpack-prod</code> 後にブラウザで手動確認すると<strong>古いバンドルのまま表示される</strong>ことがある。
+実際、レールが横に伸びる不具合の修正後も旧挙動が再現し続けた。
+手動確認時はService Workerの解除とキャッシュ削除を行ってからリロードすること。
+</div>
+
+<h3>実装順（提案）</h3>
+
+<ol>
+  <li><strong>状態と永続化。</strong><code>states.ts</code> / <code>editor_interaction.ts</code> /
+      <code>view_settings.ts</code> / <code>memento.ts</code> / <code>actions.ts</code>。
+      Jest（<code>editor_interaction</code>, <code>memento_view_settings</code>）まで通す。
+      この時点ではUIは変わらない（<code>pieceLayout</code> は常に <code>'play'</code> 相当）。</li>
+  <li><strong>選択重視レイアウト。</strong><code>editor.ts</code> の分岐と <code>editor_rail.ts</code> の
+      グループ構成、トグル行の追加。選択重視で盤面がPAINTと一致することをJestで確認。</li>
+  <li><strong>操作重視レイアウト。</strong><code>responsive_layout.ts</code> の計算式置換、
+      <code>piece_queue_overlay.ts</code> のミノ描画上限引き上げ、パレット撤去。
+      <code>responsive_layout.test.ts</code> / <code>editor_layout.test.ts</code> を更新して通す。</li>
+  <li><strong>E2E。</strong><code>operations.js</code> のヘルパー追加 → <code>piece_queue_spec.js</code> /
+      <code>editor_ui_spec.js</code> の更新 → 影響スペックの実行。</li>
+  <li><strong>文言。</strong>ja/en 追加と <code>yarn lint</code>。</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="s10">10. UI再調整（第3版・2026-08-02 モード対等化・右列再整理）</h2>
+
+<p class="small">状態：実装済み ／ 設計作成者：GPT-5 ／ レビュー者：依頼者レビュー ／ 実装者：GPT-5</p>
+
+<h3 id="s10-1">10-1. 目的</h3>
+
+<p>PIECEとPlayを「PIECEの中でレイアウトを切り替える親子関係」ではなく、
+<strong>どの編集状態からでも目的の画面へ直接移動できる、対等な2つのモード入口</strong>として扱う。
+同時に、PIECE通常画面の右列をPAINT／SELECTと同じ行構成へ揃え、Play画面の右下を
+AI・モード切替・非常操作の役割ごとに整理する。</p>
+
+<div class="note">
+<strong>設計の中心。</strong>PIECEは常に「ミノパレットを表示するPIECE通常画面」、Playは常に
+「HOLD／NEXTとテトリス操作を表示するPlay画面」への直接遷移とする。
+現在の「PlayでPIECEを押すと、PIECE状態のまま通常レイアウトへ一段戻る」という特別な戻り処理は廃止する。
+</div>
+
+<h3 id="s10-2">10-2. 対象範囲</h3>
+
+<h4>対象</h4>
+<ul>
+  <li>PIECE／Playセルの意味、選択表示、クリック時の遷移。</li>
+  <li>PIECE通常レイアウトのSELECT／PAINTセルを、PAINT／SELECT画面と同じく1セル1行へ戻す。</li>
+  <li>Playレイアウト右下のAI、PIECE／Play、PAINT／SELECT、削除／リスポーン／RESETの再配置。</li>
+  <li>RESETのアイコンを、盤面全体の消去だと判別しやすいものへ変更する。</li>
+  <li>行数変更に伴うレスポンシブ計算、Jest、Cypress操作ヘルパーとspecの更新。</li>
+</ul>
+
+<h4>対象外</h4>
+<ul>
+  <li>HOLD／NEXT／∞7bag、キュー編集モーダル、下部PIECE操作トレイの機能と寸法。</li>
+  <li>PAINT／SELECT自体の機能、パレット内容、Cold Clearの処理内容。</li>
+  <li><code>pieceLayout: 'select' | 'play'</code> の保存形式、URL、fumen文字列、ツリー形式の変更。</li>
+  <li>第2版の未解決事項として記録済みの <code>tree_mode_spec.js</code> 2件の調査。</li>
+</ul>
+
+<h4>前提</h4>
+<ul>
+  <li>内部状態は互換性のため引き続き <code>primaryTool === 'piece'</code> と
+      <code>pieceLayout</code> の組み合わせで表す。UI上だけを独立した2入口として見せる。</li>
+  <li>PIECE／Playを再度押してもトレイを閉じない。アクティブな行先を選び直す冪等操作とする。
+      PIECE状態から抜ける操作はPAINTまたはSELECTを使用する。</li>
+  <li><code>pieceLayout</code> は従来どおり表示設定へ保存するが、PIECE／Playセルを押したときは
+      保存値より押された行先を優先する。</li>
+</ul>
+
+<h3 id="s10-3">10-3. 現状と変更後の差分</h3>
+
+<h4>PIECE／Playの遷移</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>押すセル</th><th>現状（第2版）</th><th>第3版</th></tr></thead>
+  <tbody>
+    <tr><td>PIECE</td><td>保存値に従ってPIECEへ入る。Play中は通常PIECEへ戻り、通常PIECE中はPIECEを抜ける。</td>
+        <td><strong>常にPIECE通常画面へ直接移動</strong>する。
+            <code>primaryTool='piece'</code>、<code>pieceLayout='select'</code>、下部トレイ表示を保証する。</td></tr>
+    <tr><td>Play</td><td>PAINT／SELECT／PIECE通常からPlayへ入る。Play画面にはセル自体が無い。</td>
+        <td><strong>常にPlay画面へ直接移動</strong>する。
+            <code>primaryTool='piece'</code>、<code>pieceLayout='play'</code>、下部トレイ表示を保証する。</td></tr>
+    <tr><td>PAINT／SELECT</td><td>PIECE状態を抜けて各画面へ移動。</td>
+        <td>変更なし。PIECE／Playのどちらからでも1タップで直接移動する。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>選択表示も遷移先に合わせる。PIECEセルの <code>selected</code> は
+<code>primaryTool === 'piece' &amp;&amp; pieceLayout === 'select'</code>、Playセルは
+<code>primaryTool === 'piece' &amp;&amp; pieceLayout === 'play'</code> のときだけ有効にする。
+これによりPlay画面でPIECEまで選択中に見える階層表現をなくし、<code>aria-pressed</code> も視覚状態と一致させる。</p>
+
+<h4>右列の最終構成</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>領域</th><th>PAINT／SELECT</th><th>PIECE通常</th><th>Play</th></tr></thead>
+  <tbody>
+    <tr><td>共通操作</td><td>IMPORT／EXPORT、ページ操作、UTILS／FLAGS</td><td>同左</td><td>表示しない（現状維持）</td></tr>
+    <tr><td>AI</td><td>全幅の独立行</td><td>全幅の独立行</td><td><strong>全幅の独立行</strong></td></tr>
+    <tr><td>PIECE／Play</td><td><code>[PIECE | Play]</code></td><td><code>[PIECE | Play]</code></td>
+        <td><strong><code>[PIECE | Play]</code></strong></td></tr>
+    <tr><td>PAINT／SELECT</td><td>SELECT、PAINTを各1行</td>
+        <td><strong>SELECT、PAINTを各1行</strong>（PAINT／SELECT画面と同じ）</td>
+        <td><strong><code>[PAINT | SELECT]</code></strong>（現状の左右を入れ替える）</td></tr>
+    <tr><td>パレット／非常操作</td><td>各画面の既存パレット</td><td>PIECEパレット11セル</td>
+        <td><code>[削除 | リスポーン | RESET]</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<pre><code>Play画面・右下（上から）
+┌───────────────┐
+│      AI       │  独立行
+├───────┬───────┤
+│ PIECE │ Play  │  対等な画面入口
+├───────┼───────┤
+│ PAINT │SELECT │  左右を入れ替え
+├─────┬─────┬───┤
+│削除 │再配置│RESET│  非常操作
+└─────┴─────┴───┘</code></pre>
+
+<h4>RESETアイコン</h4>
+<p>現行の <code>layers_clear</code> は「レイヤー操作」に見えやすいため、
+Material Iconsの <code>delete_sweep</code> へ変更する。単体ミノの削除 <code>delete</code>、
+カレントミノのリスポーン <code>refresh</code> と形状を分け、盤面全体を一掃する操作だと伝える。
+非compact時の <code>RESET</code> 文言、<code>aria-label</code>、長押し動作は変更しない。</p>
+
+<h4>レイアウト計算</h4>
+<ul>
+  <li>PIECE通常はSELECT／PAINTの分割行を2行へ戻すため、PAINT／SELECTより1行多い。
+      1列時21行、2列時14行を基準に専用セル高を計算し、最小18pxを維持する。</li>
+  <li>PlayはAI独立行とPIECE／Play行の追加により、右下レールを3行から4行へ変更する。
+      <code>PLAY_RAIL_ROWS</code> を3→4とし、NEXT領域を含めて再計算する。</li>
+  <li>具体的なpx期待値は実装後の計算結果をテストへ固定する。特に320×568、375×667、
+      844×390、674×802で、盤面との下端一致、最小セル高、NEXTミノの最小高を確認する。</li>
+</ul>
+
+<h3 id="s10-4">10-4. 影響ファイルとデータフロー</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>変更内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/actions/editor_interaction.ts</code></td>
+        <td>PIECE／Playの直接選択を1回の状態遷移で行うアクションを追加または既存アクションへ集約する。
+            <code>primaryTool</code>、<code>pieceLayout</code>、<code>bottomSlot</code>、legacy Pieceモードを同時に整合させ、
+            第2版の「Play中のPIECEは通常へ戻る」特別分岐を削除する。</td></tr>
+    <tr><td><code>src/views/editor/editor_rail.ts</code></td>
+        <td>PlayにもPlayセルを描画し、AIを常に独立行にする。PIECE通常のSELECT／PAINTを各1行へ変更し、
+            Playのみ <code>[PAINT|SELECT]</code> とする。PIECE／Playの選択条件とRESETアイコンを更新する。</td></tr>
+    <tr><td><code>src/views/editor/responsive_layout.ts</code></td>
+        <td>通常PIECE専用の21／14行計算を再導入し、<code>PLAY_RAIL_ROWS</code> を4へ変更する。
+            第1版で削除・追加を繰り返した定数を流用する場合も、役割が分かる名称にする。</td></tr>
+    <tr><td><code>src/views/editor/editor.ts</code></td>
+        <td>PIECE通常のセル高だけ専用行数で取得する。盤面サイズ、右列幅、Playキューの構造は変更しない。</td></tr>
+    <tr><td><code>src/actions/__tests__/editor_interaction.test.ts</code></td>
+        <td>階層トグルの期待値を、PIECE／Playの直接遷移と冪等性の期待値へ置き換える。</td></tr>
+    <tr><td><code>src/views/editor/__tests__/responsive_layout.test.ts</code>、<br>
+        <code>src/views/editor/__tests__/editor_layout.test.ts</code></td>
+        <td>PIECE通常21／14行、Play 4行、代表viewportでのセル高・下端一致・NEXT最小高を検証する。</td></tr>
+    <tr><td><code>cypress/support/operations.js</code></td>
+        <td><code>ensurePieceLayout()</code> は <code>data-piece-layout</code> で判定しつつ、
+            PIECEへは <code>btn-piece-mode</code>、Playへは <code>btn-piece-layout</code> を押す直接操作に統一する。</td></tr>
+    <tr><td><code>cypress/integration/editor_ui_spec.js</code>、<br>
+        <code>cypress/integration/piece_queue_spec.js</code>、<br>
+        <code>cypress/integration/put_piece_spec.js</code></td>
+        <td>右列順序、選択状態、全遷移、セル数、RESETアイコン、代表viewportの配置期待値を更新する。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>データフロー：</strong>PIECE／Playセル押下 → editor interaction action →
+<code>editorUi.primaryTool</code>／<code>pieceLayout</code>／<code>bottomSlot</code> とlegacy modeを同時更新 →
+<code>persistViewSettings()</code> へ完全なview-settingsを渡す → <code>editor.ts</code> が通常PIECEまたはPlayを選択 →
+<code>editor_rail.ts</code> が対応する右列と選択状態を描画する。
+ページ、コメント、<code>#Q=</code>、undo/redo履歴には書き込まない。</p>
+
+<h3 id="s10-5">10-5. 不変条件の確認</h3>
+
+<ul>
+  <li><strong>field/comment ref：</strong>ページ配列を変更しないため触れない。</li>
+  <li><strong>先頭ページのcolorize／rotation system：</strong>fumen内容と回転設定を変更しないため触れない。</li>
+  <li><strong>仮想ツリーroot／DFS順：</strong>ツリー操作を行わないため触れない。</li>
+  <li><strong><code>#TREE=</code> メタデータ：</strong>コメントと保存形式を変更しないため触れない。</li>
+  <li><strong>Tree中のreorder禁止：</strong>reorder操作を変更しないため触れない。</li>
+  <li><strong>PIECE/HOLD/NEXTの <code>#Q=</code>：</strong>表示入口だけを変え、構文・同期・キュー内容を変更しない。</li>
+  <li><strong>view-settingsの全置換：</strong><code>localStorageWrapper.saveViewSettings</code> を直接呼ばず、
+      必ず <code>persistViewSettings()</code> を介して完全な設定オブジェクトを保存する。</li>
+  <li><strong>URL／localStorage／履歴／画面遷移：</strong><code>pieceLayout</code> の既存値と復元経路を維持する。
+      UI遷移はページ履歴へ積まず、起動時復元のテストを残す。</li>
+</ul>
+
+<h3 id="s10-6">10-6. テスト計画</h3>
+
+<h4>Jest</h4>
+<ul>
+  <li>PAINT、SELECT、PIECE通常、Playの各状態からPIECEを押すと、必ず
+      <code>primaryTool='piece'</code>／<code>pieceLayout='select'</code>／トレイ表示になる。</li>
+  <li>同じ4状態からPlayを押すと、必ず
+      <code>primaryTool='piece'</code>／<code>pieceLayout='play'</code>／トレイ表示になる。</li>
+  <li>アクティブなPIECE／Playを再度選んでも状態を抜けず、ページ・<code>#Q=</code>・キュー・履歴へ影響しない。</li>
+  <li>PIECE通常21／14行とPlay 4行のセル高を代表viewportで検証し、最小高と下端一致を守る。</li>
+</ul>
+
+<h4>Cypress</h4>
+<ul>
+  <li>PAINT→PIECE、PAINT→Play、SELECT→PIECE、SELECT→Play、PIECE↔Playがすべて1タップで完了する。</li>
+  <li>Play画面でも <code>btn-piece-mode</code> と <code>btn-piece-layout</code> が同一分割行に存在し、
+      Playだけが <code>aria-pressed="true"</code> になる。PIECE通常では逆になる。</li>
+  <li>PIECE通常のSELECT／PAINTがPAINT／SELECT画面と同じ1セル1行であることを矩形座標で検証する。</li>
+  <li>Play右下が AI → [PIECE|Play] → [PAINT|SELECT] → [削除|リスポーン|RESET] の順で、
+      AIが全幅、PAINTが左、SELECTが右であることを検証する。</li>
+  <li><code>btn-piece-reset .material-icons</code> が <code>delete_sweep</code> を表示し、押下で盤面とカレントミノを
+      従来どおりリセットすることを確認する。</li>
+  <li>実行前に <code>yarn webpack-prod</code> で <code>dest/</code> を再生成し、関連3spec後に全Cypressを流す。</li>
+</ul>
+
+<h3 id="s10-7">10-7. 未確定事項・リスク</h3>
+
+<ul>
+  <li><strong>アクティブセル再押下の挙動：</strong>本設計では「閉じる」ではなく冪等な直接選択とした。
+      現行のPIECE再押下でPAINTへ戻る操作を残すと対等性が再び崩れるため、PAINT／SELECTを明示的な退出導線とする。</li>
+  <li><strong>小画面の密度：</strong>PIECE通常は1行、Playも1行増える。最小セル高を割る場合は
+      PAINT／SELECTを再分割せず、グループgapやPlayのNEXT余白を先に詰める。</li>
+  <li><strong>RESETアイコン：</strong><code>delete_sweep</code> が同梱Material Iconsフォントで欠けないことを実DOMで確認する。
+      欠ける場合の第2候補は <code>grid_off</code> とする。</li>
+  <li><strong>永続化の意味：</strong>直接入口化後も <code>pieceLayout</code> 保存は再読込時の表示復元に使う。
+      PIECEセル押下時に保存値へ従う旧テスト・ヘルパーが残らないよう全参照を検索する。</li>
+</ul>
+
+<h3 id="s10-8">10-8. 別途改善案</h3>
+
+<ol>
+  <li><strong>推奨：PIECE／Playの選択色を完全に排他的にする。</strong>
+      本設計へ含めた。階層感をなくす効果が最も大きく、視覚状態と <code>aria-pressed</code> も一致する。</li>
+  <li><strong>任意：全画面でPAINT／SELECTの順を統一する。</strong>
+      今回は依頼どおりPlayだけを <code>[PAINT|SELECT]</code> にするが、縦並びの通常画面もPAINT→SELECTに統一すると
+      位置記憶はさらに揃う。一方、既存ユーザーの手癖への影響が広がるため別判断とする。</li>
+  <li><strong>任意：compact時もPIECE／Playに短い文字ラベルを残す。</strong>
+      幅が許すviewportでは <code>P</code>／<code>▶</code> または <code>P</code>／<code>Play</code> を併記すると、
+      アイコンだけより行先が明確になる。最小幅での可読性を実測してから採否を決める。</li>
+  <li><strong>任意：危険操作の色を役割別にする。</strong>
+      RESETだけを弱い警告色にし、単体削除・リスポーンと区別する案。ただし既存の選択色体系と競合しないか確認が必要。</li>
+</ol>
+
+<h3 id="s10-9">10-9. 進捗・結果・課題</h3>
+
+<p>実装完了。PIECE／Playの直接選択アクションを追加し、旧来のPlay→PIECE特別分岐を廃止した。
+PIECE／Playは常時同一行に表示し、選択状態を排他的に変更した。PlayはAI独立行、
+<code>[PIECE|Play]</code>、<code>[PAINT|SELECT]</code>、非常操作3分割へ再構成し、
+RESETのcompactアイコンは <code>delete_sweep</code> に変更した。</p>
+
+<h4>検証結果（第3版）</h4>
+<ul>
+  <li><code>tslint --project tsconfig.json --config tslint.json</code>：pass。</li>
+  <li>Jest：928件 pass、1件 skipped。Cold Clearの意図的なエラーログとJestワーカー終了警告はあるが、失敗はなし。</li>
+  <li><code>webpack --mode production</code>：pass（既存のasset size / Browserslist警告のみ）。</li>
+  <li>Cypress：<code>editor_ui_spec.js</code> 38件 pass、<code>piece_queue_spec.js</code> 12件 pass。
+      制限付きプロセスではChrome GPU初期化に失敗したため、通常Windows権限で実行した。</li>
+  <li><code>put_piece_spec.js</code> 全体は実行環境の64秒上限で結果出力前に停止した。
+      本変更でRESETの処理本体は変更しておらず、アイコン表示とPIECE操作は <code>editor_ui_spec.js</code> で確認済み。
+      CIまたは通常端末では同spec全体を追加確認する。</li>
+</ul>
+
+<p class="small">
+コミットの <code>Model:</code> トレーラーは、AGENTS.md の規定によりこの設計書に記録されたモデル名
+（設計作成者／レビュー者／実装者）を用いる。
+</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<h2 id="s11">11. UI再調整（第4版・2026-08-02 PIECE／PAINT／SELECTの縦並びとPLAY／AIの併置）</h2>
+
+<p class="small">状態：実装済み ／ 設計作成者：Claude Opus 5 ／ レビュー者：依頼者レビュー ／ 実装者：Claude Opus 5</p>
+
+<div class="note">
+<strong>本節の <code>PLAY</code> 表記について。</strong>依頼時の名称をそのまま記録している。
+表示ラベルとアイコンはその後 <strong><code>INPUT</code> ＋ <code>keyboard</code></strong> へ差し替えたため、
+<a href="#s11-9">§11-9</a> が最終形である。配置・行数・遷移の設計は本節のまま有効。
+</div>
+
+<h3 id="s11-1">11-1. 目的</h3>
+
+<p>依頼内容は次の4点。</p>
+
+<ol>
+  <li>PAINT・SELECT・PIECEの3つを<strong>ひとまとまりの縦並び</strong>として扱い、
+      上下に隣接したSELECT／PAINTの<strong>直上にPIECEを置く</strong>。</li>
+  <li>PIECEセルの表示文言を <code>P</code> から <strong><code>PIECE</code></strong> に改める。</li>
+  <li>PlayはAIと<strong>左右に隣接</strong>させ、<strong>左がPLAY・右がAI</strong>とする。</li>
+  <li>Playの表示文言を <code>Play</code> から <strong><code>PLAY</code></strong> に改める。</li>
+</ol>
+
+<div class="note">
+<strong>設計の中心。</strong>第3版は「PIECEとPlayは対等な入口」という<em>遷移</em>の対等化だった。
+第4版は<em>視覚的なグルーピング</em>を目的に合わせる。
+PIECE・SELECT・PAINTは「盤面をどう編集するか」の排他的な編集モード3種なので縦一列にまとめ、
+PLAYは「別画面へ行く」・AIは「探索を呼ぶ」という別種の操作なので、1行に併置して編集モード群から切り離す。
+遷移仕様・選択状態の排他性・<code>datatest</code>属性・キュー寸法は第3版のまま変更しない。
+</div>
+
+<h3 id="s11-2">11-2. 対象範囲</h3>
+
+<h4>対象</h4>
+<ul>
+  <li><code>editor_rail.ts</code> の右列グルーピング変更。AI単独行と <code>[PIECE|Play]</code> 行を廃し、
+      <code>[PLAY|AI]</code> 行とPIECE全幅行に置き換える。PIECE全幅行はSELECT／PAINTと同じグループに入れる。</li>
+  <li>PIECEセルの表示ラベル（<code>'P'</code> → <code>'PIECE'</code>）と、全幅化に伴う
+      compact判定の <code>compactPairedCell</code> → <code>compact</code> への変更。</li>
+  <li><code>EditorUi.PieceLayoutPlay</code> の日本語・英語文言（<code>'Play'</code> → <code>'PLAY'</code>）。</li>
+  <li>グループ数の変化に伴う <code>PLAY_RAIL_CHROME_HEIGHT</code> の再算定。</li>
+  <li>右列の順序・ラベルを検証しているCypress specと <code>cypress/support/operations.js</code>、
+      およびJestのレイアウト期待値の更新。</li>
+</ul>
+
+<h4>対象外</h4>
+<ul>
+  <li>PIECE／PLAYの遷移仕様、冪等性、選択状態の排他性（第3版のまま）。</li>
+  <li><code>datatest</code> 属性名。<code>btn-piece-mode</code>／<code>btn-piece-layout</code>／
+      <code>btn-cold-clear</code> は据え置き、位置だけを変える。</li>
+  <li>HOLD／NEXT／∞7bag、キュー編集モーダル、下部PIECE操作トレイ、パレット内容、RESETアイコン。</li>
+  <li>盤面サイズ、右列幅、Playのキュー幅・NEXTミノ高の算定式（<code>PLAY_RAIL_CHROME_HEIGHT</code> 以外）。</li>
+  <li>IMPORT／EXPORT、ページ操作、UTILS／FLAGSの構成と位置。</li>
+  <li><code>pieceLayout</code> の保存形式、URL、fumen文字列、ツリー形式。</li>
+  <li>第2版から未解決の <code>tree_mode_spec.js</code> 2件の調査。</li>
+</ul>
+
+<h4>前提</h4>
+<ul>
+  <li>作業ツリーには第3版に続く未コミットの調整（PIECE通常のパレットから <code>comp</code> セルを外し
+      <code>btn-piece-palette-spacer</code> を置く、<code>getPieceSelectRailCellHeight</code> の21／14行専用計算を撤去）が
+      すでに入っている。本設計の「現状」はこの状態を指す。この調整によりPIECE通常の行数は
+      PAINT／SELECTと同じ<strong>1列20行／2列13行</strong>に揃っている。</li>
+  <li>PIECEを全幅1行に、PLAYをAIとの分割行にすると、
+      「AI＋<code>[PIECE|Play]</code>＋SELECT＋PAINT＝4行」が
+      「<code>[PLAY|AI]</code>＋PIECE＋SELECT＋PAINT＝4行」になり<strong>行数は不変</strong>である。
+      よって <code>RAIL_ROWS_SINGLE = 20</code>／<code>RAIL_ROWS_DUAL = 13</code>／
+      <code>PLAY_RAIL_ROWS = 4</code> はいずれも据え置ける。</li>
+  <li>2列レール（<code>canvasHeight &lt; 420</code>）でもSELECT／PAINTは全幅1行のままなので、
+      PIECEを全幅にしても2列時の行数勘定は崩れない。</li>
+</ul>
+
+<h3 id="s11-3">11-3. 現状と変更後の差分</h3>
+
+<h4>右列の行順</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>領域</th><th>現状（第3版＋未コミット調整）</th><th>第4版</th></tr></thead>
+  <tbody>
+    <tr><td>共通操作</td><td>IMPORT／EXPORT、ページ操作、<code>[UTILS|FLAGS]</code></td><td>変更なし</td></tr>
+    <tr><td>AI</td><td>全幅の独立行</td><td><strong><code>[PLAY | AI]</code> の右セル</strong></td></tr>
+    <tr><td>PIECE／Play</td><td><code>[PIECE | Play]</code> の分割行</td>
+        <td><strong>PLAYは <code>[PLAY | AI]</code> の左セル、PIECEは全幅の独立行</strong></td></tr>
+    <tr><td>編集モード群</td><td>SELECT、PAINTを各1行</td>
+        <td><strong>PIECE、SELECT、PAINTを各1行（同一グループ）</strong></td></tr>
+    <tr><td>パレット</td><td>PIECE通常は9セル＋spacer、PAINT／SELECTは10セル</td><td>変更なし</td></tr>
+  </tbody>
+</table>
+</div>
+
+<pre><code>PAINT／SELECT／PIECE通常・右列（上から）      Play画面・右下（上から）
+┌───────┬───────┐                            ┌───────┬───────┐
+│ IMPORT│ EXPORT│                            │ PLAY  │  AI   │  行先＋探索
+├───────┴───────┤                            ├───────┴───────┤
+│  ADD / INSERT │                            │     PIECE     │  編集モード
+│  COPY / CUT   │                            ├───────┬───────┤
+├───────┬───────┤                            │ PAINT │SELECT │
+│ UTILS │ FLAGS │                            ├─────┬─┴─┬─────┤
+├───────┼───────┤                            │削除 │再配置│RESET│
+│ PLAY  │  AI   │  ← 行先＋探索              └─────┴───┴─────┘
+├───────┴───────┤
+│     PIECE     │  ← 編集モード3種を
+├───────────────┤     縦一列にまとめる
+│    SELECT     │
+├───────────────┤
+│     PAINT     │
+├───────────────┤
+│  パレット10行 │
+└───────────────┘</code></pre>
+
+<p>
+Play画面では従来どおりPAINT／SELECTを <code>[PAINT | SELECT]</code> の1行に畳む。
+Play画面のPAINT／SELECTは上下に隣接していないため依頼の「その上にPIECEを置く」に該当し、
+PIECEを全幅でその直上に置くことで、通常画面と同じ「PLAY／AI → PIECE → PAINT／SELECT」の縦順になる。
+Playだけを縦3行へ展開すると右下が4行→5行になりNEXTミノ高が縮むため、行数を保つこの形を採る
+（<a href="#s11-7">§11-7</a> に検討として記載）。
+</p>
+
+<h4>表示文言</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>セル</th><th>現状</th><th>第4版</th><th>備考</th></tr></thead>
+  <tbody>
+    <tr><td><code>btn-piece-mode</code></td><td>アイコン <code>extension</code> ＋ <code>P</code></td>
+        <td>アイコン <code>extension</code> ＋ <strong><code>PIECE</code></strong>（実装済み）</td>
+        <td><code>label</code>（<code>aria-label</code>）は既に <code>'PIECE'</code> のため変更不要。
+            全幅化に伴い表示判定を <code>compactPairedCell</code> から <code>compact</code> へ変更し、
+            SELECT／PAINTと同じ条件で文字を出す。</td></tr>
+    <tr><td><code>btn-piece-layout</code></td><td><code>i18n.EditorUi.PieceLayoutPlay()</code> ＝ <code>Play</code></td>
+        <td>依頼時は <code>PLAY</code>。<strong>最終的に <code>INPUT</code></strong>（<a href="#s11-9">§11-9</a>）</td>
+        <td>ja／en両方の <code>translation.ts</code> を更新する。<code>label</code> も同じキーを参照しているため
+            <code>aria-label</code> が自動で追従する。アイコンは <code>view_column</code> から
+            <strong><code>keyboard</code></strong> へ変更し、
+            文字を出すときは<strong>アイコンの上下積み</strong>にする（<a href="#s11-9">§11-9</a>）。</td></tr>
+    <tr><td><code>btn-cold-clear</code></td><td>アイコン ＋ <code>AI</code></td><td>変更なし</td>
+        <td>分割行の右セルへ移るのみ。進捗バッジと <code>aria-live</code> の実装は据え置き。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>グループ構成の変更</h4>
+
+<pre><code>// editor_rail.ts（変更後・構成のみ）
+const playAndAiGroup = toolGroup('rail-play-ai', [
+    row('rail-play-ai-row', [playLayoutCell, coldClearCell]),   // 左PLAY・右AI
+], playLayout);
+
+// PIECE / SELECT / PAINT を同一グループの縦並びにする。Playのみ下2つを1行へ畳む。
+const modeGroup = toolGroup('rail-modes', playLayout
+    ? [pieceModeCell, row('rail-modes-row-play', [paintCell, selectCell])]
+    : [pieceModeCell, selectCell, paintCell], playLayout);
+
+const auxiliaryAndAiGroup = div({ ... }, [auxiliaryGroup, playAndAiGroup]);
+
+const railGroups = playLayout
+    ? [playAndAiGroup, modeGroup, paletteGroup]
+    : [systemGroup, pageGroup, auxiliaryAndAiGroup, modeGroup, paletteGroup];</code></pre>
+
+<ul>
+  <li>従来の <code>coldClearGroup</code>（AI単独）と <code>aiAndPieceGroup</code>（<code>[PIECE|Play]</code>）は廃止し、
+      <code>playAndAiGroup</code> に統合する。</li>
+  <li>Playのグループ数は4→3に減る。<code>PLAY_RAIL_CHROME_HEIGHT</code> は
+      「4グループの枠線とグループ間gap」として26を置いているため、
+      <strong>26 → 20</strong>（グループ間gap 6px 1つ分）へ改め、コメントも3グループに合わせる。
+      これによりNEXT領域が6px広がる方向にのみ動くため、既存の下限（<code>MIN_PLAY_NEXT_MINO_HEIGHT</code>）を割ることはない。</li>
+  <li>通常レイアウトでは <code>auxiliaryAndAiGroup</code> の内部グループが3→2に減り、内部gap 4px 分だけ余裕が増える。
+      行数は不変なので <code>getResponsiveRailCellHeight</code> の <code>RAIL_GROUP_GAPS_HEIGHT = 16</code> は据え置き、
+      増えた4pxは既存の下端余白として吸収する。実装時に674×802・375×667で下端一致を実測して確認する。</li>
+</ul>
+
+<h3 id="s11-4">11-4. 影響ファイルとデータフロー</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>ファイル</th><th>変更内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>src/views/editor/editor_rail.ts</code></td>
+        <td><code>coldClearGroup</code>／<code>aiAndPieceGroup</code> を <code>playAndAiGroup</code> へ統合し、
+            <code>pieceModeCell</code> を <code>modeGroup</code> の先頭へ移す。
+            PIECEの表示文字を <code>'PIECE'</code> にし、判定を <code>compact</code> に変える。
+            <code>railGroups</code> の並びを両レイアウトで更新する。
+            INPUTセルのアイコンを定数 <code>PLAY_ICON = 'keyboard'</code> にまとめる（<a href="#s11-9">§11-9</a>）。</td></tr>
+    <tr><td><code>src/locales/ja/translation.ts</code>、<br>
+            <code>src/locales/en/translation.ts</code></td>
+        <td><code>EditorUi.PieceLayoutPlay</code> を <code>'INPUT'</code> にする（<a href="#s11-9">§11-9</a>）。
+            AGENTS.mdの規定どおり英日双方を更新する（英語の製品用語をそのまま使うケース）。</td></tr>
+    <tr><td><code>src/views/editor/responsive_layout.ts</code></td>
+        <td><code>PLAY_RAIL_CHROME_HEIGHT</code> を26→20にし、コメントを3グループ構成へ更新する。
+            行数定数（<code>PLAY_RAIL_ROWS</code>、<code>RAIL_ROWS_SINGLE</code>、<code>RAIL_ROWS_DUAL</code>）は変更しない。</td></tr>
+    <tr><td><code>src/views/editor/__tests__/responsive_layout.test.ts</code>、<br>
+            <code>src/views/editor/__tests__/editor_layout.test.ts</code></td>
+        <td><code>PLAY_RAIL_CHROME_HEIGHT</code> 変更に伴うNEXTミノ高・レールセル高の期待値を再確認して更新する。
+            代表viewport（320×568／375×667／674×802／844×390／1920×1080）で最小セル高18px・
+            NEXTミノ最小20px・下端一致を維持することを検証する。</td></tr>
+    <tr><td><code>cypress/integration/editor_ui_spec.js</code></td>
+        <td><code>assertRailArrangement</code> を
+            「<code>[PLAY|AI]</code> がUTILSの直下、PIECEがその直下の全幅、SELECT・PAINTがその下」に書き換える。
+            <code>assertPlayRailArrangement</code> を
+            「<code>[PLAY|AI]</code> → PIECE全幅 → <code>[PAINT|SELECT]</code> → 非常操作3分割」に書き換える。
+            <code>assertPieceRailTwoColumns</code> の先頭ペア <code>[btn-piece-mode, btn-piece-layout]</code> を
+            <code>[btn-piece-layout, btn-cold-clear]</code> へ差し替え、PIECEは全幅として別に検証する。
+            ラベル一覧テストの <code>['btn-piece-mode', 'P']</code> を <code>'PIECE'</code> に、
+            <code>btn-piece-layout</code> の表示文言（最終的に <code>'INPUT'</code>）とアイコンの検証を追加する。</td></tr>
+    <tr><td><code>cypress/integration/piece_queue_spec.js</code></td>
+        <td>PIECE⇄PLAYの遷移・<code>aria-pressed</code> の検証は据え置き。
+            位置に依存する取得や文言比較があれば新配置へ合わせる。</td></tr>
+    <tr><td><code>cypress/support/operations.js</code></td>
+        <td>セレクタ（<code>btn-piece-mode</code>／<code>btn-piece-layout</code>）は不変のため原則変更なし。
+            <code>ensurePieceLayout()</code> がクリック前にスクロール位置や可視性を仮定していないか確認する。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>データフロー：</strong>本変更はビュー層の並べ替えと文言のみで、状態遷移の経路は第3版と同一である。
+PIECE／PLAYセル押下 → <code>actions.selectPieceLayout</code> → <code>editorUi.primaryTool</code>／
+<code>pieceLayout</code>／<code>bottomSlot</code> の更新 → <code>persistViewSettings()</code> →
+<code>editor.ts</code> のレイアウト選択 → <code>editor_rail.ts</code> の描画。
+AIセルは <code>actions.openColdClearMenuModal</code> を呼ぶだけで、行の所属が変わっても呼び出し先は変わらない。
+ページ、コメント、<code>#Q=</code>、undo/redo履歴、localStorageのキー構成には一切書き込まない。</p>
+
+<h3 id="s11-5">11-5. 不変条件の確認</h3>
+
+<ul>
+  <li><strong>field/comment ref：</strong>ページ配列を変更しないため触れない。</li>
+  <li><strong>先頭ページのcolorize／rotation system：</strong>fumen内容と回転設定を変更しないため触れない。</li>
+  <li><strong>仮想ツリーroot／DFS順：</strong>ツリー操作を行わないため触れない。</li>
+  <li><strong><code>#TREE=</code> メタデータ：</strong>コメントと保存形式を変更しないため触れない。</li>
+  <li><strong>Tree中のreorder禁止：</strong>reorder操作を変更しないため触れない。</li>
+  <li><strong>PIECE/HOLD/NEXTの <code>#Q=</code>：</strong>キューの構文・同期・内容に触れない。
+      AIセルの移動もCold Clearの入力生成には影響しない。</li>
+  <li><strong>view-settingsの全置換：</strong>本変更は保存処理を追加しない。既存経路は引き続き
+      <code>persistViewSettings()</code> を通り、<code>localStorageWrapper.saveViewSettings</code> を直接呼ばない。</li>
+  <li><strong>URL／localStorage／履歴／画面遷移：</strong><code>pieceLayout</code> の値と復元経路を変更しない。
+      行の並べ替えは履歴へ積まない。</li>
+</ul>
+
+<h3 id="s11-6">11-6. テスト計画</h3>
+
+<h4>Jest</h4>
+<ul>
+  <li><code>responsive_layout.test.ts</code>：<code>getPlayPieceRailMetrics</code> が
+      <code>PLAY_RAIL_CHROME_HEIGHT = 20</code> でも <code>MIN_PIECE_RAIL_CELL_HEIGHT = 22</code> と
+      <code>MIN_PLAY_NEXT_MINO_HEIGHT = 20</code> を守り、NEXTミノ高が現状以上になることを代表viewportで検証する。</li>
+  <li><code>editor_layout.test.ts</code>：PIECE通常・PAINT／SELECT・Playの各状態で、
+      レールセル高と右列幅が現行値から変わらないこと（行数不変の裏取り）を検証する。</li>
+  <li>いずれも既存テストの期待値を機械的に書き換えず、差分が出た場合は行数・gapのどちらに起因するか特定してから更新する。</li>
+</ul>
+
+<h4>Cypress</h4>
+<ul>
+  <li>PAINT／SELECT／PIECE通常で、<code>btn-piece-layout</code> と <code>btn-cold-clear</code> の
+      <code>top</code> が一致し、PLAYが左・AIが右であること。</li>
+  <li>同じ画面で <code>btn-piece-mode</code> が <code>[PLAY|AI]</code> 行の直下にあり、
+      <code>left</code>／<code>right</code> がレール端と一致する全幅セルであること。
+      その下に <code>btn-select-mode</code>、さらに <code>btn-paint-mode</code> が続くこと。</li>
+  <li>Play画面で <code>[PLAY|AI]</code> → PIECE全幅 → <code>[PAINT|SELECT]</code> →
+      <code>[削除|リスポーン|RESET]</code> の順であること。</li>
+  <li><code>btn-piece-mode</code> が <code>PIECE</code>、<code>btn-piece-layout</code> が <code>INPUT</code> を表示すること
+      （非compactのviewport。412×844および1000×800）。</li>
+  <li>2列レール（例：844×390）で <code>[PLAY|AI]</code> が1行に収まり、PIECE／SELECT／PAINTが全幅で、
+      各セル高が18px以上であること。</li>
+  <li>PIECE⇄PLAYの相互遷移と <code>aria-pressed</code> の排他性が第3版のまま維持されること（回帰確認）。</li>
+  <li>実行前に <code>yarn webpack-prod</code> で <code>dest/</code> を再生成し、
+      <code>editor_ui_spec.js</code>・<code>piece_queue_spec.js</code>・<code>editor_side_panel_spec.js</code> を流す。
+      <code>.agents/skills/e2e/SKILL.md</code> の手順に従う。</li>
+</ul>
+
+<h3 id="s11-7">11-7. 未確定事項・リスク</h3>
+
+<ul>
+  <li><strong>Play画面のPAINT／SELECTを縦並びにするか。</strong>依頼文の「上下に隣接したpaint、select」は
+      通常画面の状態を指すと解釈し、Playでは <code>[PAINT|SELECT]</code> の1行を維持した。
+      Playも縦2行にすると右下が5行になり、NEXTミノ高が1行分（PCで約25px）縮む。
+      キュー拡大が本設計書全体の目的であるため、縮める判断は依頼者確認事項とする。</li>
+  <li><strong>PIECEの文字表示が入る幅。</strong>PIECEは全幅行になるためPC・モバイル縦では余裕があるが、
+      Play画面の右列幅はキュー幅（66〜132px）に従う。<code>compact</code> 判定でも
+      アイコン＋<code>PIECE</code>が66px幅で溢れないか実DOMで確認し、溢れる場合はPlayのみ
+      <code>compactPairedCell</code> 相当のアイコン単独に戻す。</li>
+  <li><strong>手癖への影響。</strong>AIが全幅独立行から分割行の右へ移り、PIECEの位置も1行下がる。
+      <code>datatest</code> は不変なのでテストと外部連携は壊れないが、既存ユーザーのタップ位置は変わる。</li>
+  <li><strong>文言の全角／半角。</strong>PLAY（現 <code>INPUT</code>）は英日共通の半角大文字とし、
+      SELECT／PAINT／PIECEと表記体系を揃える。日本語訳を別途起こさない。</li>
+  <li><strong>gap定数の実測。</strong><code>PLAY_RAIL_CHROME_HEIGHT</code> の26→20は
+      「グループ間gap 6px×1」の理屈による見積もりである。実装時に<code>toolGroup</code>の枠線込みで実測し、
+      ずれる場合は実測値へ合わせる。</li>
+</ul>
+
+<h3 id="s11-8">11-8. 進捗・結果・課題</h3>
+
+<p>実装完了。<code>coldClearGroup</code>／<code>aiAndPieceGroup</code> を <code>playAndAiGroup</code>
+（<code>[PLAY|AI]</code> の1行）へ統合し、<code>pieceModeCell</code> を <code>modeGroup</code> の先頭へ移して
+PIECE→SELECT→PAINTの縦並びにした。Play画面は下2つを <code>[PAINT|SELECT]</code> に畳んだまま維持し、
+右下は <code>[PLAY|AI]</code> → PIECE → <code>[PAINT|SELECT]</code> → 非常操作の4行のまま。
+文言は <code>PIECE</code>／<code>PLAY</code> へ変更した（<code>PLAY</code> はのちに <code>INPUT</code> へ差し替え。<a href="#s11-9">§11-9</a>）。</p>
+
+<h4>設計からの変更点</h4>
+<ul>
+  <li><strong>PLAY（現INPUT）セルはアイコンとラベルを上下に積む。</strong>674×802の実DOMで、
+      分割セル幅（レール80px÷2＝38.5px、
+      内側34.5px）にアイコン21px＋<code>PLAY</code>25px（11px字）は入らず <code>PLA</code> に切れた。
+      横並びを諦めて縦積みにし、アイコンとラベルの両方を残した（詳細は <a href="#s11-9">§11-9</a>）。
+      AIはアイコン＋2文字（10.6px）で収まるため従来どおり横並び。
+      <a href="#s11-7">§11-7</a> の幅の懸念はPIECE側ではなくPLAY側で顕在化した。</li>
+  <li>PIECEは全幅行のため、非compactではアイコン＋<code>PIECE</code>が674×802・844×390の両方で収まることを実機確認した。</li>
+</ul>
+
+<h4>検証結果（第4版）</h4>
+<ul>
+  <li><code>yarn lint</code>：pass。</li>
+  <li><code>yarn test</code>：63 suites／928件 pass、1件 skipped（従来どおりCold Clearの意図的エラーログと
+      Jestワーカー終了警告のみ）。</li>
+  <li><code>yarn webpack-prod</code>：pass（既存のasset size / Browserslist警告のみ）。</li>
+  <li>Cypress：<code>editor_ui_spec.js</code> 38件、<code>piece_queue_spec.js</code> 12件、
+      <code>editor_side_panel_spec.js</code> 10件、<code>cold_clear_spec.js</code> 6件、いずれもpass。</li>
+  <li>実機確認（674×802）：PAINT画面で UTILS → <code>[PLAY|AI]</code> → PIECE → SELECT → PAINT → パレットの順、
+      Play画面で <code>[PLAY|AI]</code> → PIECE → <code>[PAINT|SELECT]</code> → <code>[削除|リスポーン|RESET]</code> の順。
+      844×390（2列レール）でもPIECE通常・Playとも下端がフィールド内に収まる。</li>
+  <li>Playの<code>nextMinoHeight</code>（674×802）は78→79pxへ微増した。グループ数4→3による
+      <code>PLAY_RAIL_CHROME_HEIGHT</code> 26→20の効果で、<code>editor_layout.test.ts</code> に
+      <code>toBe(79)</code> の回帰ガードを追加した。</li>
+</ul>
+
+<h4>残課題</h4>
+<ul>
+  <li>Play画面のPAINT／SELECTを縦並びにするかは <a href="#s11-7">§11-7</a> のとおり未確定。現状は1行のまま。</li>
+  <li>第2版から未解決の <code>tree_mode_spec.js</code> 2件は本変更の対象外で、状況も変わっていない。</li>
+  <li>INPUT画面の3分割セル（削除／リスポーン／RESET）は幅の制約でラベルを出せず、アイコンのみのまま。
+      判別性をさらに上げるならアイコン差し替えか行構成の変更が必要で、
+      <a href="#s11-10">§11-10</a> の検討時に見送った選択肢が候補になる。</li>
+</ul>
+
+<h3 id="s11-9">11-9. PLAY→INPUTへの改称とアイコン選定（追補・2026-08-02）</h3>
+
+<p>§11の実装後、まずPLAYセルにアイコンを追加する依頼があり、
+<code>sports_esports</code>（ゲームパッド）を実装した。その後、依頼者から
+<strong>「PLAY」＋ゲームパッドという組み合わせは、テト譜編集ツールではなく
+「遊べるテトリス」に見え、テトリスのブランド面で懸念がある</strong>との指摘があり、
+表示ラベルとアイコンの両方を中立な表現へ差し替えた。</p>
+
+<div class="note">
+<strong>懸念の性質。</strong>アイコン自体のライセンスは問題ない（Material Iconsは Apache-2.0、
+同梱フォントに含まれる）。論点は<strong>見え方</strong>で、
+遊技としての「PLAY」を打ち出すか、道具としての「操作入力」を打ち出すかの選択である。
+本フォークはfumen編集ツールなので後者に寄せる。
+</div>
+
+<h4>ラベル候補と選定</h4>
+
+<p class="small">9pxラベルの実測幅と、分割セル内側幅34.5px（674×802のPAINT画面）に対する収まり。</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>候補</th><th>アイコン</th><th class="num">幅</th><th>評価</th></tr></thead>
+  <tbody>
+    <tr><td><strong><code>INPUT</code></strong></td><td><code>keyboard</code></td><td class="num">26.1</td>
+        <td><strong>採用（依頼者選択）。</strong>「遊ぶ」を示唆せず機能名として読める。
+            この画面の実体（DAS／ARRを含むキー操作でミノを置く）と一致し、
+            現UI内にINPUT／keyboardと衝突する語・図像がない。</td></tr>
+    <tr><td><code>DROP</code></td><td><code>vertical_align_bottom</code></td><td class="num">24.0</td>
+        <td>不採用。近くにゴミ箱アイコンがあるため「捨てる」と誤読される余地がある。</td></tr>
+    <tr><td><code>QUEUE</code></td><td><code>view_agenda</code></td><td class="num">28.8</td>
+        <td>不採用。最も中立だが、キュー編集モーダルの入口だと誤解されるコストが大きい。</td></tr>
+    <tr><td><code>PLAY</code>据え置き</td><td><code>keyboard</code> 等</td><td class="num">20.4</td>
+        <td>不採用。図像だけ中立にしても「PLAY」という語が残る。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>他の検討候補と実測幅：<code>MOVE</code> 25.6／<code>KEYS</code> 20.1／<code>CTRL</code> 20.6／
+<code>BUILD</code> 25.2。5文字までなら収まり、6文字（約31px）では余裕がほぼ消える。</p>
+
+<h4>アイコン候補と選定</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>候補</th><th>コードポイント</th><th>評価</th></tr></thead>
+  <tbody>
+    <tr><td><strong><code>keyboard</code></strong></td><td><code>e312</code></td>
+        <td><strong>採用。</strong>入力手段そのものを示し、遊技を想起させない。
+            レール内の他アイコン（<code>extension</code>・<code>select_all</code>・<code>brush</code>・
+            <code>auto_fix_high</code>）と形状が重ならず、アプリ内での既存使用もない。</td></tr>
+    <tr><td><code>sports_esports</code></td><td><code>ea28</code></td>
+        <td>取り下げ。一度実装したが、上記のブランド面の懸念により差し替えた。</td></tr>
+    <tr><td><code>play_arrow</code></td><td><code>e037</code></td>
+        <td>不採用。下部ツールバーのページ再生ボタンと同じ記号で、
+            「ページを再生する」と誤解される。</td></tr>
+    <tr><td><code>videogame_asset</code>／<code>gamepad</code></td><td><code>e338</code>／<code>e30f</code></td>
+        <td>不採用。<code>sports_esports</code> と同じ懸念。<code>gamepad</code> は
+            十字キーのみの図形でPIECE操作トレイの方向キーとも紛らわしい。</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>各候補とも <code>node_modules/material-icons</code> の <code>_codepoints.scss</code> に存在し、
+同梱フォントに含まれることを確認済み（第3版の <code>delete_sweep</code> と同じ確認手順）。
+実DOMでも <code>keyboard</code> がtofuにならずに描画されることを確認した。</p>
+
+<h4>内部名を変えない理由</h4>
+<ul>
+  <li><code>pieceLayout: 'play'</code> はview-settingsとしてlocalStorageへ永続化されており、
+      値を変えると既存ユーザーの復元にマイグレーションが必要になる。</li>
+  <li><code>datatest="btn-piece-layout"</code> を変えるとCypressの全参照とヘルパーが連鎖で変わる。</li>
+  <li>よって変更したのは <strong>i18nキー <code>EditorUi.PieceLayoutPlay</code> の値と
+      <code>PLAY_ICON</code> の中身だけ</strong>で、キー名・定数名・state値・<code>datatest</code>は据え置いた。
+      キー名と表示文言がずれるが、内部値 <code>'play'</code> との対応は保たれる。</li>
+</ul>
+
+<h4>収まりの設計</h4>
+
+<ul>
+  <li>PLAYセルの内容は <code>compactPairedCell</code> が真（Play画面・compact画面）ならアイコン単独、
+      偽なら<strong>アイコンの下にラベル</strong>を積む縦積みとする。</li>
+  <li>ラベルは9px固定。アイコンは <code>Math.max(11, Math.min(16, cellHeight - 10))</code> とし、
+      アイコン＋ラベルが必ずセル高より1px以上小さくなるようにする。
+      非compactで最小のセル高（実測26px）でも 16 + 9 = 25px で収まる。</li>
+  <li>横幅は縦積みにより最大でもラベル幅20.5pxとなり、内側34.5pxに対して余裕がある。</li>
+  <li>AIセルは変更しない。アイコン21px＋<code>AI</code>10.6pxで横並びのまま収まる。</li>
+</ul>
+
+<h4>検証結果（追補）</h4>
+<ul>
+  <li><code>yarn lint</code>／<code>yarn test</code>（928件 pass、1件 skipped）／
+      <code>yarn webpack-prod</code>：いずれもpass。</li>
+  <li>Cypress：<code>editor_ui_spec.js</code> 38件、<code>piece_queue_spec.js</code> 12件、
+      <code>cold_clear_spec.js</code> 6件、<code>editor_side_panel_spec.js</code> 10件、いずれもpass。</li>
+  <li><code>editor_ui_spec.js</code> に、INPUTセルが <code>keyboard</code> を表示し、
+      内容の矩形がセル矩形を縦横ともはみ出さないことの回帰ガードを追加した。</li>
+  <li>実機確認：674×802のPAINT画面でアイコン＋<code>INPUT</code>の縦積み（内容26.1×25px、セル38.5×31px）、
+      INPUT画面ではアイコン単独（選択色）で描画されることを確認した。</li>
+</ul>
+
+<h3 id="s11-10">11-10. INPUT画面の2分割セルにラベルを出す（追補・2026-08-02）</h3>
+
+<p>INPUT画面の右下がアイコンだけで判別しづらいという指摘を受けた調整。
+原因はレール幅ではなく<strong>判定の作り</strong>で、
+<code>compactPairedCell = playLayout ? true : compact</code> と幅を見ずに固定していたため、
+INPUT画面のレール幅がキュー幅（66〜132px）に従って通常レール（80px）より広くなる場合でも
+ラベルが出なかった。</p>
+
+<h4>変更内容</h4>
+<ul>
+  <li>Playレイアウトの <code>compactPairedCell</code> を<strong>幅ベース</strong>にする。
+      2分割セルの内側幅
+      <code>(レール幅 - 3) / 2 - 4</code> が <code>MIN_PAIRED_LABEL_WIDTH = 32</code> 未満のときだけアイコン単独にする
+      （枠線2px＋セル間gap1px、セル内padding 0 2px の実測に基づく）。</li>
+  <li>2分割セルは横並びの幅がないため、INPUTで使った縦積みを共通ヘルパー
+      <code>stackedCellContent()</code> に切り出し、<strong>INPUT・AI・PAINT・SELECT</strong>の4セルで使う。
+      SELECT／PAINTは通常レイアウトでは全幅なので、そこでは従来どおり横並びのままとする。</li>
+  <li><strong>削除／リスポーン／RESETの3分割セルは対象外</strong>。内側27px（レール97px時）に対し
+      <code>RESPAWN</code> は9pxでも41.1pxあり、どの幅でも3つ揃わないため
+      <code>compactPaletteCell</code> は <code>playLayout ? true</code> のまま据え置いた。</li>
+  <li>RESETアイコンは <code>delete_sweep</code> のまま。代案の <code>grid_off</code> は、
+      図が想像しづらくSELECTの透過処理の表現とも紛らわしいという依頼者判断で不採用とした。</li>
+</ul>
+
+<h4>viewportごとの効き方</h4>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>viewport</th><th class="num">レール幅</th><th class="num">2分割セル幅</th><th class="num">内側</th><th>表示</th></tr></thead>
+  <tbody>
+    <tr><td>1920×1080</td><td class="num">132</td><td class="num">64.5</td><td class="num">60.5</td><td>ラベルあり</td></tr>
+    <tr><td>674×802</td><td class="num">97</td><td class="num">47</td><td class="num">43</td><td>ラベルあり</td></tr>
+    <tr><td>375×667</td><td class="num">71</td><td class="num">34</td><td class="num">30</td><td>アイコンのみ（従来どおり）</td></tr>
+    <tr><td>320×568／844×390</td><td class="num">66</td><td class="num">31.5</td><td class="num">27.5</td><td>アイコンのみ（従来どおり）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>9pxラベルの実測幅は <code>SELECT</code> 29.2 ／ <code>INPUT</code> 26.1 ／ <code>PAINT</code> 25.2 ／
+<code>AI</code> 8.7。最長のSELECTに余裕を持たせて下限を32pxとしたため、
+674×802では内容29.2×25pxがセル47×31pxに収まる。</p>
+
+<h4>検証結果（追補）</h4>
+<ul>
+  <li><code>yarn lint</code>／<code>yarn test</code>（928件 pass、1件 skipped）／
+      <code>yarn webpack-prod</code>：いずれもpass。</li>
+  <li>Cypress：<code>editor_ui_spec.js</code> 38件、<code>piece_queue_spec.js</code> 12件、
+      <code>cold_clear_spec.js</code> 6件、<code>editor_side_panel_spec.js</code> 10件、いずれもpass。</li>
+  <li><code>assertPlayRailArrangement</code> に、4つの2分割セルについて
+      「内側32px以上ならラベルを含む／未満なら含まない」「内容の矩形がセルをはみ出さない」の検証を追加した。
+      同関数は320×568・375×667・390×844・844×390・1024×768・1920×1080の各viewportで実行されるため、
+      幅による分岐の両側が自動で押さえられる。</li>
+  <li>実機確認：674×802のINPUT画面で <code>[INPUT|AI]</code>・<code>[PAINT|SELECT]</code> の4セットに
+      ラベルが出ること、375×667ではアイコン単独へ戻ることを確認した。</li>
+</ul>
+
+<h4>コミット</h4>
+<p><code>958184d feat(editor): regroup the rail modes and label the INPUT screen cells</code>（<code>develop</code>、10ファイル・189追加112削除）。
+§11・§11-9・§11-10の全変更をまとめて1コミットにした。
+<code>Model:</code> トレーラーはAGENTS.mdの規定どおり、本設計書が記録する <code>Claude Opus 5</code> を用いた。
+このコミットには、第4版の作業開始時点で作業ツリーに未コミットだった
+「PIECE通常のレール行数をPAINT／SELECTと揃える調整」（<code>comp</code> セルの撤去と
+<code>btn-piece-palette-spacer</code> の追加、<code>getPieceSelectRailCellHeight</code> の撤去）も含む。
+§11の「行数不変」という前提を成立させている変更であり、切り離すと設計の根拠が失われるため同梱した。
+pushは未実施。</p>
+
+<h4>副次的な変更</h4>
+<p>AIセルは通常レイアウトでも2分割行にあるため、縦積みの対象になった。
+従来は横並びで内側34.5pxに対しアイコン21px＋<code>AI</code>10.6px＋余白3px＝34.6pxとほぼ余裕がなく、
+縦積みにしたことで隣のINPUTセルとも見た目が揃う。進捗バッジと <code>aria-live</code> の実装は変更していない。</p>
+
+<h3 id="s11-11">11-11. 永続レイアウトを汎用PIECE入口で保持する（追補・2026-08-02）</h3>
+
+<p>実装レビューで、<code>pieceLayout</code> は view-settings から復元される一方、
+旧来の汎用PIECE入口 <code>togglePieceMode()</code> が常に <code>'select'</code> を直接選ぶため、
+復元値を使わずに上書きすることが判明した。PIECE／INPUTの画面上の直接入口は
+それぞれ選択重視／操作重視を明示的に選ぶ仕様のまま維持する。</p>
+
+<h4>変更内容</h4>
+<ul>
+  <li><code>togglePieceMode()</code> を <code>selectPieceLayout({ layout: 'select' })</code> ではなく、
+      <code>changePrimaryTool({ tool: 'piece' })</code> へ委譲する形に変更した。</li>
+  <li>これにより汎用入口では、localStorageから <code>persist: false</code> で復元済みの
+      <code>editorUi.pieceLayout</code> を保ったままPIECE状態に入る。</li>
+  <li>PIECEボタンは選択重視、INPUTボタンは操作重視を直接選ぶため、既定の画面遷移・
+      <code>aria-pressed</code>・キュー表示の仕様は変更しない。</li>
+  <li>Cypressの「リロード後もレイアウトを記憶する」という記述は、INPUTボタンを明示的に押していたため
+      保存値を判別できない誤った回帰ガードだった。テスト名・コメントをキュー内容の往復確認へ修正し、
+      復元値を使うことはアクション単体テストで検証する。</li>
+</ul>
+
+<h4>検証結果</h4>
+<ul>
+  <li><code>editor_interaction.test.ts</code> に、<code>changePieceLayout({ layout: 'play', persist: false })</code>
+      後の <code>togglePieceMode()</code> が <code>pieceLayout: 'play'</code> を保持する回帰テストを追加した。</li>
+  <li>関連Jest 2 suites・35 tests、および TSLint は pass。</li>
+  <li><code>git diff --check</code> は問題なし。Cypressは本追補では再実行していない。</li>
+</ul>
+
+</main>
+</body>
+</html>

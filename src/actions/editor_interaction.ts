@@ -156,9 +156,10 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             rectSelect: initialRectSelectState,
         };
     }),
-    // 既存のショートカット／呼び出し元との互換性を保つ。UI上はPIECE通常への直接選択となる。
+    // 既存のショートカット／呼び出し元との互換性を保つ。
+    // 直接入口ではないため、復元済みのレイアウト設定をそのまま使う。
     togglePieceMode: () => (state): NextState => (
-        editorInteractionActions.selectPieceLayout({ layout: 'select' })(state)
+        editorInteractionActions.changePrimaryTool({ tool: 'piece' })(state)
     ),
     // PIECE状態の表示切替のみ。ページ内容・#Q=・primaryTool には触れない。
     changePieceLayout: ({ layout, persist = true }) => (state): NextState => {

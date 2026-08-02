@@ -212,6 +212,45 @@ describe('rectSelectActions', () => {
         expect(committed.get(1, 2)).toBe(Piece.T);
     });
 
+    test('commits a floating part at its current target', () => {
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: new Field({}) },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'floating',
+                rect: null,
+                anchorIndex: null,
+                floating: {
+                    sourceRect: null,
+                    cells: [Piece.T],
+                    width: 1,
+                    height: 1,
+                    targetX: 6,
+                    targetY: 5,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+            parts: { items: [], selectedId: 'part', blackTransparent: true },
+        } as unknown as State;
+
+        const next = rectSelectActions.commitRectSelection()(state) as any;
+        const committed = new Pages(next.fumen.pages)
+            .getField(0, PageFieldOperation.Command);
+
+        expect(committed.get(6, 5)).toBe(Piece.T);
+        expect(next.parts.selectedId).toBeNull();
+        expect(next.rectSelect.status).toBe('selected');
+        expect(next.rectSelect.floating).toBeNull();
+    });
+
     test('spawns a selected part three rows above the terrain it covers', () => {
         const field = Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
         for (let y = 0; y <= 2; y += 1) {

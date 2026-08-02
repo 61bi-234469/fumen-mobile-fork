@@ -62,6 +62,7 @@ import {
 } from '../lib/pages';
 import { Quiz } from '../lib/fumen/quiz';
 import { persistViewSettings } from './view_settings';
+import { Screens } from '../lib/enums';
 
 // ============================================================================
 // Helpers for root reparenting
@@ -830,6 +831,34 @@ const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState =>
     };
 };
 
+// Tree operations may replace pages, change their order, or switch the editor to a
+// different page. Commit the editor's transient state first so selection previews, COMP
+// results, and comments cannot be lost or leak into the target page.
+const withSettledEditorPage = (operation: action) => (state: State): NextState => {
+    // Full-screen List/Tree views have no editable field to settle. Keeping their
+    // existing action path intact also preserves their tree-history semantics.
+    if (state.mode !== undefined && state.mode.screen !== Screens.Editor) {
+        return operation(state);
+    }
+    const settled = sequence(state, [
+        actions.commitRectSelection(),
+        actions.removeUnsettledItems(),
+        actions.commitCommentText(),
+    ]);
+    const result = operation({ ...state, ...settled });
+    if (result === undefined && Object.keys(settled).length === 0) {
+        return undefined;
+    }
+    return { ...settled, ...result };
+};
+
+const selectTreeNodeAndReopen = (nodeId: TreeNodeId) => (state: State): NextState => (
+    sequence(state, [
+        selectTreeNodeState(nodeId),
+        actions.reopenCurrentPage(),
+    ])
+);
+
 export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
      * Toggle tree mode on/off
@@ -994,16 +1023,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     }),
 
     /** Select a tree node and synchronize the current editor page. */
-    activateTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
+    activateTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
 
     /** Select a tree node and navigate to its page. */
-    selectTreeNode: ({ nodeId }) => selectTreeNodeState(nodeId),
+    selectTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
 
     /**
      * Add a branch from the current node
      * Creates a new page that references the current page's field
      */
-    addBranchFromCurrentNode: (data = {}) => (state): NextState => {
+    addBranchFromCurrentNode: (data = {}) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1053,12 +1082,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: newPageIndex,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     /**
      * Add a new top-level page under the virtual root
      */
-    addRootFromCurrentNode: () => (state): NextState => {
+    addRootFromCurrentNode: () => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1095,7 +1124,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: newPageIndex,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     addColdClearBranches: ({
         parentNodeId,
@@ -1162,7 +1191,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * If current node has children: insert between current and first child
      * If current node has no children: simply add as the first child (same visual result as branch)
      */
-    insertNodeAfterCurrent: (data = {}) => (state): NextState => {
+    insertNodeAfterCurrent: (data = {}) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1215,13 +1244,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: newPageIndex,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     /**
      * Copy a tree node and create a sibling node with the same page content
      * The new node is added as a sibling directly after the source node
      */
-    copyTreeNode: ({ nodeId }) => (state): NextState => {
+    copyTreeNode: ({ nodeId }) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1278,12 +1307,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: newPageIndex,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     /**
      * Remove the current tree node
      */
-    removeCurrentTreeNode: (data = { removeDescendants: true }) => (state): NextState => {
+    removeCurrentTreeNode: (data = { removeDescendants: true }) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1293,13 +1322,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         const scope: TreeOperationScope = (data.removeDescendants ?? true) ? 'subtree' : 'node';
         return removeTreeNodeById(state, tree, currentNode.id, scope);
-    },
+    }),
 
     /**
      * Remove a node specified by ID (permanent delete button).
      * The selected operation scope applies to the node and its descendants.
      */
-    removeTreeNode: ({ nodeId }) => (state): NextState => {
+    removeTreeNode: ({ nodeId }) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1307,7 +1336,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         if (!node || isVirtualNode(node)) return undefined;
 
         return removeTreeNodeById(state, tree, nodeId, state.tree.operationScope ?? 'node');
-    },
+    }),
 
     /**
      * Add page respecting current tree mode and add mode setting
@@ -1552,7 +1581,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
      * Execute the drop operation based on current drag mode
      */
-    executeTreeDrop: () => (state): NextState => {
+    executeTreeDrop: () => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
         const {
@@ -1662,5 +1691,5 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         // No drop besides button drops is possible (dragState.mode is always Reorder).
         return treeOperationActions.endTreeDrag()(state);
-    },
+    }),
 };

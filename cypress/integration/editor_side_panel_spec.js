@@ -1,4 +1,4 @@
-import { datatest, visit } from '../support/common';
+import { block, Color, datatest, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 // エディットモード左サイドパネル（リスト/ツリー）
@@ -268,5 +268,85 @@ describe('Editor side panel', () => {
         // リストタブへ戻ると、ツリーモード中は並べ替え不可のままリストが表示される
         operations.editorPanel.selectTab('list');
         cy.get(datatest('list-view-item-0')).should('exist');
+    });
+
+    it('settles a completed COMP before tree page creation and page navigation', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhAAgH' });
+
+        operations.editorPanel.enable();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+
+        operations.mode.block.open();
+        operations.mode.block.Completion();
+        [5, 6, 7, 8].forEach(y => operations.mode.block.click(4, y));
+
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Highlight2);
+        });
+        [0, 1, 2, 3].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.Empty.Normal);
+        });
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Normal);
+        });
+
+        cy.get('[datatest^="tree-node-"]').first().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 2');
+        [5, 6, 7, 8].forEach(y => {
+            cy.get(block(4, y)).should('have.attr', 'color', Color.I.Normal);
+        });
+    });
+
+    it('settles a moved SELECT range before tree page creation', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhAAgH' });
+
+        operations.editorPanel.enable();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+
+        operations.mode.block.T();
+        operations.mode.block.click(1, 1);
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 4, y: 5 });
+        cy.get(block(4, 5)).should('have.attr', 'color', Color.T.Normal);
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        cy.get(block(1, 1)).should('not.have.attr', 'color', Color.T.Normal);
+        cy.get(block(4, 5)).should('have.attr', 'color', Color.T.Normal);
+    });
+
+    it('settles a dragged SELECT part before tree page creation', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: 'v115@vhAAgH' });
+
+        operations.editorPanel.enable();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+
+        operations.mode.block.T();
+        operations.mode.block.click(1, 1);
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        cy.get(block(4, 3)).should('have.attr', 'color', Color.T.Normal);
+        operations.mode.block.drag({ x: 4, y: 3 }, { x: 6, y: 5 });
+        cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        cy.get(block(1, 1)).should('have.attr', 'color', Color.T.Normal);
+        cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);
     });
 });

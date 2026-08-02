@@ -16,7 +16,10 @@ import { toPrimitivePage } from '../../history_task';
 
 jest.mock('../../actions', () => ({
     actions: {
-        reopenCurrentPage: () => () => undefined,
+        commitRectSelection: jest.fn(() => () => undefined),
+        removeUnsettledItems: jest.fn(() => () => undefined),
+        commitCommentText: jest.fn(() => () => undefined),
+        reopenCurrentPage: jest.fn(() => () => undefined),
     },
     main: {},
 }));
@@ -53,6 +56,8 @@ jest.mock('../memento', () => ({
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { removePagesByIndices, treeOperationActions } = require('../tree_operations');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mockedActions = require('../../actions').actions;
 
 const defaultFlags = {
     lock: false,
@@ -442,6 +447,74 @@ const createTreeState = (
         autoFocusPending: false,
     },
 }) as any;
+
+beforeEach(() => {
+    mockedActions.commitRectSelection.mockClear();
+    mockedActions.removeUnsettledItems.mockClear();
+    mockedActions.commitCommentText.mockClear();
+    mockedActions.reopenCurrentPage.mockClear();
+});
+
+describe('tree editor boundary', () => {
+    const expectSettled = () => {
+        expect(mockedActions.commitRectSelection).toHaveBeenCalledTimes(1);
+        expect(mockedActions.removeUnsettledItems).toHaveBeenCalledTimes(1);
+        expect(mockedActions.commitCommentText).toHaveBeenCalledTimes(1);
+        expect(mockedActions.commitRectSelection.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.removeUnsettledItems.mock.invocationCallOrder[0]);
+        expect(mockedActions.removeUnsettledItems.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.commitCommentText.mock.invocationCallOrder[0]);
+    };
+
+    test('settles before tree navigation and reopens the selected page', () => {
+        const state = createBaseState();
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const firstNode = findNodeByPageIndex(tree, 0)!;
+
+        treeOperationActions.selectTreeNode({ nodeId: firstNode.id })(state);
+
+        expectSettled();
+        expect(mockedActions.reopenCurrentPage).toHaveBeenCalledTimes(1);
+    });
+
+    test('settles before add, copy, delete, and drag operations', () => {
+        const addState = createBaseState();
+        treeOperationActions.addBranchFromCurrentNode()(addState);
+        expectSettled();
+
+        mockedActions.commitRectSelection.mockClear();
+        mockedActions.removeUnsettledItems.mockClear();
+        mockedActions.commitCommentText.mockClear();
+        const copyState = createBaseState();
+        const copyTree = { nodes: copyState.tree.nodes, rootId: copyState.tree.rootId, version: 1 as const };
+        treeOperationActions.copyTreeNode({ nodeId: findNodeByPageIndex(copyTree, 1)!.id })(copyState);
+        expectSettled();
+
+        mockedActions.commitRectSelection.mockClear();
+        mockedActions.removeUnsettledItems.mockClear();
+        mockedActions.commitCommentText.mockClear();
+        const deleteState = createBaseState();
+        const deleteTree = { nodes: deleteState.tree.nodes, rootId: deleteState.tree.rootId, version: 1 as const };
+        treeOperationActions.removeTreeNode({ nodeId: findNodeByPageIndex(deleteTree, 1)!.id })(deleteState);
+        expectSettled();
+
+        mockedActions.commitRectSelection.mockClear();
+        mockedActions.removeUnsettledItems.mockClear();
+        mockedActions.commitCommentText.mockClear();
+        const dragState = createThreeChainState('node');
+        const dragTree = { nodes: dragState.tree.nodes, rootId: dragState.tree.rootId, version: 1 as const };
+        const sourceNode = findNodeByPageIndex(dragTree, 2)!;
+        const targetNode = findNodeByPageIndex(dragTree, 0)!;
+        dragState.tree.dragState = {
+            ...initialTreeDragState,
+            sourceNodeId: sourceNode.id,
+            targetButtonParentId: targetNode.id,
+            targetButtonType: 'branch',
+        };
+        treeOperationActions.executeTreeDrop()(dragState);
+        expectSettled();
+    });
+});
 
 describe('removeTreeNode', () => {
     test('preserves promoted fields, comments, refs, encoding, and source state', async () => {

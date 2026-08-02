@@ -22,8 +22,7 @@ import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
 import {
     getEditorBottomMetrics, getEditorRailConfig, getPlayfieldCeilingOffset, getPlayPieceQueueWidth,
-    getPlayPieceRailMetrics, getPlayPieceUnitBound, getPieceSelectRailCellHeight,
-    getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
+    getPlayPieceRailMetrics, getPlayPieceUnitBound, getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
 } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
@@ -176,9 +175,7 @@ export const getLayout = (
     };
 
     const pieceQueueCeilingOffset = pieceQueueVisible ? getPlayfieldCeilingOffset(blockSize) : 0;
-    const targetPieceRailCellHeight = pieceModeVisible && !pieceQueueVisible
-        ? getPieceSelectRailCellHeight(fieldSize.height, 1)
-        : getResponsiveRailCellHeight(fieldSize.height, 1);
+    const targetPieceRailCellHeight = getResponsiveRailCellHeight(fieldSize.height, 1);
     const fieldBottomGap = Math.max(0, (canvasSize.height - fieldSize.height) / 2);
     const maxPieceRailExtension = Math.max(0, reservedCommentHeight + fieldBottomGap - 1);
     const pieceRailMetrics = pieceQueueVisible
@@ -186,13 +183,10 @@ export const getLayout = (
             targetPieceRailCellHeight, maxPieceRailExtension)
         : { nextMinoHeight: 0, nextPanelHeight: 0, railCellHeight: 0, railExtensionHeight: 0 };
 
-    // PIECE通常はSELECT/PAINTを各1行にするため、PAINT/SELECTより1行多い。
     const railColumns: 1 | 2 = pieceQueueVisible ? 1 : rail.columns;
     const railCellHeight = pieceQueueVisible
         ? pieceRailMetrics.railCellHeight
-        : pieceModeVisible
-            ? getPieceSelectRailCellHeight(fieldSize.height, railColumns)
-            : getResponsiveRailCellHeight(fieldSize.height, railColumns);
+        : getResponsiveRailCellHeight(fieldSize.height, railColumns);
 
     const pieceButtonsSize = {
         width: pieceQueueVisible ? pieceQueueWidth

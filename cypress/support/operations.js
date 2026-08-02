@@ -446,17 +446,14 @@ export const operations = {
                 ensurePieceLayout(layout);
             },
             toggleInfiniteQueue: () => {
-                // ∞7bagは操作重視ではNEXT直下、選択重視ではパレット末尾のセル
-                cy.get('body').then(($body) => {
-                    if ($body.find('[datatest="piece-queue-infinite-checkbox"]').length > 0) {
-                        cy.get(datatest('piece-queue-infinite-checkbox')).click();
-                    } else {
-                        cy.get(datatest('btn-piece-inference')).click();
-                    }
-                });
+                // ∞7bagはPlayレイアウトのNEXT直下だけに表示する。
+                ensurePieceLayout('play');
+                cy.get(datatest('piece-queue-infinite-checkbox')).click();
                 cy.wait(100);
             },
             resetBoard: () => {
+                // 盤面RESETはPlayレイアウトの右下だけに表示する。
+                ensurePieceLayout('play');
                 cy.get(datatest('btn-piece-reset')).click();
                 cy.wait(100);
             },

@@ -5,7 +5,6 @@ import {
     getPlayPieceQueueWidth,
     getPlayPieceRailMetrics,
     getPlayPieceUnitBound,
-    getPieceSelectRailCellHeight,
     getResponsiveRailCellHeight,
     INFINITE_TOGGLE_HEIGHT,
     MAX_PIECE_QUEUE_WIDTH,
@@ -49,14 +48,8 @@ describe('editor responsive layout', () => {
         expect(getResponsiveRailCellHeight(282, 2)).toBe(19);
     });
 
-    test('reserves one more row for the PIECE normal layout', () => {
-        // PIECE通常はSELECT/PAINTを各1行にしてパレット11セルを並べる
-        expect(getPieceSelectRailCellHeight(672.78, 1)).toBe(30);
-        expect(getPieceSelectRailCellHeight(569.97, 1)).toBe(25);
-        expect(getPieceSelectRailCellHeight(473.0, 1)).toBe(20);
-        expect(getPieceSelectRailCellHeight(311.47, 2)).toBe(19);
-
-        // PAINT/SELECTは従来どおり20/13行
+    test('uses the same rail cell height for PAINT/SELECT and PIECE normal layouts', () => {
+        // PIECE通常は10セル（9機能＋空き）へ揃え、PAINT/SELECTと同じ20/13行を使う
         expect(getResponsiveRailCellHeight(672.78, 1)).toBe(31);
         expect(getResponsiveRailCellHeight(569.97, 1)).toBe(26);
         expect(getResponsiveRailCellHeight(473.0, 1)).toBe(21);

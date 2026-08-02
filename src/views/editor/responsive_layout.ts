@@ -11,10 +11,10 @@ export const PIECE_RAIL_GROUP_GAP_DUAL = 4;
 export const NEXT_PANEL_CHROME_HEIGHT = 26;
 export const INFINITE_TOGGLE_HEIGHT = 32;
 
-// 操作重視レイアウト。AI、[PIECE|Play]、[PAINT|SELECT]、非常操作の4行を載せる。
+// 操作重視レイアウト。[PLAY|AI]、PIECE、[PAINT|SELECT]、非常操作の4行を載せる。
 export const PLAY_RAIL_ROWS = 4;
-// 4グループの枠線とグループ間gap
-export const PLAY_RAIL_CHROME_HEIGHT = 26;
+// 3グループの枠線とグループ間gap
+export const PLAY_RAIL_CHROME_HEIGHT = 20;
 export const MAX_PLAY_NEXT_MINO_HEIGHT = 96;
 export const MIN_PLAY_NEXT_MINO_HEIGHT = 20;
 // HOLD／NEXT列は他クライアントと同じく盤面3.4マス幅を基準にする
@@ -25,10 +25,6 @@ export const MAX_PIECE_QUEUE_WIDTH = 132;
 // PAINT/SELECTの共通レール行数
 const RAIL_ROWS_SINGLE = 20;
 const RAIL_ROWS_DUAL = 13;
-// PIECE通常レイアウトはSELECT/PAINTを各1行にし、パレット11セルを並べるため1行多い
-const PIECE_SELECT_RAIL_ROWS_SINGLE = 21;
-const PIECE_SELECT_RAIL_ROWS_DUAL = 14;
-
 export const getEditorBottomMetrics = (displayHeight: number) => {
     const compact = displayHeight < EDITOR_COMPACT_HEIGHT;
     return {
@@ -100,13 +96,6 @@ export const getPlayPieceRailMetrics = (
 
 export const getResponsiveRailCellHeight = (fieldHeight: number, columns: 1 | 2): number => {
     const railRows = columns === 2 ? RAIL_ROWS_DUAL : RAIL_ROWS_SINGLE;
-    const chromeHeight = columns === 2 ? 17 : 24;
-    return Math.min(MAX_RAIL_CELL_HEIGHT, Math.max(MIN_RAIL_CELL_HEIGHT,
-        Math.floor((fieldHeight - chromeHeight - RAIL_GROUP_GAPS_HEIGHT) / railRows)));
-};
-
-export const getPieceSelectRailCellHeight = (fieldHeight: number, columns: 1 | 2): number => {
-    const railRows = columns === 2 ? PIECE_SELECT_RAIL_ROWS_DUAL : PIECE_SELECT_RAIL_ROWS_SINGLE;
     const chromeHeight = columns === 2 ? 17 : 24;
     return Math.min(MAX_RAIL_CELL_HEIGHT, Math.max(MIN_RAIL_CELL_HEIGHT,
         Math.floor((fieldHeight - chromeHeight - RAIL_GROUP_GAPS_HEIGHT) / railRows)));

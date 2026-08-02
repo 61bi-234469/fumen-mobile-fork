@@ -90,14 +90,13 @@ describe('PIECE queues', () => {
         });
         ['btn-editor-import', 'btn-editor-export', 'btn-insert-new-page', 'btn-insert-from-clipboard',
             'btn-copy-to-clipboard', 'btn-cut-page', 'btn-utils-mode',
-            'btn-piece-i', 'btn-piece-t', 'btn-piece-empty', 'btn-piece-gray', 'btn-piece-inference',
-            'btn-piece-reset'].forEach(selector => {
+            'btn-piece-i', 'btn-piece-t', 'btn-piece-empty', 'btn-piece-gray',
+            'btn-piece-palette-spacer'].forEach(selector => {
             cy.get(datatest(selector)).should('be.visible');
         });
-        // ∞7bagはNEXT枠が無いぶんパレットのセルが担う
-        cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'false');
-        operations.mode.piece.toggleInfiniteQueue();
-        cy.get(datatest('btn-piece-inference')).should('have.attr', 'aria-pressed', 'true');
+        ['btn-piece-inference', 'btn-piece-reset'].forEach(selector => {
+            cy.get(datatest(selector)).should('not.exist');
+        });
     });
 
     it('keeps the queue contents across a layout round trip and remembers the layout', () => {

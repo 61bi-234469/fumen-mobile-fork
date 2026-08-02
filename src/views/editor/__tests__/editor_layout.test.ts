@@ -72,8 +72,8 @@ describe('editor layout', () => {
         expect(selectLayout.pieceQueue.ceilingOffset).toBe(0);
         expect(selectLayout.comment.size.height).toBe(0);
         expect(selectLayout.comment.reservedHeight).toBe(35);
-        // PIECE通常はSELECT/PAINTを各1行にするため、PAINTより1行ぶん低い
-        expect(selectLayout.buttons.cellHeight).toBe(30);
+        // PIECE通常はPAINT/SELECTと同じ10セル配置で、セル高も揃える
+        expect(selectLayout.buttons.cellHeight).toBe(31);
         expect(paintLayout.buttons.cellHeight).toBe(31);
     });
 
@@ -92,6 +92,8 @@ describe('editor layout', () => {
         expect(playLayout.pieceQueue.width / playLayout.field.size.width).toBeLessThan(0.36);
         // 依頼の「キューが狭い」への回帰ガード（従来は26px）
         expect(playLayout.pieceQueue.nextMinoHeight).toBeGreaterThanOrEqual(50);
+        // [PLAY|AI] への統合でグループが1つ減った分、NEXTへ回る高さが増える
+        expect(playLayout.pieceQueue.nextMinoHeight).toBe(79);
         expect(playLayout.pieceQueue.ceilingOffset).toBeGreaterThan(0);
         expect(playLayout.buttons.columns).toBe(1);
     });

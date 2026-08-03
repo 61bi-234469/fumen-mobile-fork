@@ -345,12 +345,19 @@ const resolveCommentTextWithPreview = (
     return resolveCommentWithPreview(pages, pageIndex, preview).text;
 };
 
-export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+export const getColdClearQueueCommentAt = (state: Readonly<State>, pageIndex: number): string | null => {
+    if (pageIndex < 0 || state.fumen.pages.length <= pageIndex) {
+        return null;
+    }
     return resolveCommentTextWithPreview(
         state.fumen.pages,
-        state.fumen.currentIndex,
+        pageIndex,
         state.coldClear.queuePreview,
     );
+};
+
+export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+    return getColdClearQueueCommentAt(state, state.fumen.currentIndex);
 };
 
 export const createRandomSevenBag = (): Piece[] => shufflePieces(ONE_BAG_PIECES);
@@ -1921,7 +1928,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             },
             () => {
-                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece });
+                // HOLD入れ替えは同じNEXTキュー単位の中でカレントを差し替えるだけなので、
+                // キュー単位Undoの巻き戻し先（境界）にはしない。
+                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece, historyBoundary: false });
                 return undefined;
             },
         ]);

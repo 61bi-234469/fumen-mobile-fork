@@ -60,6 +60,12 @@ jest.mock('../../lib/thumbnail', () => ({
     clearThumbnailCache: (...args: any[]) => clearThumbnailCacheMock(...args),
 }));
 
+// actions/memento.ts はキュー単位Undoの判定でキューコメントを参照する。
+// 実体を読み込むとWorker用のimport.metaがts-jestで解決できないため、参照だけを差し替える。
+jest.mock('../cold_clear', () => ({
+    getCurrentColdClearQueueComment: () => null,
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { mementoActions } = require('../memento');
 // eslint-disable-next-line @typescript-eslint/no-var-requires

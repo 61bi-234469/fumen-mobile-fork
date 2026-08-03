@@ -292,4 +292,147 @@ describe('PIECE queues', () => {
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
     });
+
+    it('rewinds one queue piece per undo in the play layout', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.mode.piece.moveToLeft();
+        operations.mode.piece.rotateToRight();
+        operations.mode.piece.harddrop();
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+        mino(Piece.I, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.I.Highlight2);
+        });
+
+        // 1回の戻るで、移動・回転・ページ追加・キュー進行・スポーンをまとめて巻き戻す。
+        // 一つ手前のキューミノ(T)がスポーン位置に戻る。
+        operations.mode.tools.undo();
+
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'I');
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+
+        operations.mode.tools.redo();
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+        mino(Piece.I, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.I.Highlight2);
+        });
+    });
+
+    it('rewinds past a hold swap to the previous queue piece', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+
+        // HOLDは空なのでNEXT先頭(O)と入れ替わり、カレントがIからOになる。
+        cy.get(datatest('tray-piece-hold')).click();
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', 'I');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'L');
+        operations.mode.piece.moveToLeft();
+
+        // HOLDは静止点にしない。戻るは同じキュー単位ごと巻き戻し、
+        // 一つ手前のキューミノ(T)のスポーン直後まで戻る。
+        operations.mode.tools.undo();
+
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', '');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'I');
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('rewinds by queue step right after the queue runs out', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        // 最後の1ミノを置くとキューが空になり、コメントも空になってカレントミノが出ない。
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', '');
+
+        // この状態でもキュー単位で戻し、直前に置いたミノをスポーンし直す。
+        operations.mode.tools.undo();
+
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('never rewinds across a fumen load', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+
+        // 別のテト譜を読み込む。ここから先は別のキューセッションになる。
+        operations.menu.openPage();
+        cy.get(datatest('mdl-open-fumen')).should('be.visible').within(() => {
+            cy.get(datatest('input-fumen')).clear().type('v115@vhAAgH');
+            cy.get(datatest('btn-open')).click();
+        });
+        cy.get(datatest('mdl-open-fumen')).should('not.exist');
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](S)ZL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.S();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.moveToLeft();
+
+        // 読み込み前のキュー境界までは戻らない（1回の戻るで前のテト譜へ戻らない）。
+        operations.mode.tools.undo();
+
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'Z');
+        mino(Piece.S, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.S.Highlight2);
+        });
+    });
+
+    it('keeps per-operation undo outside the play layout', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+
+        operations.mode.piece.moveToLeft();
+        operations.mode.piece.rotateToRight();
+
+        // 通常レイアウトでは従来どおり1操作ずつ戻る（回転だけが取り消される）。
+        operations.mode.tools.undo();
+
+        mino(Piece.T, Rotation.Spawn)(3, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
 });

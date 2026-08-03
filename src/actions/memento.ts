@@ -19,9 +19,37 @@ import {
     VIRTUAL_PAGE_INDEX,
 } from '../lib/fumen/tree_types';
 import { clearThumbnailCache } from '../lib/thumbnail';
+import { Screens } from '../lib/enums';
+import { parseQueueComment } from '../lib/cold_clear/queueParser';
+import { getColdClearQueueCommentAt, getCurrentColdClearQueueComment } from './cold_clear';
+
+// INPUT（PIECEの操作重視レイアウト）でNEXTキューを使っている間だけ、戻る／進むをキュー単位にする
+export const shouldRewindByPieceQueueStep = (state: Readonly<State>): boolean => {
+    if (state.mode.screen !== Screens.Editor) {
+        return false;
+    }
+    if (state.editorUi.primaryTool !== 'piece' || state.editorUi.pieceLayout !== 'play') {
+        return false;
+    }
+    if (parseQueueComment(getCurrentColdClearQueueComment(state) ?? '') !== null) {
+        return true;
+    }
+    // キューを使い切ってスポーンできなかった直後は、HOLD・カレント・NEXTが全て空になり
+    // コメントが空文字になるため、現在ページだけではキュー使用中と判定できない。
+    // カレントミノが無く直前ページがキューなら、同じキューセッションの続きとみなす。
+    const pageIndex = state.fumen.currentIndex;
+    if (pageIndex <= 0 || state.fumen.pages[pageIndex]?.piece !== undefined) {
+        return false;
+    }
+    return parseQueueComment(getColdClearQueueCommentAt(state, pageIndex - 1) ?? '') !== null;
+};
+
+const hasCurrentSpawnedPiece = (state: Readonly<State>): boolean => {
+    return state.fumen.pages[state.fumen.currentIndex]?.piece !== undefined;
+};
 
 export interface MementoActions {
-    registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
+    registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string, pieceSpawn?: boolean }) => action;
     undo: () => action;
     redo: () => action;
     loadPagesViaHistory: (data: {
@@ -35,12 +63,12 @@ export interface MementoActions {
 }
 
 export const mementoActions: Readonly<MementoActions> = {
-    registerHistoryTask: ({ task, mergeKey }) => (state): NextState => {
+    registerHistoryTask: ({ task, mergeKey, pieceSpawn }) => (state): NextState => {
         // Field strokes mutate pages in place and commit here exactly once per
         // operation. The thumbnail cache is keyed by the pages array reference,
         // so this is the single choke point to invalidate it.
         clearThumbnailCache(state.fumen.pages);
-        const undoCount = memento.register(task, mergeKey, state.tree.viewMode);
+        const undoCount = memento.register(task, mergeKey, state.tree.viewMode, pieceSpawn);
         return sequence(state, [
             mementoActions.setHistoryCount({ undoCount, redoCount: 0 }),
             saveToMemento,
@@ -58,10 +86,15 @@ export const mementoActions: Readonly<MementoActions> = {
             return;
         }
 
+        const byQueueStep = shouldRewindByPieceQueueStep(state);
+        const currentPieceSpawned = hasCurrentSpawnedPiece(state);
+
         return sequence(state, [
             (newState) => {
                 (async () => {
-                    const result = await memento.undo(newState.fumen.pages);
+                    const result = byQueueStep
+                        ? await memento.undoToPieceSpawn(newState.fumen.pages, { currentPieceSpawned })
+                        : await memento.undo(newState.fumen.pages);
                     if (result !== undefined) {
                         main.loadPagesViaHistory(result);
                     }
@@ -75,12 +108,16 @@ export const mementoActions: Readonly<MementoActions> = {
             return;
         }
 
+        const byQueueStep = shouldRewindByPieceQueueStep(state);
+
         return sequence(state, [
             actions.fixInferencePiece(),
             actions.clearInferencePiece(),
             (newState) => {
                 (async () => {
-                    const result = await memento.redo(newState.fumen.pages);
+                    const result = byQueueStep
+                        ? await memento.redoToPieceSpawn(newState.fumen.pages)
+                        : await memento.redo(newState.fumen.pages);
                     if (result !== undefined) {
                         main.loadPagesViaHistory(result);
                     }

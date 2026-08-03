@@ -65,7 +65,9 @@ export interface FieldEditorActions {
 
     selectInferencePieceColor(): action;
 
-    spawnPiece(data: { piece: Piece, srs: boolean }): action;
+    // historyBoundaryをfalseにすると、INPUT + NEXTキューのキュー単位Undoの巻き戻し先にならない。
+    // HOLD入れ替えのように、同じキュー単位の中でカレントを差し替えるだけの操作で使う。
+    spawnPiece(data: { piece: Piece, srs: boolean, historyBoundary?: boolean }): action;
 
     clearPiece(): action;
 
@@ -567,7 +569,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             }),
         ]);
     },
-    spawnPiece: ({ piece, srs }) => (state): NextState => {
+    spawnPiece: ({ piece, srs, historyBoundary = true }) => (state): NextState => {
         if (piece === Piece.Gray || piece === Piece.Empty) {
             throw new ViewError(`Unsupported piece: ${piece}`);
         }
@@ -599,7 +601,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
-            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            // INPUT + NEXTキューのキュー単位Undoは、この履歴エントリを巻き戻し先の境界として使う
+            actions.registerHistoryTask({
+                task: toSinglePageTask(pageIndex, prevPage, page),
+                pieceSpawn: historyBoundary,
+            }),
             actions.reopenCurrentPage(),
         ]);
     },

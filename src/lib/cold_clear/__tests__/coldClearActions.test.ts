@@ -1945,9 +1945,11 @@ describe('coldClearActions run isolation', () => {
             text: '#Q=[T](S)LZJI',
             pageIndex: 0,
         });
+        // HOLD入れ替えはキュー単位Undoの巻き戻し先にしない
         expect(spawnPiece).toHaveBeenCalledWith({
             piece: Piece.S,
             srs: true,
+            historyBoundary: false,
         });
     });
 
@@ -1972,6 +1974,7 @@ describe('coldClearActions run isolation', () => {
         expect(spawnPiece).toHaveBeenCalledWith({
             piece: Piece.L,
             srs: true,
+            historyBoundary: false,
         });
     });
 
@@ -2007,7 +2010,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
         expect(result).toBeDefined();
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[](L)ZJI' });
-        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L, historyBoundary: false });
     });
 
     test('swapCurrentPieceWithHoldQueue spawns leftmost queue piece preserving hold ' +
@@ -2022,7 +2025,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
         expect(result).toBeDefined();
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[S](L)ZJI' });
-        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L, historyBoundary: false });
     });
 
     test('swapCurrentPieceWithHoldQueue spawns comment current piece without popping next', () => {
@@ -2036,7 +2039,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
         expect(result).toBeDefined();
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[S](T)LZJI' });
-        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.T });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.T, historyBoundary: false });
     });
 
     test('swapCurrentPieceWithHoldQueue fails with toast when no current piece and no queue', () => {
@@ -2283,7 +2286,7 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
         expect(result).toBeDefined();
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[T](S)LZJI' });
-        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.S, srs: true });
+        expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.S, srs: true, historyBoundary: false });
     });
 
     test('seedQueuePreviewFromSpawnedPiece sets spawned piece as current in preview', () => {

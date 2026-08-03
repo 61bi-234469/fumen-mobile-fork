@@ -62,7 +62,7 @@
 
   <section id="edit">
     <h2>Edit the field</h2>
-    <figure class="shot"><img src="../images/en/editor.png" alt="Edit screen with the Import and Export rail beside the field and the PAINT context tools below it."><figcaption>Edit. Use the rail on the right for Import/Export, page actions, editing modes, and the palette. The context tools below the field change with the selected mode.</figcaption></figure>
+    <figure class="shot"><img src="../images/en/editor.png" alt="Edit screen with the Import and Export rail beside the field and the PAINT context tools below it."><figcaption>Edit. Use the rail on the right for Import/Export, page actions, editing modes including PIECE and INPUT, and the palette. The context tools below the field change with the selected mode.</figcaption></figure>
 
     <h3>Draw with PAINT</h3>
     <div class="cards">
@@ -91,25 +91,27 @@
       </table>
     </div>
 
-    <h3>Switch between PAINT, PIECE, and SELECT</h3>
+    <h3>Switch between PAINT, PIECE, INPUT, and SELECT</h3>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Mode</th><th>Main actions</th></tr></thead>
         <tbody>
           <tr><td>PAINT</td><td>Use Pen, Erase, Fill, and Fill row. The palette shows block colors.</td></tr>
           <tr><td>PIECE</td><td>Spawn pieces from the palette, then use Hold, hard drop, horizontal movement, soft drop, and rotation. Long-press horizontal movement to move to the edge.</td></tr>
+          <tr><td>INPUT</td><td>Directly operate the queue's CURRENT piece. HOLD and NEXT are shown, and the palette contains only Empty, Gray, and RESET.</td></tr>
           <tr><td>SELECT</td><td>Drag across the field to select a rectangle, then copy, cut, rotate, or mirror it.</td></tr>
         </tbody>
       </table>
     </div>
     <p class="note">Press the selected mode button again to show or hide the context tools below the field. Scroll the tray horizontally when the available width is too small.</p>
 
-    <h3>HOLD and NEXT in PIECE</h3>
-    <figure class="shot"><img src="../images/en/piece-queue.png" alt="PIECE mode with HOLD on the left and NEXT pieces in order on the right."><figcaption>In PIECE, queue information from the page comment appears beside the field as HOLD and NEXT.</figcaption></figure>
+    <h3>HOLD and NEXT in INPUT and PIECE</h3>
+    <figure class="shot"><img src="../images/en/piece-queue.png" alt="INPUT mode with HOLD on the left and NEXT pieces in order on the right."><figcaption>In INPUT, queue information from the page comment appears beside the field as HOLD and NEXT, and you directly operate CURRENT.</figcaption></figure>
     <ul>
-      <li><strong>HOLD / NEXT:</strong> These appear only in PIECE. NEXT is listed upward from the nearest piece.</li>
+      <li><strong>INPUT:</strong> Open it from <strong>INPUT</strong> on the rail. Spawn and operate the queue's CURRENT piece; NEXT is listed upward from the nearest piece.</li>
+      <li><strong>HOLD / NEXT:</strong> These appear in PIECE and INPUT.</li>
       <li><strong>Piece queue settings:</strong> Select HOLD or NEXT to open the settings. The input is stored in the page comment as queue data such as <code>#Q=[](I)OTLJSZ</code>.</li>
-      <li><strong>Palette:</strong> Select a piece to spawn it. Delete removes a SPAWN piece, <strong>RESPAWN</strong> resets its position and rotation, and <strong>∞ 7bag</strong> toggles automatic queue generation.</li>
+      <li><strong>Palette:</strong> In PIECE, select a piece to spawn it. Delete removes a SPAWN piece, <strong>RESPAWN</strong> resets its position and rotation, and <strong>∞ 7bag</strong> toggles automatic queue generation.</li>
     </ul>
 
     <h3>Reuse a region with SELECT</h3>
@@ -135,7 +137,7 @@
     <div class="cards">
       <div class="card"><h3>Move between pages</h3><p>Use the left and right buttons at the bottom. Long-press to jump to the first or last page.</p></div>
       <div class="card"><h3>Insert in the middle</h3><p>Use <strong>+</strong> or <strong>Insert</strong> even when a next page already exists. The new page is inserted between the current and next pages.</p></div>
-      <div class="card"><h3>Undo and redo</h3><p>Undo or redo the latest edit. History is preserved when editing across screen modes.</p></div>
+      <div class="card"><h3>Undo and redo</h3><p>Undo or redo the latest edit. While operating a NEXT queue in INPUT, Undo and Redo move across one consumed piece at a time. History is preserved when editing across screen modes.</p></div>
       <div class="card"><h3>Comments</h3><p>Write explanations or NEXT queue data in the field below the board. In List, edit comments while viewing all pages or replace text in bulk.</p></div>
     </div>
     <div class="tip warn"><strong>First-page information:</strong> Some settings, such as colors and the kick table, apply to the entire fumen. These settings carry forward automatically even when the first page is replaced.</div>
@@ -292,7 +294,7 @@
       <table>
         <thead><tr><th>Tab</th><th>Main settings</th></tr></thead>
         <tbody>
-          <tr><td>Field</td><td><strong>Show FLAGS</strong>, <strong>Delete spawn mino when paint drag passes over it</strong>, <strong>Gray out with + button</strong>, <strong>Do not gray out on hard drop</strong>, and <strong>Block surface marker</strong></td></tr>
+          <tr><td>Field</td><td><strong>Show FLAGS</strong>, <strong>Delete spawn mino when paint drag passes over it</strong>, <strong>Show PAINT palette as mino images</strong>, <strong>Gray out with + button</strong>, <strong>Do not gray out on hard drop</strong>, and <strong>Block surface marker</strong></td></tr>
           <tr><td>List &amp; Tree</td><td><strong>Trim top blank</strong>, <strong>Gray out with + button</strong>, and <strong>Show side panel (PC)</strong></td></tr>
           <tr><td>Shortcuts</td><td><strong>Show shortcut labels</strong>, palette, edit, and piece shortcuts</td></tr>
           <tr><td>Piece</td><td><strong>Piece Shortcuts</strong>, <strong>Show the ghost</strong>, <strong>Kick table</strong>, and ARR, DAS, DCD, and SDF (frame units)</td></tr>
@@ -304,6 +306,7 @@
       <li><strong>Show shortcut labels:</strong> Display the assigned key at the bottom right of each button.</li>
       <li><strong>Change a key:</strong> Select a field and press a key. Press Backspace to clear the assignment.</li>
       <li><strong>Kick table:</strong> Choose <strong>Classic</strong>, <strong>SRS</strong>, or <strong>SRS+</strong>. SRS+ also supports 180° rotation.</li>
+      <li><strong>Show PAINT palette as mino images:</strong> Show PAINT color swatches as their corresponding mino images. It does not change the PIECE palette.</li>
       <li><strong>Initial screen:</strong> Choose Reader, Edit, List, or Tree as the screen opened at startup. You can also open fumen data containing <code>#TREE</code> in Tree.</li>
       <li><strong>Gray out with + button:</strong> Changing this in either Field or List &amp; Tree updates the same setting.</li>
       <li><strong>Side panel:</strong> Enable the List or Tree panel beside Edit with <strong>Show side panel (PC)</strong>.</li>

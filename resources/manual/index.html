@@ -62,7 +62,7 @@
 
   <section id="edit">
     <h2>盤面を編集する</h2>
-    <figure class="shot"><img src="./images/editor.png" alt="Edit画面。盤面の右に取り込み・書き出しを分けた操作レール、盤面下にPAINTの操作トレイがあります。"><figcaption>Edit。右側のレールで取り込み・書き出し、ページ操作、編集モード、パレットを選び、盤面下の操作トレイでモードごとの操作を行います。</figcaption></figure>
+    <figure class="shot"><img src="./images/editor.png" alt="Edit画面。盤面の右に取り込み・書き出しを分けた操作レール、盤面下にPAINTの操作トレイがあります。"><figcaption>Edit。右側のレールで取り込み・書き出し、ページ操作、PIECE・INPUTを含む編集モード、パレットを選び、盤面下の操作トレイでモードごとの操作を行います。</figcaption></figure>
 
     <h3>PAINTで描く</h3>
     <div class="cards">
@@ -91,25 +91,27 @@
       </table>
     </div>
 
-    <h3>PAINT・PIECE・SELECTを切り替える</h3>
+    <h3>PAINT・PIECE・INPUT・SELECTを切り替える</h3>
     <div class="table-wrap">
       <table>
         <thead><tr><th>モード</th><th>主な操作</th></tr></thead>
         <tbody>
           <tr><td>PAINT</td><td>ペン、消しゴム、塗りつぶし、行を塗る。パレットはブロック色として表示されます。</td></tr>
           <tr><td>PIECE</td><td>パレットからミノを出現させ、Hold、ハードドロップ、左右移動、ソフトドロップ、回転を操作します。左右移動の長押しは端まで移動します。</td></tr>
+          <tr><td>INPUT</td><td>キューのCURRENTを直接操作します。HOLD・NEXTを表示し、パレットは空セル・灰色・RESETだけになります。</td></tr>
           <tr><td>SELECT</td><td>盤面をドラッグして矩形選択し、コピー、切り取り、左右回転、反転を行います。</td></tr>
         </tbody>
       </table>
     </div>
     <p class="note">選択中のモードボタンをもう一度押すと、盤面下の操作トレイを表示／非表示にできます。トレイが収まらないときは横スクロールできます。</p>
 
-    <h3>PIECEのHOLDとNEXT</h3>
-    <figure class="shot"><img src="./images/piece-queue.png" alt="PIECEモード。盤面左にHOLD、右に近い順のNEXTが表示されています。"><figcaption>PIECEではコメントのキュー情報をHOLDとNEXTとして盤面の横に表示します。</figcaption></figure>
+    <h3>INPUTとPIECEのHOLD・NEXT</h3>
+    <figure class="shot"><img src="./images/piece-queue.png" alt="INPUTモード。盤面左にHOLD、右に近い順のNEXTが表示されています。"><figcaption>INPUTではコメントのキュー情報をHOLDとNEXTとして盤面の横に表示し、CURRENTを直接操作できます。</figcaption></figure>
     <ul>
-      <li><strong>HOLD / NEXT：</strong>PIECEのときだけ表示されます。NEXTは近いピースから上へ並びます。</li>
+      <li><strong>INPUT：</strong>レールの<strong>INPUT</strong>から開きます。キューのCURRENTを出現させて操作し、NEXTは近いピースから上へ並びます。</li>
+      <li><strong>HOLD / NEXT：</strong>PIECEとINPUTで表示されます。</li>
       <li><strong>ピースキュー設定：</strong>HOLDまたはNEXTを選ぶと開きます。入力内容はページコメントへ <code>#Q=[](I)OTLJSZ</code> のような形式で保存されます。</li>
-      <li><strong>パレット：</strong>ミノを選ぶとSPAWNします。ごみ箱はSPAWNミノの削除、RESPAWNは位置と向きのリセット、<strong>∞ 7bag</strong>はキューの自動生成を切り替えます。</li>
+      <li><strong>パレット：</strong>PIECEではミノを選ぶとSPAWNします。ごみ箱はSPAWNミノの削除、RESPAWNは位置と向きのリセット、<strong>∞ 7bag</strong>はキューの自動生成を切り替えます。</li>
     </ul>
 
     <h3>SELECTで範囲を再利用する</h3>
@@ -135,7 +137,7 @@
     <div class="cards">
       <div class="card"><h3>前後へ移動</h3><p>下部の左右ボタンで移動します。長押しすると最初または最後のページへジャンプします。</p></div>
       <div class="card"><h3>途中へ追加</h3><p>次ページがある状態でも <strong>+</strong> や <strong>挿入</strong> を使えます。新しいページは現在ページと次ページの間に入ります。</p></div>
-      <div class="card"><h3>元に戻す</h3><p>Undo/Redoで直前の編集を戻したりやり直したりできます。画面モードをまたぐ編集でも履歴が維持されます。</p></div>
+      <div class="card"><h3>元に戻す</h3><p>Undo/Redoで直前の編集を戻したりやり直したりできます。INPUTでNEXTキューを操作しているときは、ミノ1個分の操作をまとめて戻したりやり直したりできます。画面モードをまたぐ編集でも履歴が維持されます。</p></div>
       <div class="card"><h3>コメント</h3><p>盤面下の欄へ説明やNEXTキューを書けます。Listでは全ページを見ながら編集・一括置換できます。</p></div>
     </div>
     <div class="tip warn"><strong>先頭ページの情報：</strong>色やキックテーブルなど一部の設定はテト譜全体に適用されます。先頭ページが入れ替わる操作でも、これらの設定は自動で引き継がれます。</div>
@@ -292,7 +294,7 @@
       <table>
         <thead><tr><th>タブ</th><th>主な設定</th></tr></thead>
         <tbody>
-          <tr><td>フィールド</td><td><strong>FLAGSを表示</strong>、<strong>黒ペイントのドラッグでSPAWNミノも削除する</strong>、<strong>+ボタンでグレー化</strong>、<strong>ハードドロップではグレー化しない</strong>、<strong>ブロック表面のマーク</strong></td></tr>
+          <tr><td>フィールド</td><td><strong>FLAGSを表示</strong>、<strong>消しゴムのドラッグでSPAWNミノも削除する</strong>、<strong>PAINTパレットをミノ画像で表示</strong>、<strong>+ボタンでグレー化</strong>、<strong>ハードドロップではグレー化しない</strong>、<strong>ブロック表面のマーク</strong></td></tr>
           <tr><td>リスト/ツリー</td><td><strong>上部の空白行を省略</strong>、<strong>+ボタンでグレー化</strong>、<strong>サイドパネルを表示（PC）</strong></td></tr>
           <tr><td>ショートカット</td><td><strong>ショートカットラベル表示</strong>、パレット・編集用・ピースショートカット</td></tr>
           <tr><td>ピース</td><td><strong>ピースショートカット</strong>、<strong>ゴースト表示</strong>、<strong>キックテーブル</strong>、<strong>ARR</strong>・<strong>DAS</strong>・<strong>DCD</strong>・<strong>SDF</strong>（フレーム単位）</td></tr>
@@ -304,6 +306,7 @@
       <li><strong>ショートカットラベル表示：</strong>各ボタンの右下に割り当てキーを表示します。</li>
       <li><strong>キーの変更：</strong>対象欄を選んでキーを押します。Backspaceで割り当てを解除できます。</li>
       <li><strong>キックテーブル：</strong>「クラシック」「SRS」「SRS+」から選びます。SRS+では180度回転も利用できます。</li>
+      <li><strong>PAINTパレットをミノ画像で表示：</strong>オンにすると、PAINTの色見本を対応するミノ画像で表示します。PIECEのパレット表示には影響しません。</li>
       <li><strong>初期画面：</strong>起動時に開くReader・Edit・List・Tree画面を選びます。ツリーデータ(#TREE)を含むテト譜をTree画面で開く設定もあります。</li>
       <li><strong>+ボタンでグレー化：</strong>フィールドとリスト/ツリーのどちらのタブから変更しても同じ設定へ反映されます。</li>
       <li><strong>サイドパネル：</strong>「サイドパネルを表示（PC）」でEdit左側のList/Treeパネルを有効にします。</li>

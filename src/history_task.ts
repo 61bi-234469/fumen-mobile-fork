@@ -275,6 +275,7 @@ export interface PrimitivePage {
         rise: boolean;
         quiz: boolean;
     };
+    internal?: Page['internal'];
 }
 
 export const toPrimitivePage = (page: Page): PrimitivePage => {
@@ -312,6 +313,15 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
             rise: page.flags.rise,
             quiz: page.flags.quiz,
         },
+        internal: page.internal === undefined ? undefined : {
+            hiddenComment: page.internal.hiddenComment,
+            sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
+                ? undefined : { ...page.internal.sevenBagGrayProgress },
+            sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {
+                pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
+                rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
+            },
+        },
     };
 };
 
@@ -343,6 +353,15 @@ export const toPage = (page: PrimitivePage): Page => {
             colorize: page.flags.colorize,
             rise: page.flags.rise,
             quiz: page.flags.quiz,
+        },
+        internal: page.internal === undefined ? undefined : {
+            hiddenComment: page.internal.hiddenComment,
+            sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
+                ? undefined : { ...page.internal.sevenBagGrayProgress },
+            sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {
+                pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
+                rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
+            },
         },
     };
 };

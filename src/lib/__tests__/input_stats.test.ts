@@ -77,4 +77,22 @@ describe('input stats', () => {
         };
         expect(computeInputStats(pages, 2, { tree, rotationSystem: 'srs' }).pieces).toBe(1);
     });
+
+    test('uses editor-only seven-bag progress without comment metadata', () => {
+        const pages: any[] = [{
+            index: 0,
+            field: { obj: new Field({}) },
+            comment: { text: '#Q=[](T)IOLJSZ' },
+            flags: { lock: true },
+            internal: {
+                sevenBagGrayProgress: { bag: 3, pieces: 17, lines: 5, perfectClears: 1 },
+            },
+        }];
+
+        expect(computeInputStats(pages, 0, 'srs')).toMatchObject({
+            pieces: 17,
+            lines: 5,
+            perfectClears: 1,
+        });
+    });
 });

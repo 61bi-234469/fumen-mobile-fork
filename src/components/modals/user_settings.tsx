@@ -1,7 +1,8 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import {
-    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, UserSettingsTab,
+    EditShortcuts, InitialScreenSetting, PAGE_ROTATION_LIMIT_MAX, PAGE_ROTATION_LIMIT_MIN, PaletteShortcuts,
+    PieceShortcuts, resources, RotationSystem, UserSettingsTab,
 } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
@@ -32,7 +33,8 @@ interface UserSettingsModalProps {
     pieceShortcutSoftDropPriority: boolean;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
-    noGrayAfterHardDrop: boolean;
+    sevenBagGrayEnabled: boolean;
+    pageRotationLimit: number;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
@@ -60,7 +62,8 @@ interface UserSettingsModalProps {
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
-        keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
+        keepSevenBagGrayEnabled: (data: { enable: boolean }) => void;
+        keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
@@ -154,7 +157,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutSoftDropPriority,
         gifFrameDelayMs,
         rotationSystem,
-        noGrayAfterHardDrop,
+        sevenBagGrayEnabled,
+        pageRotationLimit,
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
@@ -445,6 +449,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         actions.keepPieceShortcutSdf({ sdf: value === 'Infinity' ? Infinity : parseInt(value, 10) });
     };
 
+    const onchangePageRotationLimit = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value)) {
+            actions.keepPageRotationLimit({ limit: value });
+        }
+    };
+
     const onchangeGifFrameDelay = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value, 10);
@@ -549,17 +561,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
-                            })}
-
-                            {renderSwitch({
-                                key: 'switch-row-no-gray-after-hard-drop',
-                                datatest: 'switch-no-gray-after-hard-drop',
-                                title: i18n.TreeView.NoGrayAfterHardDrop(),
-                                checked: noGrayAfterHardDrop,
-                                disabled: !grayAfterLineClear,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
-                                onChange: checked => actions.keepNoGrayAfterHardDrop({ enable: checked }),
                             })}
 
                             <details key="details-user-settings-gradient" datatest="details-user-settings-gradient">
@@ -799,6 +800,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     onLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.On(),
                                     onChange: checked => actions.keepPieceShortcutSoftDropPriority({ enable: checked }),
                                 })}
+
+                                {renderSwitch({
+                                    key: 'switch-row-seven-bag-gray',
+                                    datatest: 'switch-seven-bag-gray',
+                                    title: i18n.UserSettings.SevenBagGray.Title(),
+                                    description: i18n.UserSettings.SevenBagGray.Description(),
+                                    checked: sevenBagGrayEnabled,
+                                    offLabel: switchLabels.off,
+                                    onLabel: switchLabels.on,
+                                    onChange: checked => actions.keepSevenBagGrayEnabled({ enable: checked }),
+                                })}
                             </div>
                         </div>
 
@@ -840,6 +852,21 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepOpenTreeScreenOnTreeData({ enable: checked }),
+                            })}
+
+                            {renderNumberField({
+                                labelDatatest: 'label-page-rotation-limit',
+                                title: i18n.UserSettings.PageRotation.Title(),
+                                description: i18n.UserSettings.PageRotation.Description(),
+                                inputDatatest: 'input-page-rotation-limit',
+                                value: pageRotationLimit,
+                                min: PAGE_ROTATION_LIMIT_MIN,
+                                max: PAGE_ROTATION_LIMIT_MAX,
+                                step: 1,
+                                onchange: onchangePageRotationLimit,
+                                width: 100,
+                                unitDatatest: 'unit-page-rotation-limit',
+                                unit: i18n.UserSettings.PageRotation.Unit(),
                             })}
 
                             {renderNumberField({

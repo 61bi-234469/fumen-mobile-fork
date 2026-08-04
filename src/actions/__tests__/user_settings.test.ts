@@ -17,7 +17,9 @@ jest.mock('../../memento', () => ({
     },
 }));
 
-jest.mock('../../states', () => ({}));
+jest.mock('../../states', () => ({
+    normalizePageRotationLimit: (limit: number) => Math.min(999, Math.max(0, Math.round(limit))),
+}));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { userSettingsActions } = require('../user_settings');
@@ -42,7 +44,8 @@ const baseUserSettings = {
     pieceShortcutSoftDropPriority: false,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
-    noGrayAfterHardDrop: false,
+    sevenBagGrayEnabled: false,
+    pageRotationLimit: 0,
     grayAfterLineClear: false,
     trimTopBlank: false,
     editorSidePanel: false,
@@ -69,7 +72,8 @@ const createState = (override: any = {}) => ({
         pieceShortcutSoftDropPriority: false,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
-        noGrayAfterHardDrop: false,
+        sevenBagGrayEnabled: false,
+        pageRotationLimit: 0,
     },
     tree: {
         grayAfterLineClear: true,
@@ -135,19 +139,37 @@ describe('userSettingsActions', () => {
         });
     });
 
-    describe('keepNoGrayAfterHardDrop', () => {
-        test('updates temporary when line-clear graying is enabled', () => {
+    describe('keepSevenBagGrayEnabled', () => {
+        test('updates temporary while the modal is open', () => {
             const state = createState();
-            state.temporary.userSettings.grayAfterLineClear = true;
-            const next = userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state);
+            const next = userSettingsActions.keepSevenBagGrayEnabled({ enable: true })(state);
 
-            expect(next.temporary.userSettings.noGrayAfterHardDrop).toBe(true);
+            expect(next.temporary.userSettings.sevenBagGrayEnabled).toBe(true);
         });
 
-        test('does nothing when line-clear graying is disabled', () => {
-            const state = createState({ tree: { grayAfterLineClear: false } });
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
 
-            expect(userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state)).toBeUndefined();
+            expect(userSettingsActions.keepSevenBagGrayEnabled({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
+    describe('page rotation', () => {
+        test('keepPageRotationLimit clamps the value into the allowed range', () => {
+            const state = createState();
+
+            expect(userSettingsActions.keepPageRotationLimit({ limit: -5 })(state)
+                .temporary.userSettings.pageRotationLimit).toBe(0);
+            expect(userSettingsActions.keepPageRotationLimit({ limit: 5000 })(state)
+                .temporary.userSettings.pageRotationLimit).toBe(999);
+            expect(userSettingsActions.keepPageRotationLimit({ limit: 30 })(state)
+                .temporary.userSettings.pageRotationLimit).toBe(30);
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPageRotationLimit({ limit: 30 })(state)).toBeUndefined();
         });
     });
 
@@ -340,7 +362,7 @@ describe('userSettingsActions', () => {
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
                 'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
                 'changeGifFrameDelay', 'changeRotationSystem',
-                'changeNoGrayAfterHardDrop',
+                'changeSevenBagGrayEnabled', 'changePageRotationLimit',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {

@@ -117,6 +117,17 @@ export const DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES = 0;
 export const DEFAULT_PIECE_SHORTCUT_SDF = Infinity;
 export const DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY = false;
 export const DEFAULT_GIF_FRAME_DELAY_MS = 500;
+// ページローテーション: 保持するページ数の上限。0は上限なし（既定）。
+export const DEFAULT_PAGE_ROTATION_LIMIT = 0;
+export const PAGE_ROTATION_LIMIT_MIN = 0;
+export const PAGE_ROTATION_LIMIT_MAX = 999;
+
+export const normalizePageRotationLimit = (limit: number): number => {
+    if (!Number.isFinite(limit)) {
+        return DEFAULT_PAGE_ROTATION_LIMIT;
+    }
+    return Math.min(PAGE_ROTATION_LIMIT_MAX, Math.max(PAGE_ROTATION_LIMIT_MIN, Math.round(limit)));
+};
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
@@ -132,6 +143,7 @@ import { loadBlackTransparentPaste, loadParts } from './lib/parts';
 import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
+import { PlacementResult } from './lib/input_stats';
 
 const VERSION = PageEnv.Version;
 
@@ -229,7 +241,8 @@ export interface State {
             pieceShortcutSoftDropPriority: boolean;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
-            noGrayAfterHardDrop: boolean;
+            sevenBagGrayEnabled: boolean;
+            pageRotationLimit: number;
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
             editorSidePanel: boolean;
@@ -255,6 +268,7 @@ export interface State {
         lastTouchedIndex?: number;
         lastTouchedSentIndex?: number;
         lastPieceManipulation?: InputRotationEvidence;
+        lastInputPlacement?: PlacementResult;
     };
     mode: {
         screen: Screens;
@@ -283,7 +297,8 @@ export interface State {
         pieceShortcutSoftDropPriority: boolean;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
-        noGrayAfterHardDrop: boolean;
+        sevenBagGrayEnabled: boolean;
+        pageRotationLimit: number;
     };
     history: {
         undoCount: number;
@@ -422,7 +437,8 @@ export const initState: Readonly<State> = {
             pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
-            noGrayAfterHardDrop: false,
+            sevenBagGrayEnabled: false,
+            pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
             grayAfterLineClear: false,
             trimTopBlank: false,
             editorSidePanel: false,
@@ -470,7 +486,8 @@ export const initState: Readonly<State> = {
         pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
-        noGrayAfterHardDrop: false,
+        sevenBagGrayEnabled: false,
+        pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
     },
     history: {
         undoCount: 0,

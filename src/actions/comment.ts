@@ -68,6 +68,9 @@ export const commentActions: Readonly<CommentActions> = {
 };
 
 const commitCommentText = (pageIndex: number, text: string, mergeKey?: string) => (state: State): NextState => {
+    if (state.mode.sevenBagGrayEnabled) {
+        return commitHiddenCommentText(pageIndex, text, mergeKey)(state);
+    }
     const page = state.fumen.pages[pageIndex];
     if (page === undefined || page.comment.text === text) {
         return undefined;
@@ -77,6 +80,31 @@ const commitCommentText = (pageIndex: number, text: string, mergeKey?: string) =
         return commitQuizCommentText(pageIndex, text, mergeKey)(state);
     }
     return commitRegularCommentText(pageIndex, text, mergeKey)(state);
+};
+
+const commitHiddenCommentText = (pageIndex: number, text: string, mergeKey?: string) => (state: State): NextState => {
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined || (page.comment.text === undefined && page.comment.ref === undefined
+        && page.internal?.hiddenComment === text)) {
+        return undefined;
+    }
+
+    const previousPage = toPrimitivePage(page);
+    const nextPage: Page = {
+        ...page,
+        comment: {},
+        flags: { ...page.flags, quiz: false },
+        internal: { ...page.internal, hiddenComment: text },
+    };
+    const pages = state.fumen.pages.slice();
+    pages[pageIndex] = nextPage;
+    return sequence(state, [
+        () => ({ fumen: { ...state.fumen, pages } }),
+        actions.registerHistoryTask({
+            mergeKey,
+            task: toSinglePageTask(pageIndex, previousPage, nextPage),
+        }),
+    ]);
 };
 
 const findFirstComment = (pages: Page[], startIndex: number) => {

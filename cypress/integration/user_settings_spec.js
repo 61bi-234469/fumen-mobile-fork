@@ -385,5 +385,48 @@ describe('User settings', () => {
         cy.get(datatest('btn-piece-i')).find('img').should('not.exist');
         cy.get(datatest('btn-piece-i')).find('[data-palette-swatch="mino"]').should('have.text', 'I');
     });
+
+    it('defaults page rotation to no limit and persists the page count', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-misc')).click();
+        // 「ページローテーション」→説明文→ページ数の順に並べ、トグルは持たない
+        cy.get(datatest('panel-user-settings-misc')).then(panel => {
+            const order = ['label-page-rotation-limit', 'input-page-rotation-limit'];
+            const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
+            const indexes = order.map(value => datatests.findIndex(element =>
+                element.getAttribute('datatest') === value));
+            expect(indexes.every(index => index >= 0)).to.equal(true);
+            expect(indexes).to.deep.equal([...indexes].sort((left, right) => left - right));
+            expect(panel[0].querySelectorAll('input[type="checkbox"][datatest*="page-rotation"]')).to.have.length(0);
+        });
+        cy.get(datatest('input-page-rotation-limit')).should('have.value', '0');
+        cy.get(datatest('unit-page-rotation-limit')).should('not.be.empty');
+
+        // 上限を超える値は保持可能な最大値まで引き下げる
+        cy.get(datatest('input-page-rotation-limit')).clear().type('5000').blur();
+        cy.get(datatest('btn-save')).click();
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('input-page-rotation-limit')).should('have.value', '999').clear().type('25').blur();
+        cy.get(datatest('btn-save')).click();
+
+        // Reload restores the saved value.
+        visit({ mode: 'edit', reload: true });
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('input-page-rotation-limit')).should('have.value', '25');
+
+        // Cancel does not roll back a previously saved value.
+        cy.get(datatest('input-page-rotation-limit')).clear().type('7').blur();
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('input-page-rotation-limit')).should('have.value', '25');
+        cy.get(datatest('btn-cancel')).click();
+    });
 });
 

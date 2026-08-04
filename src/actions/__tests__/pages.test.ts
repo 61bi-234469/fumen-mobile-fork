@@ -59,6 +59,7 @@ describe('pageActions.insertNewPage', () => {
                 nodes: [],
                 grayAfterLineClear: true,
             },
+            mode: { pageRotationLimit: 0 },
             history: { undoCount: 0, redoCount: 0 },
         } as any;
 
@@ -67,6 +68,89 @@ describe('pageActions.insertNewPage', () => {
 
         expect(insertedField.toPlayFieldPieces().every(piece => piece === Piece.Empty)).toBe(true);
         expect((next.fumen.pages[0].field.obj as Field).get(0, 0)).toBe(Piece.T);
+    });
+});
+
+describe('pageActions.applyPageRotation', () => {
+    const makeState = (
+        { limit, pageCount, currentIndex }:
+            { limit: number, pageCount: number, currentIndex: number },
+    ) => {
+        const pages = Array.from({ length: pageCount }).map((_, index) => ({
+            index,
+            field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+            comment: index === 0 ? { text: `page-${index}` } : { ref: 0 },
+            flags: { ...flags },
+        }));
+        return {
+            play: { status: AnimationState.Pause },
+            events: { inferences: [] },
+            mode: {
+                ghostVisible: false,
+                touch: TouchTypes.Drawing,
+                pageRotationLimit: limit,
+            },
+            cache: {},
+            tree: { enabled: false, rootId: null, nodes: [], activeNodeId: null },
+            fumen: { currentIndex, pages, maxPage: pageCount },
+            history: { undoCount: 0, redoCount: 0 },
+        } as any;
+    };
+
+    test('treats 0 as no limit', () => {
+        const state = makeState({ limit: 0, pageCount: 10, currentIndex: 9 });
+
+        expect(pageActions.applyPageRotation()(state)).toBeUndefined();
+    });
+
+    test('does nothing while the page count is within the limit', () => {
+        const state = makeState({ limit: 5, pageCount: 5, currentIndex: 4 });
+
+        expect(pageActions.applyPageRotation()(state)).toBeUndefined();
+    });
+
+    test('drops the oldest pages and keeps the current page selected', () => {
+        const state = makeState({ limit: 3, pageCount: 6, currentIndex: 5 });
+
+        const next = pageActions.applyPageRotation()(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(3);
+        expect(next.fumen.maxPage).toBe(3);
+        expect(next.fumen.currentIndex).toBe(2);
+        // 残った先頭ページは参照ではなくキーページになり、コメントも確定している
+        expect(next.fumen.pages[0].field.obj).toBeDefined();
+        expect(next.fumen.pages[0].comment.text).toBe('page-0');
+        expect(next.fumen.pages.every((page: any) => (page.field.ref ?? 0) >= 0)).toBe(true);
+    });
+
+    test('never drops pages at or after the current page', () => {
+        const state = makeState({ limit: 2, pageCount: 6, currentIndex: 1 });
+
+        const next = pageActions.applyPageRotation()(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(5);
+        expect(next.fumen.currentIndex).toBe(0);
+    });
+
+    // INPUTのハードドロップだけでなく、通常のページ追加でも上限が効く
+    test('trims from the front when an ordinary page insert exceeds the limit', () => {
+        const state = makeState({ limit: 3, pageCount: 3, currentIndex: 2 });
+
+        const next = pageActions.insertNewPage({ index: 3 })(state) as any;
+
+        // 追加で4ページになった分を先頭から1枚落とし、追加したページに留まる
+        expect(next.fumen.pages).toHaveLength(3);
+        expect(next.fumen.maxPage).toBe(3);
+        expect(next.fumen.currentIndex).toBe(2);
+    });
+
+    test('leaves an ordinary page insert untouched while the limit is 0', () => {
+        const state = makeState({ limit: 0, pageCount: 3, currentIndex: 2 });
+
+        const next = pageActions.insertNewPage({ index: 3 })(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(4);
+        expect(next.fumen.currentIndex).toBe(3);
     });
 });
 

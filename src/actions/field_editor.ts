@@ -1,4 +1,4 @@
-import { isMinoPiece, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
+import { isMinoPiece, Piece, Rotation, Screens, toPositionIndex, TouchTypes } from '../lib/enums';
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
@@ -19,6 +19,7 @@ import {
 } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
+import { Page } from '../lib/fumen/types';
 import { State } from '../states';
 import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
@@ -27,8 +28,14 @@ import { legacyModeForPaintTool } from '../lib/editor_interaction';
 import { activeSelectionRect, isIndexInRect } from '../lib/rect_selection';
 import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 import { activateDasCut, cutDasHolds } from '../lib/piece_das';
-import { withInputRotationEvidence } from '../lib/comment_metadata';
-import { computeInputStats, toCommentCombo } from '../lib/input_stats';
+import {
+    parseSevenBagGrayDisplay, parseSevenBagGrayProgress, withInputRotationEvidence,
+} from '../lib/comment_metadata';
+import {
+    advanceStats, computeInputStats, evaluatePlacement, fromCommentCombo, InputStats, resolveInputRulesPreset,
+    toCommentCombo,
+} from '../lib/input_stats';
+import { advanceSevenBagGrayDisplay } from '../lib/seven_bag_gray';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -98,8 +105,21 @@ export interface FieldEditorActions {
 
     harddrop(): action;
 
-    spawnNextPieceFromColdClearQueue(): action;
+    spawnNextPieceFromColdClearQueue(data?: {
+        placedPiece?: Piece;
+        stats?: InputStats;
+        mirrorCommentPageIndex?: number;
+    }): action;
 }
+
+export const isSevenBagGrayInput = (state: State): boolean => (
+    state.mode.screen === Screens.Editor
+    && state.editorUi.primaryTool === 'piece'
+    && state.editorUi.pieceLayout === 'play'
+    && state.editorUi.infinitePieceQueue
+    && state.mode.sevenBagGrayEnabled
+    && state.fumen.currentIndex === state.fumen.pages.length - 1
+);
 
 // Right-click is an eraser in every primary tool. Area erase (fill / fillRow) only
 // follows the paint tool inside PAINT, where the user can see which tool is armed.
@@ -176,6 +196,23 @@ const FIELD_GRID_WIDTH = 10;
 const clearLastPieceManipulation = (state: State) => ({
     events: { ...state.events, lastPieceManipulation: undefined },
 });
+
+const replaceCurrentPageField = (
+    field: Field, internal?: NonNullable<Page['internal']>,
+) => (state: State): NextState => {
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined) return undefined;
+    const previousPage = toPrimitivePage(page);
+    page.field = { obj: field.copy() };
+    page.commands = undefined;
+    page.piece = undefined;
+    page.internal = internal === undefined ? undefined : { ...page.internal, ...internal };
+    return sequence(state, [
+        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page) }),
+        actions.reopenCurrentPage(),
+    ]);
+};
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
     // The eraser drag deletes the SPAWN mino and the selection it passes over, whether it
     // comes from the paint tool or from a right-click in any primary tool.
@@ -1105,20 +1142,92 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 const nextPageIndex = pageIndex + 1;
                 const isInput = nextState.editorUi.primaryTool === 'piece'
                     && nextState.editorUi.pieceLayout === 'play';
-                const currentComment = resolvePageCommentText(nextState.fumen.pages, pageIndex);
+                const currentComment = getCurrentColdClearQueueComment(nextState)
+                    ?? resolvePageCommentText(nextState.fumen.pages, pageIndex);
                 const commentWithEvidence = isInput
                     ? withInputRotationEvidence(currentComment, nextState.events.lastPieceManipulation)
                     : currentComment;
+                if (isSevenBagGrayInput(nextState)) {
+                    const parsed = parseQueueStateComment(currentComment);
+                    const progress = page.internal?.sevenBagGrayProgress
+                        ?? parseSevenBagGrayProgress(currentComment)
+                        ?? { bag: 0, pieces: 0, lines: 0, perfectClears: 0 };
+                    const baseStats = {
+                        b2bChain: parsed?.b2b ? 1 : 0,
+                        renChain: fromCommentCombo(parsed?.combo ?? 0),
+                        pieces: progress.pieces,
+                        lines: progress.lines,
+                        perfectClears: progress.perfectClears,
+                    };
+                    const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
+                    const result = evaluatePlacement(
+                        field, piece, preset, nextState.events.lastPieceManipulation,
+                    );
+                    const stats = advanceStats(baseStats, result, preset);
+                    const nextProgress = {
+                        pieces: stats.pieces,
+                        lines: stats.lines,
+                        perfectClears: stats.perfectClears,
+                        bag: (progress.bag + 1) % 7,
+                    };
+                    const previousPage = toPrimitivePage(page);
+                    const settledField = new Pages(nextState.fumen.pages).getField(pageIndex, PageFieldOperation.All);
+                    const display = advanceSevenBagGrayDisplay(
+                        page.internal?.sevenBagGrayDisplay
+                            ?? parseSevenBagGrayDisplay(currentComment),
+                        field,
+                        piece,
+                    );
+                    const completedBag = progress.bag === 6;
+                    const nextBagField = settledField.copy();
+                    if (completedBag) nextBagField.convertToGray();
+                    // During a bag the page keeps the post-clear field used for gameplay.
+                    // At the boundary it becomes a display-only snapshot with all seven placements.
+                    page.field = { obj: completedBag ? display.field : settledField };
+                    page.commands = undefined;
+                    page.piece = undefined;
+                    page.internal = completedBag ? {
+                        ...page.internal,
+                        sevenBagGrayProgress: nextProgress,
+                    } : {
+                        ...page.internal,
+                        sevenBagGrayProgress: nextProgress,
+                        sevenBagGrayDisplay: display.display,
+                    };
+                    return sequence(nextState, [
+                        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page) }),
+                        actions.reopenCurrentPage(),
+                        ...(completedBag ? [
+                            actions.insertPage({ index: nextPageIndex, skipGrayAfterLineClear: true }),
+                            (afterState: State) => actions.openPage({
+                                index: afterState.fumen.currentIndex + 1,
+                            })(afterState),
+                            replaceCurrentPageField(nextBagField, {
+                                sevenBagGrayProgress: nextProgress,
+                            }),
+                        ] : []),
+                        actions.spawnNextPieceFromColdClearQueue({
+                            stats,
+                            mirrorCommentPageIndex: completedBag ? pageIndex : undefined,
+                            placedPiece: piece.type,
+                        }),
+                        nextStateAfterSpawn => ({
+                            events: { ...nextStateAfterSpawn.events, lastInputPlacement: result },
+                        }),
+                        clearLastPieceManipulation,
+                    ]);
+                }
                 return sequence(nextState, [
                     ...(commentWithEvidence === currentComment ? [] : [
                         actions.setCommentText({ pageIndex, text: commentWithEvidence }),
                     ]),
                     actions.insertPage({
                         index: nextPageIndex,
-                        skipGrayAfterLineClear: nextState.tree.grayAfterLineClear
-                            && nextState.mode.noGrayAfterHardDrop,
+                        skipGrayAfterLineClear: nextState.tree.grayAfterLineClear,
                     }),
-                    actions.openPage({ index: nextPageIndex }),
+                    // ページローテーションが先頭を削るとインデックスがずれるため、
+                    // 挿入後の currentIndex から次ページを導出する。
+                    afterState => actions.openPage({ index: afterState.fumen.currentIndex + 1 })(afterState),
                     actions.spawnNextPieceFromColdClearQueue(),
                     clearLastPieceManipulation,
                 ]);
@@ -1126,7 +1235,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         ]);
     },
 
-    spawnNextPieceFromColdClearQueue: () => (state): NextState => {
+    spawnNextPieceFromColdClearQueue: (data = {}) => (state): NextState => {
         const currentComment = getCurrentColdClearQueueComment(state);
         const parsed = currentComment === null ? null : parseQueueStateComment(currentComment);
         if (!parsed) {
@@ -1140,12 +1249,12 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const tree = state.tree.enabled
             ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 as const }
             : undefined;
-        const inputStats = isInput
+        const inputStats = data.stats ?? (isInput
             ? computeInputStats(state.fumen.pages, pageIndex, {
                 tree,
                 rotationSystem: state.mode.rotationSystem,
             })
-            : undefined;
+            : undefined);
         const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain >= 1;
         const nextCombo = inputStats === undefined ? parsed.combo : toCommentCombo(inputStats.renChain);
         // Quizページのrefコメントは取得時点で設置操作が反映済み。
@@ -1156,11 +1265,15 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         let hold = parsed.hold;
         let current = parsed.current;
         let queue = parsed.queue;
-        if (!isAdvancedQuizComment && current !== null) {
+        // 7bagグレーは同じページへ設置ミノを焼き込むため、再表示後はQuiz参照ページに見える。
+        // 呼び出し元が配置ミノを明示した場合は、その判定より優先して必ずキューを進める。
+        if ((data.placedPiece !== undefined || !isAdvancedQuizComment) && current !== null) {
             const prevPage = state.fumen.pages[pageIndex - 1];
-            const placedPiece = prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)
-                ? prevPage.piece.type
-                : undefined;
+            const placedPiece = data.placedPiece ?? (
+                prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)
+                    ? prevPage.piece.type
+                    : undefined
+            );
             if (placedPiece !== undefined) {
                 if (placedPiece === current) {
                     current = null;
@@ -1207,8 +1320,10 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             nextCombo,
             parsed.suffix,
         );
-
         return sequence(state, [
+            data.mirrorCommentPageIndex !== undefined && data.mirrorCommentPageIndex !== pageIndex
+                ? actions.setCommentText({ pageIndex: data.mirrorCommentPageIndex, text: nextComment })
+                : undefined,
             actions.setCommentText({ pageIndex, text: nextComment }),
             actions.spawnPiece({
                 piece: spawnPiece,

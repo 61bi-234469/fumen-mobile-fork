@@ -1,4 +1,4 @@
-import { Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
+import { block, Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('PIECE queues', () => {
@@ -56,15 +56,13 @@ describe('PIECE queues', () => {
             expect(toggle[0].scrollWidth).to.be.at.most(Math.ceil(toggleRect.width));
         });
         cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
-        // 操作重視はミノ選択セルを持たず、削除・リスポーン・リセットだけを残す
-        ['btn-piece-i', 'btn-piece-t', 'btn-piece-inference',
+        // 操作重視はミノ選択セルを持たず、盤面リセットだけを残す
+        ['btn-piece-i', 'btn-piece-t', 'btn-piece-inference', 'btn-piece-empty', 'btn-piece-gray',
             'btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
             'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode'].forEach(selector => {
             cy.get(datatest(selector)).should('not.exist');
         });
-        ['btn-piece-empty', 'btn-piece-gray', 'btn-piece-reset'].forEach(selector => {
-            cy.get(datatest(selector)).should('be.visible');
-        });
+        cy.get(datatest('btn-piece-reset')).should('be.visible').and('contain.text', 'RESET');
         cy.get(datatest('btn-editor-user-settings')).should('be.visible');
     });
 
@@ -206,9 +204,43 @@ describe('PIECE queues', () => {
         cy.get(datatest('btn-piece-queue-add-Z')).click();
         cy.get(datatest('btn-piece-queue-close')).click();
 
-        cy.get(datatest('piece-queue-next-2')).should('have.attr', 'data-piece', 'Z');
+        // 閉じるときにカレントが空ならNEXT先頭 (I) を繰り上げるため、残るNEXTはO・Z。
+        cy.get(datatest('piece-queue-next-1')).should('have.attr', 'data-piece', 'Z');
         operations.mode.comment.open();
-        cy.get(datatest('text-comment')).should('have.value', '#Q=[T]()IOZ');
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[T](I)OZ');
+    });
+
+    it('pulls the NEXT head into an empty current when the queue modal closes', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[T]()SZ').blur();
+        operations.mode.piece.openWithQueues();
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        // 繰り上げたカレントは盤面にもスポーンされ、そのままINPUTを続けられる
+        cy.get(datatest('img-rotation-spawn')).should('be.visible');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'Z');
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[T](S)Z');
+    });
+
+    it('keeps an empty current when the NEXT queue is also empty', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[T]()').blur();
+        operations.mode.piece.openWithQueues();
+
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        cy.get(datatest('img-rotation-empty')).should('be.visible');
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[T]()');
     });
 
     it('ignores a touch click retargeted to NEXT after a piece transition', () => {
@@ -291,6 +323,121 @@ describe('PIECE queues', () => {
         operations.mode.piece.harddrop();
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](L)');
+    });
+
+    it('rotates pages away from the front once the kept page count is exceeded', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setPageRotationLimit(3);
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+
+        // 上限を超えた分は先頭から消えるので、ページ番号は3止まりで進み続ける
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'S');
+    });
+
+    it('keeps the infinite queue boundary stable while seven bag gray is enabled', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setSevenBagGray(true);
+        cy.get(datatest('btn-paint-mode')).click();
+        operations.mode.block.L();
+        operations.mode.block.click(0, 0);
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleInfiniteQueue();
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+
+        // キュー設定の表示・確定を挟んでも、sbgのbag位置を失わない。
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        // The active field for the next bag also uses gray for all previously settled terrain.
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.value', '');
+        operations.mode.tools.backPage();
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        cy.get(block(4, 0)).should('have.attr', 'color', Color.T.Normal);
+    });
+
+    it('keeps all seven placements visible before line clears', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setSevenBagGray(true);
+        cy.get(datatest('btn-paint-mode')).click();
+        operations.mode.block.L();
+        [0, 1, 2, 7, 8, 9].forEach(x => operations.mode.block.click(x, 0));
+        cy.get(datatest('text-comment')).clear().type('#Q=[](I)OTLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.I();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleInfiniteQueue();
+
+        for (let index = 0; index < 7; index += 1) {
+            operations.mode.piece.harddrop();
+        }
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.tools.backPage();
+        [0, 1, 2, 7, 8, 9].forEach((x) => {
+            cy.get(block(x, 0)).should('have.attr', 'color', Color.Gray.Highlight1);
+        });
+        [3, 4, 5, 6].forEach((x) => {
+            cy.get(block(x, 0)).should('have.attr', 'color', Color.I.Highlight1);
+        });
+    });
+
+    it('applies the page rotation limit to ordinary page adds too', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setPageRotationLimit(3);
+
+        // INPUT以外のページ追加（ADDボタン）でも上限を超えた分は先頭から消える
+        operations.mode.tools.addNewPage();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.tools.addNewPage();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+        operations.mode.tools.addNewPage();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+        operations.mode.tools.addNewPage();
+        cy.get(datatest('text-pages')).should('contain', '3 / 3');
+    });
+
+    it('keeps every page while the page rotation limit is 0', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '5 / 5');
     });
 
     it('rewinds one queue piece per undo in the play layout', () => {

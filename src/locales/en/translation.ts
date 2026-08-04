@@ -137,6 +137,15 @@
                 On: 'Soft drop first',
             },
         },
+        PageRotation: {
+            Title: 'Page rotation',
+            Description: 'When a page is added, drop the oldest page numbers beyond this count. 0 means no limit',
+            Unit: 'pages',
+        },
+        SevenBagGray: {
+            Title: '7-bag gray',
+            Description: 'In INPUT with infinite 7-bag, group every 7 pieces into one page and gray the completed bag.',
+        },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
             Save: 'Save',
@@ -245,7 +254,6 @@
             Descendants: 'Descendants only',
         },
         GrayAfterLineClear: 'Gray out with + button',
-        NoGrayAfterHardDrop: 'Do not gray out on hard drop',
         ZoomReset: 'Reset zoom',
         DeleteNode: 'Delete page',
         DragHandle: 'Drag to move',

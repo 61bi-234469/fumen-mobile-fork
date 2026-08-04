@@ -1953,6 +1953,26 @@ describe('coldClearActions run isolation', () => {
         });
     });
 
+    test('swapCurrentPieceWithHoldQueue removes legacy seven-bag progress metadata', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'sbg=5,12,4,1 | #Q=[S](T)LZJI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: '#Q=[T](S)LZJI',
+            pageIndex: 0,
+        });
+    });
+
     test('swapCurrentPieceWithHoldQueue moves queue front to current when hold is empty', () => {
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const spawnPiece = jest.fn().mockReturnValue(() => ({}));
@@ -2327,6 +2347,28 @@ describe('coldClearActions run isolation', () => {
             coordinate: { x: 4, y: 0 },
         };
         expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(nonQueueState)).toBeUndefined();
+    });
+
+    test('promoteQueueNextToCurrent pulls the NEXT head into an empty current and spawns it', () => {
+        const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));
+        const reopenCurrentPage = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ registerHistoryTask, reopenCurrentPage } as any);
+
+        const state = makeColdClearState({ commentText: '#Q=[S]()IOL' });
+        const result = coldClearActions.promoteQueueNextToCurrent()(state) as any;
+
+        expect(result.coldClear.queuePreview.text).toBe('#Q=[S](I)OL');
+        expect(state.fumen.pages[0].piece?.type).toBe(Piece.I);
+        expect(registerHistoryTask).toHaveBeenCalled();
+    });
+
+    test('promoteQueueNextToCurrent does nothing when current is set or NEXT is empty', () => {
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: '#Q=[S](T)IOL' }))).toBeUndefined();
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: '#Q=[S]()' }))).toBeUndefined();
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: 'memo' }))).toBeUndefined();
     });
 
     test('queue current preview respawns a different piece and merges comment history', () => {

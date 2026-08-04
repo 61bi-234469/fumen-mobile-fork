@@ -132,6 +132,15 @@ export const resources = {
                 On: 'ソフトドロップ優先',
             },
         },
+        PageRotation: {
+            Title: 'ページローテーション',
+            Description: 'ページを追加したとき、保持数を超えた分を古いページ番号から削除する。0で上限なし',
+            Unit: 'ページ',
+        },
+        SevenBagGray: {
+            Title: '7bagグレー',
+            Description: 'INPUTで∞7bag使用時、7bagごとにページをまとめ、確定した7bagの地形をグレー化する',
+        },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
             Save: '保存',
@@ -217,7 +226,6 @@ export const resources = {
             Descendants: '配下のみ',
         },
         GrayAfterLineClear: '+ボタンでグレー化',
-        NoGrayAfterHardDrop: 'ハードドロップではグレー化しない',
         ZoomReset: 'ズームをリセット',
         DeleteNode: 'ページを削除',
         DragHandle: 'ドラッグして移動',

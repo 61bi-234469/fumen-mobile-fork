@@ -73,7 +73,8 @@ export const putPieceActions: Readonly<PutPieceActions> = {
         const nextPageIndex = state.fumen.currentIndex + 1;
         return sequence(state, [
             actions.insertPage({ index: nextPageIndex }),
-            actions.openPage({ index: nextPageIndex }),
+            // ページローテーションが先頭を削るとインデックスがずれるため、確定後の値から導出する
+            afterState => actions.openPage({ index: afterState.fumen.currentIndex + 1 })(afterState),
             newState => ({
                 cache: {
                     ...newState.cache,

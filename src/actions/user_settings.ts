@@ -1,7 +1,8 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import {
-    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab,
+    EditShortcuts, InitialScreenSetting, normalizePageRotationLimit, PaletteShortcuts, PieceShortcuts, RotationSystem,
+    State, UserSettingsTab,
 } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
@@ -29,7 +30,8 @@ export interface UserSettingsActions {
     keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
-    keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
+    keepSevenBagGrayEnabled: (data: { enable: boolean }) => action;
+    keepPageRotationLimit: (data: { limit: number }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
@@ -78,7 +80,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
-                    noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
+                    sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
+                    pageRotationLimit: state.mode.pageRotationLimit,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     editorSidePanel: state.editorPanel.enabled,
@@ -131,8 +134,11 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
             }),
-            actions.changeNoGrayAfterHardDrop({
-                enable: state.temporary.userSettings.noGrayAfterHardDrop,
+            actions.changeSevenBagGrayEnabled({
+                enable: state.temporary.userSettings.sevenBagGrayEnabled,
+            }),
+            actions.changePageRotationLimit({
+                limit: state.temporary.userSettings.pageRotationLimit,
             }),
             // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
             actions.setTreeState({
@@ -269,21 +275,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepGifFrameDelay: ({ delayMs }) => keepTemporary({ gifFrameDelayMs: normalizeGifFrameDelayMs(delayMs) }),
     keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),
     keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
-    keepNoGrayAfterHardDrop: ({ enable }) => (state): NextState => {
-        if (!state.modal.userSettings || !state.temporary.userSettings.grayAfterLineClear) {
-            return undefined;
-        }
-
-        return {
-            temporary: {
-                ...state.temporary,
-                userSettings: {
-                    ...state.temporary.userSettings,
-                    noGrayAfterHardDrop: enable,
-                },
-            },
-        };
-    },
+    keepSevenBagGrayEnabled: ({ enable }) => keepTemporary({ sevenBagGrayEnabled: enable }),
+    keepPageRotationLimit: ({ limit }) => keepTemporary({ pageRotationLimit: normalizePageRotationLimit(limit) }),
     keepTrimTopBlank: ({ enable }) => keepTemporary({ trimTopBlank: enable }),
     keepEditorSidePanel: ({ enable }) => keepTemporary({ editorSidePanel: enable }),
     setUserSettingsTab: ({ tab }) => (state): NextState => {
@@ -321,7 +314,8 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
-        noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
+        sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
+        pageRotationLimit: state.mode.pageRotationLimit,
     });
     return undefined;
 };

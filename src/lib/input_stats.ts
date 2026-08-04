@@ -1,7 +1,7 @@
 import { Piece, Rotation, isMinoPiece } from './enums';
 import { Field } from './fumen/field';
 import { Page } from './fumen/types';
-import { InputRotationEvidence, parseInputRotationEvidence } from './comment_metadata';
+import { InputRotationEvidence, parseInputRotationEvidence, parseSevenBagGrayProgress } from './comment_metadata';
 import { parseQueueStateComment } from './cold_clear/queueParser';
 import { PageFieldOperation, Pages, resolvePageCommentText } from './pages';
 import { SerializedTree } from './fumen/tree_types';
@@ -127,6 +127,22 @@ export const computeInputStats = (
 ): InputStats => {
     const rotationSystem = typeof options === 'string' ? options : options.rotationSystem;
     const initial: InputStats = { b2bChain: 0, renChain: 0, pieces: 0, lines: 0, perfectClears: 0 };
+    const resolvedIndex = Math.min(Math.max(0, currentIndex), Math.max(0, pages.length - 1));
+    const currentComment = pages.length === 0 ? ''
+        : pages[resolvedIndex]?.internal?.hiddenComment ?? resolvePageCommentText(pages, resolvedIndex);
+    const sevenBagGray = pages[resolvedIndex]?.internal?.sevenBagGrayProgress
+        ?? parseSevenBagGrayProgress(currentComment);
+    if (sevenBagGray !== undefined) {
+        const seed = parseQueueStateComment(currentComment);
+        return {
+            ...initial,
+            b2bChain: seed?.b2b ? 1 : 0,
+            renChain: fromCommentCombo(seed?.combo ?? 0),
+            pieces: sevenBagGray.pieces,
+            lines: sevenBagGray.lines,
+            perfectClears: sevenBagGray.perfectClears,
+        };
+    }
     if (currentIndex <= 0 || pages.length === 0) return initial;
     const seed = parseQueueStateComment(resolvePageCommentText(pages, 0));
     let stats: InputStats = seed ? {

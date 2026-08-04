@@ -54,6 +54,7 @@ interface SessionBase {
     weightsPreset: number;
     thinkMs: number;
     queueSuffix?: string;
+    initDone: boolean;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -345,12 +346,19 @@ const resolveCommentTextWithPreview = (
     return resolveCommentWithPreview(pages, pageIndex, preview).text;
 };
 
-export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+export const getColdClearQueueCommentAt = (state: Readonly<State>, pageIndex: number): string | null => {
+    if (pageIndex < 0 || state.fumen.pages.length <= pageIndex) {
+        return null;
+    }
     return resolveCommentTextWithPreview(
         state.fumen.pages,
-        state.fumen.currentIndex,
+        pageIndex,
         state.coldClear.queuePreview,
     );
+};
+
+export const getCurrentColdClearQueueComment = (state: Readonly<State>): string | null => {
+    return getColdClearQueueCommentAt(state, state.fumen.currentIndex);
 };
 
 export const createRandomSevenBag = (): Piece[] => shufflePieces(ONE_BAG_PIECES);
@@ -1274,6 +1282,7 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
 
     terminateSession(session);
     session.wrapper = new ColdClearWrapper();
+    session.initDone = false;
     session.thinkMs = nextThinkMs;
     session.requestedCandidateCount = nextCandidateCount;
     session.retryCount += 1;
@@ -1373,6 +1382,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'single',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             resultPages: [],
             hold: searchQueue.hold,
@@ -1452,6 +1462,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'top3',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             hold: searchQueue.hold,
             current: searchQueue.current,
@@ -1663,6 +1674,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'placed',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
             field: preLockField.copy(),
@@ -1921,7 +1933,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             },
             () => {
-                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece });
+                // HOLD入れ替えは同じNEXTキュー単位の中でカレントを差し替えるだけなので、
+                // キュー単位Undoの巻き戻し先（境界）にはしない。
+                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece, historyBoundary: false });
                 return undefined;
             },
         ]);
@@ -2156,6 +2170,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!currentSession || currentSession.runId !== runId) {
             return undefined;
         }
+        currentSession.initDone = true;
 
         if (currentSession.runType === 'single') {
             if (currentSession.nextLimit === null) {
@@ -2513,6 +2528,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         console.error('Cold Clear error:', error);
 
         const session = currentSession;
+        const initialOfflineFailure = session
+            && session.runId === runId
+            && !session.initDone
+            && typeof navigator !== 'undefined'
+            && !navigator.onLine;
         const hasPartialResults = session
             && session.runId === runId
             && session.runType === 'single'
@@ -2535,9 +2555,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             currentSession = null;
         }
 
-        const errorText = error && error.trim() !== '' ? error : 'unknown error';
         M.toast({
-            html: `${i18n.ColdClear.WorkerError()}: ${errorText}`,
+            html: initialOfflineFailure
+                ? i18n.ColdClear.InitialUseRequiresOnline()
+                : `${i18n.ColdClear.WorkerError()}: ${error && error.trim() !== '' ? error : 'unknown error'}`,
             classes: 'top-toast',
             displayLength: 2500,
         });

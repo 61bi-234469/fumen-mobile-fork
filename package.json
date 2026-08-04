@@ -11,6 +11,7 @@
     "cy-run": "node scripts/cypress_wrapper.js run",
     "cy-open": "node scripts/cypress_wrapper.js open",
     "test-ci": "jest --coverage=false",
+    "check-build-performance": "node scripts/check-build-performance.js",
     "cy-run-ci": "node scripts/cypress_wrapper.js run",
     "dev": "concurrently \"webpack --mode development --watch\" \"node serve.js\""
   },

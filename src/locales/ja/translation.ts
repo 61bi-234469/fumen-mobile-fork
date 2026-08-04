@@ -318,6 +318,9 @@ export const resources = {
         NextOrderHint: 'CURRENTは現在操作中のミノです (任意)。NEXTは左から順に使用され、フィールドでは近いNEXTから上に表示されます。',
         OpenSettings: 'ピースキュー設定を開く',
     },
+    InputStats: {
+        Pieces: '設置', Lines: '消去', PerfectClears: 'PC',
+    },
     ColdClear: {
         MenuTitle: 'Cold Clear',
         FieldContainsCompleteLine: 'AI: フィールドに消去されていない完成した行があります。先にラインを消去してからCold Clearを実行してください',
@@ -357,6 +360,7 @@ export const resources = {
         Progress: '探索中... {{current}}/{{total}}',
         NoMoveFound: 'AI: 手が見つかりませんでした',
         WorkerError: 'AI: エンジンエラー',
+        InitialUseRequiresOnline: 'AI: Cold Clear を初めて使うには、オンラインの状態でこのメニューを開き直してください。',
         WorkerErrorPartialSaved: 'エラー発生: 探索済み{{count}}手を保存しました',
         InitTimeout: 'AI: 初期化タイムアウト',
         PopupBlocked: 'AI: ポップアップがブロックされました。URLをコピーしました。',

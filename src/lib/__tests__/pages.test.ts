@@ -2,7 +2,7 @@ import { Piece, Rotation } from '../enums';
 import { Quiz } from '../fumen/quiz';
 import { Field } from '../fumen/field';
 import { Move } from '../fumen/types';
-import { Pages } from '../pages';
+import { PageFieldOperation, Pages } from '../pages';
 
 describe('comment', () => {
     const commentText = (text: string) => ({
@@ -198,5 +198,25 @@ describe('field', () => {
             expectedField.put(secondMove);
             expect(pages.getField(2)).toEqual(expectedField);
         }
+    });
+
+    test('replays a range with the same field values as individual lookups', () => {
+        const field = new Field({});
+        const firstMove = { type: Piece.I, rotation: Rotation.Spawn, coordinate: { x: 1, y: 0 } };
+        const secondMove = { type: Piece.T, rotation: Rotation.Reverse, coordinate: { x: 5, y: 1 } };
+        const pages = new Pages([fieldObj(field, firstMove), fieldRef(0, secondMove), fieldRef(0)] as any);
+
+        for (const operation of [PageFieldOperation.None, PageFieldOperation.Command, PageFieldOperation.All]) {
+            expect(pages.replayFields(0, 3, operation)).toEqual([
+                pages.getField(0, operation),
+                pages.getField(1, operation),
+                pages.getField(2, operation),
+            ]);
+        }
+        expect(pages.replayFields(1, 1)).toEqual([]);
+        expect(pages.replayFieldIndices([0, 2], PageFieldOperation.Command)).toEqual([
+            pages.getField(0, PageFieldOperation.Command),
+            pages.getField(2, PageFieldOperation.Command),
+        ]);
     });
 });

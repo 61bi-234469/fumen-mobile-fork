@@ -156,6 +156,7 @@ export const pieceQueueOverlays = ({
     infinitePieceQueue,
     openSettings,
     toggleInfinitePieceQueue,
+    statsPanel,
 }: {
     queueState: ColdClearMenuQueueState | null;
     width: number;
@@ -167,6 +168,7 @@ export const pieceQueueOverlays = ({
     infinitePieceQueue: boolean;
     openSettings: (data: { focus: PieceQueueFocus }) => void;
     toggleInfinitePieceQueue: () => void;
+    statsPanel?: VNode<{}>;
 }) => {
     const hold = queueState?.hold ?? undefined;
     const nexts = queueState?.queue.slice(0, NEXT_COUNT) ?? [];
@@ -179,6 +181,7 @@ export const pieceQueueOverlays = ({
         style: style({
             alignItems: 'flex-start',
             display: 'flex',
+            flexDirection: 'column',
             flex: `0 0 ${px(width)}`,
             boxSizing: 'border-box',
             height: px(fieldHeight),
@@ -196,7 +199,7 @@ export const pieceQueueOverlays = ({
             heading('piece-queue-hold-heading', i18n.PieceQueue.HoldLabel()),
             mino(hold, width, 'piece-queue-hold-piece', guideLineColor, nextMinoHeight),
         ],
-    })]);
+    }), ...(statsPanel === undefined ? [] : [statsPanel])]);
 
     const infiniteToggle = div({
         key: 'piece-queue-infinite',

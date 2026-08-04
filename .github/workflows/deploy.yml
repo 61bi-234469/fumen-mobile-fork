@@ -45,15 +45,21 @@ jobs:
 
       - name: Build main (site root)
         working-directory: main-src
+        env:
+          DEBUG_ON: false
         run: |
           yarn install --frozen-lockfile
           yarn webpack-prod
+          yarn check-build-performance
 
       - name: Build develop (preview)
         working-directory: develop-src
+        env:
+          DEBUG_ON: false
         run: |
           yarn install --frozen-lockfile
           yarn webpack-prod
+          yarn check-build-performance
 
       - name: Assemble combined site
         run: |

@@ -20,6 +20,7 @@ import {
     isVirtualNode,
 } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
+import { lazyThumbnail } from '../lazy_thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import { setTreeTouchStartPosition } from './tree_touch_state';
 import { updateTreeDragGhost } from './tree_drag_ghost';
@@ -244,20 +245,20 @@ const renderNodeCard = (
     const nodeHeight = nodeLayout.height;
     const thumbnailHeight = nodeLayout.thumbnailHeight;
 
-    let thumbnailSrc = '';
-    try {
-        if (page) {
-            thumbnailSrc = generateThumbnail(
-                pages,
-                node.pageIndex,
-                guideLineColor,
-                trimTopBlank,
-                thumbnailRenderScale,
-            );
+    const thumbnailSource = () => {
+        if (!page) {
+            return '';
         }
-    } catch (e) {
-        console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
-    }
+        try {
+            return generateThumbnail(
+                pages, node.pageIndex, guideLineColor, trimTopBlank, thumbnailRenderScale,
+            );
+        } catch (e) {
+            console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
+            return '';
+        }
+    };
+    const thumbnailLifecycle = lazyThumbnail(thumbnailSource);
 
     const fillColor = isActive ? TREE_COLORS.cardActiveFill : TREE_COLORS.cardFill;
     const strokeColor = isActive ? TREE_COLORS.accent : TREE_COLORS.cardBorder;
@@ -316,15 +317,15 @@ const renderNodeCard = (
                     stroke-width={strokeWidth}
                     filter="url(#tree-card-shadow)"
                 />
-                {thumbnailSrc && (
-                    <image
-                        x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
-                        y={8}
-                        width={TREE_THUMBNAIL_WIDTH}
-                        height={thumbnailHeight}
-                        href={thumbnailSrc}
-                    />
-                )}
+                <image
+                    x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
+                    y={8}
+                    width={TREE_THUMBNAIL_WIDTH}
+                    height={thumbnailHeight}
+                    oncreate={thumbnailLifecycle.oncreate}
+                    onupdate={thumbnailLifecycle.onupdate}
+                    ondestroy={thumbnailLifecycle.ondestroy}
+                />
             </g>
         </g>
     );

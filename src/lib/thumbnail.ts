@@ -11,9 +11,11 @@ export const BLOCK_SIZE = THUMBNAIL_WIDTH / FieldConstants.Width;
 const MAX_THUMBNAIL_RENDER_SCALE = 2;
 
 const thumbnailCache = new WeakMap<Page[], Map<string, string>>();
+const thumbnailHeightCache = new WeakMap<Page[], Map<number, number>>();
 
 export function clearThumbnailCache(pages: Page[]): void {
     thumbnailCache.delete(pages);
+    thumbnailHeightCache.delete(pages);
 }
 
 const normalizeThumbnailRenderScale = (renderScale: number | undefined): number => {
@@ -155,6 +157,16 @@ export function getThumbnailHeight(
         return THUMBNAIL_HEIGHT;
     }
 
+    let cache = thumbnailHeightCache.get(pages);
+    if (!cache) {
+        cache = new Map<number, number>();
+        thumbnailHeightCache.set(pages, cache);
+    }
+    const cached = cache.get(pageIndex);
+    if (cached !== undefined) {
+        return cached;
+    }
+
     const pagesObj = new Pages(pages);
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
     const page = pages[pageIndex];
@@ -166,7 +178,9 @@ export function getThumbnailHeight(
         : Math.min(FieldConstants.Height - 1, topFilledRow + 1);
     const visibleRows = visibleTopRow + 1;
 
-    return visibleRows * BLOCK_SIZE;
+    const height = visibleRows * BLOCK_SIZE;
+    cache.set(pageIndex, height);
+    return height;
 }
 
 const buildFieldArray = (

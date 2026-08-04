@@ -347,6 +347,9 @@
             + 'The first piece appears at the top of the field.',
         OpenSettings: 'Open piece queue settings',
     },
+    InputStats: {
+        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
+    },
     ColdClear: {
         MenuTitle: 'Cold Clear',
         MenuButtonLabel: 'AI',
@@ -385,6 +388,7 @@
         Progress: 'Searching... {{current}}/{{total}}',
         NoMoveFound: 'AI: No move found',
         WorkerError: 'AI: Engine error',
+        InitialUseRequiresOnline: 'AI: To use Cold Clear for the first time, reconnect and reopen this menu.',
         WorkerErrorPartialSaved: 'Error: saved {{count}} computed move(s)',
         InitTimeout: 'AI: Initialization timeout',
         PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',

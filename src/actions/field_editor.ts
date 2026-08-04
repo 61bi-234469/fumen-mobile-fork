@@ -6,7 +6,7 @@ import { drawBlockActions } from './draw_block';
 import { fillActions } from './fill';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
 import { movePieceActions } from './move_piece';
-import { PageFieldOperation, Pages } from '../lib/pages';
+import { PageFieldOperation, Pages, resolvePageCommentText } from '../lib/pages';
 import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { test180Rotation, testLeftRotationSrsPlus, testRightRotationSrsPlus } from '../lib/srs_plus';
@@ -27,6 +27,8 @@ import { legacyModeForPaintTool } from '../lib/editor_interaction';
 import { activeSelectionRect, isIndexInRect } from '../lib/rect_selection';
 import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 import { activateDasCut, cutDasHolds } from '../lib/piece_das';
+import { withInputRotationEvidence } from '../lib/comment_metadata';
+import { computeInputStats, toCommentCombo } from '../lib/input_stats';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -65,7 +67,9 @@ export interface FieldEditorActions {
 
     selectInferencePieceColor(): action;
 
-    spawnPiece(data: { piece: Piece, srs: boolean }): action;
+    // historyBoundaryをfalseにすると、INPUT + NEXTキューのキュー単位Undoの巻き戻し先にならない。
+    // HOLD入れ替えのように、同じキュー単位の中でカレントを差し替えるだけの操作で使う。
+    spawnPiece(data: { piece: Piece, srs: boolean, historyBoundary?: boolean }): action;
 
     clearPiece(): action;
 
@@ -169,6 +173,9 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
+const clearLastPieceManipulation = (state: State) => ({
+    events: { ...state.events, lastPieceManipulation: undefined },
+});
 const dispatchTouchMoveField = (index: number) => (state: State): NextState => {
     // The eraser drag deletes the SPAWN mino and the selection it passes over, whether it
     // comes from the paint tool or from a right-click in any primary tool.
@@ -567,7 +574,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             }),
         ]);
     },
-    spawnPiece: ({ piece, srs }) => (state): NextState => {
+    spawnPiece: ({ piece, srs, historyBoundary = true }) => (state): NextState => {
         if (piece === Piece.Gray || piece === Piece.Empty) {
             throw new ViewError(`Unsupported piece: ${piece}`);
         }
@@ -599,7 +606,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
-            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            // INPUT + NEXTキューのキュー単位Undoは、この履歴エントリを巻き戻し先の境界として使う
+            actions.registerHistoryTask({
+                task: toSinglePageTask(pageIndex, prevPage, page),
+                pieceSpawn: historyBoundary,
+            }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -715,10 +726,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return [value[0] + coordinate.x, value[1] + coordinate.y];
         });
 
-        const element = testPositions.find(position => test(position[0], position[1]));
-        if (element === undefined) {
+        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
+        if (kickIndex === -1) {
             return undefined;
         }
+        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
         page.piece = {
@@ -733,6 +745,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: 'ccw' } } }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -767,10 +780,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return [value[0] + coordinate.x, value[1] + coordinate.y];
         });
 
-        const element = testPositions.find(position => test(position[0], position[1]));
-        if (element === undefined) {
+        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
+        if (kickIndex === -1) {
             return undefined;
         }
+        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
         page.piece = {
@@ -785,6 +799,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: 'cw' } } }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -818,10 +833,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return [value[0] + coordinate.x, value[1] + coordinate.y];
         });
 
-        const element = testPositions.find(position => test(position[0], position[1]));
-        if (element === undefined) {
+        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
+        if (kickIndex === -1) {
             return undefined;
         }
+        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
         page.piece = {
@@ -836,6 +852,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: '180' } } }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -874,6 +891,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -917,6 +935,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -955,6 +974,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -998,6 +1018,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -1014,6 +1035,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         page.piece = { ...piece, coordinate: { ...piece.coordinate, y: piece.coordinate.y - 1 } };
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -1058,6 +1080,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
+            clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -1080,7 +1103,16 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 }
 
                 const nextPageIndex = pageIndex + 1;
+                const isInput = nextState.editorUi.primaryTool === 'piece'
+                    && nextState.editorUi.pieceLayout === 'play';
+                const currentComment = resolvePageCommentText(nextState.fumen.pages, pageIndex);
+                const commentWithEvidence = isInput
+                    ? withInputRotationEvidence(currentComment, nextState.events.lastPieceManipulation)
+                    : currentComment;
                 return sequence(nextState, [
+                    ...(commentWithEvidence === currentComment ? [] : [
+                        actions.setCommentText({ pageIndex, text: commentWithEvidence }),
+                    ]),
                     actions.insertPage({
                         index: nextPageIndex,
                         skipGrayAfterLineClear: nextState.tree.grayAfterLineClear
@@ -1088,6 +1120,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     }),
                     actions.openPage({ index: nextPageIndex }),
                     actions.spawnNextPieceFromColdClearQueue(),
+                    clearLastPieceManipulation,
                 ]);
             },
         ]);
@@ -1102,6 +1135,19 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
 
         const pageIndex = state.fumen.currentIndex;
         const page = state.fumen.pages[pageIndex];
+        const isInput = state.editorUi.primaryTool === 'piece'
+            && state.editorUi.pieceLayout === 'play';
+        const tree = state.tree.enabled
+            ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 as const }
+            : undefined;
+        const inputStats = isInput
+            ? computeInputStats(state.fumen.pages, pageIndex, {
+                tree,
+                rotationSystem: state.mode.rotationSystem,
+            })
+            : undefined;
+        const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain >= 1;
+        const nextCombo = inputStats === undefined ? parsed.combo : toCommentCombo(inputStats.renChain);
         // Quizページのrefコメントは取得時点で設置操作が反映済み。
         // メタデータ付き等の非Quizコメントは、直前ページで設置したミノがカレントに残ったままのため
         // ここでQuiz相当の進行 (Direct/Swap/Stock) を行う
@@ -1134,7 +1180,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             if (queue.length === 0) {
                 // スポーンできなくても、進行後の状態はコメントに反映しておく
                 const advancedComment = buildQueueStateComment(
-                    hold, null, [], parsed.b2b, parsed.combo, parsed.suffix,
+                    hold, null, [], nextB2b, nextCombo, parsed.suffix,
                 );
                 if (advancedComment !== currentComment) {
                     return sequence(state, [
@@ -1157,8 +1203,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             hold,
             spawnPiece,
             nextQueue,
-            parsed.b2b,
-            parsed.combo,
+            nextB2b,
+            nextCombo,
             parsed.suffix,
         );
 

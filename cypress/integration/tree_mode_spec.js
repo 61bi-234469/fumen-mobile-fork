@@ -167,17 +167,19 @@ describe('Tree mode in list view', () => {
                 .should('have.attr', 'href', promotedThumbnail);
         });
 
+        // undo/redoはページ経由でツリーを復元するため、ノードIDは操作ごとに再採番される。
+        // 復元後はページ番号でノードを引き直し、サムネイル（=フィールド内容）で同一性を確認する。
         cy.get(datatest('btn-undo')).click();
-        cy.then(() => {
-            cy.get(datatest(`tree-page-link-${promotedNodeId}`)).should('contain.text', '#3');
-            cy.get(datatest(`tree-node-${promotedNodeId}`)).find('image')
+        cy.get('[datatest^="tree-node-"]').should('have.length', 4);
+        findTreeNodeIdByPageNumber(3).then((nodeId) => {
+            cy.get(datatest(`tree-node-${nodeId}`)).find('image')
                 .should('have.attr', 'href', promotedThumbnail);
         });
 
         cy.get(datatest('btn-redo')).click();
-        cy.then(() => {
-            cy.get(datatest(`tree-page-link-${promotedNodeId}`)).should('contain.text', '#2');
-            cy.get(datatest(`tree-node-${promotedNodeId}`)).find('image')
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        findTreeNodeIdByPageNumber(2).then((nodeId) => {
+            cy.get(datatest(`tree-node-${nodeId}`)).find('image')
                 .should('have.attr', 'href', promotedThumbnail);
         });
     });
@@ -490,13 +492,16 @@ describe('Tree mode in list view', () => {
         enterTreeGraphView();
         buildWideTree();
 
-        cy.get('[datatest="fumen-graph-container"]').then(($container) => {
+        cy.get('[datatest="fumen-graph-container"]').should(($container) => {
             expect($container[0].scrollWidth).to.be.greaterThan($container[0].clientWidth);
-            expect($container[0].scrollLeft).to.equal(0);
         });
 
         cy.window().then(async (win) => {
             const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+            // ノード追加直後はアクティブノードへ寄せられていることがあるので、
+            // 自動スクロールの判定は左端に戻した位置を基準にする。
+            container.scrollLeft = 0;
             const handle = win.document.querySelectorAll('[datatest^="tree-handle-"]')[0];
             const handleRect = handle.getBoundingClientRect();
             const start = {
@@ -506,17 +511,20 @@ describe('Tree mode in list view', () => {
             const edge = { x: win.innerWidth - 8, y: start.y };
             const fireTouch = createTouchDispatcher(win, handle);
 
+            const before = container.scrollLeft;
             fireTouch('touchstart', start);
             await wait(60);
             fireTouch('touchmove', { x: start.x + 30, y: start.y });
             await wait(60);
             fireTouch('touchmove', edge);
-            await wait(600); // let the auto-scroll rAF loop run
+            // 自動スクロールのrAFループはCIの負荷で遅れることがあるため、固定待ちではなく
+            // スクロール量が増えるまでポーリングする（touchendでループが止まるので終了前に確認）。
+            for (let count = 0; count < 40 && container.scrollLeft <= before; count += 1) {
+                await wait(50);
+            }
+            const scrolled = container.scrollLeft;
             fireTouch('touchend', edge);
-        });
-
-        cy.get('[datatest="fumen-graph-container"]').then(($container) => {
-            expect($container[0].scrollLeft).to.be.greaterThan(0);
+            expect(scrolled).to.be.greaterThan(before);
         });
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
     });

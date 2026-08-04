@@ -362,6 +362,10 @@ export const i18n = {
         NextOrderHint: () => t('PieceQueue.NextOrderHint'),
         OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
+    InputStats: {
+        Pieces: () => t('InputStats.Pieces'), Lines: () => t('InputStats.Lines'),
+        PerfectClears: () => t('InputStats.PerfectClears'),
+    },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),
         MenuButtonLabel: () => t('ColdClear.MenuButtonLabel'),
@@ -401,6 +405,7 @@ export const i18n = {
         Progress: (current: number, total: number) => t('ColdClear.Progress', { current, total }),
         NoMoveFound: () => t('ColdClear.NoMoveFound'),
         WorkerError: () => t('ColdClear.WorkerError'),
+        InitialUseRequiresOnline: () => t('ColdClear.InitialUseRequiresOnline'),
         WorkerErrorPartialSaved: (count: number) => t('ColdClear.WorkerErrorPartialSaved', { count }),
         InitTimeout: () => t('ColdClear.InitTimeout'),
         PopupBlocked: () => t('ColdClear.PopupBlocked'),

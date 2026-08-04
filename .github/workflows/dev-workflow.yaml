@@ -39,6 +39,7 @@ jobs:
       - run: yarn webpack-prod
         env:
           DEBUG_ON: false
+      - run: yarn check-build-performance
       - run: mkdir -p logs
       - run: yarn serve > logs/serve.log 2> logs/serve.err.log &
       - name: Select specs for shard

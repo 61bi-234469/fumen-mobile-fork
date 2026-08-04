@@ -1,5 +1,6 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
+import { lazyThumbnail } from '../lazy_thumbnail';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -26,7 +27,8 @@ const clearTouchTimer = () => {
 
 interface Props {
     pageIndex: number;
-    thumbnailSrc: string;
+    thumbnailSource: () => string;
+    thumbnailHeight: number;
     comment: string;
     isCommentChanged: boolean;
     itemSize: number;
@@ -49,7 +51,8 @@ interface Props {
 
 export const ListViewItem: Component<Props> = ({
     pageIndex,
-    thumbnailSrc,
+    thumbnailSource,
+    thumbnailHeight,
     comment,
     isCommentChanged,
     itemSize,
@@ -89,7 +92,7 @@ export const ListViewItem: Component<Props> = ({
 
     const thumbnailStyle = style({
         width: '100%',
-        height: 'auto',
+        height: px(thumbnailHeight * Math.max(1, itemSize - 8) / 100),
         display: 'block',
         borderRadius: '2px',
         border: '1px solid #666',
@@ -135,6 +138,7 @@ export const ListViewItem: Component<Props> = ({
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
     };
+    const thumbnailLifecycle = lazyThumbnail(thumbnailSource);
 
     const handleTouchStart = (e: TouchEvent) => {
         if (!sortable) return;
@@ -247,9 +251,11 @@ export const ListViewItem: Component<Props> = ({
                 }}
             >
                 <img
-                    src={thumbnailSrc}
                     style={thumbnailStyle}
                     alt={`Page ${pageIndex + 1}`}
+                    oncreate={thumbnailLifecycle.oncreate}
+                    onupdate={thumbnailLifecycle.onupdate}
+                    ondestroy={thumbnailLifecycle.ondestroy}
                 />
                 <div
                     style={pageNumberStyle}

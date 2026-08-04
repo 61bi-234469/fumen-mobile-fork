@@ -401,6 +401,7 @@ export const i18n = {
         Progress: (current: number, total: number) => t('ColdClear.Progress', { current, total }),
         NoMoveFound: () => t('ColdClear.NoMoveFound'),
         WorkerError: () => t('ColdClear.WorkerError'),
+        InitialUseRequiresOnline: () => t('ColdClear.InitialUseRequiresOnline'),
         WorkerErrorPartialSaved: (count: number) => t('ColdClear.WorkerErrorPartialSaved', { count }),
         InitTimeout: () => t('ColdClear.InitTimeout'),
         PopupBlocked: () => t('ColdClear.PopupBlocked'),

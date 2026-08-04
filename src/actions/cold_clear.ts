@@ -54,6 +54,7 @@ interface SessionBase {
     weightsPreset: number;
     thinkMs: number;
     queueSuffix?: string;
+    initDone: boolean;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -1281,6 +1282,7 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
 
     terminateSession(session);
     session.wrapper = new ColdClearWrapper();
+    session.initDone = false;
     session.thinkMs = nextThinkMs;
     session.requestedCandidateCount = nextCandidateCount;
     session.retryCount += 1;
@@ -1380,6 +1382,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'single',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             resultPages: [],
             hold: searchQueue.hold,
@@ -1459,6 +1462,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'top3',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             hold: searchQueue.hold,
             current: searchQueue.current,
@@ -1670,6 +1674,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runType: 'placed',
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
+            initDone: false,
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
             field: preLockField.copy(),
@@ -2165,6 +2170,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!currentSession || currentSession.runId !== runId) {
             return undefined;
         }
+        currentSession.initDone = true;
 
         if (currentSession.runType === 'single') {
             if (currentSession.nextLimit === null) {
@@ -2522,6 +2528,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         console.error('Cold Clear error:', error);
 
         const session = currentSession;
+        const initialOfflineFailure = session
+            && session.runId === runId
+            && !session.initDone
+            && typeof navigator !== 'undefined'
+            && !navigator.onLine;
         const hasPartialResults = session
             && session.runId === runId
             && session.runType === 'single'
@@ -2544,9 +2555,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             currentSession = null;
         }
 
-        const errorText = error && error.trim() !== '' ? error : 'unknown error';
         M.toast({
-            html: `${i18n.ColdClear.WorkerError()}: ${errorText}`,
+            html: initialOfflineFailure
+                ? i18n.ColdClear.InitialUseRequiresOnline()
+                : `${i18n.ColdClear.WorkerError()}: ${error && error.trim() !== '' ? error : 'unknown error'}`,
             classes: 'top-toast',
             displayLength: 2500,
         });

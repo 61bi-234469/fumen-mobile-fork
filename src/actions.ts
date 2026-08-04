@@ -10,12 +10,10 @@ import {
 } from './states';
 import { view } from './view';
 import { app } from 'hyperapp';
-import { withLogger } from '@hyperapp/logger';
 import { default as i18next } from 'i18next';
 import { default as LanguageDetector } from 'i18next-browser-languagedetector';
 import { resources as resourcesJa } from './locales/ja/translation';
 import { resources as resourcesEn } from './locales/en/translation';
-import { PageEnv } from './env';
 import { NextState } from './actions/commons';
 import { fieldEditorActions, FieldEditorActions } from './actions/field_editor';
 import { animationActions, AnimationActions } from './actions/animation';
@@ -44,6 +42,8 @@ import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
+
+declare const __DEBUG__: boolean;
 
 export type Actions = AnimationActions
     & ScreenActions
@@ -87,18 +87,22 @@ export const actions: Readonly<Actions> = {
 let currentState: State = initState;
 
 // Mounting
-const mount = (isDebug: boolean = false): Actions => {
+const mount = (): Actions => {
     // Wrap view to track state changes
     const wrappedView = (state: State, actions: Actions) => {
         currentState = state;
         return view(state, actions);
     };
-    if (isDebug) {
+    if (__DEBUG__) {
+        // This direct compile-time condition lets production builds remove the
+        // logger module from the dependency graph altogether.
+        // tslint:disable-next-line:no-var-requires
+        const { withLogger } = require('@hyperapp/logger') as typeof import('@hyperapp/logger');
         return withLogger(app)(initState, actions, wrappedView, document.body);
     }
     return app<State, Actions>(initState, actions, wrappedView, document.body);
 };
-export const main = mount(PageEnv.Debug);
+export const main = mount();
 
 // Initialize shortcut handlers
 initShortcutHandlers(

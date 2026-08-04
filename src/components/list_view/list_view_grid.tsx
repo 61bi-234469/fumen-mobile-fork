@@ -2,7 +2,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { ListViewItem } from './list_view_item';
-import { generateThumbnail, THUMBNAIL_WIDTH } from '../../lib/thumbnail';
+import { generateThumbnail, getThumbnailHeight, THUMBNAIL_WIDTH } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 
 interface Props {
@@ -96,13 +96,10 @@ export const ListViewGrid: Component<Props> = ({
     };
 
     const items = pages.map((page, index) => {
-        const thumbnailSrc = generateThumbnail(
-            pages,
-            index,
-            guideLineColor,
-            trimTopBlank,
-            thumbnailRenderScale,
+        const thumbnailSource = () => generateThumbnail(
+            pages, index, guideLineColor, trimTopBlank, thumbnailRenderScale,
         );
+        const thumbnailHeight = getThumbnailHeight(pages, index, trimTopBlank);
         const commentText = getCommentText(index);
         const commentChanged = isCommentChanged(index);
 
@@ -117,7 +114,8 @@ export const ListViewGrid: Component<Props> = ({
             sortable,
             actions,
             itemSize,
-            thumbnailSrc,
+            thumbnailSource,
+            thumbnailHeight,
             showLeftIndicator,
             showRightIndicator,
             pageIndex: index,

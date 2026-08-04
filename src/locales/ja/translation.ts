@@ -357,6 +357,7 @@ export const resources = {
         Progress: '探索中... {{current}}/{{total}}',
         NoMoveFound: 'AI: 手が見つかりませんでした',
         WorkerError: 'AI: エンジンエラー',
+        InitialUseRequiresOnline: 'AI: Cold Clear を初めて使うには、オンラインの状態でこのメニューを開き直してください。',
         WorkerErrorPartialSaved: 'エラー発生: 探索済み{{count}}手を保存しました',
         InitTimeout: 'AI: 初期化タイムアウト',
         PopupBlocked: 'AI: ポップアップがブロックされました。URLをコピーしました。',

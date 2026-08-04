@@ -119,6 +119,7 @@ export const view: View<State, Actions> = (state, actions) => {
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
             noGrayAfterHardDrop: state.temporary.userSettings.noGrayAfterHardDrop,
+            pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,

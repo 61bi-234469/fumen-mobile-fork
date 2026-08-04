@@ -1,7 +1,8 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import {
-    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, UserSettingsTab,
+    EditShortcuts, InitialScreenSetting, PAGE_ROTATION_LIMIT_MAX, PAGE_ROTATION_LIMIT_MIN, PaletteShortcuts,
+    PieceShortcuts, resources, RotationSystem, UserSettingsTab,
 } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
@@ -33,6 +34,7 @@ interface UserSettingsModalProps {
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
+    pageRotationLimit: number;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
@@ -61,6 +63,7 @@ interface UserSettingsModalProps {
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
+        keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
         keepEditorSidePanel: (data: { enable: boolean }) => void;
@@ -155,6 +158,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         gifFrameDelayMs,
         rotationSystem,
         noGrayAfterHardDrop,
+        pageRotationLimit,
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
@@ -443,6 +447,14 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     const onchangeSdf = (e: Event) => {
         const value = (e.target as HTMLSelectElement).value;
         actions.keepPieceShortcutSdf({ sdf: value === 'Infinity' ? Infinity : parseInt(value, 10) });
+    };
+
+    const onchangePageRotationLimit = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value)) {
+            actions.keepPageRotationLimit({ limit: value });
+        }
     };
 
     const onchangeGifFrameDelay = (e: Event) => {
@@ -840,6 +852,21 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 offLabel: switchLabels.off,
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepOpenTreeScreenOnTreeData({ enable: checked }),
+                            })}
+
+                            {renderNumberField({
+                                labelDatatest: 'label-page-rotation-limit',
+                                title: i18n.UserSettings.PageRotation.Title(),
+                                description: i18n.UserSettings.PageRotation.Description(),
+                                inputDatatest: 'input-page-rotation-limit',
+                                value: pageRotationLimit,
+                                min: PAGE_ROTATION_LIMIT_MIN,
+                                max: PAGE_ROTATION_LIMIT_MAX,
+                                step: 1,
+                                onchange: onchangePageRotationLimit,
+                                width: 100,
+                                unitDatatest: 'unit-page-rotation-limit',
+                                unit: i18n.UserSettings.PageRotation.Unit(),
                             })}
 
                             {renderNumberField({

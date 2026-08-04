@@ -85,3 +85,22 @@ describe('user settings soft-drop priority', () => {
         expect(localStorageWrapper.loadUserSettings().pieceShortcutSoftDropPriority).toBeUndefined();
     });
 });
+
+describe('user settings page rotation', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads the stored page rotation limit', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ pageRotationLimit: 30 }));
+
+        expect(localStorageWrapper.loadUserSettings().pageRotationLimit).toBe(30);
+    });
+
+    test('keeps older settings undefined so the default (no limit) applies', () => {
+        expect(localStorageWrapper.loadUserSettings().pageRotationLimit).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ pageRotationLimit: '30' }));
+        expect(localStorageWrapper.loadUserSettings().pageRotationLimit).toBeUndefined();
+    });
+});

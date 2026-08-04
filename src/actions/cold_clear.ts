@@ -169,6 +169,7 @@ export interface ColdClearActions {
         syncCurrentPiece?: boolean;
     }) => action;
     seedQueuePreviewFromSpawnedPiece: () => action;
+    promoteQueueNextToCurrent: () => action;
     commitColdClearQueueComment: () => action;
     clearCommentForColdClearQueue: () => action;
     stopColdClearSearch: () => action;
@@ -2067,6 +2068,27 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: queueState.hold,
             current: page.piece.type,
             queue: queueState.queue,
+            b2b: queueState.b2b,
+            combo: queueState.combo,
+        })(state);
+    },
+
+    // カレントが空のままでもNEXTが残っていれば、その先頭をカレントへ繰り上げる (モーダルを閉じるときに使用)
+    promoteQueueNextToCurrent: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const queueState = resolveCurrentColdClearMenuQueueState(state);
+        if (queueState === null || queueState.current !== null || queueState.queue.length === 0) {
+            return undefined;
+        }
+
+        return coldClearActions.previewColdClearQueueComment({
+            syncCurrentPiece: true,
+            hold: queueState.hold,
+            current: queueState.queue[0],
+            queue: queueState.queue.slice(1),
             b2b: queueState.b2b,
             combo: queueState.combo,
         })(state);

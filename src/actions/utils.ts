@@ -297,6 +297,7 @@ export const utilsActions: Readonly<UtilsActions> = {
     appendPages: ({ pages, pageIndex }) => (state): NextState => {
         return sequence(state, [
             appendPages({ pageIndex, appendedPages: pages, indexAfterReverting: state.fumen.currentIndex }),
+            actions.applyPageRotation(),
         ]);
     },
     refresh: () => (): NextState => {

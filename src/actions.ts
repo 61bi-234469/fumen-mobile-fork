@@ -431,6 +431,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.pageRotationLimit !== undefined) {
+        main.changePageRotationLimit({ limit: settings.pageRotationLimit });
+        updated = true;
+    }
+
     const viewSettings = localStorageWrapper.loadViewSettings();
     if (viewSettings.trimTopBlank !== undefined) {
         main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });

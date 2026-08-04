@@ -142,6 +142,11 @@ export const i18n = {
                 On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
             },
         },
+        PageRotation: {
+            Title: () => t('UserSettings.PageRotation.Title'),
+            Description: () => t('UserSettings.PageRotation.Description'),
+            Unit: () => t('UserSettings.PageRotation.Unit'),
+        },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),
             Description: () => t('GifFrameDelayMs.Description'),

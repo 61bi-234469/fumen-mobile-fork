@@ -1118,7 +1118,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                         skipGrayAfterLineClear: nextState.tree.grayAfterLineClear
                             && nextState.mode.noGrayAfterHardDrop,
                     }),
-                    actions.openPage({ index: nextPageIndex }),
+                    // ページローテーションが先頭を削るとインデックスがずれるため、
+                    // 挿入後の currentIndex から次ページを導出する。
+                    afterState => actions.openPage({ index: afterState.fumen.currentIndex + 1 })(afterState),
                     actions.spawnNextPieceFromColdClearQueue(),
                     clearLastPieceManipulation,
                 ]);

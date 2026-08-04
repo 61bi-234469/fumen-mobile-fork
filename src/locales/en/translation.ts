@@ -137,6 +137,11 @@
                 On: 'Soft drop first',
             },
         },
+        PageRotation: {
+            Title: 'Page rotation',
+            Description: 'When a page is added, drop the oldest page numbers beyond this count. 0 means no limit',
+            Unit: 'pages',
+        },
         EditorSidePanel: 'Show side panel (PC)',
         Buttons: {
             Save: 'Save',

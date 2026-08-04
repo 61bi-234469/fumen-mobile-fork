@@ -199,6 +199,7 @@ export const mementoActions: Readonly<MementoActions> = {
             actions.openPage({ index }),
             actions.setHistoryCount({ undoCount, redoCount }),
             () => ({ tree: treeStateWithLock }),
+            newState => ({ events: { ...newState.events, lastInputPlacement: undefined } }),
             saveToMemento,
         ]);
     },

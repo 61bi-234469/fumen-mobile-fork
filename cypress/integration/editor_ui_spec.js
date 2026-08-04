@@ -99,7 +99,7 @@ const assertPieceNormalModeRows = () => {
 
 const assertPlayRailArrangement = () => {
     const selectors = ['editor-rail', 'btn-cold-clear', 'btn-piece-mode', 'btn-piece-layout',
-        'btn-paint-mode', 'btn-select-mode', 'btn-piece-empty', 'btn-piece-gray', 'btn-piece-reset'];
+        'btn-paint-mode', 'btn-select-mode', 'btn-piece-reset'];
     cy.get(selectors.map(datatest).join(',')).then(elements => {
         const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
         const rail = rect('editor-rail');
@@ -108,8 +108,6 @@ const assertPlayRailArrangement = () => {
         const play = rect('btn-piece-layout');
         const paint = rect('btn-paint-mode');
         const select = rect('btn-select-mode');
-        const empty = rect('btn-piece-empty');
-        const gray = rect('btn-piece-gray');
         const reset = rect('btn-piece-reset');
         // [PLAY|AI] が最上段、その下にPIECEの全幅行が続く
         expect(play.top).to.be.closeTo(ai.top, 1);
@@ -122,10 +120,12 @@ const assertPlayRailArrangement = () => {
         expect(paint.top).to.be.greaterThan(piece.top);
         expect(paint.top).to.be.closeTo(select.top, 1);
         expect(paint.left).to.be.lessThan(select.left);
-        expect(empty.top).to.be.greaterThan(paint.top);
-        expect(empty.top).to.be.closeTo(gray.top, 1);
-        expect(gray.top).to.be.closeTo(reset.top, 1);
+        // スポーンミノ削除・リスポーンを畳んだ結果、最下段はRESETの全幅セルだけになる
+        expect(reset.top).to.be.greaterThan(paint.top);
+        expect(reset.left).to.be.closeTo(rail.left, 1);
+        expect(reset.right).to.be.closeTo(rail.right, 1);
     });
+    cy.get(datatest('btn-piece-reset')).should('contain.text', 'RESET');
     // Playの2分割セルは、ラベルが収まる幅のときだけアイコンの下に文字を出す
     [
         ['btn-piece-layout', 'INPUT'],
@@ -285,7 +285,8 @@ describe('Editor UI final concept', () => {
             assertPlayRailArrangement();
             ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard', 'btn-cut-page',
                 'btn-editor-import', 'btn-editor-export', 'btn-utils-mode', 'btn-flags-mode',
-                'btn-piece-inference', 'btn-piece-i', 'btn-piece-t'].forEach(selector => {
+                'btn-piece-inference', 'btn-piece-i', 'btn-piece-t',
+                'btn-piece-empty', 'btn-piece-gray'].forEach(selector => {
                 cy.get(datatest(selector)).should('not.exist');
             });
             cy.get(datatest('btn-editor-user-settings')).should('be.visible');

@@ -567,7 +567,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const compactPairedCell = playLayout
         ? pairedCellInnerWidth < MIN_PAIRED_LABEL_WIDTH
         : compact;
-    // 削除／リスポーン／盤面リセットの3分割セルは、どの幅でもラベルが収まらないためアイコンのみ。
+    // Playのパレット行は盤面リセットの全幅セルだけなので、ショートカット表記は出さない。
     const compactPaletteCell = playLayout ? true : compact;
     const iconSize = Math.max(14, Math.min(21, cellHeight - 7));
     const editShortcut = (key: keyof State['mode']['editShortcuts']) => {
@@ -750,12 +750,12 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray, 'comp',
     ];
     // 操作重視はカレントミノをキューから決めるため、ミノ選択セルを持たない。
-    // 削除・リスポーン・盤面リセットだけを非常口として1行に残す。
+    // スポーンミノ削除・リスポーンはPIECEで使う操作なのでPlayには置かず、盤面リセットだけを残す。
     const visibleSelections = playLayout
-        ? [Piece.Empty, Piece.Gray] as PaletteSelection[]
+        ? [] as PaletteSelection[]
         : pieceModeVisible ? selections.filter(selection => selection !== 'comp') : selections;
     const paletteCellWidth = playLayout
-        ? layout.buttons.size.width / 3
+        ? layout.buttons.size.width
         : layout.buttons.size.width / (twoColumns ? 2 : 1);
     const paletteCells: VNode<{}>[] = visibleSelections.map((selection) => {
         const name = selection === 'comp' ? 'inference' : (parsePieceName(selection) ?? '').toLowerCase();
@@ -791,15 +791,16 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         });
     });
     if (playLayout) {
+        // 削除・リスポーンを畳んだ分の幅を使い、リスポーンの矢印とRESETを1つのセルに合わせる。
         paletteCells.push(toolCell({
             key: 'btn-piece-reset',
             datatest: 'btn-piece-reset',
             label: i18n.EditorUi.ResetField(),
             height: cellHeight,
             onpress: () => actions.resetFieldAndPiece(),
-            children: compactPaletteCell ? icon('delete_sweep', iconSize) : [span({
+            children: [icon('refresh', iconSize), span({
                 key: 'reset-field-label',
-                style: style({ fontSize: px(Math.max(10, cellHeight * 0.3)), fontWeight: '600' }),
+                style: style({ marginLeft: '3px' }),
             }, i18n.EditorUi.ResetField())],
         }));
     } else if (pieceModeVisible) {

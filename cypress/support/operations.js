@@ -458,6 +458,8 @@ export const operations = {
                 cy.wait(100);
             },
             resetPiece: () => {
+                // リスポーンはPIECEの通常レイアウトだけに残っている。
+                ensurePieceLayout('select');
                 cy.get(datatest('btn-piece-gray')).click();
             },
             move: () => {
@@ -865,6 +867,13 @@ export const operations = {
             } else {
                 target.uncheck({ force: true });
             }
+            cy.get(datatest('btn-save')).click();
+        },
+        // 0を渡すと上限なし。
+        setPageRotationLimit: (limit) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('misc');
+            cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
             cy.get(datatest('btn-save')).click();
         },
     },

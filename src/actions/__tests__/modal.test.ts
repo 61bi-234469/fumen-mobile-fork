@@ -7,6 +7,9 @@ jest.mock('../cold_clear', () => ({
     coldClearActions: {
         // openColdClearMenuModal / openPieceQueueModal call this first in their sequence. No-op it.
         seedQueuePreviewFromSpawnedPiece: () => () => undefined,
+        // closePieceQueueModal promotes the NEXT head and commits before closing. No-op both.
+        promoteQueueNextToCurrent: () => () => undefined,
+        commitColdClearQueueComment: () => () => undefined,
     },
 }));
 jest.mock('../view_settings', () => ({

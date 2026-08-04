@@ -87,6 +87,7 @@ export interface PageActions {
     lastPage: () => action;
     clearToEnd: () => action;
     clearPast: () => action;
+    applyPageRotation: () => action;
     changeToRef: (data: { index: number }) => action;
     changeToKey: (data: { index: number }) => action;
     changeLockFlag: (data: { index: number, enable: boolean }) => action;
@@ -99,6 +100,11 @@ export interface PageActions {
     cutAllPages: () => action;
     replaceAllFromClipboard: () => action;
 }
+
+// insertPage の直後に「今入れたページ」を開く。ページローテーションが先頭を削ると
+// 挿入時に計算したインデックスがずれるため、確定後の currentIndex から導出する。
+const openInsertedPage = (state: Readonly<State>): NextState =>
+    pageActions.openPage({ index: state.fumen.currentIndex + 1 })(state);
 
 export const pageActions: Readonly<PageActions> = {
     reopenCurrentPage: () => (state): NextState => {
@@ -220,6 +226,7 @@ export const pageActions: Readonly<PageActions> = {
             actions.commitCommentText(),
             insertRefPage({ index }),
             actions.reopenCurrentPage(),
+            pageActions.applyPageRotation(),
         ]);
     },
     insertKeyPage: ({ index, skipGrayAfterLineClear = false }) => (state): NextState => {
@@ -234,6 +241,7 @@ export const pageActions: Readonly<PageActions> = {
             actions.commitCommentText(),
             insertKeyPage({ index, skipGrayAfterLineClear }),
             actions.reopenCurrentPage(),
+            pageActions.applyPageRotation(),
         ]);
     },
     insertNewPage: ({ index }) => (state): NextState => {
@@ -248,6 +256,7 @@ export const pageActions: Readonly<PageActions> = {
             actions.commitCommentText(),
             insertNewPage({ index }),
             actions.reopenCurrentPage(),
+            pageActions.applyPageRotation(),
         ]);
     },
     duplicatePage: ({ index }) => (state): NextState => {
@@ -262,6 +271,7 @@ export const pageActions: Readonly<PageActions> = {
             actions.commitCommentText(),
             duplicatePage({ index }),
             actions.reopenCurrentPage(),
+            pageActions.applyPageRotation(),
         ]);
     },
     duplicatePageToGray: ({ index }) => (state): NextState => {
@@ -269,7 +279,7 @@ export const pageActions: Readonly<PageActions> = {
         // (insertKeyPageはPageFieldOperation.Allを使用するため)
         return sequence(state, [
             pageActions.insertPage({ index }),
-            actions.openPage({ index }),
+            openInsertedPage,
             actions.convertToGray(),
         ]);
     },
@@ -279,7 +289,7 @@ export const pageActions: Readonly<PageActions> = {
         // duplicatePageToGrayと同じだが、グレー変換を行わない
         return sequence(state, [
             pageActions.insertPage({ index }),
-            actions.openPage({ index }),
+            openInsertedPage,
         ]);
     },
     removePage: ({ index }) => (state): NextState => {
@@ -349,7 +359,7 @@ export const pageActions: Readonly<PageActions> = {
         if (fumen.maxPage <= nextPage) {
             return sequence(state, [
                 pageActions.insertPage({ index: nextPage }),
-                pageActions.openPage({ index: nextPage }),
+                openInsertedPage,
             ]);
         }
 
@@ -517,6 +527,14 @@ export const pageActions: Readonly<PageActions> = {
             clearPast({ pageIndex: state.fumen.currentIndex }),
             actions.reopenCurrentPage(),
         ]);
+    },
+    applyPageRotation: () => (state): NextState => {
+        const limit = state.mode.pageRotationLimit;
+        if (limit < 1) {
+            return undefined;
+        }
+
+        return rotatePages({ limit })(state);
     },
     copyCurrentPageToClipboard: () => (state): NextState => {
         const currentIndex = state.fumen.currentIndex;
@@ -1448,9 +1466,14 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
     ]);
 };
 
-const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<State>): NextState => {
+// 先頭からdropCount枚を削除する。残る先頭ページ (旧index=dropCount) はKey化・コメント確定・
+// colorize継承を行ってから消すため、後続ページの参照が壊れない。
+const removeLeadingPages = (
+    { dropCount, nextIndex }: { dropCount: number, nextIndex: number },
+) => (state: Readonly<State>): NextState => {
     const fumen = state.fumen;
     const pages = fumen.pages;
+    const pageIndex = dropCount;
 
     if (pageIndex < 0) {
         throw new FumenError(`Illegal index: ${pageIndex}`);
@@ -1504,10 +1527,10 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
 
         // Update tree
         const newTree = removePagesFromTree(currentTree, 0, pageIndex);
-        const currentNode = findNodeByPageIndex(newTree, 0);
+        const currentNode = findNodeByPageIndex(newTree, nextIndex);
 
         // Create snapshot after changes
-        const nextSnapshot = createSnapshot(newTree, newPages, 0);
+        const nextSnapshot = createSnapshot(newTree, newPages, nextIndex);
 
         // Create tree operation task
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -1518,7 +1541,7 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                     ...state.fumen,
                     pages: newPages,
                     maxPage: newPages.length,
-                    currentIndex: 0,
+                    currentIndex: nextIndex,
                 },
                 tree: {
                     ...state.tree,
@@ -1560,7 +1583,7 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
     {
         const primitivePages = pages.slice(0, pageIndex).map(toPrimitivePage);
         pagesObj.deletePage(0, pageIndex);
-        tasks.push(toRemovePageTask(0, pageIndex, primitivePages, 0));
+        tasks.push(toRemovePageTask(0, pageIndex, primitivePages, nextIndex));
     }
 
     const newPages = pagesObj.pages;
@@ -1571,10 +1594,31 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                 ...state.fumen,
                 pages: newPages,
                 maxPage: newPages.length,
-                currentIndex: 0,
+                currentIndex: nextIndex,
             },
         }),
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, nextIndex + pageIndex) }),
         actions.reopenCurrentPage(),
     ]);
+};
+
+const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<State>): NextState => {
+    return removeLeadingPages({ dropCount: pageIndex, nextIndex: 0 })(state);
+};
+
+// ページローテーション: 保持上限を超えた分だけ、古いページ番号から削除する。
+// ページ追加系アクションの末尾で呼ばれるため、currentIndex は確定済み。
+const rotatePages = ({ limit }: { limit: number }) => (state: Readonly<State>): NextState => {
+    const pages = state.fumen.pages;
+    const dropCount = pages.length - limit;
+    // 現在ページより後ろは消さない。上限まで削れないときは削れる分だけ古い側を落とす。
+    const safeDropCount = Math.min(dropCount, state.fumen.currentIndex);
+    if (safeDropCount <= 0) {
+        return undefined;
+    }
+
+    return removeLeadingPages({
+        dropCount: safeDropCount,
+        nextIndex: state.fumen.currentIndex - safeDropCount,
+    })(state);
 };

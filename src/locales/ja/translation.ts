@@ -132,6 +132,11 @@ export const resources = {
                 On: 'ソフトドロップ優先',
             },
         },
+        PageRotation: {
+            Title: 'ページローテーション',
+            Description: 'ページを追加したとき、保持数を超えた分を古いページ番号から削除する。0で上限なし',
+            Unit: 'ページ',
+        },
         EditorSidePanel: 'サイドパネルを表示（PC）',
         Buttons: {
             Save: '保存',

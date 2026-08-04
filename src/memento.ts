@@ -290,6 +290,7 @@ interface UserSettings {
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     noGrayAfterHardDrop: boolean;
+    pageRotationLimit: number;
 }
 
 interface ViewSettings {
@@ -384,6 +385,7 @@ export const localStorageWrapper = {
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),
             rotationSystem: safer.rotationSystem(obj.rotationSystem),
             noGrayAfterHardDrop: safer.boolean(obj.noGrayAfterHardDrop),
+            pageRotationLimit: safer.number(obj.pageRotationLimit),
         };
     },
     saveViewSettings: (data: ViewSettings) => {

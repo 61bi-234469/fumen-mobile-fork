@@ -132,7 +132,14 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    closePieceQueueModal: () => setModal('pieceQueue', false),
+    // 閉じるときは、カレントが空でもNEXTがあれば繰り上げてからコメントを確定する
+    closePieceQueueModal: () => (state): NextState => {
+        return sequence(state, [
+            coldClearActions.promoteQueueNextToCurrent(),
+            coldClearActions.commitColdClearQueueComment(),
+            setModal('pieceQueue', false),
+        ]);
+    },
     closeAllModals: () => (state): NextState => {
         return {
             modal: {

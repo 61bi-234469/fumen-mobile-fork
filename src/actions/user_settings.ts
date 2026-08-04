@@ -1,7 +1,8 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import {
-    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, RotationSystem, State, UserSettingsTab,
+    EditShortcuts, InitialScreenSetting, normalizePageRotationLimit, PaletteShortcuts, PieceShortcuts, RotationSystem,
+    State, UserSettingsTab,
 } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
@@ -30,6 +31,7 @@ export interface UserSettingsActions {
     keepGifFrameDelay: (data: { delayMs: number }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
+    keepPageRotationLimit: (data: { limit: number }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
     keepTrimTopBlank: (data: { enable: boolean }) => action;
     keepEditorSidePanel: (data: { enable: boolean }) => action;
@@ -79,6 +81,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     gifFrameDelayMs: state.mode.gifFrameDelayMs,
                     rotationSystem: state.mode.rotationSystem,
                     noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
+                    pageRotationLimit: state.mode.pageRotationLimit,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
                     trimTopBlank: state.listView.trimTopBlank,
                     editorSidePanel: state.editorPanel.enabled,
@@ -133,6 +136,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changeNoGrayAfterHardDrop({
                 enable: state.temporary.userSettings.noGrayAfterHardDrop,
+            }),
+            actions.changePageRotationLimit({
+                limit: state.temporary.userSettings.pageRotationLimit,
             }),
             // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
             actions.setTreeState({
@@ -284,6 +290,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepPageRotationLimit: ({ limit }) => keepTemporary({ pageRotationLimit: normalizePageRotationLimit(limit) }),
     keepTrimTopBlank: ({ enable }) => keepTemporary({ trimTopBlank: enable }),
     keepEditorSidePanel: ({ enable }) => keepTemporary({ editorSidePanel: enable }),
     setUserSettingsTab: ({ tab }) => (state): NextState => {
@@ -322,6 +329,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         noGrayAfterHardDrop: state.mode.noGrayAfterHardDrop,
+        pageRotationLimit: state.mode.pageRotationLimit,
     });
     return undefined;
 };

@@ -2329,6 +2329,28 @@ describe('coldClearActions run isolation', () => {
         expect(coldClearActions.seedQueuePreviewFromSpawnedPiece()(nonQueueState)).toBeUndefined();
     });
 
+    test('promoteQueueNextToCurrent pulls the NEXT head into an empty current and spawns it', () => {
+        const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));
+        const reopenCurrentPage = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ registerHistoryTask, reopenCurrentPage } as any);
+
+        const state = makeColdClearState({ commentText: '#Q=[S]()IOL' });
+        const result = coldClearActions.promoteQueueNextToCurrent()(state) as any;
+
+        expect(result.coldClear.queuePreview.text).toBe('#Q=[S](I)OL');
+        expect(state.fumen.pages[0].piece?.type).toBe(Piece.I);
+        expect(registerHistoryTask).toHaveBeenCalled();
+    });
+
+    test('promoteQueueNextToCurrent does nothing when current is set or NEXT is empty', () => {
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: '#Q=[S](T)IOL' }))).toBeUndefined();
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: '#Q=[S]()' }))).toBeUndefined();
+        expect(coldClearActions.promoteQueueNextToCurrent()(
+            makeColdClearState({ commentText: 'memo' }))).toBeUndefined();
+    });
+
     test('queue current preview respawns a different piece and merges comment history', () => {
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const registerHistoryTask = jest.fn().mockReturnValue(() => ({}));

@@ -28,7 +28,6 @@ interface PieceQueueModalProps {
             combo: number;
             syncCurrentPiece?: boolean;
         }) => void;
-        commitColdClearQueueComment: () => void;
         clearCommentForColdClearQueue: () => void;
         appendColdClearOneBagToComment: () => void;
     };
@@ -55,7 +54,6 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         resources.modals.pieceQueue = undefined;
     };
     const commitAndClose = () => {
-        actions.commitColdClearQueueComment();
         actions.closePieceQueueModal();
         closeInstance();
         destroy();
@@ -64,7 +62,6 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
         focusTarget = initialFocus;
         const instance = M.Modal.init(element, {
             onCloseStart: () => {
-                actions.commitColdClearQueueComment();
                 actions.closePieceQueueModal();
                 destroy();
             },

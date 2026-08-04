@@ -4,7 +4,8 @@ import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
 import {
-    EditShortcuts, InitialScreenSetting, PaletteShortcuts, PieceShortcuts, resources, RotationSystem, State,
+    EditShortcuts, InitialScreenSetting, normalizePageRotationLimit, PaletteShortcuts, PieceShortcuts, resources,
+    RotationSystem, State,
 } from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
@@ -43,6 +44,7 @@ export interface ScreenActions {
     changeGradient: (data: { gradientStr: string }) => action;
     changeRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     changeNoGrayAfterHardDrop: (data: { enable: boolean }) => action;
+    changePageRotationLimit: (data: { limit: number }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
     changePieceShortcuts: (data: { pieceShortcuts: PieceShortcuts }) => action;
@@ -341,6 +343,18 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 noGrayAfterHardDrop: enable,
+            },
+        };
+    },
+    changePageRotationLimit: ({ limit }) => (state): NextState => {
+        const normalized = normalizePageRotationLimit(limit);
+        if (state.mode.pageRotationLimit === normalized) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                pageRotationLimit: normalized,
             },
         };
     },

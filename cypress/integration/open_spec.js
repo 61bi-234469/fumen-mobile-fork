@@ -611,8 +611,13 @@ describe('Open fumen', () => {
         operations.mode.block.click(5, 12);
         operations.mode.block.click(6, 12);
 
-        mino(Piece.O, Rotation.Spawn)(5, 0).forEach((block) => {
-            cy.get(block).should('have.attr', 'color', Color.O.Lighter);
+        // 完成したCOMPミノにはゴーストを表示しない（src/actions/setter.ts）。
+        // 描画したセル自体は残り、落下先にはゴーストが出ないことを確認する。
+        [[5, 11], [6, 11], [5, 12], [6, 12]].forEach(([x, y]) => {
+            cy.get(block(x, y)).should('not.have.attr', 'color', Color.Empty.Normal);
+        });
+        mino(Piece.O, Rotation.Spawn)(5, 0).forEach((cell) => {
+            cy.get(cell).should('have.attr', 'color', Color.Empty.Normal);
         });
 
         // スポーン操作はPIECEモードのトレイに依存するため、モードを切り替えてから行う

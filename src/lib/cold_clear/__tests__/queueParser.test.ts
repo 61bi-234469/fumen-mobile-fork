@@ -220,6 +220,12 @@ describe('buildQueueComment', () => {
 });
 
 describe('parseQueueStateComment', () => {
+    test('preserves input rotation evidence alongside queue metadata', () => {
+        expect(parseQueueStateComment('inputRotation=cw:4 b2b=1 | #Q=[](T)IOS')).toMatchObject({
+            inputRotation: { direction: 'cw', kickIndex: 4 },
+            b2b: true,
+        });
+    });
     test('round-trips quiz suffixes while editing the queue state', () => {
         const text = '#Q=[O](L)J;#Q=[S](Z)T;hello';
         const result = parseQueueStateComment(text);

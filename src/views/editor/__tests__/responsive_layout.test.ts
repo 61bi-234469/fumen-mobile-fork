@@ -6,6 +6,7 @@ import {
     getPlayPieceRailMetrics,
     getPlayPieceUnitBound,
     getResponsiveRailCellHeight,
+    getInputStatsPanelTier,
     INFINITE_TOGGLE_HEIGHT,
     MAX_PIECE_QUEUE_WIDTH,
     MIN_PIECE_QUEUE_WIDTH,
@@ -17,6 +18,12 @@ import {
 } from '../responsive_layout';
 
 describe('editor responsive layout', () => {
+    test.each([
+        [89, 'hidden'], [90, 'compact'], [139, 'compact'], [140, 'summary'],
+        [199, 'summary'], [200, 'full'],
+    ])('uses the input stats tier at %ipx', (height, tier) => {
+        expect(getInputStatsPanelTier(height)).toBe(tier);
+    });
     test('uses compact bottom controls on short displays', () => {
         expect(getEditorBottomMetrics(519)).toEqual({ commentHeight: 30, toolsHeight: 42 });
         expect(getEditorBottomMetrics(520)).toEqual({ commentHeight: 35, toolsHeight: 50 });

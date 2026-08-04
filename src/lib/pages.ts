@@ -183,6 +183,48 @@ export class Pages {
         return this.restructureField(index, operation);
     }
 
+    /**
+     * Reconstruct a contiguous range in one pass.
+     *
+     * Each returned field has the same value as `getField(index, operation)`.
+     * Consumers which need to inspect a sequence of placements should use this
+     * instead of repeatedly resolving every page from its reference point.
+     * `toIndex` is exclusive.
+     */
+    replayFields(
+        fromIndex: number,
+        toIndex: number,
+        operation: PageFieldOperation = PageFieldOperation.None,
+    ): Field[] {
+        if (fromIndex < 0 || toIndex < fromIndex || this.pages.length < toIndex) {
+            throw new FumenError(`Illegal replay range: ${fromIndex}..${toIndex}`);
+        }
+        if (fromIndex === toIndex) {
+            return [];
+        }
+
+        // `None` returns before the page's pre-command, so it is precisely the
+        // state from which a forward replay must start.
+        return this.replayRange(this.getField(fromIndex, PageFieldOperation.None), fromIndex, toIndex - 1, operation);
+    }
+
+    /** Replay ordered page indices, restarting only at discontinuities (tree branches). */
+    replayFieldIndices(indices: number[], operation: PageFieldOperation = PageFieldOperation.None): Field[] {
+        if (indices.length === 0) return [];
+        const values: Field[] = [];
+        let start = 0;
+        while (start < indices.length) {
+            let end = start;
+            while (end + 1 < indices.length && indices[end + 1] === indices[end] + 1) end += 1;
+            const fromIndex = indices[start];
+            const toIndex = indices[end];
+            const field = this.getField(fromIndex, PageFieldOperation.None);
+            values.push(...this.replayRange(field, fromIndex, toIndex, operation));
+            start = end + 1;
+        }
+        return values;
+    }
+
     // TODO: Add test
     insertRefPage(index: number) {
         if (index < 0) {
@@ -745,65 +787,34 @@ export class Pages {
                 };
             }
 
-            // 参照ページから現在のページまで操作を再現する
-            const { field, startIndex } = state;
-            let cache: Field | undefined;
-            for (let i = startIndex; i <= index; i += 1) {
-                const isLast = i === index;
-
-                if (isLast && operation === PageFieldOperation.None) {
-                    return field;
-                }
-
-                // フィールドをキャッシュする
-                cache = field.copy();
-
-                const { flags, piece, commands } = this.pages[i];
-
-                if (commands !== undefined) {
-                    Object.keys(commands.pre)
-                        .map(key => commands.pre[key])
-                        .forEach((command: PreCommand) => {
-                            switch (command.type) {
-                            case 'block': {
-                                const { x, y, piece } = command;
-                                field.setToPlayField(x + y * 10, piece);
-                                return;
-                            }
-                            case 'sentBlock': {
-                                const { x, y, piece } = command;
-                                field.setToSentLine(x + y * 10, piece);
-                                return;
-                            }
-                            }
-                        });
-                }
-
-                if (isLast && operation === PageFieldOperation.Command) {
-                    return field;
-                }
-
-                if (flags.lock) {
-                    if (piece !== undefined && isMinoPiece(piece.type)) {
-                        field.put(piece);
-                    }
-
-                    field.clearLine();
-
-                    if (flags.rise) {
-                        field.up();
-                    }
-
-                    if (flags.mirror) {
-                        field.mirror();
-                    }
-                }
-            }
-
-            return field;
+            const values = this.replayRange(state.field, state.startIndex, index, operation);
+            return values[values.length - 1];
         };
 
         return getField();
+    }
+
+    private replayRange(field: Field, fromIndex: number, toIndex: number, operation: PageFieldOperation): Field[] {
+        const values: Field[] = [];
+        for (let index = fromIndex; index <= toIndex; index += 1) {
+            if (operation === PageFieldOperation.None) values.push(field.copy());
+            const { flags, piece, commands } = this.pages[index];
+            if (commands !== undefined) {
+                Object.keys(commands.pre).map(key => commands.pre[key]).forEach((command: PreCommand) => {
+                    if (command.type === 'block') field.setToPlayField(command.x + command.y * 10, command.piece);
+                    if (command.type === 'sentBlock') field.setToSentLine(command.x + command.y * 10, command.piece);
+                });
+            }
+            if (operation === PageFieldOperation.Command) values.push(field.copy());
+            if (flags.lock) {
+                if (piece !== undefined && isMinoPiece(piece.type)) field.put(piece);
+                field.clearLine();
+                if (flags.rise) field.up();
+                if (flags.mirror) field.mirror();
+            }
+            if (operation === PageFieldOperation.All) values.push(field.copy());
+        }
+        return values;
     }
 
     setQuizFlag(pageIndex: number): void {

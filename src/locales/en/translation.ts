@@ -347,6 +347,9 @@
             + 'The first piece appears at the top of the field.',
         OpenSettings: 'Open piece queue settings',
     },
+    InputStats: {
+        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
+    },
     ColdClear: {
         MenuTitle: 'Cold Clear',
         MenuButtonLabel: 'AI',

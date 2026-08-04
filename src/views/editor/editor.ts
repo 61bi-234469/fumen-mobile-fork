@@ -22,10 +22,13 @@ import { composeSelectionField } from '../../lib/rect_selection';
 import { SelectionOverlay } from '../../components/selection_overlay';
 import {
     getEditorBottomMetrics, getEditorRailConfig, getPlayfieldCeilingOffset, getPlayPieceQueueWidth,
-    getPlayPieceRailMetrics, getPlayPieceUnitBound, getResponsiveRailCellHeight, PIECE_RIGHT_COLUMN_GAP,
+    getPlayPieceRailMetrics, getPlayPieceUnitBound, getResponsiveRailCellHeight, getInputStatsPanelTier,
+    INPUT_STATS_GAP, PIECE_RIGHT_COLUMN_GAP,
 } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
+import { computeInputStats } from '../../lib/input_stats';
+import { inputStatsPanel } from './input_stats_panel';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -288,8 +291,18 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const queueState = layout.pieceQueue.visible
         ? resolveCurrentColdClearMenuQueueState(state)
         : null;
+    const holdButtonHeight = 20 + layout.pieceQueue.nextMinoHeight;
+    const inputStatsTier = getInputStatsPanelTier(layout.field.size.height - layout.pieceQueue.ceilingOffset
+        - holdButtonHeight - INPUT_STATS_GAP);
+    const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
+        ? inputStatsPanel(computeInputStats(state.fumen.pages, state.fumen.currentIndex, {
+            rotationSystem: state.mode.rotationSystem,
+            tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
+        }), inputStatsTier)
+        : undefined;
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
+        statsPanel,
         width: layout.pieceQueue.width,
         gap: layout.pieceQueue.gap,
         fieldHeight: layout.field.size.height,

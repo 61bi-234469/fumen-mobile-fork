@@ -362,6 +362,10 @@ export const i18n = {
         NextOrderHint: () => t('PieceQueue.NextOrderHint'),
         OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
+    InputStats: {
+        Pieces: () => t('InputStats.Pieces'), Lines: () => t('InputStats.Lines'),
+        PerfectClears: () => t('InputStats.PerfectClears'),
+    },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),
         MenuButtonLabel: () => t('ColdClear.MenuButtonLabel'),

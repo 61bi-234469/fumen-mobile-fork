@@ -1,4 +1,5 @@
 import { Piece } from '../enums';
+import { InputRotationEvidence, parseInputRotationEvidence } from '../comment_metadata';
 
 export interface ParsedQueue {
     hold: Piece | null;
@@ -11,6 +12,7 @@ export interface ParsedQueue {
 export interface ParsedQueueState extends ParsedQueue {
     b2b: boolean;
     combo: number;
+    inputRotation?: InputRotationEvidence;
 }
 
 // #Q=[hold](current)next... 形式 (テト譜Quiz互換)。`;` 以降は次のクイズとして無視する
@@ -90,7 +92,8 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
         }
 
         for (const token of tokens) {
-            if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)) {
+            if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)
+                || parseInputRotationEvidence(token) !== undefined) {
                 continue;
             }
 
@@ -119,6 +122,10 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     };
     if (queue.suffix !== undefined) {
         result.suffix = queue.suffix;
+    }
+    const inputRotation = parseInputRotationEvidence(text);
+    if (inputRotation !== undefined) {
+        result.inputRotation = inputRotation;
     }
     return result;
 }

@@ -131,6 +131,7 @@ import { getURLQuery } from './params';
 import { loadBlackTransparentPaste, loadParts } from './lib/parts';
 import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
+import { InputRotationEvidence } from './lib/comment_metadata';
 
 const VERSION = PageEnv.Version;
 
@@ -253,6 +254,7 @@ export interface State {
         // ストローク補間用: 現在のストロークで直前に触れたセル（field / sent line 別）
         lastTouchedIndex?: number;
         lastTouchedSentIndex?: number;
+        lastPieceManipulation?: InputRotationEvidence;
     };
     mode: {
         screen: Screens;

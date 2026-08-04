@@ -33,7 +33,7 @@ interface UserSettingsModalProps {
     pieceShortcutSoftDropPriority: boolean;
     gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
-    noGrayAfterHardDrop: boolean;
+    sevenBagGrayEnabled: boolean;
     pageRotationLimit: number;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
@@ -62,7 +62,7 @@ interface UserSettingsModalProps {
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
         keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
-        keepNoGrayAfterHardDrop: (data: { enable: boolean }) => void;
+        keepSevenBagGrayEnabled: (data: { enable: boolean }) => void;
         keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
@@ -157,7 +157,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutSoftDropPriority,
         gifFrameDelayMs,
         rotationSystem,
-        noGrayAfterHardDrop,
+        sevenBagGrayEnabled,
         pageRotationLimit,
         grayAfterLineClear,
         trimTopBlank,
@@ -563,17 +563,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
                             })}
 
-                            {renderSwitch({
-                                key: 'switch-row-no-gray-after-hard-drop',
-                                datatest: 'switch-no-gray-after-hard-drop',
-                                title: i18n.TreeView.NoGrayAfterHardDrop(),
-                                checked: noGrayAfterHardDrop,
-                                disabled: !grayAfterLineClear,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
-                                onChange: checked => actions.keepNoGrayAfterHardDrop({ enable: checked }),
-                            })}
-
                             <details key="details-user-settings-gradient" datatest="details-user-settings-gradient">
                                 <summary datatest="summary-user-settings-gradient"
                                          style={style({ cursor: 'pointer', marginTop: px(10) })}>
@@ -810,6 +799,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     offLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Off(),
                                     onLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.On(),
                                     onChange: checked => actions.keepPieceShortcutSoftDropPriority({ enable: checked }),
+                                })}
+
+                                {renderSwitch({
+                                    key: 'switch-row-seven-bag-gray',
+                                    datatest: 'switch-seven-bag-gray',
+                                    title: i18n.UserSettings.SevenBagGray.Title(),
+                                    description: i18n.UserSettings.SevenBagGray.Description(),
+                                    checked: sevenBagGrayEnabled,
+                                    offLabel: switchLabels.off,
+                                    onLabel: switchLabels.on,
+                                    onChange: checked => actions.keepSevenBagGrayEnabled({ enable: checked }),
                                 })}
                             </div>
                         </div>

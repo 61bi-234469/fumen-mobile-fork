@@ -1,4 +1,4 @@
-import { Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
+import { block, Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 describe('PIECE queues', () => {
@@ -345,6 +345,69 @@ describe('PIECE queues', () => {
         operations.mode.piece.harddrop();
         cy.get(datatest('text-pages')).should('contain', '3 / 3');
         cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'S');
+    });
+
+    it('keeps the infinite queue boundary stable while seven bag gray is enabled', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setSevenBagGray(true);
+        cy.get(datatest('btn-paint-mode')).click();
+        operations.mode.block.L();
+        operations.mode.block.click(0, 0);
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleInfiniteQueue();
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+
+        // キュー設定の表示・確定を挟んでも、sbgのbag位置を失わない。
+        cy.get(datatest('piece-queue-next')).click();
+        cy.get(datatest('btn-piece-queue-close')).click();
+
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '1 / 1');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        // The active field for the next bag also uses gray for all previously settled terrain.
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.value', '');
+        operations.mode.tools.backPage();
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        cy.get(block(4, 0)).should('have.attr', 'color', Color.T.Normal);
+    });
+
+    it('keeps all seven placements visible before line clears', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setSevenBagGray(true);
+        cy.get(datatest('btn-paint-mode')).click();
+        operations.mode.block.L();
+        [0, 1, 2, 7, 8, 9].forEach(x => operations.mode.block.click(x, 0));
+        cy.get(datatest('text-comment')).clear().type('#Q=[](I)OTLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.I();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleInfiniteQueue();
+
+        for (let index = 0; index < 7; index += 1) {
+            operations.mode.piece.harddrop();
+        }
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.tools.backPage();
+        [0, 1, 2, 7, 8, 9].forEach((x) => {
+            cy.get(block(x, 0)).should('have.attr', 'color', Color.Gray.Highlight1);
+        });
+        [3, 4, 5, 6].forEach((x) => {
+            cy.get(block(x, 0)).should('have.attr', 'color', Color.I.Highlight1);
+        });
     });
 
     it('applies the page rotation limit to ordinary page adds too', () => {

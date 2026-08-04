@@ -44,7 +44,7 @@ const baseUserSettings = {
     pieceShortcutSoftDropPriority: false,
     gifFrameDelayMs: 500,
     rotationSystem: 'srs',
-    noGrayAfterHardDrop: false,
+    sevenBagGrayEnabled: false,
     pageRotationLimit: 0,
     grayAfterLineClear: false,
     trimTopBlank: false,
@@ -72,7 +72,7 @@ const createState = (override: any = {}) => ({
         pieceShortcutSoftDropPriority: false,
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
-        noGrayAfterHardDrop: false,
+        sevenBagGrayEnabled: false,
         pageRotationLimit: 0,
     },
     tree: {
@@ -139,19 +139,18 @@ describe('userSettingsActions', () => {
         });
     });
 
-    describe('keepNoGrayAfterHardDrop', () => {
-        test('updates temporary when line-clear graying is enabled', () => {
+    describe('keepSevenBagGrayEnabled', () => {
+        test('updates temporary while the modal is open', () => {
             const state = createState();
-            state.temporary.userSettings.grayAfterLineClear = true;
-            const next = userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state);
+            const next = userSettingsActions.keepSevenBagGrayEnabled({ enable: true })(state);
 
-            expect(next.temporary.userSettings.noGrayAfterHardDrop).toBe(true);
+            expect(next.temporary.userSettings.sevenBagGrayEnabled).toBe(true);
         });
 
-        test('does nothing when line-clear graying is disabled', () => {
-            const state = createState({ tree: { grayAfterLineClear: false } });
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
 
-            expect(userSettingsActions.keepNoGrayAfterHardDrop({ enable: true })(state)).toBeUndefined();
+            expect(userSettingsActions.keepSevenBagGrayEnabled({ enable: true })(state)).toBeUndefined();
         });
     });
 
@@ -363,7 +362,7 @@ describe('userSettingsActions', () => {
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
                 'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
                 'changeGifFrameDelay', 'changeRotationSystem',
-                'changeNoGrayAfterHardDrop', 'changePageRotationLimit',
+                'changeSevenBagGrayEnabled', 'changePageRotationLimit',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {

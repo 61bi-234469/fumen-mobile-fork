@@ -14,7 +14,7 @@ import {
     toSinglePageTask,
 } from '../history_task';
 import { State } from '../states';
-import { Pages } from '../lib/pages';
+import { Pages, resolvePageCommentText } from '../lib/pages';
 import { Page } from '../lib/fumen/types';
 import {
     embedTreeInPages,
@@ -29,6 +29,7 @@ import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tre
 import { getURLQuery } from '../params';
 import { Screens } from '../lib/enums';
 import { clearUnpinnedParts, saveParts } from '../lib/parts';
+import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
@@ -189,7 +190,22 @@ export const utilsActions: Readonly<UtilsActions> = {
         const currentIndex = state.fumen.currentIndex;
 
         // Extract tree data from pages if present
-        const { cleanedPages, tree } = extractTreeFromPages(pages);
+        const extracted = extractTreeFromPages(pages);
+        const cleanedPages = state.mode.sevenBagGrayEnabled
+            ? extracted.cleanedPages.map((page, index) => ({
+                ...page,
+                comment: {},
+                flags: { ...page.flags, quiz: false },
+                internal: {
+                    ...page.internal,
+                    hiddenComment: withSevenBagGrayDisplay(
+                        withSevenBagGrayProgress(resolvePageCommentText(extracted.cleanedPages, index), undefined),
+                        undefined,
+                    ),
+                },
+            }))
+            : extracted.cleanedPages;
+        const tree = extracted.tree;
         const normalizedTree = tree ? ensureVirtualRoot(tree) : null;
         const hasImportedTree = normalizedTree !== null && normalizedTree.nodes.length > 0;
 

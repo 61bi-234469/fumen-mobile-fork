@@ -294,11 +294,15 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const holdButtonHeight = 20 + layout.pieceQueue.nextMinoHeight;
     const inputStatsTier = getInputStatsPanelTier(layout.field.size.height - layout.pieceQueue.ceilingOffset
         - holdButtonHeight - INPUT_STATS_GAP);
+    const computedInputStats = computeInputStats(state.fumen.pages, state.fumen.currentIndex, {
+        rotationSystem: state.mode.rotationSystem,
+        tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
+    });
     const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
-        ? inputStatsPanel(computeInputStats(state.fumen.pages, state.fumen.currentIndex, {
-            rotationSystem: state.mode.rotationSystem,
-            tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
-        }), inputStatsTier)
+        ? inputStatsPanel({
+            ...computedInputStats,
+            lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
+        }, inputStatsTier)
         : undefined;
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,

@@ -426,8 +426,8 @@ const loadUserSettings = () => {
         updated = true;
     }
 
-    if (settings.noGrayAfterHardDrop !== undefined) {
-        main.changeNoGrayAfterHardDrop({ enable: settings.noGrayAfterHardDrop });
+    if (settings.sevenBagGrayEnabled !== undefined) {
+        main.changeSevenBagGrayEnabled({ enable: settings.sevenBagGrayEnabled });
         updated = true;
     }
 

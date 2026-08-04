@@ -143,6 +143,7 @@ import { loadBlackTransparentPaste, loadParts } from './lib/parts';
 import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
+import { PlacementResult } from './lib/input_stats';
 
 const VERSION = PageEnv.Version;
 
@@ -240,7 +241,7 @@ export interface State {
             pieceShortcutSoftDropPriority: boolean;
             gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
-            noGrayAfterHardDrop: boolean;
+            sevenBagGrayEnabled: boolean;
             pageRotationLimit: number;
             grayAfterLineClear: boolean;
             trimTopBlank: boolean;
@@ -267,6 +268,7 @@ export interface State {
         lastTouchedIndex?: number;
         lastTouchedSentIndex?: number;
         lastPieceManipulation?: InputRotationEvidence;
+        lastInputPlacement?: PlacementResult;
     };
     mode: {
         screen: Screens;
@@ -295,7 +297,7 @@ export interface State {
         pieceShortcutSoftDropPriority: boolean;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
-        noGrayAfterHardDrop: boolean;
+        sevenBagGrayEnabled: boolean;
         pageRotationLimit: number;
     };
     history: {
@@ -435,7 +437,7 @@ export const initState: Readonly<State> = {
             pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
             gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
-            noGrayAfterHardDrop: false,
+            sevenBagGrayEnabled: false,
             pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
             grayAfterLineClear: false,
             trimTopBlank: false,
@@ -484,7 +486,7 @@ export const initState: Readonly<State> = {
         pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
-        noGrayAfterHardDrop: false,
+        sevenBagGrayEnabled: false,
         pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
     },
     history: {

@@ -147,6 +147,10 @@ export const i18n = {
             Description: () => t('UserSettings.PageRotation.Description'),
             Unit: () => t('UserSettings.PageRotation.Unit'),
         },
+        SevenBagGray: {
+            Title: () => t('UserSettings.SevenBagGray.Title'),
+            Description: () => t('UserSettings.SevenBagGray.Description'),
+        },
         GifFrameDelayMs: {
             Title: () => t('GifFrameDelayMs.Title'),
             Description: () => t('GifFrameDelayMs.Description'),
@@ -266,7 +270,6 @@ export const i18n = {
             Descendants: () => t('TreeView.OperationScope.Descendants'),
         },
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
-        NoGrayAfterHardDrop: () => t('TreeView.NoGrayAfterHardDrop'),
         ZoomReset: () => t('TreeView.ZoomReset'),
         DeleteNode: () => t('TreeView.DeleteNode'),
         DragHandle: () => t('TreeView.DragHandle'),

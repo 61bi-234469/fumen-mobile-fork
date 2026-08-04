@@ -876,6 +876,17 @@ export const operations = {
             cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
             cy.get(datatest('btn-save')).click();
         },
+        setSevenBagGray: (enabled) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('piece');
+            const target = cy.get(datatest('switch-seven-bag-gray'));
+            if (enabled) {
+                target.check({ force: true });
+            } else {
+                target.uncheck({ force: true });
+            }
+            cy.get(datatest('btn-save')).click();
+        },
     },
     listView: {
         openImport: () => {

@@ -1953,6 +1953,26 @@ describe('coldClearActions run isolation', () => {
         });
     });
 
+    test('swapCurrentPieceWithHoldQueue removes legacy seven-bag progress metadata', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'sbg=5,12,4,1 | #Q=[S](T)LZJI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: '#Q=[T](S)LZJI',
+            pageIndex: 0,
+        });
+    });
+
     test('swapCurrentPieceWithHoldQueue moves queue front to current when hold is empty', () => {
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const spawnPiece = jest.fn().mockReturnValue(() => ({}));

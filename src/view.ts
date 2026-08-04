@@ -118,7 +118,7 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutSoftDropPriority: state.temporary.userSettings.pieceShortcutSoftDropPriority,
             gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
-            noGrayAfterHardDrop: state.temporary.userSettings.noGrayAfterHardDrop,
+            sevenBagGrayEnabled: state.temporary.userSettings.sevenBagGrayEnabled,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,

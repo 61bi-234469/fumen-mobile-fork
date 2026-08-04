@@ -249,6 +249,9 @@ export class Pages {
                 quiz: prev.flags.quiz,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
+            internal: prev.internal?.hiddenComment === undefined ? undefined : {
+                hiddenComment: prev.internal.hiddenComment,
+            },
         };
 
         // フィールドの参照
@@ -266,7 +269,8 @@ export class Pages {
         } else if (prev.comment.text !== undefined) {
             page.comment.ref = index - 1;
         } else {
-            throw new FumenError(`Unexpected comment: ${prev.comment}`);
+            page.comment = {};
+            page.flags.quiz = false;
         }
 
         this.insertPage(index, [page]);
@@ -298,6 +302,9 @@ export class Pages {
                 quiz: prev.flags.quiz,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
+            internal: prev.internal?.hiddenComment === undefined ? undefined : {
+                hiddenComment: prev.internal.hiddenComment,
+            },
         };
 
         // コメントの参照
@@ -306,7 +313,8 @@ export class Pages {
         } else if (prev.comment.text !== undefined) {
             page.comment.ref = index - 1;
         } else {
-            throw new FumenError(`Unexpected comment: ${prev.comment}`);
+            page.comment = {};
+            page.flags.quiz = false;
         }
 
         this.insertPage(index, [page]);
@@ -395,6 +403,9 @@ export class Pages {
                     ...prev.piece.coordinate,
                 },
             } : undefined,
+            internal: prev.internal?.hiddenComment === undefined ? undefined : {
+                hiddenComment: prev.internal.hiddenComment,
+            },
         };
 
         // コメントの参照
@@ -403,7 +414,8 @@ export class Pages {
         } else if (prev.comment.text !== undefined) {
             page.comment.ref = index - 1;
         } else {
-            throw new FumenError(`Unexpected comment: ${prev.comment}`);
+            page.comment = {};
+            page.flags.quiz = false;
         }
 
         this.insertPage(index, [page]);
@@ -738,7 +750,9 @@ export class Pages {
                 return refPage.comment.text;
             }
 
-            throw new ViewError('Not found comment');
+            // A page may intentionally have no serialized comment while 7bag gray mode
+            // keeps its queue state in editor-only metadata.
+            return '';
         };
 
         // Next, Holdを算出

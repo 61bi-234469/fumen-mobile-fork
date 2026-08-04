@@ -1,5 +1,8 @@
 import { Piece } from '../enums';
-import { InputRotationEvidence, parseInputRotationEvidence } from '../comment_metadata';
+import {
+    InputRotationEvidence, parseInputRotationEvidence, parseSevenBagGrayDisplay, parseSevenBagGrayProgress,
+    SevenBagGrayDisplay, SevenBagGrayProgress,
+} from '../comment_metadata';
 
 export interface ParsedQueue {
     hold: Piece | null;
@@ -13,6 +16,8 @@ export interface ParsedQueueState extends ParsedQueue {
     b2b: boolean;
     combo: number;
     inputRotation?: InputRotationEvidence;
+    sevenBagGray?: SevenBagGrayProgress;
+    sevenBagGrayDisplay?: SevenBagGrayDisplay;
 }
 
 // #Q=[hold](current)next... 形式 (テト譜Quiz互換)。`;` 以降は次のクイズとして無視する
@@ -93,7 +98,9 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
 
         for (const token of tokens) {
             if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)
-                || parseInputRotationEvidence(token) !== undefined) {
+                || parseInputRotationEvidence(token) !== undefined
+                || parseSevenBagGrayProgress(token) !== undefined
+                || parseSevenBagGrayDisplay(token) !== undefined) {
                 continue;
             }
 
@@ -127,6 +134,10 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     if (inputRotation !== undefined) {
         result.inputRotation = inputRotation;
     }
+    const sevenBagGray = parseSevenBagGrayProgress(text);
+    if (sevenBagGray !== undefined) result.sevenBagGray = sevenBagGray;
+    const sevenBagGrayDisplay = parseSevenBagGrayDisplay(text);
+    if (sevenBagGrayDisplay !== undefined) result.sevenBagGrayDisplay = sevenBagGrayDisplay;
     return result;
 }
 

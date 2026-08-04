@@ -13,6 +13,7 @@ import {
     buildQueueComment,
     buildQueueStateComment,
 } from '../lib/cold_clear/queueParser';
+import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
 import {
     CCInitMessage,
@@ -301,6 +302,13 @@ type CommentResolution = {
 const resolveCommentFromPage = (pages: Page[], pageIndex: number): CommentResolution => {
     if (!pages[pageIndex]) {
         return { text: null, kind: 'emptyComment' };
+    }
+
+    const hiddenComment = pages[pageIndex].internal?.hiddenComment;
+    if (hiddenComment !== undefined) {
+        return hiddenComment === ''
+            ? { text: hiddenComment, kind: 'emptyComment' }
+            : { text: hiddenComment, kind: 'ok' };
     }
 
     // Quizページのrefコメントは操作リプレイ後の文字列に解決されるため、Pages経由で取得する
@@ -1775,13 +1783,19 @@ export const coldClearActions: Readonly<ColdClearActions> = {
     toggleInfinitePieceQueue: () => (state): NextState => {
         const enabled = !state.editorUi.infinitePieceQueue;
         if (!enabled) {
-            return {
-                editorUi: {
-                    ...state.editorUi,
-                    infinitePieceQueue: false,
-                    paletteSelection: 'comp',
-                },
-            };
+            const pageIndex = state.fumen.currentIndex;
+            const comment = getCurrentColdClearQueueComment(state);
+            const withoutProgress = comment === null ? null : withSevenBagGrayDisplay(
+                withSevenBagGrayProgress(comment, undefined), undefined,
+            );
+            const nextEditorUi = (nextState: State): NextState => ({ editorUi: {
+                ...nextState.editorUi, infinitePieceQueue: false, paletteSelection: 'comp',
+            } });
+            if (!appActions || withoutProgress === null || withoutProgress === comment) return nextEditorUi(state);
+            return sequence(state, [
+                () => { appActions!.setCommentText({ pageIndex, text: withoutProgress }); return undefined; },
+                nextEditorUi,
+            ]);
         }
 
         const pageIndex = state.fumen.currentIndex;
@@ -1887,14 +1901,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     parseScoreFromComment(resolveCommentTextWithPreview(
                         state.fumen.pages, pageIndex, state.coldClear.queuePreview,
                     ) ?? '') ?? undefined,
-                    parsed.hold, parsed.current, parsed.queue, parsed.b2b, parsed.combo, parsed.suffix);
+                    parsed.hold, parsed.current, parsed.queue, parsed.b2b, parsed.combo,
+                    parsed.suffix);
             } else if (0 < parsed.queue.length) {
                 nextSpawnPiece = parsed.queue[0];
                 nextComment = buildScoredQueueComment(
                     parseScoreFromComment(resolveCommentTextWithPreview(
                         state.fumen.pages, pageIndex, state.coldClear.queuePreview,
                     ) ?? '') ?? undefined,
-                    parsed.hold, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo, parsed.suffix);
+                    parsed.hold, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo,
+                    parsed.suffix);
             } else {
                 showSwapValidationError('missingCurrentPiece');
                 return undefined;
@@ -1908,14 +1924,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     parseScoreFromComment(resolveCommentTextWithPreview(
                         state.fumen.pages, pageIndex, state.coldClear.queuePreview,
                     ) ?? '') ?? undefined,
-                    spawnedPiece, nextSpawnPiece, parsed.queue, parsed.b2b, parsed.combo, parsed.suffix);
+                    spawnedPiece, nextSpawnPiece, parsed.queue, parsed.b2b, parsed.combo,
+                    parsed.suffix);
             } else if (0 < parsed.queue.length) {
                 nextSpawnPiece = parsed.queue[0];
                 nextComment = buildScoredQueueComment(
                     parseScoreFromComment(resolveCommentTextWithPreview(
                         state.fumen.pages, pageIndex, state.coldClear.queuePreview,
                     ) ?? '') ?? undefined,
-                    spawnedPiece, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo, parsed.suffix);
+                    spawnedPiece, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo,
+                    parsed.suffix);
             } else {
                 showSwapValidationError('missingQueue');
                 return undefined;

@@ -49,6 +49,21 @@ export interface Page {
         rise: boolean;
         quiz: boolean;
     };
+    /** Editor-only working data. Fumen encoding intentionally ignores this object. */
+    internal?: {
+        /** Comment data kept only while 7bag gray mode suppresses page comments. */
+        hiddenComment?: string;
+        sevenBagGrayProgress?: {
+            bag: number;
+            pieces: number;
+            lines: number;
+            perfectClears: number;
+        };
+        sevenBagGrayDisplay?: {
+            pieces: number[];
+            rowMap: number[];
+        };
+    };
 }
 
 export type PreCommand = BlockAction;

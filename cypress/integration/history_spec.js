@@ -99,7 +99,7 @@ describe('History', () => {
                 },
                 fumen: 'v115@vhARQJehT4MeUGYAA',
                 // ページ送り + スポーン + ドラッグ
-                count: 3,
+                count: 4,
             },
             {
                 callback: () => {
@@ -107,7 +107,7 @@ describe('History', () => {
                 },
                 fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAA',
                 // ページ送り + スポーン + 回転 + ドラッグ
-                count: 4,
+                count: 5,
             },
             {
                 callback: () => {
@@ -143,7 +143,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhFRQJUGJKJJAgHTNnTNn',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhCAgHTNnT?Nn',
                 count: 1,
             },
             {
@@ -151,7 +151,7 @@ describe('History', () => {
                     operations.mode.flags.open();
                     operations.mode.flags.lockToOn();
                 },
-                fumen: 'v115@vhFRQJUGJKJJAgHTNnTNJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhCAgHTNnT?NJ',
                 count: 1,
             },
         ];
@@ -274,7 +274,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?JAgH',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAgH',
                 count: 1,
             },
             {
@@ -282,7 +282,7 @@ describe('History', () => {
                     operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('hello world');
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?JAgWNAooMDEvoo2A3XaDEEBAAA',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAgWNAoo?MDEvoo2A3XaDEEBAAA',
                 count: 1,
             },
             {
@@ -292,7 +292,7 @@ describe('History', () => {
                     operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('こんにちは');
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJYeAlvs2A1sDfEToABBlvs2AWDEfET4J6Alvs2AW5AAAx?/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXDJAgWN?AooMDEvoo2A3XaDEEBAAA',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYeAlvs2A1sDfEToABBlvs2AWDEfET4J6Al?vs2AW5AAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooR?BUoAVBzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVB?zAAAAQhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToA?VBXhBtIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAg?WNAooMDEvoo2A3XaDEEBAAA',
                 count: 1,
             },
         ];

@@ -3,14 +3,14 @@ import { operations } from '../support/operations';
 
 const configurePieceSdf = value => {
     operations.menu.openUserSettings();
-    operations.menu.selectUserSettingsTab('piece');
+    operations.menu.selectUserSettingsTab('input');
     cy.get(datatest('input-piece-sdf')).select(String(value));
     cy.get(datatest('btn-save')).click();
 };
 
 const configurePieceHorizontalMove = (softDropPriority = false) => {
     operations.menu.openUserSettings();
-    operations.menu.selectUserSettingsTab('piece');
+    operations.menu.selectUserSettingsTab('input');
     cy.get(datatest('input-piece-arr')).clear().type('0').blur();
     cy.get(datatest('input-piece-das')).clear().type('5').blur();
     cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
@@ -130,7 +130,7 @@ describe('Put pieces', () => {
     it('applies ARR=0 DAS Cut to a queued spawn when DCD is zero', () => {
         visit({ mode: 'edit' });
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('input-piece-arr')).clear().type('0').blur();
         cy.get(datatest('input-piece-das')).clear().type('5').blur();
         cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
@@ -379,7 +379,7 @@ describe('Put pieces', () => {
     it('exposes the DAS Cut setting in piece settings', () => {
         visit({ mode: 'edit' });
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
 
         cy.get(datatest('input-piece-dcd'))
             .should('have.value', '0');

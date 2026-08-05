@@ -31,7 +31,7 @@ interface ListViewMenuModalProps {
         setExportScope: (data: { scope: 'all' | 'left' }) => void;
         setListViewShortenUrls: (data: { enabled: boolean }) => void;
         setListViewMenuTab: (data: { tab: 'export' | 'import' }) => void;
-        changeGifFrameDelay: (data: { delayMs: number }) => void;
+        setGifFrameDelay: (data: { delayMs: number }) => void;
         openListViewInFumenZui: () => void;
         openListViewInFumenForMobile: () => void;
         openListViewInExternalSite: () => void;
@@ -261,7 +261,7 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         const target = event.target as HTMLInputElement;
         const value = parseInt(target.value, 10);
         if (!isNaN(value) && value >= 100 && value <= 10000) {
-            actions.changeGifFrameDelay({ delayMs: value });
+            actions.setGifFrameDelay({ delayMs: value });
         }
     };
 

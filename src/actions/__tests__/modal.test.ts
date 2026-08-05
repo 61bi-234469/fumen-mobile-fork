@@ -31,7 +31,7 @@ const createState = (overrides: {
     listViewMenuTab?: 'export' | 'import';
 } = {}): State => ({
     modal: { ...baseModal, ...(overrides.modal ?? {}) },
-    temporary: { userSettingsTab: 'field', pieceQueueFocus: 'next' },
+    temporary: { userSettingsTab: 'edit', pieceQueueFocus: 'next' },
     listView: { menuTab: overrides.listViewMenuTab ?? 'export' },
     coldClear: { isRunning: overrides.coldClearRunning ?? false },
 } as unknown as State);
@@ -58,20 +58,20 @@ describe('modalActions characterization tests', () => {
     });
 
     describe('openUserSettingsModal', () => {
-        test('no argument defaults userSettingsTab to field', () => {
+        test('no argument defaults userSettingsTab to edit', () => {
             const state = createState();
             const result = (modalActions.openUserSettingsModal as any)()(state);
 
             expect(result.modal).toEqual({ ...baseModal, userSettings: true });
-            expect(result.temporary.userSettingsTab).toBe('field');
+            expect(result.temporary.userSettingsTab).toBe('edit');
         });
 
         test('initialTab argument sets userSettingsTab', () => {
             const state = createState();
-            const result = (modalActions.openUserSettingsModal as any)({ initialTab: 'piece' })(state);
+            const result = (modalActions.openUserSettingsModal as any)({ initialTab: 'input' })(state);
 
             expect(result.modal).toEqual({ ...baseModal, userSettings: true });
-            expect(result.temporary.userSettingsTab).toBe('piece');
+            expect(result.temporary.userSettingsTab).toBe('input');
         });
     });
 

@@ -9,8 +9,8 @@ describe('User settings', () => {
         visit({ mode: 'edit' });
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-piece')).click();
-        cy.get(datatest('panel-user-settings-piece')).then(panel => {
+        cy.get(datatest('tab-user-settings-input')).click();
+        cy.get(datatest('panel-user-settings-input')).then(panel => {
             const expectedOrder = [
                 'input-piece-shortcut-Hold',
                 'input-piece-shortcut-Reset',
@@ -45,7 +45,7 @@ describe('User settings', () => {
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-piece')).click();
+        cy.get(datatest('tab-user-settings-input')).click();
         cy.get(datatest('input-piece-das')).should('have.value', '5.5');
         cy.get(datatest('input-piece-arr')).should('have.value', '1.5');
         cy.get(datatest('input-piece-sdf')).should('have.value', '10');
@@ -87,21 +87,21 @@ describe('User settings', () => {
 
         // visible -> hidden
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
         cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // cancel
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-cancel')).click();
 
         // reload
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
 
@@ -109,14 +109,14 @@ describe('User settings', () => {
 
         // hidden -> visible
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('switch-ghost-visible')).should('not.be.checked');
         cy.get(datatest('switch-ghost-visible')).check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // verify
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('piece');
+        operations.menu.selectUserSettingsTab('input');
         cy.get(datatest('switch-ghost-visible')).should('be.checked');
     });
 
@@ -158,7 +158,7 @@ describe('User settings', () => {
 
         // disable -> enable
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(datatest('switch-loop')).parents('.switch').should('not.contain', '[Reader]');
         cy.get(datatest('switch-loop')).should('not.be.checked');
         cy.get(datatest('switch-loop')).check({ force: true });
@@ -166,14 +166,14 @@ describe('User settings', () => {
 
         // cancel
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
         cy.get(datatest('btn-cancel')).click();
 
         // reload
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
 
@@ -188,14 +188,14 @@ describe('User settings', () => {
 
         // enable -> disable
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(datatest('switch-loop')).should('be.checked');
         cy.get(datatest('switch-loop')).uncheck({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // verify
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(datatest('switch-loop')).should('not.be.checked');
     });
 
@@ -237,14 +237,14 @@ describe('User settings', () => {
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
         cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
-        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
-        cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'none');
+        cy.get(datatest('panel-user-settings-input')).should('have.css', 'display', 'none');
 
         // タブ切替
-        cy.get(datatest('tab-user-settings-piece')).click();
-        cy.get(datatest('panel-user-settings-piece')).should('have.css', 'display', 'block');
-        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
+        cy.get(datatest('tab-user-settings-input')).click();
+        cy.get(datatest('panel-user-settings-input')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
 
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
@@ -261,7 +261,7 @@ describe('User settings', () => {
         cy.get(datatest('btn-list-view-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
         cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
-        cy.get(datatest('panel-user-settings-field')).should('have.css', 'display', 'none');
+        cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
     });
@@ -275,7 +275,7 @@ describe('User settings', () => {
         cy.get(datatest('btn-writable-in-reader')).should('be.visible');
 
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(initialScreenRadio('reader')).should('be.checked');
         cy.get(initialScreenRadio('editor')).check({ force: true });
         cy.get(datatest('btn-save')).click();
@@ -286,7 +286,7 @@ describe('User settings', () => {
         cy.get(datatest('btn-editor-user-settings')).should('be.visible');
 
         operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('misc');
+        operations.menu.selectUserSettingsTab('general');
         cy.get(initialScreenRadio('editor')).should('be.checked');
         cy.get(initialScreenRadio('list')).check({ force: true });
         cy.get(datatest('btn-save')).click();
@@ -304,8 +304,8 @@ describe('User settings', () => {
         visit({ mode: 'edit' });
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-field')).should('not.be.checked');
-        cy.get(datatest('switch-gray-after-line-clear-field')).check({ force: true });
+        cy.get(datatest('switch-gray-after-line-clear-edit')).should('not.be.checked');
+        cy.get(datatest('switch-gray-after-line-clear-edit')).check({ force: true });
 
         // 同一設定なのでリスト/ツリービュータブ側も連動する
         cy.get(datatest('switch-gray-after-line-clear-view')).should('be.checked');
@@ -313,13 +313,13 @@ describe('User settings', () => {
 
         // 保存後に開き直しても有効のまま
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-field')).should('be.checked');
+        cy.get(datatest('switch-gray-after-line-clear-edit')).should('be.checked');
 
         // キャンセルで閉じても保存値は変わらない
-        cy.get(datatest('switch-gray-after-line-clear-field')).uncheck({ force: true });
+        cy.get(datatest('switch-gray-after-line-clear-edit')).uncheck({ force: true });
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-field')).should('be.checked');
+        cy.get(datatest('switch-gray-after-line-clear-edit')).should('be.checked');
         cy.get(datatest('btn-cancel')).click();
     });
 
@@ -391,9 +391,9 @@ describe('User settings', () => {
         visit({ mode: 'edit' });
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('tab-user-settings-general')).click();
         // 「ページローテーション」→説明文→ページ数の順に並べ、トグルは持たない
-        cy.get(datatest('panel-user-settings-misc')).then(panel => {
+        cy.get(datatest('panel-user-settings-general')).then(panel => {
             const order = ['label-page-rotation-limit', 'input-page-rotation-limit'];
             const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
             const indexes = order.map(value => datatests.findIndex(element =>
@@ -410,21 +410,21 @@ describe('User settings', () => {
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('tab-user-settings-general')).click();
         cy.get(datatest('input-page-rotation-limit')).should('have.value', '999').clear().type('25').blur();
         cy.get(datatest('btn-save')).click();
 
         // Reload restores the saved value.
         visit({ mode: 'edit', reload: true });
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('tab-user-settings-general')).click();
         cy.get(datatest('input-page-rotation-limit')).should('have.value', '25');
 
         // Cancel does not roll back a previously saved value.
         cy.get(datatest('input-page-rotation-limit')).clear().type('7').blur();
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-misc')).click();
+        cy.get(datatest('tab-user-settings-general')).click();
         cy.get(datatest('input-page-rotation-limit')).should('have.value', '25');
         cy.get(datatest('btn-cancel')).click();
     });

@@ -49,7 +49,7 @@ export const defaultPieceShortcuts: PieceShortcuts = {
 
 export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
-export type UserSettingsTab = 'field' | 'view' | 'shortcuts' | 'piece' | 'misc';
+export type UserSettingsTab = 'edit' | 'view' | 'input' | 'keys' | 'general';
 
 export type { InitialScreenSetting } from './lib/initial_screen';
 
@@ -239,7 +239,6 @@ export interface State {
             pieceShortcutDasCutFrames: number;
             pieceShortcutSdf: number;
             pieceShortcutSoftDropPriority: boolean;
-            gifFrameDelayMs: number;
             rotationSystem: RotationSystem;
             sevenBagGrayEnabled: boolean;
             pageRotationLimit: number;
@@ -435,7 +434,6 @@ export const initState: Readonly<State> = {
             pieceShortcutDasCutFrames: DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES,
             pieceShortcutSdf: DEFAULT_PIECE_SHORTCUT_SDF,
             pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
-            gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
             rotationSystem: 'srs',
             sevenBagGrayEnabled: false,
             pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
@@ -444,7 +442,7 @@ export const initState: Readonly<State> = {
             editorSidePanel: false,
             flagsHidden: true,
         },
-        userSettingsTab: 'field',
+        userSettingsTab: 'edit',
         pieceQueueFocus: 'next',
     },
     handlers: {

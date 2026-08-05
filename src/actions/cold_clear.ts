@@ -159,6 +159,7 @@ export interface ColdClearActions {
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     toggleInfinitePieceQueue: () => action;
+    applyInfinitePieceQueueMode: (data: { enabled: boolean }) => action;
     swapCurrentPieceWithHoldQueue: () => action;
     returnCurrentPieceToQueue: () => action;
     previewColdClearQueueComment: (data: {
@@ -1810,20 +1811,14 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             const withoutProgress = comment === null ? null : withSevenBagGrayDisplay(
                 withSevenBagGrayProgress(comment, undefined), undefined,
             );
-            const nextEditorUi = (nextState: State): NextState => ({ editorUi: {
-                ...nextState.editorUi, infinitePieceQueue: false, paletteSelection: 'comp',
-            } });
-            if (!appActions || withoutProgress === null || withoutProgress === comment) {
-                return sequence(state, [
-                    resetCurrentSevenBagGrayProgress(false),
-                    nextEditorUi,
-                ]);
+            if (!appActions) {
+                return coldClearActions.applyInfinitePieceQueueMode({ enabled: false })(state);
             }
-            return sequence(state, [
-                resetCurrentSevenBagGrayProgress(false),
-                () => { appActions!.setCommentText({ pageIndex, text: withoutProgress }); return undefined; },
-                nextEditorUi,
-            ]);
+            if (withoutProgress !== null && withoutProgress !== comment) {
+                appActions.setCommentText({ pageIndex, text: withoutProgress });
+            }
+            appActions.applyInfinitePieceQueueMode({ enabled: false });
+            return undefined;
         }
 
         const pageIndex = state.fumen.currentIndex;
@@ -1874,37 +1869,33 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 parsed.combo,
                 parsed.suffix,
             );
-        const nextEditorUi = (nextState: State): NextState => ({
-            editorUi: {
-                ...nextState.editorUi,
-                infinitePieceQueue: true,
-                paletteSelection: 'comp',
-            },
-        });
-
         if (!appActions) {
-            return sequence(state, [
-                resetCurrentSevenBagGrayProgress(true),
-                nextEditorUi,
-            ]);
+            return coldClearActions.applyInfinitePieceQueueMode({ enabled: true })(state);
         }
 
         const runtimeActions = appActions;
-        return sequence(state, [
-            resetCurrentSevenBagGrayProgress(true),
-            () => {
-                runtimeActions.setCommentText({ pageIndex, text: nextComment });
-                if (initialSpawnPiece !== undefined) {
-                    runtimeActions.spawnPiece({
-                        piece: initialSpawnPiece,
-                        srs: state.mode.rotationSystem !== 'classic',
-                    });
-                    runtimeActions.changePieceAction({ pieceAction: 'drag' });
-                }
-                return undefined;
+        runtimeActions.setCommentText({ pageIndex, text: nextComment });
+        if (initialSpawnPiece !== undefined) {
+            runtimeActions.spawnPiece({
+                piece: initialSpawnPiece,
+                srs: state.mode.rotationSystem !== 'classic',
+            });
+            runtimeActions.changePieceAction({ pieceAction: 'drag' });
+        }
+        runtimeActions.applyInfinitePieceQueueMode({ enabled: true });
+        return undefined;
+    },
+
+    applyInfinitePieceQueueMode: ({ enabled }) => (state): NextState => {
+        const progress = resetCurrentSevenBagGrayProgress(enabled)(state);
+        return {
+            ...progress,
+            editorUi: {
+                ...state.editorUi,
+                infinitePieceQueue: enabled,
+                paletteSelection: 'comp',
             },
-            nextEditorUi,
-        ]);
+        };
     },
 
     swapCurrentPieceWithHoldQueue: () => (state): NextState => {

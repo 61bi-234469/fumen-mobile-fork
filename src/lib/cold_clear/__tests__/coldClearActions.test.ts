@@ -85,6 +85,36 @@ function getColdClear(result: any) {
     return result && result.coldClear;
 }
 
+function runInfiniteQueueToggle(state: any) {
+    let currentState = state;
+    const setCommentText = jest.fn(({ pageIndex, text }) => {
+        const pages = currentState.fumen.pages.slice();
+        const page = pages[pageIndex];
+        pages[pageIndex] = currentState.mode.sevenBagGrayEnabled
+            ? { ...page, comment: {}, internal: { ...page.internal, hiddenComment: text } }
+            : { ...page, comment: { ...page.comment, text } };
+        currentState = { ...currentState, fumen: { ...currentState.fumen, pages } };
+    });
+    const spawnPiece = jest.fn(({ piece }) => {
+        const pages = currentState.fumen.pages.slice();
+        pages[currentState.fumen.currentIndex] = {
+            ...pages[currentState.fumen.currentIndex],
+            piece: { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } },
+        };
+        currentState = { ...currentState, fumen: { ...currentState.fumen, pages } };
+    });
+    const changePieceAction = jest.fn(({ pieceAction }) => {
+        currentState = { ...currentState, editorUi: { ...currentState.editorUi, pieceAction } };
+    });
+    const applyInfinitePieceQueueMode = jest.fn(({ enabled }) => {
+        const partial = coldClearActions.applyInfinitePieceQueueMode({ enabled })(currentState) as any;
+        currentState = { ...currentState, ...partial };
+    });
+    initColdClearActions({ setCommentText, spawnPiece, changePieceAction, applyInfinitePieceQueueMode } as any);
+    const result = coldClearActions.toggleInfinitePieceQueue()(currentState);
+    return { currentState, result, setCommentText, spawnPiece, changePieceAction, applyInfinitePieceQueueMode };
+}
+
 // Helper: create a minimal mock State for cold clear actions
 function makeColdClearState(overrides: {
     isRunning?: boolean;
@@ -1863,13 +1893,8 @@ describe('coldClearActions run isolation', () => {
 
     test('toggleInfinitePieceQueue creates a random queue when the comment is empty', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
-        const setCommentText = jest.fn().mockReturnValue(() => ({}));
-        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
-        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
-        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
-
         const state = makeColdClearState({ commentText: '' });
-        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+        const { currentState, result, setCommentText, spawnPiece, changePieceAction } = runInfiniteQueueToggle(state);
 
         expect(setCommentText).toHaveBeenCalledWith({
             text: '#Q=[](O)TJLSZI',
@@ -1877,18 +1902,14 @@ describe('coldClearActions run isolation', () => {
         });
         expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.O, srs: true });
         expect(changePieceAction).toHaveBeenCalledWith({ pieceAction: 'drag' });
-        expect(result.editorUi.infinitePieceQueue).toBe(true);
+        expect(result).toBeUndefined();
+        expect(currentState.editorUi.infinitePieceQueue).toBe(true);
 
         randomSpy.mockRestore();
     });
 
     test('resets seven-bag gray progress when enabling infinite queue', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
-        const setCommentText = jest.fn().mockReturnValue(() => ({}));
-        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
-        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
-        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
-
         const state: any = makeColdClearState({ commentText: '' });
         state.mode.sevenBagGrayEnabled = true;
         state.fumen.pages[0].internal = {
@@ -1896,18 +1917,17 @@ describe('coldClearActions run isolation', () => {
             sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
         };
 
-        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+        const { currentState } = runInfiniteQueueToggle(state);
 
-        expect(result.fumen.pages[0].internal).toEqual({
+        expect(currentState.fumen.pages[0].internal).toEqual({
+            hiddenComment: '#Q=[](O)TJLSZI',
             sevenBagGrayProgress: { bag: 0, pieces: 0, lines: 0, perfectClears: 0 },
         });
+        expect(currentState.fumen.pages[0].piece.type).toBe(Piece.O);
         randomSpy.mockRestore();
     });
 
     test('clears seven-bag gray progress when disabling infinite queue', () => {
-        const setCommentText = jest.fn().mockReturnValue(() => ({}));
-        initColdClearActions({ setCommentText } as any);
-
         const state: any = makeColdClearState({ commentText: '#Q=[](T)IOLJSZ' });
         state.mode.sevenBagGrayEnabled = true;
         state.editorUi.infinitePieceQueue = true;
@@ -1917,20 +1937,16 @@ describe('coldClearActions run isolation', () => {
             sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
         };
 
-        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+        const { currentState } = runInfiniteQueueToggle(state);
 
-        expect(result.fumen.pages[0].internal).toEqual({ hiddenComment: '#Q=[](T)IOLJSZ' });
+        expect(currentState.fumen.pages[0].internal).toEqual({ hiddenComment: '#Q=[](T)IOLJSZ' });
+        expect(currentState.editorUi.infinitePieceQueue).toBe(false);
     });
 
     test('toggleInfinitePieceQueue warns before replacing a non-queue comment', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
-        const setCommentText = jest.fn().mockReturnValue(() => ({}));
-        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
-        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
-        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
-
         const state = makeColdClearState({ commentText: 'memo' });
-        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+        const { currentState, setCommentText, spawnPiece, changePieceAction } = runInfiniteQueueToggle(state);
 
         expect(setCommentText).toHaveBeenCalledWith({
             text: '#Q=[](O)TJLSZI',
@@ -1941,20 +1957,15 @@ describe('coldClearActions run isolation', () => {
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
             html: 'Infinite bag replaced non-queue comment',
         }));
-        expect(result.editorUi.infinitePieceQueue).toBe(true);
+        expect(currentState.editorUi.infinitePieceQueue).toBe(true);
 
         randomSpy.mockRestore();
     });
 
     test('toggleInfinitePieceQueue appends one whole bag when the existing queue is below seven', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
-        const setCommentText = jest.fn().mockReturnValue(() => ({}));
-        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
-        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
-        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
-
         const state = makeColdClearState({ commentText: 'I' });
-        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+        const { currentState, setCommentText, spawnPiece, changePieceAction } = runInfiniteQueueToggle(state);
 
         expect(setCommentText).toHaveBeenCalledWith({
             text: '#Q=[](I)OTJLSZI',
@@ -1962,7 +1973,7 @@ describe('coldClearActions run isolation', () => {
         });
         expect(spawnPiece).toHaveBeenCalledWith({ piece: Piece.I, srs: true });
         expect(changePieceAction).toHaveBeenCalledWith({ pieceAction: 'drag' });
-        expect(result.editorUi.infinitePieceQueue).toBe(true);
+        expect(currentState.editorUi.infinitePieceQueue).toBe(true);
 
         randomSpy.mockRestore();
     });

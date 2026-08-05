@@ -20,6 +20,7 @@ jest.mock('../../actions', () => ({
         removeUnsettledItems: jest.fn(() => () => undefined),
         commitCommentText: jest.fn(() => () => undefined),
         reopenCurrentPage: jest.fn(() => () => undefined),
+        registerHistoryTask: jest.fn(() => () => undefined),
     },
     main: {},
 }));
@@ -209,6 +210,70 @@ describe('addBranchFromCurrentNode', () => {
         expect(next.fumen.pages[2].flags.quiz).toBe(true);
         const expectedField = new Pages(state.fumen.pages).getField(1, PageFieldOperation.All);
         expect(next.fumen.pages[2].field.obj.equals(expectedField)).toBe(true);
+    });
+});
+
+describe('forkSevenBagGrayInputPage', () => {
+    test('creates an independent pre-placement page without a tree', () => {
+        const state = createBaseState();
+        state.tree.enabled = false;
+        state.fumen.currentIndex = 0;
+        state.fumen.pages[0] = {
+            ...state.fumen.pages[0],
+            field: { obj: new Field({}) },
+            piece: createSpawnMove(Piece.T, false),
+            internal: {
+                hiddenComment: '#Q=[](T)I',
+                sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 },
+            },
+        };
+
+        const next = treeOperationActions.forkSevenBagGrayInputPage()(state) as any;
+        const workspace = next.fumen.pages[2];
+
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(workspace.field.obj).toBeDefined();
+        expect(workspace.field.ref).toBeUndefined();
+        expect(workspace.piece).toEqual(state.fumen.pages[0].piece);
+        expect(workspace.internal).toMatchObject({
+            hiddenComment: '#Q=[](T)I',
+            sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 },
+            sevenBagGrayWorkspace: true,
+        });
+    });
+
+    test('branches the workspace before an existing later tree branch', () => {
+        const state = createBaseState();
+        const extraPage: Page = {
+            index: 2,
+            field: { ref: 0 },
+            comment: { ref: 0 },
+            flags: { ...defaultFlags },
+        };
+        state.fumen.pages.push(extraPage);
+        state.fumen.maxPage = 3;
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        const p0 = findNodeByPageIndex(tree, 0)!;
+        const p1 = findNodeByPageIndex(tree, 1)!;
+        state.tree.nodes = state.tree.nodes.map((node: any) => {
+            if (node.id === p0.id) return { ...node, childrenIds: [p1.id, 'later'] };
+            if (node.id === p1.id) return { ...node, childrenIds: [] };
+            return node;
+        }).concat({ id: 'later', pageIndex: 2, parentId: p0.id, childrenIds: [] });
+        state.fumen.pages[1] = {
+            ...state.fumen.pages[1],
+            piece: createSpawnMove(Piece.T, false),
+        };
+
+        const next = treeOperationActions.forkSevenBagGrayInputPage()(state) as any;
+        const nextTree = { nodes: next.tree.nodes, rootId: next.tree.rootId, version: 1 as const };
+        const workspaceNode = findNode(nextTree, next.tree.activeNodeId)!;
+
+        expect(next.fumen.currentIndex).toBe(workspaceNode.pageIndex);
+        expect(workspaceNode.pageIndex).toBe(2);
+        expect(next.fumen.pages[2].internal!.sevenBagGrayWorkspace).toBe(true);
+        expect(next.fumen.pages[3].comment).toEqual({ ref: 0 });
+        expect(findNode(nextTree, p1.id)!.childrenIds).toEqual([workspaceNode.id]);
     });
 });
 

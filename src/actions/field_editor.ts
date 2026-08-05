@@ -118,7 +118,16 @@ export const isSevenBagGrayInput = (state: State): boolean => (
     && state.editorUi.pieceLayout === 'play'
     && state.editorUi.infinitePieceQueue
     && state.mode.sevenBagGrayEnabled
-    && state.fumen.currentIndex === state.fumen.pages.length - 1
+    && (state.fumen.currentIndex === state.fumen.pages.length - 1
+        || state.fumen.pages[state.fumen.currentIndex]?.internal?.sevenBagGrayWorkspace === true)
+);
+
+const isSevenBagGrayInputMode = (state: State): boolean => (
+    state.mode.screen === Screens.Editor
+    && state.editorUi.primaryTool === 'piece'
+    && state.editorUi.pieceLayout === 'play'
+    && state.editorUi.infinitePieceQueue
+    && state.mode.sevenBagGrayEnabled
 );
 
 // Right-click is an eraser in every primary tool. Area erase (fill / fillRow) only
@@ -208,7 +217,12 @@ const clearSevenBagGrayState = (state: State): NextState => {
     }
 
     const previousPage = toPrimitivePage(page);
-    const { sevenBagGrayProgress: _progress, sevenBagGrayDisplay: _display, ...internal } = currentInternal;
+    const {
+        sevenBagGrayProgress: _progress,
+        sevenBagGrayDisplay: _display,
+        sevenBagGrayWorkspace: _workspace,
+        ...internal
+    } = currentInternal;
     const nextPage: Page = {
         ...page,
         internal: Object.keys(internal).length === 0 ? undefined : internal,
@@ -1155,6 +1169,18 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.softdrop(),
             (nextState) => {
+                if (isSevenBagGrayInputMode(nextState) && !isSevenBagGrayInput(nextState)) {
+                    return sequence(nextState, [
+                        actions.forkSevenBagGrayInputPage(),
+                        afterFork => ({
+                            events: {
+                                ...afterFork.events,
+                                lastPieceManipulation: rotationEvidence,
+                            },
+                        }),
+                        afterFork => fieldEditorActions.harddrop()(afterFork),
+                    ]);
+                }
                 const pageIndex = nextState.fumen.currentIndex;
                 const page = nextState.fumen.pages[pageIndex];
                 if (page?.piece === undefined || !page.flags.lock) {
@@ -1233,6 +1259,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                             })(afterState),
                             replaceCurrentPageField(nextBagField, {
                                 sevenBagGrayProgress: nextProgress,
+                                sevenBagGrayWorkspace: page.internal?.sevenBagGrayWorkspace,
                             }),
                         ] : []),
                         actions.spawnNextPieceFromColdClearQueue({

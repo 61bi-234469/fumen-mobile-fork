@@ -19,9 +19,26 @@ jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { fieldEditorActions } = require('../field_editor');
+const { fieldEditorActions, isSevenBagGrayInput } = require('../field_editor');
 
 describe('harddrop', () => {
+    test('continues seven-bag gray INPUT on a detached workspace branch', () => {
+        const state: any = {
+            fumen: {
+                currentIndex: 1,
+                pages: [
+                    { internal: undefined },
+                    { internal: { sevenBagGrayWorkspace: true } },
+                    { internal: undefined },
+                ],
+            },
+            editorUi: { primaryTool: 'piece', pieceLayout: 'play', infinitePieceQueue: true },
+            mode: { screen: 'Editor', sevenBagGrayEnabled: true },
+        };
+
+        expect(isSevenBagGrayInput(state)).toBe(true);
+    });
+
     test('keeps rotation evidence while dropping a rotated INPUT mino to the floor', () => {
         const state: any = {
             fumen: {

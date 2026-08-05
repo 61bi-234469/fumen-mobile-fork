@@ -48,7 +48,7 @@ import {
     updateTreePageIndices,
     removeTreeFromComment,
 } from '../lib/fumen/tree_utils';
-import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
+import { OperationTask, toInsertPageTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
@@ -289,6 +289,7 @@ export interface TreeOperationActions {
 
     // Tree operations with history support
     addBranchFromCurrentNode: (data?: { parentNodeId?: TreeNodeId }) => action;
+    forkSevenBagGrayInputPage: () => action;
     addRootFromCurrentNode: () => action;
     insertNodeAfterCurrent: (data?: { parentNodeId?: TreeNodeId }) => action;
     copyTreeNode: (data: { nodeId: TreeNodeId }) => action;
@@ -710,6 +711,37 @@ const clonePageForAppend = (page: Page, index: number): Page => {
     };
 };
 
+const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
+    const sourceIndex = state.fumen.currentIndex;
+    const source = state.fumen.pages[sourceIndex];
+    if (source === undefined) return undefined;
+
+    const field = new Pages(state.fumen.pages).getField(sourceIndex, PageFieldOperation.Command);
+    const sourceInternal = source.internal;
+    const internal = {
+        hiddenComment: sourceInternal?.hiddenComment,
+        sevenBagGrayProgress: sourceInternal?.sevenBagGrayProgress === undefined
+            ? undefined : { ...sourceInternal.sevenBagGrayProgress },
+        sevenBagGrayDisplay: sourceInternal?.sevenBagGrayDisplay === undefined ? undefined : {
+            pieces: sourceInternal.sevenBagGrayDisplay.pieces.slice(),
+            rowMap: sourceInternal.sevenBagGrayDisplay.rowMap.slice(),
+        },
+        sevenBagGrayWorkspace: true,
+    };
+    return {
+        internal,
+        index: state.fumen.pages.length,
+        field: { obj: field.copy() },
+        piece: source.piece === undefined ? undefined : {
+            type: source.piece.type,
+            rotation: source.piece.rotation,
+            coordinate: { ...source.piece.coordinate },
+        },
+        comment: { ...source.comment },
+        flags: { ...source.flags },
+    };
+};
+
 interface TreeCommitInput {
     prevSnapshot: TreeOperationSnapshot;
     tree: SerializedTree;             // transformed (pre-normalize) tree
@@ -1083,6 +1115,46 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             activeNodeId: newNodeId,
         });
     }),
+
+    /**
+     * INPUT + 7bag gray must not settle a page which has later dependents.
+     * Fork an independent pre-placement workspace; in tree mode it is a child branch.
+     */
+    forkSevenBagGrayInputPage: () => (state): NextState => {
+        const workspace = createSevenBagGrayWorkspacePage(state);
+        if (workspace === undefined) return undefined;
+
+        if (!state.tree.enabled) {
+            const insertIndex = state.fumen.pages.length;
+            const pages = [...state.fumen.pages, workspace];
+            const task = toInsertPageTask(insertIndex, [toPrimitivePage(workspace)], state.fumen.currentIndex);
+            return sequence(state, [
+                actions.registerHistoryTask({ task }),
+                () => ({
+                    fumen: {
+                        ...state.fumen,
+                        pages,
+                        maxPage: pages.length,
+                        currentIndex: insertIndex,
+                    },
+                }),
+                actions.reopenCurrentPage(),
+            ]);
+        }
+
+        const tree = getOrCreateTree(state);
+        const currentNode = findNodeByPageIndex(tree, state.fumen.currentIndex);
+        if (currentNode === undefined) return undefined;
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+        const { tree: nextTree, newNodeId } = addBranchNode(tree, currentNode.id, workspace.index);
+        return commitTreeOperation(state, {
+            prevSnapshot,
+            tree: nextTree,
+            pages: [...state.fumen.pages, workspace],
+            currentIndex: workspace.index,
+            activeNodeId: newNodeId,
+        });
+    },
 
     /**
      * Add a new top-level page under the virtual root

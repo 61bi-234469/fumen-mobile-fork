@@ -63,6 +63,8 @@ export interface Page {
             pieces: number[];
             rowMap: number[];
         };
+        /** A detached INPUT workspace created to protect later pages/branches. */
+        sevenBagGrayWorkspace?: boolean;
     };
 }
 

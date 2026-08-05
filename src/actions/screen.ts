@@ -347,6 +347,7 @@ export const modeActions: Readonly<ScreenActions> = {
                     hiddenComment: _hiddenComment,
                     sevenBagGrayProgress: _progress,
                     sevenBagGrayDisplay: _display,
+                    sevenBagGrayWorkspace: _workspace,
                     ...internal
                 } = page.internal ?? {};
                 return {
@@ -362,11 +363,13 @@ export const modeActions: Readonly<ScreenActions> = {
             : state.fumen.pages.map((page) => {
                 const hiddenComment = page.internal?.hiddenComment;
                 const hasWorkingData = page.internal?.sevenBagGrayProgress !== undefined
-                    || page.internal?.sevenBagGrayDisplay !== undefined;
+                    || page.internal?.sevenBagGrayDisplay !== undefined
+                    || page.internal?.sevenBagGrayWorkspace === true;
                 const {
                     hiddenComment: _hiddenComment,
                     sevenBagGrayProgress: _progress,
                     sevenBagGrayDisplay: _display,
+                    sevenBagGrayWorkspace: _workspace,
                     ...internal
                 } = page.internal ?? {};
                 if (hiddenComment === undefined && !hasWorkingData) {

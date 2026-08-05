@@ -168,9 +168,10 @@ const ALLOWLIST: ReadonlyArray<string> = [
     // `datatest={inputDatatest ? inputDatatest(key) : undefined}` — never a
     // `datatest: \`...\`` / `datatest={\`...\`}` template literal, so the src-side
     // dynamic-pattern rule above can't see it. user_settings_spec.js references these
-    // three directly via datatest(...) calls.
+    // four directly via datatest(...) calls.
     'input-piece-shortcut-HardDrop',
     'input-piece-shortcut-Hold',
+    'input-piece-shortcut-Reset',
     'input-piece-shortcut-SoftDrop',
 ];
 

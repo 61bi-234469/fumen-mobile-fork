@@ -121,6 +121,18 @@ describe('editorInteractionActions', () => {
         expect(entered.editorUi.pieceLayout).toBe('play');
     });
 
+    test('a mino palette shortcut always enters the PIECE layout from a saved INPUT layout', () => {
+        const state = createState();
+        state.editorUi.pieceLayout = 'play';
+
+        const next = apply(state, editorInteractionActions.executeEditorPaletteShortcut({ selection: Piece.I }));
+
+        expect(next.editorUi.primaryTool).toBe('piece');
+        expect(next.editorUi.pieceLayout).toBe('select');
+        expect(next.editorUi.pieceAction).toBe('drag');
+        expect(persistViewSettings).toHaveBeenCalledWith(expect.anything(), { pieceLayout: 'select' });
+    });
+
     test('opens an inspector without changing the active tool or legacy touch mode', () => {
         const state = createState();
         state.mode.type = ModeTypes.Piece;

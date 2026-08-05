@@ -364,6 +364,22 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('setSevenBagGrayEnabled', () => {
+        test('updates and persists the shared seven-bag gray setting immediately', () => {
+            const state = createState();
+            mockActions.changeSevenBagGrayEnabled = jest.fn(({ enable }) => (current: any) => ({
+                mode: { ...current.mode, sevenBagGrayEnabled: enable },
+            }));
+
+            userSettingsActions.setSevenBagGrayEnabled({ enable: true })(state);
+
+            expect(mockActions.changeSevenBagGrayEnabled).toHaveBeenCalledWith({ enable: true });
+            expect(saveUserSettingsMock).toHaveBeenCalledWith(expect.objectContaining({
+                sevenBagGrayEnabled: true,
+            }));
+        });
+    });
+
     describe('commitUserSettings', () => {
         beforeEach(() => {
             const actionNames = [

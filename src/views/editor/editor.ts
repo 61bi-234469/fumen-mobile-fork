@@ -314,10 +314,15 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         nextMinoHeight: layout.pieceQueue.nextMinoHeight,
         guideLineColor: state.fumen.guideLineColor,
         infinitePieceQueue: state.editorUi.infinitePieceQueue,
+        sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
         openSettings: ({ focus }) => actions.openPieceQueueModal({ focus }),
         toggleInfinitePieceQueue: () => {
             actions.commitCommentText();
             actions.toggleInfinitePieceQueue();
+        },
+        toggleSevenBagGray: () => {
+            actions.commitCommentText();
+            actions.setSevenBagGrayEnabled({ enable: !state.mode.sevenBagGrayEnabled });
         },
     }) : null;
 
@@ -484,7 +489,10 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             nextPage: actions.nextPage,
             firstPage: actions.firstPage,
             lastPage: actions.lastPage,
-            duplicatePageOnly: actions.duplicatePageOnly,
+            duplicatePageOnly: state.editorUi.primaryTool === 'piece'
+                && state.editorUi.pieceLayout === 'select'
+                ? actions.duplicatePageToGray
+                : actions.duplicatePageOnly,
             duplicatePageToGray: actions.duplicatePageToGray,
             undo: actions.undo,
             redo: actions.redo,

@@ -97,37 +97,37 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.Z, Rotation.Spawn, 4, 1);
                 },
-                fumen: 'v115@vhBRQJUGJ',
+                fumen: 'v115@vhARQJehT4MeUGYAA',
                 // ページ送り + スポーン + ドラッグ
-                count: 3,
+                count: 4,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.L, Rotation.Right, 0, 1);
                 },
-                fumen: 'v115@vhCRQJUGJKJJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAA',
                 // ページ送り + スポーン + 回転 + ドラッグ
-                count: 4,
+                count: 5,
             },
             {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhDRQJUGJKJJAgH',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhAAgH',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHAgH',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHAgH',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 0);
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHTNJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHTNJ',
                 // スポーン + ドラッグ
                 count: 2,
             },
@@ -136,14 +136,14 @@ describe('History', () => {
                     operations.mode.flags.open();
                     operations.mode.flags.lockToOff();
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHTNn',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHTNn',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhFRQJUGJKJJAgHTNnTNn',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhCAgHTNnT?Nn',
                 count: 1,
             },
             {
@@ -151,7 +151,7 @@ describe('History', () => {
                     operations.mode.flags.open();
                     operations.mode.flags.lockToOn();
                 },
-                fumen: 'v115@vhFRQJUGJKJJAgHTNnTNJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhCAgHTNnT?NJ',
                 count: 1,
             },
         ];
@@ -176,7 +176,7 @@ describe('History', () => {
                     operations.menu.lastPage();
                     operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 2);
                 },
-                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhB5eBFlB',
+                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhA5eBygQ4hlBeQpDeQ4glBeSpQ4BeQ4glCexhQ4?BtQ4xwAexhg0Q4glBtxwAei0Q4ilJeFlQAA',
                 count: 1,
             },
             {
@@ -185,7 +185,7 @@ describe('History', () => {
                     operations.mode.tools.nextPage();
                     operations.mode.tools.removePage();
                 },
-                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IygwhIewhIewhIewhdeFlQAA',
+                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IygA8hlBeQpDeA8glBeSpQ4BeA8glCexhQ4BtA8xw?Aexhg0Q4glBtxwAei0Q4ilJeFlQAA',
                 count: 1,
             },
             {
@@ -193,7 +193,7 @@ describe('History', () => {
                     operations.menu.firstPage();
                     operations.mode.tools.removePage();
                 },
-                fumen: 'v115@ygwhh0BewwDewhg0BeywwhBewhg0CeR4whBtwhRpAe?R4glwhg0BtRpAeilwhi0JeFFJ',
+                fumen: 'v115@ygC8BeA8DeB8BeD8BeB8CeH8AeI8AeG8JeFFJ',
                 count: 1,
             },
             {
@@ -231,14 +231,14 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.J, Rotation.Right, 0, 1);
                 },
-                fumen: 'v115@vhBzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.I, Rotation.Spawn, 1, 3);
                 },
-                fumen: 'v115@vhCzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/I',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XYAFLDmClcJSAVDVSAVG88AYS88?A5MmFD',
                 count: 1,
             },
             {
@@ -246,35 +246,35 @@ describe('History', () => {
                     operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('#Q=[](T)S');
                 },
-                fumen: 'v115@vhCzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.T, Rotation.Left, 9, 1);
                 },
-                fumen: 'v115@vhDzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.Z, Rotation.Spawn, 7, 0);
                 },
-                fumen: 'v115@vhEzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVB',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.S, Rotation.Spawn, 8, 2);
                 },
-                fumen: 'v115@vhFzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?J',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVB',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?JAgH',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAgH',
                 count: 1,
             },
             {
@@ -282,7 +282,7 @@ describe('History', () => {
                     operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('hello world');
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?JAgWNAooMDEvoo2A3XaDEEBAAA',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAgWNAoo?MDEvoo2A3XaDEEBAAA',
                 count: 1,
             },
             {
@@ -292,7 +292,7 @@ describe('History', () => {
                     operations.mode.comment.open();
                     cy.get(datatest('text-comment')).clear().type('こんにちは');
                 },
-                fumen: 'v115@vhGzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJYeAlvs2A1sDfEToABBlvs2AWDEfET4J6Alvs2AW5AAAx?/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXDJAgWN?AooMDEvoo2A3XaDEEBAAA',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYeAlvs2A1sDfEToABBlvs2AWDEfET4J6Al?vs2AW5AAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooR?BUoAVBzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVB?zAAAAQhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToA?VBXhBtIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVBvhAAg?WNAooMDEvoo2A3XaDEEBAAA',
                 count: 1,
             },
         ];
@@ -383,7 +383,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.fillRow.open();
                     operations.mode.fillRow.T();
-                    operations.mode.block.dragToRight({ from: 1, to: 4 }, -1);
+                    operations.mode.block.click(4, -1);
                 },
                 fumen: 'v115@zgwhAe4hAe4hAe4hAe3hX4AeQ4zwAe0wAgH',
                 count: 1,
@@ -437,21 +437,21 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 1);
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhATIJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 1);
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAAPhxwHexw?TeFKYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.piece.place(Piece.S, Rotation.Right, 5, 1);
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhCTIJFKJPMJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAAPhxwHexw?TeFKYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAAchSpPePMYU?AFLDmClcJSAVDEHBEooRBToAVB',
                 count: 1,
             },
             {
@@ -459,14 +459,14 @@ describe('History', () => {
                     operations.mode.tools.backPage();
                     operations.mode.utils.clearToEnd();
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAAPhxwHexw?TeFKYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {
                 callback: () => {
                     operations.mode.utils.clearPast();
                 },
-                fumen: 'v115@HhglBeBtCeRpglCeBtAeg0RphlAezhi0JeFKYVAFLD?mClcJSAVDEHBEooRBUoAVBzAAAA',
+                fumen: 'v115@HhA8BeB8CeC8CeB8AeE8AeG8JeFKYVAFLDmClcJSAV?DEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
         ];

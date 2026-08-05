@@ -32,6 +32,7 @@ const ensureSentLineVisible = () => {
             }
         }
     });
+    cy.get('[datatest="tray-context"]').should('not.exist');
 };
 // インスペクタ（utils/flags）のバックドロップはエディタ全面を覆う（z-index 20）ため、開いたままだと
 // モードボタンやレール操作のクリックが「covered by another element」で失敗する。トグル操作だけして
@@ -449,6 +450,11 @@ export const operations = {
                 // ∞7bagはPlayレイアウトのNEXT直下だけに表示する。
                 ensurePieceLayout('play');
                 cy.get(datatest('piece-queue-infinite-checkbox')).click();
+                cy.wait(100);
+            },
+            toggleSevenBagGray: () => {
+                ensurePieceLayout('play');
+                cy.get(datatest('piece-queue-seven-bag-gray-checkbox')).click();
                 cy.wait(100);
             },
             resetBoard: () => {

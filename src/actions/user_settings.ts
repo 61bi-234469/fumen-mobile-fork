@@ -29,6 +29,7 @@ export interface UserSettingsActions {
     keepPieceShortcutSdf: (data: { sdf: number }) => action;
     keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     setGifFrameDelay: (data: { delayMs: number }) => action;
+    setSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     keepPageRotationLimit: (data: { limit: number }) => action;
@@ -270,6 +271,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepPieceShortcutSoftDropPriority: ({ enable }) => keepTemporary({ pieceShortcutSoftDropPriority: enable }),
     setGifFrameDelay: ({ delayMs }) => (state): NextState => sequence(state, [
         actions.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(delayMs) }),
+        saveToLocalStorage,
+    ]),
+    setSevenBagGrayEnabled: ({ enable }) => (state): NextState => sequence(state, [
+        actions.changeSevenBagGrayEnabled({ enable }),
         saveToLocalStorage,
     ]),
     keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),

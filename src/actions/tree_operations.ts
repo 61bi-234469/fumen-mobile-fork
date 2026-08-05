@@ -711,6 +711,32 @@ const clonePageForAppend = (page: Page, index: number): Page => {
     };
 };
 
+// 7bagグレー中はページのcommentを空にしてinternal.hiddenCommentへ退避するため、
+// text/refをどちらも持たないページが正当に存在する。そこへrefを張ると
+// Pages.getDescriptionが'Unexpected comment'で落ちるので、参照元が実体を持つときだけrefにする。
+const inheritComment = (source: Page, sourceIndex: number, commentText: string): {
+    comment: Page['comment'];
+    quiz: boolean;
+} => {
+    if (Quiz.isQuizComment(commentText)) {
+        return { comment: { text: commentText }, quiz: true };
+    }
+    if (source.comment.ref !== undefined) {
+        return { comment: { ref: source.comment.ref }, quiz: false };
+    }
+    if (source.comment.text !== undefined) {
+        return { comment: { ref: sourceIndex }, quiz: false };
+    }
+    return { comment: {}, quiz: false };
+};
+
+// Pages.insertRefPageと同じく、退避済みコメントは新しいページにも引き継ぐ
+const inheritHiddenComment = (source: Page): Page['internal'] => (
+    source.internal?.hiddenComment === undefined
+        ? undefined
+        : { hiddenComment: source.internal.hiddenComment }
+);
+
 const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
     const sourceIndex = state.fumen.currentIndex;
     const source = state.fumen.pages[sourceIndex];
@@ -1091,14 +1117,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
         // Preserve lock flag from parent page
         const commentText = resolvePageCommentSnapshot(state.fumen.pages, currentNode.pageIndex, 'after');
-        const isQuizComment = Quiz.isQuizComment(commentText);
+        const { comment, quiz } = inheritComment(currentPage, currentNode.pageIndex, commentText);
         const newPage: Page = {
+            comment,
             index: newPageIndex,
             field: { obj: newField },
-            comment: isQuizComment
-                ? { text: commentText }
-                : { ref: currentPage.comment.ref ?? currentNode.pageIndex },
-            flags: { ...currentPage.flags, quiz: isQuizComment },
+            flags: { ...currentPage.flags, quiz },
+            internal: inheritHiddenComment(currentPage),
         };
 
         // Add branch to tree
@@ -1293,14 +1318,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
         // Preserve lock flag from parent page
         const commentText = resolvePageCommentSnapshot(state.fumen.pages, currentNode.pageIndex, 'after');
-        const isQuizComment = Quiz.isQuizComment(commentText);
+        const { comment, quiz } = inheritComment(currentPage, currentNode.pageIndex, commentText);
         const newPage: Page = {
+            comment,
             index: newPageIndex,
             field: { obj: newField },
-            comment: isQuizComment
-                ? { text: commentText }
-                : { ref: currentPage.comment.ref ?? currentNode.pageIndex },
-            flags: { ...currentPage.flags, quiz: isQuizComment },
+            flags: { ...currentPage.flags, quiz },
+            internal: inheritHiddenComment(currentPage),
         };
 
         // Insert node in tree
@@ -1346,17 +1370,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const newField = resolvedField.copy();
 
         const commentText = resolvePageCommentText(state.fumen.pages, sourceNode.pageIndex);
-        const isQuizComment = Quiz.isQuizComment(commentText);
+        const { comment, quiz } = inheritComment(sourcePage, sourceNode.pageIndex, commentText);
 
         // Create new page with resolved field data
         // Copy all flags from source (including quiz flag - per spec, don't force quiz=false)
         const newPage: Page = {
+            comment,
             index: newPageIndex,
             field: { obj: newField },
-            comment: isQuizComment
-                ? { text: commentText }
-                : { ref: sourcePage.comment.ref ?? sourceNode.pageIndex },
-            flags: { ...sourcePage.flags, quiz: isQuizComment },
+            flags: { ...sourcePage.flags, quiz },
+            internal: inheritHiddenComment(sourcePage),
             piece: sourcePage.piece !== undefined ? {
                 type: sourcePage.piece.type,
                 rotation: sourcePage.piece.rotation,

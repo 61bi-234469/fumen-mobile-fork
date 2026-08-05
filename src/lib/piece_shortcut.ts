@@ -23,6 +23,7 @@ export type PieceShortcutActions = {
     rotateToRight?: () => void;
     rotateTo180?: () => void;
     clearPiece?: () => void;
+    resetPieceOrField?: () => void;
 };
 
 export interface PieceShortcutHoldOptions {
@@ -62,7 +63,7 @@ export const executePieceShortcut = (
         actions.rotateTo180?.();
         break;
     case 'Reset':
-        actions.clearPiece?.();
+        (actions.resetPieceOrField ?? actions.clearPiece)?.();
         break;
     }
 };

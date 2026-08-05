@@ -304,7 +304,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
             longPressTimer: null,
             longPressExecuted: false,
         });
-        if (currentPageHasPiece(state)) {
+        if (pieceModeShortcut === 'Reset' || currentPageHasPiece(state)) {
             startPieceShortcut(keyboardHoldId(event.code), pieceModeShortcut, {
                 dasFrames: state.mode.pieceShortcutDasFrames,
                 arrFrames: state.mode.pieceShortcutArrFrames,

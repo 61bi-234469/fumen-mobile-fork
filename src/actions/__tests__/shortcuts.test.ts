@@ -26,6 +26,7 @@ describe('clipboard insert shortcut', () => {
     let moveToLeft: jest.Mock;
     let moveToRight: jest.Mock;
     let rotateToRight: jest.Mock;
+    let resetPieceOrField: jest.Mock;
     let selectEditorPalette: jest.Mock;
     let backPage: jest.Mock;
     let nextPage: jest.Mock;
@@ -48,6 +49,7 @@ describe('clipboard insert shortcut', () => {
         moveToLeft = jest.fn();
         moveToRight = jest.fn();
         rotateToRight = jest.fn();
+        resetPieceOrField = jest.fn();
         selectEditorPalette = jest.fn();
         backPage = jest.fn();
         nextPage = jest.fn();
@@ -93,6 +95,7 @@ describe('clipboard insert shortcut', () => {
                     HardDrop: 'Space',
                     Hold: 'KeyC',
                     MoveRight: 'KeyN',
+                    Reset: 'KeyR',
                 },
                 screen: Screens.Editor,
             },
@@ -117,6 +120,7 @@ describe('clipboard insert shortcut', () => {
             insertPageFromClipboard,
             moveToRight,
             rotateToRight,
+            resetPieceOrField,
             nextPage,
             replaceAllFromClipboard,
             selectEditorPalette,
@@ -215,6 +219,17 @@ describe('clipboard insert shortcut', () => {
 
         expect(harddrop).not.toHaveBeenCalled();
         expect(duplicatePageOnly).not.toHaveBeenCalled();
+    });
+
+    test('Reset remains available in INPUT when there is no active piece', () => {
+        state.editorUi.primaryTool = 'piece';
+        state.editorUi.pieceLayout = 'play';
+        state.fumen.pages = [{ ...state.fumen.pages[0], piece: undefined }];
+
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', key: 'r' }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyR', key: 'r' }));
+
+        expect(resetPieceOrField).toHaveBeenCalledTimes(1);
     });
 
     test('piece shortcut wins over an edit shortcut in PIECE mode', () => {

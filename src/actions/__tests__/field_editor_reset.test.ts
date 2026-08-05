@@ -16,6 +16,8 @@ jest.mock('../../actions', () => ({
         spawnPiece: jest.fn(() => () => undefined),
         changePieceAction: jest.fn(() => () => undefined),
         registerHistoryTask: jest.fn(() => () => undefined),
+        resetFieldAndPiece: jest.fn(() => () => ({ resetTarget: 'field' })),
+        clearPiece: jest.fn(() => () => ({ resetTarget: 'piece' })),
     },
 }));
 
@@ -53,5 +55,16 @@ describe('resetFieldAndPiece', () => {
         expect(internal.hiddenComment).toMatch(/^#Q=/);
         expect(internal.sevenBagGrayProgress).toBeUndefined();
         expect(internal.sevenBagGrayDisplay).toBeUndefined();
+    });
+});
+
+describe('resetPieceOrField', () => {
+    test.each([
+        ['play', 'field'],
+        ['select', 'piece'],
+    ])('uses the %s layout reset target', (pieceLayout, resetTarget) => {
+        const next = fieldEditorActions.resetPieceOrField()({ editorUi: { pieceLayout } });
+
+        expect(next).toEqual({ resetTarget });
     });
 });

@@ -441,7 +441,12 @@ describe('Put pieces', () => {
         cy.get(datatest('btn-insert-page')).click();
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
 
-        visit({ mode: 'edit' });
+        // アプリは編集中のfumenをlocalStorage('data@1')へ自動保存し、fumenパラメータなしの
+        // visit()では直前のセッションを復元する。さらに2回目のvisit()はURL(hash)が1回目と
+        // 完全に同一のため、cy.visit()だけでは実際のページ再読み込みも起きない。
+        // clearLocalStorage + reload:trueで、1回目のグレー化ページを確実に持ち越さないようにする。
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', reload: true });
         operations.mode.block.T();
         operations.mode.block.click(0, 0);
         operations.mode.piece.openWithQueues();

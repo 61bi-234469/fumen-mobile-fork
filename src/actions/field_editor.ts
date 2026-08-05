@@ -197,6 +197,30 @@ const clearLastPieceManipulation = (state: State) => ({
     events: { ...state.events, lastPieceManipulation: undefined },
 });
 
+const clearSevenBagGrayState = (state: State): NextState => {
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    const currentInternal = page?.internal;
+    if (page === undefined || currentInternal === undefined
+        || (currentInternal.sevenBagGrayProgress === undefined
+            && currentInternal.sevenBagGrayDisplay === undefined)) {
+        return undefined;
+    }
+
+    const previousPage = toPrimitivePage(page);
+    const { sevenBagGrayProgress: _progress, sevenBagGrayDisplay: _display, ...internal } = currentInternal;
+    const nextPage: Page = {
+        ...page,
+        internal: Object.keys(internal).length === 0 ? undefined : internal,
+    };
+    const pages = state.fumen.pages.slice();
+    pages[pageIndex] = nextPage;
+    return sequence(state, [
+        () => ({ fumen: { ...state.fumen, pages } }),
+        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, nextPage) }),
+    ]);
+};
+
 const replaceCurrentPageField = (
     field: Field, internal?: NonNullable<Page['internal']>,
 ) => (state: State): NextState => {
@@ -720,6 +744,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.commitCommentText(),
             actions.clearFieldAndPiece(),
             actions.setCommentText({ pageIndex, text: queueComment }),
+            clearSevenBagGrayState,
             actions.spawnPiece({
                 piece: current,
                 srs: state.mode.rotationSystem !== 'classic',
@@ -1123,6 +1148,10 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         ]);
     },
     harddrop: () => (state): NextState => {
+        // A hard drop is the locking operation, not a player move that invalidates
+        // the preceding rotation. softdrop() moves the mino to the floor and clears
+        // its transient evidence, so retain it for scoring and page metadata here.
+        const rotationEvidence = state.events.lastPieceManipulation;
         return sequence(state, [
             fieldEditorActions.softdrop(),
             (nextState) => {
@@ -1145,7 +1174,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 const currentComment = getCurrentColdClearQueueComment(nextState)
                     ?? resolvePageCommentText(nextState.fumen.pages, pageIndex);
                 const commentWithEvidence = isInput
-                    ? withInputRotationEvidence(currentComment, nextState.events.lastPieceManipulation)
+                    ? withInputRotationEvidence(currentComment, rotationEvidence)
                     : currentComment;
                 if (isSevenBagGrayInput(nextState)) {
                     const parsed = parseQueueStateComment(currentComment);
@@ -1161,7 +1190,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     };
                     const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
                     const result = evaluatePlacement(
-                        field, piece, preset, nextState.events.lastPieceManipulation,
+                        field, piece, preset, rotationEvidence,
                     );
                     const stats = advanceStats(baseStats, result, preset);
                     const nextProgress = {

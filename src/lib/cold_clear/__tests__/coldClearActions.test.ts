@@ -1882,6 +1882,46 @@ describe('coldClearActions run isolation', () => {
         randomSpy.mockRestore();
     });
 
+    test('resets seven-bag gray progress when enabling infinite queue', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        const changePieceAction = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece, changePieceAction } as any);
+
+        const state: any = makeColdClearState({ commentText: '' });
+        state.mode.sevenBagGrayEnabled = true;
+        state.fumen.pages[0].internal = {
+            sevenBagGrayProgress: { bag: 3, pieces: 10, lines: 2, perfectClears: 1 },
+            sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
+        };
+
+        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+
+        expect(result.fumen.pages[0].internal).toEqual({
+            sevenBagGrayProgress: { bag: 0, pieces: 0, lines: 0, perfectClears: 0 },
+        });
+        randomSpy.mockRestore();
+    });
+
+    test('clears seven-bag gray progress when disabling infinite queue', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText } as any);
+
+        const state: any = makeColdClearState({ commentText: '#Q=[](T)IOLJSZ' });
+        state.mode.sevenBagGrayEnabled = true;
+        state.editorUi.infinitePieceQueue = true;
+        state.fumen.pages[0].internal = {
+            hiddenComment: '#Q=[](T)IOLJSZ',
+            sevenBagGrayProgress: { bag: 3, pieces: 10, lines: 2, perfectClears: 1 },
+            sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
+        };
+
+        const result = coldClearActions.toggleInfinitePieceQueue()(state) as any;
+
+        expect(result.fumen.pages[0].internal).toEqual({ hiddenComment: '#Q=[](T)IOLJSZ' });
+    });
+
     test('toggleInfinitePieceQueue warns before replacing a non-queue comment', () => {
         const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
         const setCommentText = jest.fn().mockReturnValue(() => ({}));

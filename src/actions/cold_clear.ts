@@ -391,6 +391,28 @@ export const createRandomSevenBags = (count: number): Piece[] => {
     return queue;
 };
 
+const resetCurrentSevenBagGrayProgress = (enabled: boolean) => (state: State): NextState => {
+    if (!state.mode.sevenBagGrayEnabled) {
+        return undefined;
+    }
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined) {
+        return undefined;
+    }
+
+    const { sevenBagGrayProgress: _progress, sevenBagGrayDisplay: _display, ...internal } = page.internal ?? {};
+    const nextInternal = enabled
+        ? { ...internal, sevenBagGrayProgress: { bag: 0, pieces: 0, lines: 0, perfectClears: 0 } }
+        : internal;
+    const pages = state.fumen.pages.slice();
+    pages[pageIndex] = {
+        ...page,
+        internal: Object.keys(nextInternal).length === 0 ? undefined : nextInternal,
+    };
+    return { fumen: { ...state.fumen, pages } };
+};
+
 export const fillInfiniteQueueToMinimum = (
     queue: Piece[], currentQueueLength: number, minimumLength = 7,
 ): Piece[] => {
@@ -1791,8 +1813,14 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             const nextEditorUi = (nextState: State): NextState => ({ editorUi: {
                 ...nextState.editorUi, infinitePieceQueue: false, paletteSelection: 'comp',
             } });
-            if (!appActions || withoutProgress === null || withoutProgress === comment) return nextEditorUi(state);
+            if (!appActions || withoutProgress === null || withoutProgress === comment) {
+                return sequence(state, [
+                    resetCurrentSevenBagGrayProgress(false),
+                    nextEditorUi,
+                ]);
+            }
             return sequence(state, [
+                resetCurrentSevenBagGrayProgress(false),
                 () => { appActions!.setCommentText({ pageIndex, text: withoutProgress }); return undefined; },
                 nextEditorUi,
             ]);
@@ -1855,11 +1883,15 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         });
 
         if (!appActions) {
-            return nextEditorUi(state);
+            return sequence(state, [
+                resetCurrentSevenBagGrayProgress(true),
+                nextEditorUi,
+            ]);
         }
 
         const runtimeActions = appActions;
         return sequence(state, [
+            resetCurrentSevenBagGrayProgress(true),
             () => {
                 runtimeActions.setCommentText({ pageIndex, text: nextComment });
                 if (initialSpawnPiece !== undefined) {

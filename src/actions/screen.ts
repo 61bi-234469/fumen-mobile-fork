@@ -342,23 +342,42 @@ export const modeActions: Readonly<ScreenActions> = {
             return undefined;
         }
         const pages = enable
-            ? state.fumen.pages.map((page, index) => ({
-                ...page,
-                comment: {},
-                flags: { ...page.flags, quiz: false },
-                internal: {
-                    ...page.internal,
-                    hiddenComment: resolvePageCommentText(state.fumen.pages, index),
-                },
-            }))
-            : state.fumen.pages.map((page) => {
-                const hiddenComment = page.internal?.hiddenComment;
-                if (hiddenComment === undefined) return page;
-                const { hiddenComment: _hiddenComment, ...internal } = page.internal!;
+            ? state.fumen.pages.map((page, index) => {
+                const {
+                    hiddenComment: _hiddenComment,
+                    sevenBagGrayProgress: _progress,
+                    sevenBagGrayDisplay: _display,
+                    ...internal
+                } = page.internal ?? {};
                 return {
                     ...page,
-                    comment: { text: hiddenComment },
-                    flags: { ...page.flags, quiz: Quiz.isQuizComment(hiddenComment) },
+                    comment: {},
+                    flags: { ...page.flags, quiz: false },
+                    internal: {
+                        ...internal,
+                        hiddenComment: resolvePageCommentText(state.fumen.pages, index),
+                    },
+                };
+            })
+            : state.fumen.pages.map((page) => {
+                const hiddenComment = page.internal?.hiddenComment;
+                const hasWorkingData = page.internal?.sevenBagGrayProgress !== undefined
+                    || page.internal?.sevenBagGrayDisplay !== undefined;
+                const {
+                    hiddenComment: _hiddenComment,
+                    sevenBagGrayProgress: _progress,
+                    sevenBagGrayDisplay: _display,
+                    ...internal
+                } = page.internal ?? {};
+                if (hiddenComment === undefined && !hasWorkingData) {
+                    return page;
+                }
+                return {
+                    ...page,
+                    comment: hiddenComment === undefined ? page.comment : { text: hiddenComment },
+                    flags: hiddenComment === undefined
+                        ? page.flags
+                        : { ...page.flags, quiz: Quiz.isQuizComment(hiddenComment) },
                     internal: Object.keys(internal).length === 0 ? undefined : internal,
                 };
             });

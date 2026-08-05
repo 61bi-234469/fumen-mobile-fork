@@ -413,6 +413,42 @@ describe('Put pieces', () => {
         cy.get(block(0, 0)).should('not.have.attr', 'color', Color.T.Normal);
     });
 
+    it('uses RESET for the piece in PIECE and for the board in INPUT', () => {
+        visit({ mode: 'edit' });
+        operations.mode.tools.home();
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.O();
+
+        cy.get('body').trigger('keydown', { code: 'Escape', key: 'Escape' });
+        cy.get('body').trigger('keyup', { code: 'Escape', key: 'Escape' });
+        cy.get(datatest('img-rotation-empty')).should('be.visible');
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.T.Normal);
+
+        operations.mode.piece.layout('play');
+        cy.get('body').trigger('keydown', { code: 'Escape', key: 'Escape' });
+        cy.get('body').trigger('keyup', { code: 'Escape', key: 'Escape' });
+        cy.get(block(0, 0)).should('not.have.attr', 'color', Color.T.Normal);
+    });
+
+    it('grays the + duplicate in PIECE and preserves color in INPUT', () => {
+        visit({ mode: 'edit' });
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.piece.open();
+
+        cy.get(datatest('btn-insert-page')).click();
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+
+        visit({ mode: 'edit' });
+        operations.mode.block.T();
+        operations.mode.block.click(0, 0);
+        operations.mode.piece.openWithQueues();
+        cy.get(datatest('btn-insert-page')).click();
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.T.Normal);
+    });
+
     it('RESET replaces an enabled infinite 7bag with current plus six next pieces', () => {
         visit({ mode: 'edit' });
         operations.mode.comment.open();

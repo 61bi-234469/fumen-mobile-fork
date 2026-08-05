@@ -974,6 +974,20 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-select-mode')).should('have.attr', 'data-active', 'true');
     });
 
+    it('opens PIECE instead of the saved INPUT layout on a PAINT mino long press', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-layout')).click();
+        cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+        cy.get(datatest('btn-paint-mode')).click();
+
+        cy.get(datatest('btn-piece-i')).trigger('pointerdown', { pointerId: 1, button: 0 });
+        cy.wait(600);
+        cy.get(datatest('btn-piece-i')).trigger('pointerup', { pointerId: 1, button: 0 });
+
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'select');
+    });
+
     it('uses the configured DAS for PIECE tray end movement', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.open();

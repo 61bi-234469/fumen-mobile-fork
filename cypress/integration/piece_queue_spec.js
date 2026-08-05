@@ -46,6 +46,10 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-infinite')).should('be.visible').and('contain.text', '∞ 7bag');
         cy.get(datatest('piece-queue-infinite-checkbox'))
             .should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
+            .should('be.disabled')
+            .and('have.attr', 'aria-pressed', 'false')
+            .and('contain.text', '7bag grey');
         cy.get(datatest('piece-queue-infinite')).then(toggle => {
             const toggleRect = toggle[0].getBoundingClientRect();
             const checkboxRect = toggle.find(datatest('piece-queue-infinite-checkbox'))[0].getBoundingClientRect();
@@ -158,6 +162,26 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-infinite-checkbox'))
             .should('have.attr', 'aria-pressed', 'false');
         cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'I');
+    });
+
+    it('shares the seven-bag gray setting and disables it while infinite 7bag is off', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.openWithQueues();
+
+        operations.menu.setSevenBagGray(true);
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
+            .should('be.disabled')
+            .and('have.attr', 'aria-pressed', 'true');
+
+        operations.mode.piece.toggleInfiniteQueue();
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox')).should('not.be.disabled');
+        operations.mode.piece.toggleSevenBagGray();
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
+            .should('have.attr', 'aria-pressed', 'false');
+
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('input');
+        cy.get(datatest('switch-seven-bag-gray')).should('not.be.checked');
     });
 
     it('keeps the field focused when toggling infinite 7bag', () => {

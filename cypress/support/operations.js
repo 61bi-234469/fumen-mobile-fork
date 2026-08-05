@@ -451,6 +451,11 @@ export const operations = {
                 cy.get(datatest('piece-queue-infinite-checkbox')).click();
                 cy.wait(100);
             },
+            toggleSevenBagGray: () => {
+                ensurePieceLayout('play');
+                cy.get(datatest('piece-queue-seven-bag-gray-checkbox')).click();
+                cy.wait(100);
+            },
             resetBoard: () => {
                 // 盤面RESETはPlayレイアウトの右下だけに表示する。
                 ensurePieceLayout('play');

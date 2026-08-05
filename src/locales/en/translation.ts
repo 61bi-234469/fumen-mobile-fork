@@ -120,7 +120,7 @@
             RotateLeft: 'Rotate left',
             RotateRight: 'Rotate right',
             Rotate180: 'Rotate 180°',
-            Reset: 'Reset piece',
+            Reset: 'RESET',
             Hold: 'Hold',
             DasFrames: 'DAS',
             DasDescription: 'Frames before ARR starts when holding left/right',
@@ -163,7 +163,7 @@
     },
     EditorUi: {
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
-        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag',
+        ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag', SevenBagGray: '7bag grey',
         PieceLayoutPlay: 'INPUT',
         ImportExport: 'Import / Export', Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',

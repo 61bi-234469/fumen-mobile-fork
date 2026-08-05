@@ -154,8 +154,10 @@ export const pieceQueueOverlays = ({
     nextMinoHeight,
     guideLineColor,
     infinitePieceQueue,
+    sevenBagGrayEnabled,
     openSettings,
     toggleInfinitePieceQueue,
+    toggleSevenBagGray,
     statsPanel,
 }: {
     queueState: ColdClearMenuQueueState | null;
@@ -166,15 +168,19 @@ export const pieceQueueOverlays = ({
     nextMinoHeight: number;
     guideLineColor: boolean;
     infinitePieceQueue: boolean;
+    sevenBagGrayEnabled: boolean;
     openSettings: (data: { focus: PieceQueueFocus }) => void;
     toggleInfinitePieceQueue: () => void;
+    toggleSevenBagGray: () => void;
     statsPanel?: VNode<{}>;
 }) => {
     const hold = queueState?.hold ?? undefined;
     const nexts = queueState?.queue.slice(0, NEXT_COUNT) ?? [];
     const openLabel = i18n.PieceQueue.OpenSettings();
     const compactInfiniteToggle = width < 44;
-    const infiniteCheckboxSize = compactInfiniteToggle ? 10 : 13;
+    // ∞7bagと7bagグレーを2段に積むため、1段あたりの高さに合わせて小さめに取る
+    const infiniteCheckboxSize = compactInfiniteToggle ? 9 : 11;
+    const infiniteLabelFontSize = Math.max(7, Math.min(9, width * .17));
 
     const holdPanel = div({
         key: 'piece-queue-hold-column',
@@ -205,8 +211,9 @@ export const pieceQueueOverlays = ({
         key: 'piece-queue-infinite',
         datatest: 'piece-queue-infinite',
         style: style({
-            boxSizing: 'border-box', flexShrink: 0, height: px(INFINITE_TOGGLE_HEIGHT), overflow: 'hidden',
-            padding: compactInfiniteToggle ? '3px 0' : '3px 1px',
+            boxSizing: 'border-box', display: 'flex', flexDirection: 'column', flexShrink: 0,
+            height: px(INFINITE_TOGGLE_HEIGHT), overflow: 'hidden',
+            padding: compactInfiniteToggle ? '1px 0' : '1px 1px',
             width: px(width),
         }),
     }, [button({
@@ -232,7 +239,7 @@ export const pieceQueueOverlays = ({
             alignItems: 'center', background: 'transparent', border: '0', borderRadius: '0',
             boxSizing: 'border-box', color: '#333', cursor: 'pointer', display: 'flex',
             fontFamily: 'inherit', gap: px(compactInfiniteToggle ? 1 : 2), justifyContent: 'center',
-            margin: '0', minHeight: px(26), padding: '3px 0', width: '100%',
+            flex: '1 1 0', margin: '0', minHeight: '0', minWidth: '0', padding: '0', width: '100%',
         }),
     }, [
         span({
@@ -250,10 +257,60 @@ export const pieceQueueOverlays = ({
             key: 'piece-queue-infinite-label',
             datatest: 'piece-queue-infinite-text',
             style: style({
-                flex: '0 1 auto', fontSize: px(Math.max(8, Math.min(10, width * .19))),
+                flex: '0 1 auto', fontSize: px(infiniteLabelFontSize),
                 lineHeight: '1', minWidth: '0', whiteSpace: 'nowrap',
             }),
         }, i18n.EditorUi.InfiniteBag()),
+    ]), button({
+        key: 'piece-queue-seven-bag-gray-checkbox',
+        datatest: 'piece-queue-seven-bag-gray-checkbox',
+        type: 'button',
+        title: i18n.UserSettings.SevenBagGray.Title(),
+        'aria-label': i18n.EditorUi.SevenBagGray(),
+        'aria-pressed': sevenBagGrayEnabled ? 'true' : 'false',
+        'aria-disabled': infinitePieceQueue ? 'false' : 'true',
+        disabled: !infinitePieceQueue,
+        onclick: (event: MouseEvent) => {
+            toggleSevenBagGray();
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onmousedown: (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        style: style({
+            alignItems: 'center', background: 'transparent', border: '0', borderRadius: '0',
+            boxSizing: 'border-box', color: '#333',
+            cursor: infinitePieceQueue ? 'pointer' : 'default', display: 'flex',
+            fontFamily: 'inherit', gap: px(compactInfiniteToggle ? 1 : 2), justifyContent: 'center',
+            flex: '1 1 0', margin: '0', minHeight: '0', minWidth: '0',
+            opacity: infinitePieceQueue ? 1 : .35, padding: '0', width: '100%',
+        }),
+    }, [
+        span({
+            key: 'piece-queue-seven-bag-gray-indicator',
+            'aria-hidden': 'true',
+            style: style({
+                alignItems: 'center', background: sevenBagGrayEnabled ? '#1976d2' : '#fff',
+                border: '1px solid #757575', borderRadius: '2px', boxSizing: 'border-box',
+                color: '#fff', display: 'flex', flex: '0 0 auto', fontSize: px(9),
+                fontWeight: '700', height: px(infiniteCheckboxSize), justifyContent: 'center',
+                lineHeight: '1', width: px(infiniteCheckboxSize),
+            }),
+        }, sevenBagGrayEnabled ? '✓' : ''),
+        small({
+            key: 'piece-queue-seven-bag-gray-label',
+            datatest: 'piece-queue-seven-bag-gray-text',
+            style: style({
+                flex: '0 1 auto', fontSize: px(infiniteLabelFontSize),
+                lineHeight: '1', minWidth: '0', whiteSpace: 'nowrap',
+            }),
+        }, i18n.EditorUi.SevenBagGray()),
     ]),
     ]);
 

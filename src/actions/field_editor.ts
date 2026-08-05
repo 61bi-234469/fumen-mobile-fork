@@ -86,6 +86,8 @@ export interface FieldEditorActions {
 
     resetFieldAndPiece(): action;
 
+    resetPieceOrField(): action;
+
     rotateToLeft(): action;
 
     rotateToRight(): action;
@@ -772,6 +774,11 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             }),
         ]);
     },
+    resetPieceOrField: () => (state): NextState => (
+        state.editorUi.pieceLayout === 'play'
+            ? actions.resetFieldAndPiece()(state)
+            : actions.clearPiece()(state)
+    ),
     rotateToLeft: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;

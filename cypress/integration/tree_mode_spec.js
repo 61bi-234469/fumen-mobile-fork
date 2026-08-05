@@ -259,6 +259,24 @@ describe('Tree mode in list view', () => {
             .should('have.attr', 'fill', '#94A3B8');
     });
 
+    // 7bagグレー中はページのcommentが空になる。そこへcomment refを張ると
+    // Pages.getCommentが'Unexpected comment'で落ち、分岐・複製が無反応になっていた。
+    it('keeps branch and copy working while 7bag gray hides page comments', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+        operations.menu.setSevenBagGray(true);
+
+        enterTreeGraphView();
+
+        cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+
+        cy.get('[datatest^="btn-tree-copy-"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        cy.get(datatest('btn-back-to-editor')).click();
+        cy.get(datatest('editor-field-frame')).should('be.visible');
+    });
+
     it('activates a card first and navigates from a second card click', () => {
         cy.viewport('iphone-6');
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });

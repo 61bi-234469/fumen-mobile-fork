@@ -154,4 +154,16 @@ describe('executePieceShortcut', () => {
 
         expect(hold).toHaveBeenCalledTimes(1);
     });
+
+    test('prefers the layout-aware reset action and keeps the legacy fallback', () => {
+        const resetPieceOrField = jest.fn();
+        const clearPiece = jest.fn();
+
+        executePieceShortcut('Reset', { resetPieceOrField, clearPiece });
+        expect(resetPieceOrField).toHaveBeenCalledTimes(1);
+        expect(clearPiece).not.toHaveBeenCalled();
+
+        executePieceShortcut('Reset', { clearPiece });
+        expect(clearPiece).toHaveBeenCalledTimes(1);
+    });
 });

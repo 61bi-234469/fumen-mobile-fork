@@ -29,6 +29,7 @@ describe('User settings', () => {
         cy.get(datatest('input-piece-shortcut-SoftDrop')).should('have.value', '↓');
         cy.get(datatest('input-piece-shortcut-HardDrop')).should('have.value', 'Space');
         cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
+        cy.get(datatest('input-piece-shortcut-Reset')).prev().should('have.text', 'RESET');
         cy.get(datatest('input-piece-das')).should('have.value', '10').clear().type('5.5').blur();
         cy.get(datatest('input-piece-arr')).should('have.value', '1').clear().type('1.5').blur();
         cy.get(datatest('unit-piece-das')).should('have.text', 'F');

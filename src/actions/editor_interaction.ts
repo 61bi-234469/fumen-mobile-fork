@@ -360,7 +360,12 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
     }),
     executeEditorPaletteShortcut: ({ selection }) => (state): NextState => {
         if (state.editorUi.primaryTool === 'piece') {
-            return editorInteractionActions.selectEditorPalette({ selection })(state);
+            return sequence(state, [
+                editorInteractionActions.selectEditorPalette({ selection }),
+                ...(isMinoPaletteSelection(selection)
+                    ? [editorInteractionActions.changePieceLayout({ layout: 'select' })]
+                    : []),
+            ]);
         }
         if (selection === 'comp') {
             return actions.convertToBlack()(state);
@@ -376,6 +381,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
         }
         return sequence(state, [
             actions.spawnPiece({ piece: selection, srs: state.mode.rotationSystem !== 'classic' }),
+            editorInteractionActions.changePieceLayout({ layout: 'select' }),
             nextState => ({
                 mode: {
                     ...nextState.mode,

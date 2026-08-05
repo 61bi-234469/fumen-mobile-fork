@@ -175,6 +175,7 @@ export const i18n = {
         SoftDrop: () => t('EditorUi.SoftDrop'), HardDrop: () => t('EditorUi.HardDrop'),
         ResetPiece: () => t('EditorUi.ResetPiece'), ResetField: () => t('EditorUi.ResetField'),
         InfiniteBag: () => t('EditorUi.InfiniteBag'),
+        SevenBagGray: () => t('EditorUi.SevenBagGray'),
         PieceLayoutPlay: () => t('EditorUi.PieceLayoutPlay'),
         ImportExport: () => t('EditorUi.ImportExport'), Settings: () => t('EditorUi.Settings'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),

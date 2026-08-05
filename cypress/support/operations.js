@@ -32,6 +32,7 @@ const ensureSentLineVisible = () => {
             }
         }
     });
+    cy.get('[datatest="tray-context"]').should('not.exist');
 };
 // インスペクタ（utils/flags）のバックドロップはエディタ全面を覆う（z-index 20）ため、開いたままだと
 // モードボタンやレール操作のクリックが「covered by another element」で失敗する。トグル操作だけして

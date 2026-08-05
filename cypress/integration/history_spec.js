@@ -383,9 +383,9 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.fillRow.open();
                     operations.mode.fillRow.T();
-                    operations.mode.block.dragToRight({ from: 1, to: 4 }, -1);
+                    operations.mode.block.click(4, -1);
                 },
-                fumen: 'v115@zgwhAe4hAe4hAe4hAe3hX4AeQ4JeAgH',
+                fumen: 'v115@zgwhAe4hAe4hAe4hAe3hX4AeQ4zwAe0wAgH',
                 count: 1,
             },
             {

@@ -97,7 +97,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.Z, Rotation.Spawn, 4, 1);
                 },
-                fumen: 'v115@vhBRQJUGJ',
+                fumen: 'v115@vhARQJehT4MeUGYAA',
                 // ページ送り + スポーン + ドラッグ
                 count: 3,
             },
@@ -176,7 +176,7 @@ describe('History', () => {
                     operations.menu.lastPage();
                     operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 2);
                 },
-                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhB5eBFlB',
+                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IvhA5eBygQ4hlBeQpDeQ4glBeSpQ4BeQ4glCexhQ4?BtQ4xwAexhg0Q4glBtxwAei0Q4ilJeFlQAA',
                 count: 1,
             },
             {
@@ -231,7 +231,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.J, Rotation.Right, 0, 1);
                 },
-                fumen: 'v115@vhBzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAA',
                 count: 1,
             },
             {
@@ -385,7 +385,7 @@ describe('History', () => {
                     operations.mode.fillRow.T();
                     operations.mode.block.dragToRight({ from: 1, to: 4 }, -1);
                 },
-                fumen: 'v115@zgwhAe4hAe4hAe4hAe3hX4AeQ4zwAe0wAgH',
+                fumen: 'v115@zgwhAe4hAe4hAe4hAe3hX4AeQ4JeAgH',
                 count: 1,
             },
             {
@@ -437,7 +437,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 1);
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhATIJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAA',
                 count: 1,
             },
             {
@@ -685,7 +685,7 @@ describe('History', () => {
                     operations.mode.fill.L();
                     operations.mode.block.click(5, -1);
                 },
-                fumen: 'v115@RfF8CeH8AeU8AtF8AtB8AtF8AtB8AtF8AtU8AeH8Ce?F8peplAgH',
+                fumen: 'v115@RfF8CeH8AeU8AtF8AtB8AtF8AtB8AtF8AtU8AeH8Ce?F8zeAgH',
                 count: 1,
             },
 

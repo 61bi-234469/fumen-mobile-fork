@@ -100,7 +100,7 @@ describe('Comments', () => {
 
         cy.get(datatest('text-comment')).clear().type('ここから2巡目');
 
-        expectFumen('v115@vhIzKYFAooMDEPBAAACMJmHYKAooMDEvzjXEMnBAA5?IYTAooMDEvzjXEM388AxnA6AFrmAAUBJ/JYlAlvs2A1sDfE?To3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAFFYDAUN?SBAAgWAAAgWlAlvs2A1sDfETo3ABlvs2AUDEfETYOVByX3J?BEIfRA1Dq9BlAAAA');
+        expectFumen('v115@vhAzKYFAooMDEPBAAAUhxwHexwOeCMYFAooMDEPBAA?AWhi0Geg0NemHYKAooMDEvzjXEMnBAANhilIeglUe5IYTAo?oMDEvzjXEM388AxnA6AFrmAAGhQ4IeQ4IeQ4IeQ4JeUBYTA?ooMDEvzjXEM388AxnA6AFrmAAAhBtIeBthe/JYlAlvs2A1s?DfETo3ABlvs2A3HEfET4ZOBxX3JBEIfRA1Dq9BlAAAAHhwh?IexhIewhReFFYDAUNSBAvhBAgWAAAgWlAlvs2A1sDfETo3A?Blvs2AUDEfETYOVByX3JBEIfRA1Dq9BlAAAA');
 
         operations.mode.tools.undo();
 
@@ -128,7 +128,7 @@ describe('Comments', () => {
         // 3ページ目
         operations.mode.piece.place(Piece.S, Rotation.Spawn, 4, 2);
 
-        expectFumen('v115@vhC1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJXBJ');
+        expectFumen('v115@vhB1OYaAFLDmClcJSAVDEHBEooRBUoAVBadFgCs/AA?A0KJShQpBtFeSpBtOeXBYYAFLDmClcJSAVDEHBEooRBToAV?BJHUPC');
 
         // 4ページ目
         operations.mode.piece.place(Piece.Z, Rotation.Spawn, 5, 0);
@@ -224,7 +224,7 @@ describe('Comments', () => {
 
         cy.get(datatest('text-comment')).should('have.value', '#Q=[S](L)J');
 
-        expectFumen('v115@vhD1OYaAFLDmClcJSAVDEHBEooRBUoAVBvnTtCs/AA?A0KJTNYXAFLDmClcJSAVjiSAVG88A4c88AZifBAAgH');
+        expectFumen('v115@vhA1OYaAFLDmClcJSAVDEHBEooRBUoAVBvnTtCs/AA?AShQpHeSpQe0KYaAFLDmClcJSAVDEHBEooRBUoAVBvnTtCs?/AAAThBtIeBtOeTNYXAFLDmClcJSAVjiSAVG88A4c88AZif?BAvhAAgH');
     });
 
     it('merge comment1', () => {

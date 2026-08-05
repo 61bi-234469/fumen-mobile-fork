@@ -136,7 +136,7 @@ describe('History', () => {
                     operations.mode.flags.open();
                     operations.mode.flags.lockToOff();
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHTNn',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHTNn',
                 count: 1,
             },
             {
@@ -267,7 +267,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.S, Rotation.Spawn, 8, 2);
                 },
-                fumen: 'v115@vhFzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJXD?J',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVBXhB?tIeBtKeXDYUAFLDmClcJSAVDEHBEooRBToAVB',
                 count: 1,
             },
             {
@@ -685,7 +685,7 @@ describe('History', () => {
                     operations.mode.fill.L();
                     operations.mode.block.click(5, -1);
                 },
-                fumen: 'v115@RfF8CeH8AeU8AtF8AtB8AtF8AtB8AtF8AtU8AeH8Ce?F8zeAgH',
+                fumen: 'v115@RfF8CeH8AeU8AtF8AtB8AtF8AtB8AtF8AtU8AeH8Ce?F8peplAgH',
                 count: 1,
             },
 

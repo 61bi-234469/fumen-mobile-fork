@@ -19,6 +19,10 @@ jest.mock('../../actions', () => ({
     },
 }));
 
+jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
+    ColdClearWrapper: jest.fn().mockImplementation(() => ({})),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fieldEditorActions } = require('../field_editor');
 

@@ -127,7 +127,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.O, Rotation.Spawn, 8, 0);
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHTNJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHTNJ',
                 // スポーン + ドラッグ
                 count: 2,
             },
@@ -260,7 +260,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.Z, Rotation.Spawn, 7, 0);
                 },
-                fumen: 'v115@vhEzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ0MJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA?QhQpHeRpIeQpJe0MYUAFLDmClcJSAVDEHBEooRBToAVB',
                 count: 1,
             },
             {
@@ -466,7 +466,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.utils.clearPast();
                 },
-                fumen: 'v115@HhglBeBtCeRpglCeBtAeg0RphlAezhi0JeFKYVAFLD?mClcJSAVDEHBEooRBUoAVBzAAAA',
+                fumen: 'v115@HhA8BeB8CeC8CeB8AeE8AeG8JeFKYVAFLDmClcJSAV?DEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
         ];

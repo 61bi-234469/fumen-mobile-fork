@@ -120,7 +120,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.tools.nextPage();
                 },
-                fumen: 'v115@vhERQJUGJKJJAgHAgH',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAAvhBAgHAgH',
                 count: 1,
             },
             {
@@ -253,7 +253,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.T, Rotation.Left, 9, 1);
                 },
-                fumen: 'v115@vhDzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/XVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA9NJ',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XVAFLDmClcJSAVDEHBEooRBUoAV?BzAAAA9gT4te9NYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {
@@ -459,7 +459,7 @@ describe('History', () => {
                     operations.mode.tools.backPage();
                     operations.mode.utils.clearToEnd();
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAAPhxwHexw?TeFKYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {

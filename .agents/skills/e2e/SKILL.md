@@ -30,6 +30,14 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   (shared component/action, `cypress/support/operations.js` edit, selector rename).
   Use [`cypress/SPEC_MAP.md`](../../../cypress/SPEC_MAP.md) to look up which spec(s) cover a
   given src area instead of relying on grep/memory each time.
+- If Cypress exits **before collecting any test** with `GPU process exited unexpectedly` /
+  `FATAL: GPU process isn't usable` (often alongside a `DevToolsActivePort` access-denied
+  line), that is a launcher-permission problem, not a test or app failure: it occurs only
+  when Cypress is started from a restricted agent process. Re-run with normal Windows
+  permissions (see `AGENTS.local.md`; start `serve` and Cypress on the same permission
+  side). Fall back to GitHub Actions only if that re-run also fails. Never record
+  "local Cypress cannot run" without date, permission level, and error type — and
+  re-verify any such note by actually running once before citing it.
 - Failure screenshots: `cypress/screenshots/<spec>/`.
 - `history_spec.js` alone takes 5+ minutes; full suite ~15 min.
 - Checking CI: `gh run list --workflow dev-workflow.yaml --branch develop`

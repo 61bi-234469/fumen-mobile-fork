@@ -105,7 +105,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.L, Rotation.Right, 0, 1);
                 },
-                fumen: 'v115@vhCRQJUGJKJJ',
+                fumen: 'v115@vhARQJehT4MeUGYAAKhBtIeBtXeKJYAA',
                 // ページ送り + スポーン + 回転 + ドラッグ
                 count: 4,
             },
@@ -185,7 +185,7 @@ describe('History', () => {
                     operations.mode.tools.nextPage();
                     operations.mode.tools.removePage();
                 },
-                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IygwhIewhIewhIewhdeFlQAA',
+                fumen: 'v115@3gwwHeywwhGeR4whBtAeRpAeR4glwhg0BtRpAeilwh?i0JeO/IygA8hlBeQpDeA8glBeSpQ4BeA8glCexhQ4BtA8xw?Aexhg0Q4glBtxwAei0Q4ilJeFlQAA',
                 count: 1,
             },
             {
@@ -238,7 +238,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.I, Rotation.Spawn, 1, 3);
                 },
-                fumen: 'v115@vhCzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AOJJx/I',
+                fumen: 'v115@vhAzJYaAFLDmClcJSAVDEHBEooRBJoAVBv/rtC0XBA?AShxwHexwQeOJYZAFLDmClcJSAVDVSAVG88AYP88AZyTxC6?AAAAHhhlHeglIeglSex/XYAFLDmClcJSAVDVSAVG88AYS88?A5MmFD',
                 count: 1,
             },
             {
@@ -444,7 +444,7 @@ describe('History', () => {
                 callback: () => {
                     operations.mode.piece.place(Piece.T, Rotation.Reverse, 2, 1);
                 },
-                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAvhBTIJFKJ',
+                fumen: 'v115@HhglBeBtEeglCeBtDehlAezhMeWSYWAFLDmClcJSAV?DEHBEooRBPoAVBUNBAAHhg0BeBtEeg0CeBtAeglBeh0AeT4?ilJeTIYWAFLDmClcJSAVDEHBEooRBPoAVBUNBAAPhxwHexw?TeFKYVAFLDmClcJSAVDEHBEooRBUoAVBzAAAA',
                 count: 1,
             },
             {

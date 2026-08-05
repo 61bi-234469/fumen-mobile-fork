@@ -116,7 +116,6 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutDasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             pieceShortcutSdf: state.temporary.userSettings.pieceShortcutSdf,
             pieceShortcutSoftDropPriority: state.temporary.userSettings.pieceShortcutSoftDropPriority,
-            gifFrameDelayMs: state.temporary.userSettings.gifFrameDelayMs,
             rotationSystem: state.temporary.userSettings.rotationSystem,
             sevenBagGrayEnabled: state.temporary.userSettings.sevenBagGrayEnabled,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,

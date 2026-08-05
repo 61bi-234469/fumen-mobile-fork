@@ -321,6 +321,7 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
                 pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
                 rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
             },
+            sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
         },
     };
 };
@@ -362,6 +363,7 @@ export const toPage = (page: PrimitivePage): Page => {
                 pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
                 rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
             },
+            sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
         },
     };
 };

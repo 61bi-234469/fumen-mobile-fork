@@ -38,11 +38,11 @@ export const i18n = {
         Title: () => t('UserSettings.Title'),
         Notice: () => t('UserSettings.Notice'),
         Tabs: {
-            Field: () => t('UserSettings.Tabs.Field'),
+            Edit: () => t('UserSettings.Tabs.Edit'),
             View: () => t('UserSettings.Tabs.View'),
-            Shortcuts: () => t('UserSettings.Tabs.Shortcuts'),
-            Piece: () => t('UserSettings.Tabs.Piece'),
-            Misc: () => t('UserSettings.Tabs.Misc'),
+            Input: () => t('UserSettings.Tabs.Input'),
+            Keys: () => t('UserSettings.Tabs.Keys'),
+            General: () => t('UserSettings.Tabs.General'),
         },
         Switch: {
             Off: () => t('UserSettings.Switch.Off'),
@@ -141,6 +141,9 @@ export const i18n = {
                 Off: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Off'),
                 On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
             },
+        },
+        PieceControls: {
+            Title: () => t('UserSettings.PieceControls.Title'),
         },
         PageRotation: {
             Title: () => t('UserSettings.PageRotation.Title'),
@@ -295,6 +298,7 @@ export const i18n = {
         },
     },
     ListView: {
+        AllSettings: () => t('ListView.AllSettings'),
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
         Zoom: () => t('ListView.Zoom'),

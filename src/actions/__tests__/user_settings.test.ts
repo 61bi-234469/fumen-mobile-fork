@@ -42,7 +42,6 @@ const baseUserSettings = {
     pieceShortcutDasCutFrames: 0,
     pieceShortcutSdf: Infinity,
     pieceShortcutSoftDropPriority: false,
-    gifFrameDelayMs: 500,
     rotationSystem: 'srs',
     sevenBagGrayEnabled: false,
     pageRotationLimit: 0,
@@ -91,7 +90,7 @@ const createState = (override: any = {}) => ({
     },
     temporary: {
         userSettings: { ...baseUserSettings },
-        userSettingsTab: 'field',
+        userSettingsTab: 'edit',
     },
     ...override,
 });
@@ -336,18 +335,32 @@ describe('userSettingsActions', () => {
             expect(next.temporary.userSettingsTab).toBe('view');
         });
 
-        test('switches to the piece tab', () => {
+        test('switches to the input tab', () => {
             const state = createState();
-            const next = userSettingsActions.setUserSettingsTab({ tab: 'piece' })(state);
+            const next = userSettingsActions.setUserSettingsTab({ tab: 'input' })(state);
 
-            expect(next.temporary.userSettingsTab).toBe('piece');
+            expect(next.temporary.userSettingsTab).toBe('input');
         });
 
         test('does nothing when the tab is unchanged', () => {
             const state = createState();
-            const next = userSettingsActions.setUserSettingsTab({ tab: 'field' })(state);
+            const next = userSettingsActions.setUserSettingsTab({ tab: 'edit' })(state);
 
             expect(next).toBeUndefined();
+        });
+    });
+
+    describe('setGifFrameDelay', () => {
+        test('normalizes and persists the GIF delay immediately', () => {
+            const state = createState();
+            mockActions.changeGifFrameDelay = jest.fn(({ delayMs }) => (current: any) => ({
+                mode: { ...current.mode, gifFrameDelayMs: delayMs },
+            }));
+
+            userSettingsActions.setGifFrameDelay({ delayMs: 10 })(state);
+
+            expect(mockActions.changeGifFrameDelay).toHaveBeenCalledWith({ delayMs: 100 });
+            expect(saveUserSettingsMock).toHaveBeenCalledWith(expect.objectContaining({ gifFrameDelayMs: 100 }));
         });
     });
 
@@ -361,7 +374,7 @@ describe('userSettingsActions', () => {
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
                 'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
-                'changeGifFrameDelay', 'changeRotationSystem',
+                'changeRotationSystem',
                 'changeSevenBagGrayEnabled', 'changePageRotationLimit',
                 'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
             ];

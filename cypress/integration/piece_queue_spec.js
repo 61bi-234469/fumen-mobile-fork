@@ -384,6 +384,37 @@ describe('PIECE queues', () => {
         cy.get(block(4, 0)).should('have.attr', 'color', Color.T.Normal);
     });
 
+    it('starts a seven-bag gray workspace after RESET with later imported pages', () => {
+        const suppliedFumen = [
+            'v115@vhm2OJsEJC7IzMJpIJ3LJlKJfIJ02Iq1IZ/IzFJ++I?FMJkLJfIJT+IVBJSsHTJJc/IeNJpIJSMJFFJVsH0/',
+            'IRPJTN?J+MJUDJ3FJyAJT1I32IcxIp5Ie5IlLJheQLHeSLGeiWdfwh?IewhAeAtAPBeQ4AeRpwhAtAeAthlR4wSglgWwh',
+            'AtwhgWxwQ?4glQ4xwxhg0wwg0AeglQ4B8i0glg0BtQ4BtA8xhglg0A8Ct?g0QpAtA8QLAeglxwJeAgHHhQ4IeQ4AeAtCewhAexwTeTGJ',
+        ].join('');
+
+        visit({ mode: 'edit' });
+        operations.menu.openPage();
+        cy.get(datatest('mdl-open-fumen')).should('be.visible').within(() => {
+            cy.get(datatest('input-fumen')).clear().type(suppliedFumen);
+            cy.get(datatest('btn-open')).click();
+        });
+        cy.get(datatest('mdl-open-fumen')).should('not.exist');
+        cy.get(datatest('text-pages')).should('contain', '1 / 41');
+
+        operations.menu.setSevenBagGray(true);
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleInfiniteQueue();
+        operations.mode.piece.resetBoard();
+
+        for (let index = 0; index < 7; index += 1) {
+            operations.mode.piece.harddrop();
+        }
+
+        // One detached workspace plus one page for the completed bag.
+        cy.get(datatest('text-pages')).should('contain', '43 / 43');
+        cy.get(`[datatest^="block-"][color="${Color.Gray.Normal}"]`).should('exist');
+    });
+
     it('keeps all seven placements visible before line clears', () => {
         visit({ mode: 'edit' });
         operations.menu.setSevenBagGray(true);

@@ -29,11 +29,11 @@ export const resources = {
         Title: 'ユーザー設定',
         Notice: 'ブラウザのキャッシュを削除すると、これらの設定は初期化されます。',
         Tabs: {
-            Field: 'フィールド',
+            Edit: '編集',
             View: 'リスト/ツリー',
-            Shortcuts: 'ショートカット',
-            Piece: 'ピース',
-            Misc: 'その他',
+            Input: 'INPUT',
+            Keys: 'キー割り当て',
+            General: '全般',
         },
         Switch: {
             Off: '無効',
@@ -131,6 +131,9 @@ export const resources = {
                 Off: '横移動優先',
                 On: 'ソフトドロップ優先',
             },
+        },
+        PieceControls: {
+            Title: 'ピースコントロール',
         },
         PageRotation: {
             Title: 'ページローテーション',
@@ -251,6 +254,7 @@ export const resources = {
         },
     },
     ListView: {
+        AllSettings: 'すべての設定',
         TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
         Zoom: 'ズーム',

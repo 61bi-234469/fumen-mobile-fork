@@ -835,32 +835,32 @@ export const operations = {
         },
         ghostOn: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('piece');
+            operations.menu.selectUserSettingsTab('input');
             cy.get(datatest('switch-ghost-visible')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         ghostOff: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('piece');
+            operations.menu.selectUserSettingsTab('input');
             cy.get(datatest('switch-ghost-visible')).uncheck({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         loopOn: () => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('misc');
+            operations.menu.selectUserSettingsTab('general');
             cy.get(datatest('switch-loop')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         setRotationSystem: (value) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('piece');
+            operations.menu.selectUserSettingsTab('input');
             cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
         // PAINTパレットのミノデザイン表示を切り替える (フィールドタブ)
         setPaintPaletteMinoDesign: (enabled) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('field');
+            operations.menu.selectUserSettingsTab('edit');
             const target = cy.get(datatest('switch-paint-palette-mino-design'));
             if (enabled) {
                 target.check({ force: true });
@@ -872,13 +872,13 @@ export const operations = {
         // 0を渡すと上限なし。
         setPageRotationLimit: (limit) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('misc');
+            operations.menu.selectUserSettingsTab('general');
             cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
             cy.get(datatest('btn-save')).click();
         },
         setSevenBagGray: (enabled) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('piece');
+            operations.menu.selectUserSettingsTab('input');
             const target = cy.get(datatest('switch-seven-bag-gray'));
             if (enabled) {
                 target.check({ force: true });

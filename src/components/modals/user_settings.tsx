@@ -10,6 +10,7 @@ import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
 import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
 import { SDF_MAX, SDF_MIN } from '../../lib/piece_das';
+import { tabLayout } from './user_settings_catalog';
 
 declare const M: any;
 
@@ -31,7 +32,6 @@ interface UserSettingsModalProps {
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number;
     pieceShortcutSoftDropPriority: boolean;
-    gifFrameDelayMs: number;
     rotationSystem: RotationSystem;
     sevenBagGrayEnabled: boolean;
     pageRotationLimit: number;
@@ -60,7 +60,6 @@ interface UserSettingsModalProps {
         keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
         keepPieceShortcutSdf: (data: { sdf: number }) => void;
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
-        keepGifFrameDelay: (data: { delayMs: number }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepSevenBagGrayEnabled: (data: { enable: boolean }) => void;
         keepPageRotationLimit: (data: { limit: number }) => void;
@@ -126,14 +125,14 @@ const rotationSystemLabels: Record<RotationSystem, () => string> = {
     srsPlus: i18n.UserSettings.RotationSystem.SrsPlus,
 };
 
-const tabKeys: UserSettingsTab[] = ['field', 'view', 'shortcuts', 'piece', 'misc'];
+const tabKeys: UserSettingsTab[] = Object.keys(tabLayout) as UserSettingsTab[];
 
 const tabLabels: Record<UserSettingsTab, () => string> = {
-    field: i18n.UserSettings.Tabs.Field,
+    edit: i18n.UserSettings.Tabs.Edit,
     view: i18n.UserSettings.Tabs.View,
-    shortcuts: i18n.UserSettings.Tabs.Shortcuts,
-    piece: i18n.UserSettings.Tabs.Piece,
-    misc: i18n.UserSettings.Tabs.Misc,
+    input: i18n.UserSettings.Tabs.Input,
+    keys: i18n.UserSettings.Tabs.Keys,
+    general: i18n.UserSettings.Tabs.General,
 };
 
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
@@ -155,7 +154,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasCutFrames,
         pieceShortcutSdf,
         pieceShortcutSoftDropPriority,
-        gifFrameDelayMs,
         rotationSystem,
         sevenBagGrayEnabled,
         pageRotationLimit,
@@ -457,14 +455,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         }
     };
 
-    const onchangeGifFrameDelay = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        const value = parseInt(target.value, 10);
-        if (!isNaN(value) && value >= 100 && value <= 10000) {
-            actions.keepGifFrameDelay({ delayMs: value });
-        }
-    };
-
     const tabHeaderStyle = style({
         display: 'flex',
         flexDirection: 'row',
@@ -521,8 +511,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                     </div>
 
                     <div style={style({ color: '#333', marginTop: px(15), minHeight: px(300) })}>
-                        <div key="panel-user-settings-field" datatest="panel-user-settings-field"
-                             style={panelStyle('field')}>
+                        <div key="panel-user-settings-edit" datatest="panel-user-settings-edit"
+                             style={panelStyle('edit')}>
                             {renderSwitch({
                                 key: 'switch-row-delete-spawn-mino-on-paint-drag',
                                 datatest: 'switch-delete-spawn-mino-on-paint-drag',
@@ -554,8 +544,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                             })}
 
                             {renderSwitch({
-                                key: 'switch-row-gray-after-line-clear-field',
-                                datatest: 'switch-gray-after-line-clear-field',
+                                key: 'switch-row-gray-after-line-clear-edit',
+                                datatest: 'switch-gray-after-line-clear-edit',
                                 title: i18n.TreeView.GrayAfterLineClear(),
                                 checked: grayAfterLineClear,
                                 offLabel: switchLabels.off,
@@ -627,10 +617,11 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onLabel: switchLabels.on,
                                 onChange: checked => actions.keepEditorSidePanel({ enable: checked }),
                             })}
+
                         </div>
 
-                        <div key="panel-user-settings-shortcuts" datatest="panel-user-settings-shortcuts"
-                             style={panelStyle('shortcuts')}>
+                        <div key="panel-user-settings-keys" datatest="panel-user-settings-keys"
+                             style={panelStyle('keys')}>
                             {renderSwitch({
                                 key: 'switch-row-shortcut-label',
                                 datatest: 'switch-shortcut-label',
@@ -641,8 +632,28 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepShortcutLabelVisible({ visible: checked }),
                             })}
 
-                            <div>
-                                <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>
+                            <details key="details-user-settings-piece-controls">
+                                <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
+                                    {i18n.UserSettings.PieceControls.Title()}
+                                </summary>
+                                <div style={style({ color: '#666', margin: '8px 0 10px', fontSize: px(12) })}>
+                                    {i18n.UserSettings.PieceShortcuts.Description()}
+                                </div>
+                                {renderShortcutGrid({
+                                    keys: pieceShortcutKeys,
+                                    getCode: shortcut => pieceShortcuts[shortcut],
+                                    renderLabel: shortcut => pieceShortcutLabels[shortcut](),
+                                    labelMinWidth: 80,
+                                    onKeyDown: onkeydownPieceShortcut,
+                                    inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
+                                    notSetText: i18n.UserSettings.PieceShortcuts.NotSet(),
+                                })}
+                            </details>
+
+                            <details key="details-user-settings-palette-shortcuts">
+                                <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
+                                    {i18n.UserSettings.PaletteShortcuts.Title()}
+                                </summary>
                                 <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
                                     {i18n.UserSettings.PaletteShortcuts.Description()}
                                 </div>
@@ -655,10 +666,12 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     onKeyDown: onkeydownShortcut,
                                     notSetText: i18n.UserSettings.PaletteShortcuts.NotSet(),
                                 })}
-                            </div>
+                            </details>
 
-                            <div>
-                                <h6>{i18n.UserSettings.EditShortcuts.Title()}</h6>
+                            <details key="details-user-settings-edit-shortcuts">
+                                <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
+                                    {i18n.UserSettings.EditShortcuts.Title()}
+                                </summary>
                                 <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
                                     {i18n.UserSettings.EditShortcuts.Description()}
                                 </div>
@@ -671,27 +684,12 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     onKeyDown: onkeydownEditShortcut,
                                     notSetText: i18n.UserSettings.EditShortcuts.NotSet(),
                                 })}
-                            </div>
+                            </details>
                         </div>
 
-                        <div key="panel-user-settings-piece" datatest="panel-user-settings-piece"
-                             style={panelStyle('piece')}>
+                        <div key="panel-user-settings-input" datatest="panel-user-settings-input"
+                             style={panelStyle('input')}>
                             <div>
-                                <h6>{i18n.UserSettings.PieceShortcuts.Title()}</h6>
-                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                    {i18n.UserSettings.PieceShortcuts.Description()}
-                                </div>
-
-                                {renderShortcutGrid({
-                                    keys: pieceShortcutKeys,
-                                    getCode: shortcut => pieceShortcuts[shortcut],
-                                    renderLabel: shortcut => pieceShortcutLabels[shortcut](),
-                                    labelMinWidth: 80,
-                                    onKeyDown: onkeydownPieceShortcut,
-                                    inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
-                                    notSetText: i18n.UserSettings.PieceShortcuts.NotSet(),
-                                })}
-
                                 {renderSwitch({
                                     key: 'switch-row-ghost-visible',
                                     datatest: 'switch-ghost-visible',
@@ -814,8 +812,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                             </div>
                         </div>
 
-                        <div key="panel-user-settings-misc" datatest="panel-user-settings-misc"
-                             style={panelStyle('misc')}>
+                        <div key="panel-user-settings-general" datatest="panel-user-settings-general"
+                             style={panelStyle('general')}>
                             {renderSwitch({
                                 key: 'switch-row-loop',
                                 datatest: 'switch-loop',
@@ -869,18 +867,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 unit: i18n.UserSettings.PageRotation.Unit(),
                             })}
 
-                            {renderNumberField({
-                                title: i18n.UserSettings.GifFrameDelayMs.Title(),
-                                description: i18n.UserSettings.GifFrameDelayMs.Description(),
-                                value: gifFrameDelayMs,
-                                min: 100,
-                                max: 10000,
-                                step: 100,
-                                onchange: onchangeGifFrameDelay,
-                                width: 100,
-                                unit: 'ms',
-                                outerMarginBottom: 15,
-                            })}
                         </div>
                     </div>
                 </div>

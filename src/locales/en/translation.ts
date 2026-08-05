@@ -33,11 +33,11 @@
         Title: 'User Settings',
         Notice: 'Clearing the browser cache will initialize the settings.',
         Tabs: {
-            Field: 'Field',
+            Edit: 'Edit',
             View: 'List & Tree',
-            Shortcuts: 'Shortcuts',
-            Piece: 'Piece',
-            Misc: 'Other',
+            Input: 'Input',
+            Keys: 'Keys',
+            General: 'General',
         },
         Switch: {
             Off: 'Off',
@@ -136,6 +136,9 @@
                 Off: 'Horizontal movement first',
                 On: 'Soft drop first',
             },
+        },
+        PieceControls: {
+            Title: 'Piece controls',
         },
         PageRotation: {
             Title: 'Page rotation',
@@ -279,6 +282,7 @@
         },
     },
     ListView: {
+        AllSettings: 'All settings',
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
         Zoom: 'Zoom',

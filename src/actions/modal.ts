@@ -62,7 +62,7 @@ export const modalActions: Readonly<ModalActions> = {
             },
             temporary: {
                 ...state.temporary,
-                userSettingsTab: data.initialTab ?? 'field',
+                userSettingsTab: data.initialTab ?? 'edit',
             },
         };
     },

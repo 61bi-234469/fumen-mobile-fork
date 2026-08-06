@@ -1,0 +1,39 @@
+{
+  "source": {
+    "run": "31000625172",
+    "date": "2026-08-05",
+    "note": "Per-spec durations from the Cypress run summary. history_* are the per-test subtotals of the pre-split history_spec.js (531s total); replace them with measured per-spec values after the first post-split run."
+  },
+  "defaultSeconds": 60,
+  "specs": {
+    "append_spec.js": 8,
+    "box_spec.js": 20,
+    "cold_clear_spec.js": 11,
+    "color_spec.js": 4,
+    "comments_spec.js": 66,
+    "draw_spec.js": 36,
+    "drawing_tool_spec.js": 71,
+    "editor_side_panel_spec.js": 19,
+    "editor_ui_spec.js": 45,
+    "fill_row_spec.js": 6,
+    "fill_spec.js": 8,
+    "history_comment_spec.js": 161,
+    "history_field_spec.js": 172,
+    "history_piece_spec.js": 194,
+    "key_ref_spec.js": 27,
+    "language_spec.js": 2,
+    "list_view_menu_spec.js": 20,
+    "no_lock_spec.js": 11,
+    "open_spec.js": 121,
+    "piece_queue_spec.js": 52,
+    "put_piece_spec.js": 82,
+    "quiz_spec.js": 62,
+    "right_click_spec.js": 23,
+    "sent_spec.js": 15,
+    "slide_spec.js": 3,
+    "tree_mode_spec.js": 15,
+    "url_behavior_spec.js": 4,
+    "user_settings_spec.js": 22,
+    "utils_spec.js": 4
+  }
+}

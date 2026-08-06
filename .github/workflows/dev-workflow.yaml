@@ -4,6 +4,9 @@ on:
     branches-ignore:
       - main
   workflow_dispatch:
+concurrency:
+  group: dev-workflow-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -22,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [history, slow, rest]
+        shard: [0, 1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -45,31 +48,13 @@ jobs:
       - name: Select specs for shard
         id: specs
         run: |
-          # Slow specs (per-spec CI timings from run 29652557446) get their own
-          # shard so the dynamically enumerated "rest" shard stays balanced.
-          SLOW="cypress/integration/comments_spec.js,cypress/integration/drawing_tool_spec.js,cypress/integration/open_spec.js,cypress/integration/quiz_spec.js"
-          case "${{ matrix.shard }}" in
-            history)
-              SPECS="cypress/integration/history_spec.js"
-              ;;
-            slow)
-              SPECS="$SLOW"
-              ;;
-            rest)
-              SPECS=$(find cypress/integration -name '*.js' ! -name 'history_spec.js' \
-                | sort | grep -vxF -f <(echo "$SLOW" | tr ',' '\n') | paste -sd, -)
-              ;;
-          esac
+          # Balanced by measured per-spec runtime (cypress/spec-timings.json). The script
+          # enumerates specs itself, so a new spec lands in a shard without editing this file.
+          SPECS=$(node scripts/plan_cypress_shards.js --index ${{ matrix.shard }} --total 5)
           if [ -z "$SPECS" ]; then
             echo "no specs enumerated for shard '${{ matrix.shard }}'" >&2
             exit 1
           fi
-          for f in $(echo "$SPECS" | tr ',' ' '); do
-            if [ ! -f "$f" ]; then
-              echo "missing spec file: $f" >&2
-              exit 1
-            fi
-          done
           echo "shard '${{ matrix.shard }}' specs ($(echo "$SPECS" | tr ',' '\n' | wc -l)):"
           echo "$SPECS" | tr ',' '\n'
           echo "specs=$SPECS" >> "$GITHUB_OUTPUT"

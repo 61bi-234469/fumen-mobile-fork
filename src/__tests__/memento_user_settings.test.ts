@@ -70,6 +70,25 @@ describe('user settings PAINT palette design', () => {
     });
 });
 
+describe('user settings UTILS menu pinning', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads a boolean utilsMenuPinned value', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ utilsMenuPinned: true }));
+
+        expect(localStorageWrapper.loadUserSettings().utilsMenuPinned).toBe(true);
+    });
+
+    test('keeps older settings undefined so the default (not pinned) applies', () => {
+        expect(localStorageWrapper.loadUserSettings().utilsMenuPinned).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ utilsMenuPinned: 'true' }));
+        expect(localStorageWrapper.loadUserSettings().utilsMenuPinned).toBeUndefined();
+    });
+});
+
 describe('user settings soft-drop priority', () => {
     beforeEach(() => {
         localStorage.clear();

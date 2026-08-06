@@ -317,6 +317,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.utilsMenuPinned !== undefined) {
+        main.changeUtilsMenuPinned({ enable: settings.utilsMenuPinned });
+        updated = true;
+    }
+
     if (settings.loop !== undefined) {
         main.changeLoop({ enable: settings.loop });
         updated = true;

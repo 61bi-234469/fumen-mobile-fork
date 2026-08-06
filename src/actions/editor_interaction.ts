@@ -10,7 +10,7 @@ import {
 } from '../states';
 import { ModeTypes, Piece, TouchTypes } from '../lib/enums';
 import { NextState, sequence } from './commons';
-import { isMinoPaletteSelection, legacyModeForPaintTool } from '../lib/editor_interaction';
+import { inspectorAfterToolChange, isMinoPaletteSelection, legacyModeForPaintTool } from '../lib/editor_interaction';
 import { floatingPartSpawn, initialRectSelectState } from '../lib/rect_selection';
 import { persistViewSettings } from './view_settings';
 
@@ -92,7 +92,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     bottomSlot,
                     previousPrimaryTool: previousPrimaryTool(state),
                     primaryTool: tool,
-                    inspector: 'none',
+                    inspector: inspectorAfterToolChange(state),
                 },
                 parts: { ...state.parts, selectedId: null },
                 rectSelect: initialRectSelectState,
@@ -106,7 +106,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 bottomSlot,
                 previousPrimaryTool: previousPrimaryTool(state),
                 primaryTool: tool,
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(state),
             };
             editorUi.pieceAction = pieceAction;
             return {
@@ -126,7 +126,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 ...state.editorUi,
                 bottomSlot,
                 primaryTool: tool,
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(state),
             },
         };
     }),
@@ -144,7 +144,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 bottomSlot: 'tray',
                 previousPrimaryTool: previousPrimaryTool(state),
                 primaryTool: 'piece',
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(state),
                 pieceLayout: layout,
             },
             mode: {
@@ -198,7 +198,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                 paletteSelection,
                 primaryTool: 'paint',
                 paintTool: tool,
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(state),
                 bottomSlot: 'tray',
             },
             parts: { ...state.parts, selectedId: null },
@@ -210,7 +210,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             ...state.editorUi,
             previousPrimaryTool: previousPrimaryTool(state),
             primaryTool: 'piece',
-            inspector: 'none',
+            inspector: inspectorAfterToolChange(state),
             bottomSlot: 'tray',
         };
         editorUi.pieceAction = pieceAction;
@@ -269,7 +269,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     ...state.editorUi,
                     paletteSelection: selection,
                     primaryTool: 'select',
-                    inspector: 'none',
+                    inspector: inspectorAfterToolChange(state),
                 },
                 parts: { ...state.parts, selectedId },
                 rectSelect: part !== undefined && selectedId !== null
@@ -296,7 +296,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                         primaryTool: 'piece',
                         paletteSelection: selection,
                         pieceAction: hasPiece ? 'drag' : 'spawn',
-                        inspector: 'none',
+                        inspector: inspectorAfterToolChange(nextState),
                         bottomSlot: 'tray',
                     },
                     mode: {
@@ -346,7 +346,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
             editorUi: {
                 ...state.editorUi,
                 primaryTool: 'paint',
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(state),
                 paletteSelection: selection,
                 previousPaletteSelection: selection === Piece.Empty
                     ? state.editorUi.previousPaletteSelection
@@ -393,7 +393,7 @@ export const editorInteractionActions: Readonly<EditorInteractionActions> = {
                     previousPrimaryTool: previousPrimaryTool(state),
                     primaryTool: 'piece',
                     pieceAction: 'drag',
-                    inspector: 'none',
+                    inspector: inspectorAfterToolChange(nextState),
                     lastMino: selection,
                     bottomSlot: 'tray',
                 },

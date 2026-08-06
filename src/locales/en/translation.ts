@@ -66,6 +66,11 @@
         },
         OpenTreeScreenOnTreeData: {
             Title: 'Open fumen with tree data (#TREE) in Tree screen',
+            Description: 'Takes priority over the initial screen above. Turn it off to always follow that setting.',
+        },
+        UtilsMenuPinned: {
+            Title: 'Keep the UTILS menu open',
+            Description: 'Selecting an item does not close the menu. The area outside stays undimmed and usable.',
         },
         Loop: {
             Title: 'Loop on page navigation',
@@ -172,7 +177,9 @@
         Deselect: 'Deselect', Once: 'Once', Continuous: 'Continuous', Rotate: 'Rotate', Mirror: 'Mirror', End: 'End',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete pages',
-        AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
+        AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
+        ResetAllComments: 'Reset all comments',
+        Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
         KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',
         Blank: 'Blank', Inherit: 'Inherit', NoSelection: 'No selection', Palette: 'Palette', Parts: 'Parts',
@@ -243,6 +250,7 @@
             GhostOff: 'GhostOff',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',
+            ForceReload: 'Reload',
             ImportExport: 'Import/Export',
         },
         Messages: {

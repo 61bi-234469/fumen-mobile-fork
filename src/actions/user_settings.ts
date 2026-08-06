@@ -17,6 +17,7 @@ export interface UserSettingsActions {
     keepFlagsHidden: (data: { hidden: boolean }) => action;
     keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
+    keepUtilsMenuPinned: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
@@ -68,6 +69,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     flagsHidden: state.mode.flagsHidden,
                     initialScreen: state.mode.initialScreen,
                     openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
+                    utilsMenuPinned: state.mode.utilsMenuPinned,
                     loop: state.mode.loop,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     gradient: gradientToStr(state.mode.gradient),
@@ -103,6 +105,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeOpenTreeScreenOnTreeData({
                 enable: state.temporary.userSettings.openTreeScreenOnTreeData,
             }),
+            actions.changeUtilsMenuPinned({ enable: state.temporary.userSettings.utilsMenuPinned }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
             actions.changeShortcutLabelVisible({ visible: state.temporary.userSettings.shortcutLabelVisible }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
@@ -157,6 +160,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepFlagsHidden: ({ hidden }) => keepTemporary({ flagsHidden: hidden }),
     keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
     keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
+    keepUtilsMenuPinned: ({ enable }) => keepTemporary({ utilsMenuPinned: enable }),
     keepLoop: ({ enable }) => keepTemporary({ loop: enable }),
     keepShortcutLabelVisible: ({ visible }) => keepTemporary({ shortcutLabelVisible: visible }),
     keepGradient: ({ gradient }) => keepTemporary({ gradient }),
@@ -305,6 +309,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         flagsHidden: state.mode.flagsHidden,
         initialScreen: state.mode.initialScreen,
         openTreeScreenOnTreeData: state.mode.openTreeScreenOnTreeData,
+        utilsMenuPinned: state.mode.utilsMenuPinned,
         loop: state.mode.loop,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         gradient: gradientToStr(state.mode.gradient),

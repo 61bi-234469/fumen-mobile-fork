@@ -20,6 +20,7 @@ export interface CommentActions {
     commitCommentText: () => action;
     setCommentText: (data: { text: string, pageIndex: number, mergeKey?: string }) => action;
     resetCommentText: (data: { pageIndex: number }) => action;
+    resetAllCommentTexts: () => action;
 }
 
 export const commentActions: Readonly<CommentActions> = {
@@ -62,6 +63,12 @@ export const commentActions: Readonly<CommentActions> = {
     resetCommentText: ({ pageIndex }) => (state): NextState => {
         return sequence(state, [
             unfreezeCommentText(pageIndex),
+            actions.reopenCurrentPage(),
+        ]);
+    },
+    resetAllCommentTexts: () => (state): NextState => {
+        return sequence(state, [
+            resetAllCommentTexts(),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -227,6 +234,64 @@ const commitRegularCommentText = (pageIndex: number, text: string, mergeKey?: st
             },
         }),
         actions.registerHistoryTask({ mergeKey, task: toPageTaskStack(tasks, pageIndex) }),
+    ]);
+};
+
+// 全ページのコメントを空にする。1ページ目だけが空テキストを持ち、以降はそれをrefで引き継ぐ形に揃える。
+const resetAllCommentTexts = () => (state: State): NextState => {
+    const pages = state.fumen.pages;
+    const firstPage = pages[0];
+    if (firstPage === undefined) {
+        return undefined;
+    }
+
+    const pagesObj = new Pages(pages);
+    const tasks: OperationTask[] = [];
+
+    if (firstPage.flags.quiz) {
+        pagesObj.unsetQuizFlag(0);
+        tasks.push(toUnsetQuizFlagTask(0));
+    }
+
+    if (firstPage.comment.text !== '') {
+        const primitivePage = toPrimitivePage(firstPage);
+        firstPage.comment = { text: '' };
+        tasks.push(toSinglePageTask(0, primitivePage, firstPage));
+    }
+
+    // 先頭から順にrefへ倒すと、各ページの参照先は必ず1ページ目に解決される
+    for (let pageIndex = 1; pageIndex < pages.length; pageIndex += 1) {
+        const page = pages[pageIndex];
+
+        if (page.flags.quiz) {
+            pagesObj.unsetQuizFlag(pageIndex);
+            tasks.push(toUnsetQuizFlagTask(pageIndex));
+        }
+
+        const backupComment = page.comment.text;
+        if (backupComment === undefined) {
+            continue;
+        }
+
+        pagesObj.unfreezeComment(pageIndex);
+        tasks.push(toUnfreezeCommentTask(pageIndex, backupComment));
+    }
+
+    if (tasks.length === 0) {
+        return undefined;
+    }
+
+    // 編集中のコメントが残っていると、リセット後にそれが書き戻されてしまう
+    resources.comment = undefined;
+
+    return sequence(state, [
+        () => ({
+            fumen: {
+                ...state.fumen,
+                pages,
+            },
+        }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
     ]);
 };
 

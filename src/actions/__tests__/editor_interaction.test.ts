@@ -385,6 +385,32 @@ describe('editorInteractionActions', () => {
         expect(next.mode.type).not.toBe(ModeTypes.Slide);
     });
 
+    test('keeps a pinned UTILS menu open when a tool or palette is selected', () => {
+        const state = createState();
+        state.mode.utilsMenuPinned = true;
+        state.editorUi.inspector = 'utils';
+
+        expect(apply(state, editorInteractionActions.changePaintTool({ tool: 'fill' }))
+            .editorUi.inspector).toBe('utils');
+        expect(apply(state, editorInteractionActions.selectEditorPalette({ selection: Piece.T }))
+            .editorUi.inspector).toBe('utils');
+        expect(apply(state, editorInteractionActions.changePrimaryTool({ tool: 'piece' }))
+            .editorUi.inspector).toBe('utils');
+    });
+
+    test('pinning does not apply to FLAGS, and closes UTILS while it is off', () => {
+        const pinnedFlags = createState();
+        pinnedFlags.mode.utilsMenuPinned = true;
+        pinnedFlags.editorUi.inspector = 'flags';
+        expect(apply(pinnedFlags, editorInteractionActions.changePaintTool({ tool: 'fill' }))
+            .editorUi.inspector).toBe('none');
+
+        const unpinned = createState();
+        unpinned.editorUi.inspector = 'utils';
+        expect(apply(unpinned, editorInteractionActions.changePaintTool({ tool: 'fill' }))
+            .editorUi.inspector).toBe('none');
+    });
+
     test('palette selection clears the selection frame left by Slide mode', () => {
         const state = createState();
         state.mode.type = ModeTypes.Slide;

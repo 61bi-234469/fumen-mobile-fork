@@ -105,6 +105,7 @@ export const view: View<State, Actions> = (state, actions) => {
             flagsHidden: state.temporary.userSettings.flagsHidden,
             initialScreen: state.temporary.userSettings.initialScreen,
             openTreeScreenOnTreeData: state.temporary.userSettings.openTreeScreenOnTreeData,
+            utilsMenuPinned: state.temporary.userSettings.utilsMenuPinned,
             loop: state.temporary.userSettings.loop,
             shortcutLabelVisible: state.temporary.userSettings.shortcutLabelVisible,
             gradient: state.temporary.userSettings.gradient,

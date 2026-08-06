@@ -11,6 +11,7 @@ import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
 import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
+import { inspectorAfterToolChange } from '../lib/editor_interaction';
 import { Page } from '../lib/fumen/types';
 
 const focusCommentInput = () => {
@@ -53,6 +54,7 @@ export interface ScreenActions {
     changeFlagsHidden: (data: { hidden: boolean }) => action;
     changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
+    changeUtilsMenuPinned: (data: { enable: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
     changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
@@ -173,7 +175,7 @@ export const modeActions: Readonly<ScreenActions> = {
             newState => ({ editorUi: {
                 ...newState.editorUi,
                 primaryTool: 'paint',
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(newState),
                 bottomSlot: 'tray',
             } }),
             actions.beginWholeFieldMove(),
@@ -187,7 +189,7 @@ export const modeActions: Readonly<ScreenActions> = {
             newState => ({ editorUi: {
                 ...newState.editorUi,
                 primaryTool: 'paint',
-                inspector: 'none',
+                inspector: inspectorAfterToolChange(newState),
                 bottomSlot: 'tray',
             } }),
         ]);
@@ -276,6 +278,12 @@ export const modeActions: Readonly<ScreenActions> = {
             return undefined;
         }
         return { mode: { ...state.mode, openTreeScreenOnTreeData: enable } };
+    },
+    changeUtilsMenuPinned: ({ enable }) => (state): NextState => {
+        if (state.mode.utilsMenuPinned === enable) {
+            return undefined;
+        }
+        return { mode: { ...state.mode, utilsMenuPinned: enable } };
     },
     changeLoop: ({ enable }) => (state): NextState => {
         if (state.mode.loop === enable) {

@@ -386,20 +386,26 @@ export const operations = {
                 cy.get(datatest('btn-utils-mode')).click();
                 cy.get(datatest('overlay-utils')).should('be.visible');
             },
+            // UTILSは項目を選ぶと自動で閉じる（「開いたままにする」設定が無効の既定時）。
+            // 項目を選ばずに開いたままのケースだけ明示的に閉じたいので、残っているときだけ押す。
             close: () => {
-                cy.get(datatest('overlay-utils')).find(datatest('btn-inspector-close')).click();
+                cy.get('body').then(($body) => {
+                    if ($body.find('[datatest="overlay-utils"]').length > 0) {
+                        cy.get(datatest('overlay-utils')).find(datatest('btn-inspector-close')).click();
+                    }
+                });
                 cy.get(datatest('overlay-utils')).should('not.exist');
             },
             clearToEnd: () => {
                 operations.mode.utils.open();
                 cy.get(datatest('btn-clear-to-end')).click();
-                operations.mode.utils.close();
+                cy.get(datatest('overlay-utils')).should('not.exist');
                 cy.wait(100);
             },
             clearPast: () => {
                 operations.mode.utils.open();
                 cy.get(datatest('btn-clear-past')).click();
-                operations.mode.utils.close();
+                cy.get(datatest('overlay-utils')).should('not.exist');
                 cy.wait(100);
             },
         },
@@ -862,6 +868,18 @@ export const operations = {
             operations.menu.openUserSettings();
             operations.menu.selectUserSettingsTab('general');
             cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
+            cy.get(datatest('btn-save')).click();
+        },
+        // UTILSメニューを開いたままにする設定を切り替える (全般タブ)
+        setUtilsMenuPinned: (enabled) => {
+            operations.menu.openUserSettings();
+            operations.menu.selectUserSettingsTab('general');
+            const target = cy.get(datatest('switch-utils-menu-pinned'));
+            if (enabled) {
+                target.check({ force: true });
+            } else {
+                target.uncheck({ force: true });
+            }
             cy.get(datatest('btn-save')).click();
         },
         setSevenBagGray: (enabled) => {

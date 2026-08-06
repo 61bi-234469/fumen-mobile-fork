@@ -5,6 +5,8 @@ import { State } from '../../states';
 import { px, style } from '../../lib/types';
 import { BlockIcon } from '../../components/atomics/icons';
 import { EditorLayout } from './editor';
+import { PIECE_RIGHT_COLUMN_GAP } from './responsive_layout';
+import { getSidePanelWidth } from './side_panel_layout';
 import { i18n } from '../../locales/keys';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 import { Screens } from '../../lib/enums';
@@ -148,6 +150,37 @@ const startOverlayDrag = (event: PointerEvent) => {
     event.stopPropagation();
 };
 
+// レール右端とパネル左端の間隔
+const RAIL_ANCHOR_GAP = 16;
+// 通常レイアウトのレール左マージン（editor_rail.ts の railStyle と対応）
+const RAIL_MARGIN_LEFT = 8;
+
+// field-top は「(HOLD列 +) 盤面 + レール」を中央寄せで並べる。その並びの実幅を返す。
+export const editorContentWidth = (layout: EditorLayout): number => (
+    layout.pieceQueue.visible
+        ? layout.pieceQueue.width + layout.pieceQueue.gap
+            + layout.field.size.width + PIECE_RIGHT_COLUMN_GAP + layout.buttons.size.width
+        : layout.field.size.width + RAIL_MARGIN_LEFT + layout.buttons.size.width
+);
+
+// 中央寄せしたパネルを、レール右端の外側へ何px ずらすか。`availableWidth` はオーバーレイが
+// 敷かれる領域（サイドパネルを除いたエディタ領域）の幅。
+// レール右に置けるだけの幅がないときは、レールを覆わない従来位置（レールの左隣・右端寄せ）へ退避する。
+// レイアウト未指定（List/Tree画面）は基準にするレールがないので null を返し、従来どおり右端寄せにする。
+export const railAnchorOffset = (
+    layout: EditorLayout | undefined, panelWidth: number, availableWidth: number,
+): number | null => {
+    if (layout === undefined) {
+        return null;
+    }
+    const rightEdgeOffset = availableWidth / 2 - panelWidth / 2 - 8;
+    const desired = editorContentWidth(layout) / 2 + panelWidth / 2 + RAIL_ANCHOR_GAP;
+    if (desired <= rightEdgeOffset) {
+        return desired;
+    }
+    return Math.max(0, rightEdgeOffset - (layout.buttons.size.width + 4));
+};
+
 const overlaySection = ({ key, datatest, label, children }: {
     key: string;
     datatest: string;
@@ -190,8 +223,13 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
     if (page === undefined) {
         return undefined;
     }
+    // UTILSはメニュー項目を選ぶたびに閉じる。「開いたままにする」設定のときだけ閉じずに残し、
+    // 併せて背景の暗転とクリック遮断も外して、メニューを開いたまま通常操作できるようにする。
+    const pinned = inspector === 'utils' && state.mode.utilsMenuPinned;
     const closeAndRun = (run: () => void) => {
-        actions.closeEditorInspector();
+        if (!pinned) {
+            actions.closeEditorInspector();
+        }
         run();
     };
     const isEditorView = state.mode.screen === Screens.Editor;
@@ -204,18 +242,23 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                 overlayButton({
                     key: 'btn-mirror', datatest: 'btn-mirror',
                     label: i18n.EditorUi.Mirror(), iconName: 'compare_arrows',
-                    onclick: actions.convertToMirror,
+                    onclick: () => closeAndRun(actions.convertToMirror),
                 }),
                 overlayButton({
                     key: 'btn-convert-to-gray', datatest: 'btn-convert-to-gray',
                     label: i18n.EditorUi.ToGray(), iconName: 'color_lens',
-                    onclick: actions.convertToGray,
+                    onclick: () => closeAndRun(actions.convertToGray),
+                }),
+                overlayButton({
+                    key: 'btn-convert-to-black', datatest: 'btn-convert-to-black',
+                    label: i18n.EditorUi.ToBlack(), iconName: 'filter_b_and_w',
+                    onclick: () => closeAndRun(actions.convertToBlack),
                 }),
                 overlayButton({
                     key: 'btn-clear-field', datatest: 'btn-clear-field',
                     label: i18n.EditorUi.Clear(), iconName: 'clear',
                     danger: true,
-                    onclick: actions.clearField,
+                    onclick: () => closeAndRun(actions.clearField),
                 }),
             ],
         }),
@@ -226,11 +269,17 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             children: [
                 overlayButton({
                     key: 'btn-all-mirror', datatest: 'btn-all-mirror', label: i18n.EditorUi.AllMirror(), iconName: 'compare_arrows',
-                    onclick: actions.convertAllToMirror,
+                    onclick: () => closeAndRun(actions.convertAllToMirror),
                 }),
                 overlayButton({
                     key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
                     onclick: () => closeAndRun(actions.openListViewReplaceModal),
+                }),
+                overlayButton({
+                    key: 'btn-reset-all-comments', datatest: 'btn-reset-all-comments',
+                    label: i18n.EditorUi.ResetAllComments(), iconName: 'speaker_notes_off',
+                    danger: true,
+                    onclick: () => closeAndRun(actions.resetAllCommentTexts),
                 }),
             ],
         }),
@@ -244,14 +293,14 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                     label: i18n.Menu.Buttons.ClearPast(), iconName: 'arrow_back',
                     danger: true,
                     disabled: state.fumen.currentIndex <= 0,
-                    onclick: actions.clearPast,
+                    onclick: () => closeAndRun(actions.clearPast),
                 }),
                 overlayButton({
                     key: 'btn-clear-to-end', datatest: 'btn-clear-to-end',
                     label: i18n.Menu.Buttons.ClearToEnd(), iconName: 'arrow_forward',
                     danger: true,
                     disabled: state.fumen.maxPage - 1 <= state.fumen.currentIndex,
-                    onclick: actions.clearToEnd,
+                    onclick: () => closeAndRun(actions.clearToEnd),
                 }),
             ],
         }),
@@ -301,23 +350,29 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
         }),
     ];
     const title = inspector === 'utils' ? 'UTILS' : 'FLAGS';
+    const panelWidth = Math.min(220, Math.max(150, (layout?.field.size.width ?? state.display.width) * .8));
+    const anchorOffset = railAnchorOffset(layout, panelWidth, state.display.width - getSidePanelWidth(state));
 
     return div({
         key: 'editor-overlay-backdrop',
+        datatest: `overlay-backdrop-${pinned ? 'pinned' : 'modal'}`,
         style: style({
             alignItems: 'flex-start',
-            background: 'rgba(0, 0, 0, .08)',
+            background: pinned ? 'transparent' : 'rgba(0, 0, 0, .08)',
             bottom: '0',
             display: 'flex',
-            justifyContent: 'flex-end',
+            // レール右を基準に置くときは中央寄せしてから実測分だけ右へずらす。
+            // 画面端寄せだと、盤面が中央に寄る広い画面でレールから大きく離れてしまうため。
+            justifyContent: anchorOffset === null ? 'flex-end' : 'center',
             left: '0',
             padding: px(8),
+            pointerEvents: pinned ? 'none' : 'auto',
             position: 'absolute',
             right: '0',
             top: '0',
             zIndex: 20,
         }),
-        onclick: actions.closeEditorInspector,
+        onclick: pinned ? undefined : actions.closeEditorInspector,
     }, [
         div({
             key: `overlay-${inspector}`,
@@ -343,12 +398,15 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                 boxSizing: 'border-box',
                 display: 'grid',
                 gap: px(5),
-                marginRight: px((layout?.buttons.size.width ?? 0) + 4),
+                ...(anchorOffset === null
+                    ? { marginRight: px(4) }
+                    : { position: 'relative' as const, left: px(anchorOffset) }),
                 maxHeight: `calc(100% - ${px(16)})`,
                 overflowY: 'auto',
                 padding: px(8),
+                pointerEvents: 'auto',
                 transform: 'translate(0px, 0px)',
-                width: px(Math.min(220, Math.max(150, (layout?.field.size.width ?? state.display.width) * .8))),
+                width: px(panelWidth),
             }),
         }, [
             div({

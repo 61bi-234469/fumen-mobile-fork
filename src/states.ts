@@ -228,6 +228,7 @@ export interface State {
             paintPaletteMinoDesign: boolean;
             initialScreen: InitialScreenSetting;
             openTreeScreenOnTreeData: boolean;
+            utilsMenuPinned: boolean;
             loop: boolean;
             shortcutLabelVisible: boolean;
             gradient: string;
@@ -281,6 +282,8 @@ export interface State {
         flagsHidden: boolean;
         initialScreen: InitialScreenSetting;
         openTreeScreenOnTreeData: boolean;
+        // UTILSメニューを選択後も閉じず、背景の暗転とクリック遮断も行わない
+        utilsMenuPinned: boolean;
         loop: boolean;
         shortcutLabelVisible: boolean;
         gradient: {
@@ -423,6 +426,7 @@ export const initState: Readonly<State> = {
             paintPaletteMinoDesign: false,
             initialScreen: 'reader',
             openTreeScreenOnTreeData: true,
+            utilsMenuPinned: false,
             loop: false,
             shortcutLabelVisible: false,
             gradient: '0000000',
@@ -471,6 +475,7 @@ export const initState: Readonly<State> = {
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
+        utilsMenuPinned: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},

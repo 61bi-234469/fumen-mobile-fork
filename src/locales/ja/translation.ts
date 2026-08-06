@@ -61,7 +61,12 @@ export const resources = {
             Tree: 'Tree画面',
         },
         OpenTreeScreenOnTreeData: {
-            Title: 'ツリーデータ(#TREE)を含むテト譜をTree画面で開く',
+            Title: 'ツリーデータ(#TREE)を含むテト譜はTree画面で開く',
+            Description: '上の初期画面より優先されます。OFFにすると初期画面の設定どおりに開きます',
+        },
+        UtilsMenuPinned: {
+            Title: 'UTILSメニューを開いたままにする',
+            Description: '項目を選んでもメニューを閉じない。メニュー外は暗転せず、そのまま操作できる',
         },
         Loop: {
             Title: 'ページ移動のループ',
@@ -167,7 +172,9 @@ export const resources = {
         Deselect: '選択解除', Once: '1回', Continuous: '連続', Rotate: '回転', Mirror: '反転', End: '終了',
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         UtilsPages: 'ページ削除',
-        AllMirror: '全ページ反転', ToGray: 'グレー化', Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
+        AllMirror: '全ページ反転', ToGray: 'グレー化', ToBlack: 'グレー以外削除',
+        ResetAllComments: '全ページコメントリセット',
+        Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
         KeyPage: 'キーページ', ReferencePage: '参照ページ', Lock: '固定', Rise: 'せり上がり', MirrorFlag: '反転フラグ',
         UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',
         Blank: '空にする', Inherit: '引き継ぐ', NoSelection: '選択なし', Palette: 'パレット', Parts: 'パーツ',

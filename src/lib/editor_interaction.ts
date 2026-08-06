@@ -14,6 +14,12 @@ export const getPieceAction = (state: State): PieceAction => state.editorUi.piec
 export const getInspector = (state: State): EditorInspector => state.editorUi.inspector;
 export const getPaletteSelection = (state: State): PaletteSelection => state.editorUi.paletteSelection;
 
+// ツールやパレットの切り替えは通常インスペクタを閉じるが、「UTILSメニューを開いたままにする」設定の
+// ときは UTILS だけ残す。並行して通常操作するための設定なので、操作のたびに閉じては意味がないため。
+export const inspectorAfterToolChange = (state: State): EditorInspector => (
+    state.mode.utilsMenuPinned && state.editorUi.inspector === 'utils' ? 'utils' : 'none'
+);
+
 export const legacyModeForPaintTool = (paintTool: PaintTool): { type: ModeTypes; touch: TouchTypes } => {
     switch (paintTool) {
     case 'fill':

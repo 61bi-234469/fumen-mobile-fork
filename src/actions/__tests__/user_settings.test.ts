@@ -31,6 +31,7 @@ const baseUserSettings = {
     flagsHidden: true,
     initialScreen: 'reader',
     openTreeScreenOnTreeData: true,
+    utilsMenuPinned: false,
     loop: false,
     shortcutLabelVisible: false,
     gradient: '0000000',
@@ -58,6 +59,7 @@ const createState = (override: any = {}) => ({
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
+        utilsMenuPinned: false,
         loop: false,
         shortcutLabelVisible: false,
         gradient: {},
@@ -386,7 +388,7 @@ describe('userSettingsActions', () => {
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
                 'changeDeleteSpawnMinoOnPaintDrag', 'changePaintPaletteMinoDesign', 'changeFlagsHidden',
                 'changeInitialScreen',
-                'changeOpenTreeScreenOnTreeData',
+                'changeOpenTreeScreenOnTreeData', 'changeUtilsMenuPinned',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
                 'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
@@ -411,6 +413,7 @@ describe('userSettingsActions', () => {
                 editorSidePanel: true,
                 flagsHidden: false,
                 paintPaletteMinoDesign: true,
+                utilsMenuPinned: true,
             };
 
             userSettingsActions.commitUserSettings()(state);
@@ -431,6 +434,7 @@ describe('userSettingsActions', () => {
             }));
             expect(mockActions.changeFlagsHidden).toHaveBeenCalledWith({ hidden: false });
             expect(mockActions.changePaintPaletteMinoDesign).toHaveBeenCalledWith({ enable: true });
+            expect(mockActions.changeUtilsMenuPinned).toHaveBeenCalledWith({ enable: true });
         });
     });
 });

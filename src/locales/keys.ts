@@ -71,6 +71,11 @@ export const i18n = {
         },
         OpenTreeScreenOnTreeData: {
             Title: () => t('UserSettings.OpenTreeScreenOnTreeData.Title'),
+            Description: () => t('UserSettings.OpenTreeScreenOnTreeData.Description'),
+        },
+        UtilsMenuPinned: {
+            Title: () => t('UserSettings.UtilsMenuPinned.Title'),
+            Description: () => t('UserSettings.UtilsMenuPinned.Description'),
         },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
@@ -194,6 +199,8 @@ export const i18n = {
         UtilsModes: () => t('EditorUi.UtilsModes'),
         UtilsPages: () => t('EditorUi.UtilsPages'),
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
+        ToBlack: () => t('EditorUi.ToBlack'),
+        ResetAllComments: () => t('EditorUi.ResetAllComments'),
         Clear: () => t('EditorUi.Clear'), Slide: () => t('EditorUi.Slide'), Comment: () => t('EditorUi.Comment'),
         KeyPage: () => t('EditorUi.KeyPage'), ReferencePage: () => t('EditorUi.ReferencePage'),
         Lock: () => t('EditorUi.Lock'), Rise: () => t('EditorUi.Rise'), MirrorFlag: () => t('EditorUi.MirrorFlag'),

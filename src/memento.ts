@@ -274,6 +274,7 @@ interface UserSettings {
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
+    utilsMenuPinned: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
@@ -369,6 +370,7 @@ export const localStorageWrapper = {
             flagsHidden: safer.boolean(obj.flagsHidden),
             initialScreen: initialScreenSettingFrom(obj),
             openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),
+            utilsMenuPinned: safer.boolean(obj.utilsMenuPinned),
             loop: safer.boolean(obj.loop),
             shortcutLabelVisible: safer.boolean(obj.shortcutLabelVisible),
             gradient: safer.string(obj.gradient),

@@ -4,7 +4,7 @@ import { i18n } from '../../locales/keys';
 export type SettingId =
     | 'delete-spawn-mino-on-paint-drag' | 'paint-palette-mino-design' | 'flags-hidden'
     | 'gradient' | 'gray-after-line-clear' | 'trim-top-blank' | 'editor-side-panel'
-    | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
+    | 'open-tree-screen-on-tree-data' | 'utils-menu-pinned' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
     | 'seven-bag-gray' | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
     | 'initial-screen' | 'loop' | 'page-rotation-limit';
@@ -46,6 +46,12 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'open-tree-screen-on-tree-data': {
         type: 'switch', datatestBase: 'switch-open-tree-screen-on-tree-data',
         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title,
+        description: i18n.UserSettings.OpenTreeScreenOnTreeData.Description,
+    },
+    'utils-menu-pinned': {
+        type: 'switch', datatestBase: 'switch-utils-menu-pinned',
+        title: i18n.UserSettings.UtilsMenuPinned.Title,
+        description: i18n.UserSettings.UtilsMenuPinned.Description,
     },
     'piece-shortcuts': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Title },
     'ghost-visible': { type: 'switch', datatestBase: 'switch-ghost-visible', title: i18n.UserSettings.Ghost.Title },
@@ -78,13 +84,16 @@ export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
         'delete-spawn-mino-on-paint-drag', 'paint-palette-mino-design', 'flags-hidden', 'gradient',
         'gray-after-line-clear',
     ],
-    view: ['trim-top-blank', 'gray-after-line-clear', 'editor-side-panel', 'open-tree-screen-on-tree-data'],
+    view: ['trim-top-blank', 'gray-after-line-clear', 'editor-side-panel'],
     input: [
         'ghost-visible', 'rotation-system', 'piece-arr', 'piece-das', 'piece-dcd', 'piece-sdf',
         'piece-softdrop-priority', 'seven-bag-gray',
     ],
     keys: ['palette-shortcuts', 'edit-shortcuts', 'piece-shortcuts', 'shortcut-label'],
-    general: ['initial-screen', 'loop', 'page-rotation-limit'],
+    // 実際の描画順に合わせる。open-tree-screen-on-tree-data は初期画面の従属項目として直下に置く。
+    general: [
+        'loop', 'initial-screen', 'open-tree-screen-on-tree-data', 'page-rotation-limit', 'utils-menu-pinned',
+    ],
 };
 
 export const resolveDatatest = (id: SettingId, tab: UserSettingsTab): string | undefined => {

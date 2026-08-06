@@ -21,6 +21,7 @@ interface UserSettingsModalProps {
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
+    utilsMenuPinned: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;
@@ -49,6 +50,7 @@ interface UserSettingsModalProps {
         keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
+        keepUtilsMenuPinned: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
@@ -143,6 +145,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
+        utilsMenuPinned,
         loop,
         shortcutLabelVisible,
         gradient,
@@ -824,7 +827,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepLoop({ enable: checked }),
                             })}
 
-                            <div>
+                            <div datatest="group-initial-screen">
                                 <h6>{i18n.UserSettings.InitialScreen.Title()}</h6>
 
                                 {initialScreenValues.map((value) => {
@@ -840,17 +843,28 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         </span>
                                     </label>;
                                 })}
-                            </div>
 
-                            {renderSwitch({
-                                key: 'switch-row-open-tree-screen-on-tree-data',
-                                datatest: 'switch-open-tree-screen-on-tree-data',
-                                title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title(),
-                                checked: openTreeScreenOnTreeData,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
-                                onChange: checked => actions.keepOpenTreeScreenOnTreeData({ enable: checked }),
-                            })}
+                                {/* 初期画面の例外設定なので、字下げと縦線で従属関係を示す */}
+                                <div datatest="group-initial-screen-exception"
+                                     style={style({
+                                         borderLeft: 'solid 3px #e0e0e0',
+                                         marginTop: px(12),
+                                         paddingLeft: px(12),
+                                     })}>
+                                    {renderSwitch({
+                                        key: 'switch-row-open-tree-screen-on-tree-data',
+                                        datatest: 'switch-open-tree-screen-on-tree-data',
+                                        title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title(),
+                                        description: i18n.UserSettings.OpenTreeScreenOnTreeData.Description(),
+                                        checked: openTreeScreenOnTreeData,
+                                        offLabel: switchLabels.off,
+                                        onLabel: switchLabels.on,
+                                        onChange: checked => actions.keepOpenTreeScreenOnTreeData({
+                                            enable: checked,
+                                        }),
+                                    })}
+                                </div>
+                            </div>
 
                             {renderNumberField({
                                 labelDatatest: 'label-page-rotation-limit',
@@ -865,6 +879,17 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 width: 100,
                                 unitDatatest: 'unit-page-rotation-limit',
                                 unit: i18n.UserSettings.PageRotation.Unit(),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-utils-menu-pinned',
+                                datatest: 'switch-utils-menu-pinned',
+                                title: i18n.UserSettings.UtilsMenuPinned.Title(),
+                                description: i18n.UserSettings.UtilsMenuPinned.Description(),
+                                checked: utilsMenuPinned,
+                                offLabel: switchLabels.off,
+                                onLabel: switchLabels.on,
+                                onChange: checked => actions.keepUtilsMenuPinned({ enable: checked }),
                             })}
 
                         </div>

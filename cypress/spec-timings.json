@@ -1,0 +1,39 @@
+{
+  "source": {
+    "run": "31088968213",
+    "date": "2026-08-06",
+    "note": "Per-spec durations from the Cypress run summary of the five shards. Refresh with the procedure in cypress/SPEC_MAP.md."
+  },
+  "defaultSeconds": 60,
+  "specs": {
+    "append_spec.js": 6,
+    "box_spec.js": 21,
+    "cold_clear_spec.js": 11,
+    "color_spec.js": 4,
+    "comments_spec.js": 55,
+    "draw_spec.js": 34,
+    "drawing_tool_spec.js": 62,
+    "editor_side_panel_spec.js": 19,
+    "editor_ui_spec.js": 45,
+    "fill_spec.js": 6,
+    "fill_row_spec.js": 6,
+    "history_comment_spec.js": 118,
+    "history_field_spec.js": 103,
+    "history_piece_spec.js": 85,
+    "key_ref_spec.js": 18,
+    "language_spec.js": 2,
+    "list_view_menu_spec.js": 20,
+    "no_lock_spec.js": 12,
+    "open_spec.js": 135,
+    "piece_queue_spec.js": 54,
+    "put_piece_spec.js": 87,
+    "quiz_spec.js": 65,
+    "right_click_spec.js": 24,
+    "sent_spec.js": 16,
+    "slide_spec.js": 3,
+    "tree_mode_spec.js": 16,
+    "url_behavior_spec.js": 4,
+    "user_settings_spec.js": 22,
+    "utils_spec.js": 3
+  }
+}

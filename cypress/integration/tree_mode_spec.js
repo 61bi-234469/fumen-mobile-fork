@@ -259,19 +259,23 @@ describe('Tree mode in list view', () => {
             .should('have.attr', 'fill', '#94A3B8');
     });
 
-    // 7bagグレー中はページのcommentが空になる。そこへcomment refを張ると
-    // Pages.getCommentが'Unexpected comment'で落ち、分岐・複製が無反応になっていた。
-    it('keeps branch and copy working while 7bag gray hides page comments', () => {
+    it('keeps comments, branch, and copy working while seven bag gray is enabled', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
         operations.menu.setSevenBagGray(true);
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('tree comment').blur();
 
         enterTreeGraphView();
+        cy.get('textarea').last().should('have.value', 'tree comment').clear().type('edited tree comment');
 
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 2);
 
         cy.get('[datatest^="btn-tree-copy-"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        cy.get('textarea').then($inputs => {
+            expect(Array.from($inputs).map(input => input.value)).to.include('edited tree comment');
+        });
 
         cy.get(datatest('btn-back-to-editor')).click();
         cy.get(datatest('editor-field-frame')).should('be.visible');

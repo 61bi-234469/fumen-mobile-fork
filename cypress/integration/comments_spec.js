@@ -32,6 +32,20 @@ describe('Comments', () => {
         expectFumen('v115@vhCAgHAgHAgWeAlvs2A1sDfEToABBlvs2AWDEfET4J?6Alvs2AW5AAA');
     });
 
+    it('keeps comments isolated across pages while seven bag gray is enabled', () => {
+        visit({ mode: 'edit' });
+        operations.menu.setSevenBagGray(true);
+        operations.mode.comment.open();
+
+        operations.mode.tools.nextPage();
+        cy.get(datatest('text-comment')).type('page two').blur();
+        operations.mode.tools.backPage();
+        cy.get(datatest('text-comment')).should('have.value', '');
+
+        operations.mode.tools.nextPage();
+        cy.get(datatest('text-comment')).should('have.value', 'page two');
+    });
+
     it('Comment readonly/writable', () => {
         visit({ mode: 'edit' });
 

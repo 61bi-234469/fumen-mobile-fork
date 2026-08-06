@@ -128,8 +128,7 @@ export const computeInputStats = (
     const rotationSystem = typeof options === 'string' ? options : options.rotationSystem;
     const initial: InputStats = { b2bChain: 0, renChain: 0, pieces: 0, lines: 0, perfectClears: 0 };
     const resolvedIndex = Math.min(Math.max(0, currentIndex), Math.max(0, pages.length - 1));
-    const currentComment = pages.length === 0 ? ''
-        : pages[resolvedIndex]?.internal?.hiddenComment ?? resolvePageCommentText(pages, resolvedIndex);
+    const currentComment = pages.length === 0 ? '' : resolvePageCommentText(pages, resolvedIndex);
     const sevenBagGray = pages[resolvedIndex]?.internal?.sevenBagGrayProgress
         ?? parseSevenBagGrayProgress(currentComment);
     if (sevenBagGray !== undefined) {

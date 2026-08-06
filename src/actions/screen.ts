@@ -11,8 +11,7 @@ import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 import { clearThumbnailCache } from '../lib/thumbnail';
 import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
-import { resolvePageCommentText } from '../lib/pages';
-import { Quiz } from '../lib/fumen/quiz';
+import { Page } from '../lib/fumen/types';
 
 const focusCommentInput = () => {
     if (typeof document === 'undefined') {
@@ -22,6 +21,19 @@ const focusCommentInput = () => {
         const element = document.querySelector('[datatest="text-comment"]') as HTMLInputElement | null;
         element?.focus();
     }, 0);
+};
+
+const clearSevenBagGrayWorkingData = (page: Page): Page => {
+    const {
+        sevenBagGrayProgress: _progress,
+        sevenBagGrayDisplay: _display,
+        sevenBagGrayWorkspace: _workspace,
+        ...internal
+    } = page.internal ?? {};
+    if (Object.keys(internal).length === 0) {
+        return page.internal === undefined ? page : { ...page, internal: undefined };
+    }
+    return { ...page, internal };
 };
 
 export interface ScreenActions {
@@ -341,49 +353,7 @@ export const modeActions: Readonly<ScreenActions> = {
         if (state.mode.sevenBagGrayEnabled === enable) {
             return undefined;
         }
-        const pages = enable
-            ? state.fumen.pages.map((page, index) => {
-                const {
-                    hiddenComment: _hiddenComment,
-                    sevenBagGrayProgress: _progress,
-                    sevenBagGrayDisplay: _display,
-                    sevenBagGrayWorkspace: _workspace,
-                    ...internal
-                } = page.internal ?? {};
-                return {
-                    ...page,
-                    comment: {},
-                    flags: { ...page.flags, quiz: false },
-                    internal: {
-                        ...internal,
-                        hiddenComment: resolvePageCommentText(state.fumen.pages, index),
-                    },
-                };
-            })
-            : state.fumen.pages.map((page) => {
-                const hiddenComment = page.internal?.hiddenComment;
-                const hasWorkingData = page.internal?.sevenBagGrayProgress !== undefined
-                    || page.internal?.sevenBagGrayDisplay !== undefined
-                    || page.internal?.sevenBagGrayWorkspace === true;
-                const {
-                    hiddenComment: _hiddenComment,
-                    sevenBagGrayProgress: _progress,
-                    sevenBagGrayDisplay: _display,
-                    sevenBagGrayWorkspace: _workspace,
-                    ...internal
-                } = page.internal ?? {};
-                if (hiddenComment === undefined && !hasWorkingData) {
-                    return page;
-                }
-                return {
-                    ...page,
-                    comment: hiddenComment === undefined ? page.comment : { text: hiddenComment },
-                    flags: hiddenComment === undefined
-                        ? page.flags
-                        : { ...page.flags, quiz: Quiz.isQuizComment(hiddenComment) },
-                    internal: Object.keys(internal).length === 0 ? undefined : internal,
-                };
-            });
+        const pages = state.fumen.pages.map(clearSevenBagGrayWorkingData);
         return {
             mode: {
                 ...state.mode,

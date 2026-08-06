@@ -30,8 +30,18 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   (shared component/action, `cypress/support/operations.js` edit, selector rename).
   Use [`cypress/SPEC_MAP.md`](../../../cypress/SPEC_MAP.md) to look up which spec(s) cover a
   given src area instead of relying on grep/memory each time.
+- If Cypress exits **before collecting any test** with `GPU process exited unexpectedly` /
+  `FATAL: GPU process isn't usable` (often alongside a `DevToolsActivePort` access-denied
+  line), that is a launcher-permission problem, not a test or app failure: it occurs only
+  when Cypress is started from a restricted agent process. Re-run with normal Windows
+  permissions (see `AGENTS.local.md`; start `serve` and Cypress on the same permission
+  side). Fall back to GitHub Actions only if that re-run also fails. Never record
+  "local Cypress cannot run" without date, permission level, and error type — and
+  re-verify any such note by actually running once before citing it.
 - Failure screenshots: `cypress/screenshots/<spec>/`.
-- `history_spec.js` alone takes 5+ minutes; full suite ~15 min.
+- The three `history_*_spec.js` files are the heaviest specs (~2-3 min each locally,
+  ~6 min for all three); full suite ~15 min. They share `play()` from
+  `cypress/support/history_play.js`, so a change there hits all three.
 - Checking CI: `gh run list --workflow dev-workflow.yaml --branch develop`
   (apply any `gh` environment notes from `AGENTS.local.md` if present).
 
@@ -44,8 +54,10 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   leaves a "Failed to copy" toast that covers click targets → flakes.
 - `disableModalAnimations` sets `M.Modal.defaults.inDuration/outDuration = 0` after
   every load/reload. This is the sanctioned way to speed up modal-heavy specs.
-- `history_spec.js` `play()` verifies forward steps fully but round-trips undo/redo by
-  default; pass `{ fullUndoRedo: true }` only where per-step undo grouping is the point.
+`cypress/support/history_play.js`:
+- `play()` (shared by the three `history_*_spec.js`) verifies forward steps fully but
+  round-trips undo/redo by default; pass `{ fullUndoRedo: true }` only where per-step undo
+  grouping is the point.
 
 ## Hard rules
 

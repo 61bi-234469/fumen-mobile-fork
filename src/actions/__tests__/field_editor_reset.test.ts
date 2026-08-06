@@ -9,7 +9,8 @@ jest.mock('../../actions', () => ({
             const pages = state.fumen.pages.slice();
             pages[pageIndex] = {
                 ...pages[pageIndex],
-                internal: { ...pages[pageIndex].internal, hiddenComment: text },
+                comment: { text },
+                flags: { ...pages[pageIndex].flags, quiz: text.startsWith('#Q=') },
             };
             return { fumen: { ...state.fumen, pages } };
         }),
@@ -36,10 +37,9 @@ describe('resetFieldAndPiece', () => {
                 pages: [{
                     index: 0,
                     field: { obj: new Field({}) },
-                    comment: {},
+                    comment: { text: '#Q=[](T)IOLJSZ' },
                     flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
                     internal: {
-                        hiddenComment: '#Q=[](T)IOLJSZ',
                         sevenBagGrayProgress: { bag: 3, pieces: 10, lines: 2, perfectClears: 0 },
                         sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
                     },
@@ -50,11 +50,8 @@ describe('resetFieldAndPiece', () => {
         };
 
         const next = fieldEditorActions.resetFieldAndPiece()(state);
-        const internal = next.fumen.pages[0].internal;
-
-        expect(internal.hiddenComment).toMatch(/^#Q=/);
-        expect(internal.sevenBagGrayProgress).toBeUndefined();
-        expect(internal.sevenBagGrayDisplay).toBeUndefined();
+        expect(next.fumen.pages[0].comment.text).toMatch(/^#Q=/);
+        expect(next.fumen.pages[0].internal).toBeUndefined();
     });
 });
 

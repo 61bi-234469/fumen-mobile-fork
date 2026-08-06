@@ -51,8 +51,6 @@ export interface Page {
     };
     /** Editor-only working data. Fumen encoding intentionally ignores this object. */
     internal?: {
-        /** Comment data kept only while 7bag gray mode suppresses page comments. */
-        hiddenComment?: string;
         sevenBagGrayProgress?: {
             bag: number;
             pieces: number;

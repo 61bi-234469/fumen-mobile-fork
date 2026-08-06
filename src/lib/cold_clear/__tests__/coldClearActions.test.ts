@@ -90,9 +90,7 @@ function runInfiniteQueueToggle(state: any) {
     const setCommentText = jest.fn(({ pageIndex, text }) => {
         const pages = currentState.fumen.pages.slice();
         const page = pages[pageIndex];
-        pages[pageIndex] = currentState.mode.sevenBagGrayEnabled
-            ? { ...page, comment: {}, internal: { ...page.internal, hiddenComment: text } }
-            : { ...page, comment: { ...page.comment, text } };
+        pages[pageIndex] = { ...page, comment: { ...page.comment, text } };
         currentState = { ...currentState, fumen: { ...currentState.fumen, pages } };
     });
     const spawnPiece = jest.fn(({ piece }) => {
@@ -1919,8 +1917,8 @@ describe('coldClearActions run isolation', () => {
 
         const { currentState } = runInfiniteQueueToggle(state);
 
+        expect(currentState.fumen.pages[0].comment.text).toBe('#Q=[](O)TJLSZI');
         expect(currentState.fumen.pages[0].internal).toEqual({
-            hiddenComment: '#Q=[](O)TJLSZI',
             sevenBagGrayProgress: { bag: 0, pieces: 0, lines: 0, perfectClears: 0 },
         });
         expect(currentState.fumen.pages[0].piece.type).toBe(Piece.O);
@@ -1932,14 +1930,14 @@ describe('coldClearActions run isolation', () => {
         state.mode.sevenBagGrayEnabled = true;
         state.editorUi.infinitePieceQueue = true;
         state.fumen.pages[0].internal = {
-            hiddenComment: '#Q=[](T)IOLJSZ',
             sevenBagGrayProgress: { bag: 3, pieces: 10, lines: 2, perfectClears: 1 },
             sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
         };
 
         const { currentState } = runInfiniteQueueToggle(state);
 
-        expect(currentState.fumen.pages[0].internal).toEqual({ hiddenComment: '#Q=[](T)IOLJSZ' });
+        expect(currentState.fumen.pages[0].comment.text).toBe('#Q=[](T)IOLJSZ');
+        expect(currentState.fumen.pages[0].internal).toBeUndefined();
         expect(currentState.editorUi.infinitePieceQueue).toBe(false);
     });
 

@@ -314,7 +314,6 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
             quiz: page.flags.quiz,
         },
         internal: page.internal === undefined ? undefined : {
-            hiddenComment: page.internal.hiddenComment,
             sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
                 ? undefined : { ...page.internal.sevenBagGrayProgress },
             sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {
@@ -356,7 +355,6 @@ export const toPage = (page: PrimitivePage): Page => {
             quiz: page.flags.quiz,
         },
         internal: page.internal === undefined ? undefined : {
-            hiddenComment: page.internal.hiddenComment,
             sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
                 ? undefined : { ...page.internal.sevenBagGrayProgress },
             sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {

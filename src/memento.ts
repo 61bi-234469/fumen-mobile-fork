@@ -176,6 +176,10 @@ export const memento = (() => {
         save: (pages: Page[]) => {
             saver(pages);
         },
+        // 即時保存。強制リロードのように直後にページが破棄される場面で、遅延保存の取りこぼしを防ぐ
+        saveImmediately: async (pages: Page[]): Promise<void> => {
+            localStorageWrapper.saveFumen(await sequentialEncode(pages));
+        },
         // タスクの追加
         register: (
             task: HistoryTask, mergeKey?: string, viewMode?: TreeViewMode, pieceSpawn: boolean = false,

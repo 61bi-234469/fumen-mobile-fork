@@ -210,7 +210,8 @@ export const mementoActions: Readonly<MementoActions> = {
     },
 };
 
-const saveToMemento = (state: Readonly<State>): NextState => {
+// ローカルストレージへ保存する形（ツリー有効時は #TREE 埋め込み込み）のページ
+export const toPagesForStorage = (state: Readonly<State>): Page[] => {
     const hasTreeData = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
     const tree: SerializedTree | null = hasTreeData ? {
         nodes: state.tree.nodes,
@@ -218,8 +219,10 @@ const saveToMemento = (state: Readonly<State>): NextState => {
         version: 1,
     } : null;
 
-    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, hasTreeData);
+    return embedTreeInPages(state.fumen.pages, tree, hasTreeData);
+};
 
-    memento.save(pagesToSave);
+const saveToMemento = (state: Readonly<State>): NextState => {
+    memento.save(toPagesForStorage(state));
     return undefined;
 };

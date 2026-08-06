@@ -29,6 +29,9 @@ import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tre
 import { getURLQuery } from '../params';
 import { Screens } from '../lib/enums';
 import { clearUnpinnedParts, saveParts } from '../lib/parts';
+import { forceReload } from '../lib/force_reload';
+import { memento } from '../memento';
+import { toPagesForStorage } from './memento';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 
 export interface UtilsActions {
@@ -47,6 +50,7 @@ export interface UtilsActions {
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     executeNewFumen: () => action;
+    forceReload: () => action;
     refresh: () => action;
     ontapCanvas: (e: any) => action;
 }
@@ -173,6 +177,18 @@ export const utilsActions: Readonly<UtilsActions> = {
             actions.loadNewFumen(),
             actions.changeToDrawerScreen({ refresh: true }),
         ]);
+    },
+    // 編集内容はローカルストレージから復元されるので、遅延保存を先に確定させてから読み込み直す
+    forceReload: () => (state): NextState => {
+        (async () => {
+            try {
+                await memento.saveImmediately(toPagesForStorage(state));
+            } catch (e) {
+                console.error(e);
+            }
+            await forceReload();
+        })();
+        return undefined;
     },
     loadPages: (
         { pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam, initialLoad },

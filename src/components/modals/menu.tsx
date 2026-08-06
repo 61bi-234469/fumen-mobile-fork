@@ -41,6 +41,7 @@ interface MenuProps {
         reopenCurrentPage: () => void;
         openFumenModal: () => void;
         openUserSettingsModal: () => void;
+        forceReload: () => void;
         openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) => void;
     };
 }
@@ -231,6 +232,16 @@ export const MenuModal: Component<MenuProps> = (
                            actions.openUserSettingsModal();
                        }}>
             {i18n.Menu.Buttons.UserSettings()}
+        </SettingButton>,
+
+        <SettingButton key="btn-force-reload" datatest="btn-force-reload" href="#"
+                       icons={[{ name: 'refresh', size: 30 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.closeMenuModal();
+                           actions.forceReload();
+                       }}>
+            {i18n.Menu.Buttons.ForceReload()}
         </SettingButton>,
 
         <SettingButton key="btn-help" datatest="btn-help" href="./help.html"

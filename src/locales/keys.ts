@@ -267,6 +267,7 @@ export const i18n = {
             GhostOff: () => t('Menu.Buttons.GhostOff'),
             UserSettings: () => t('Menu.Buttons.UserSettings'),
             SavePlayfieldToImage: () => t('Menu.Buttons.SavePlayfieldToImage'),
+            ForceReload: () => t('Menu.Buttons.ForceReload'),
             ImportExport: () => t('Menu.Buttons.ImportExport'),
         },
         Messages: {

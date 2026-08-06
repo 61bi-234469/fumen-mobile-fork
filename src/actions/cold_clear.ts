@@ -305,13 +305,6 @@ const resolveCommentFromPage = (pages: Page[], pageIndex: number): CommentResolu
         return { text: null, kind: 'emptyComment' };
     }
 
-    const hiddenComment = pages[pageIndex].internal?.hiddenComment;
-    if (hiddenComment !== undefined) {
-        return hiddenComment === ''
-            ? { text: hiddenComment, kind: 'emptyComment' }
-            : { text: hiddenComment, kind: 'ok' };
-    }
-
     // Quizページのrefコメントは操作リプレイ後の文字列に解決されるため、Pages経由で取得する
     try {
         const comment = new Pages(pages).getComment(pageIndex);

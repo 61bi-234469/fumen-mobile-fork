@@ -249,9 +249,6 @@ export class Pages {
                 quiz: prev.flags.quiz,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
-            internal: prev.internal?.hiddenComment === undefined ? undefined : {
-                hiddenComment: prev.internal.hiddenComment,
-            },
         };
 
         // フィールドの参照
@@ -302,9 +299,6 @@ export class Pages {
                 quiz: prev.flags.quiz,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
-            internal: prev.internal?.hiddenComment === undefined ? undefined : {
-                hiddenComment: prev.internal.hiddenComment,
-            },
         };
 
         // コメントの参照
@@ -403,9 +397,6 @@ export class Pages {
                     ...prev.piece.coordinate,
                 },
             } : undefined,
-            internal: prev.internal?.hiddenComment === undefined ? undefined : {
-                hiddenComment: prev.internal.hiddenComment,
-            },
         };
 
         // コメントの参照
@@ -750,8 +741,7 @@ export class Pages {
                 return refPage.comment.text;
             }
 
-            // A page may intentionally have no serialized comment while 7bag gray mode
-            // keeps its queue state in editor-only metadata.
+            // A page may intentionally have no serialized comment.
             return '';
         };
 

@@ -402,10 +402,17 @@ describe('PIECE queues', () => {
         // The active field for the next bag also uses gray for all previously settled terrain.
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
         operations.mode.comment.open();
-        cy.get(datatest('text-comment')).should('have.value', '');
+        cy.get(datatest('text-comment')).should($input => {
+            expect($input.val()).to.match(/^#Q=/);
+        });
         operations.mode.tools.backPage();
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
         cy.get(block(4, 0)).should('have.attr', 'color', Color.T.Normal);
+
+        cy.reload();
+        cy.get(datatest('text-comment')).should($input => {
+            expect($input.val()).to.match(/^#Q=/);
+        });
     });
 
     it('starts a seven-bag gray workspace after RESET with later imported pages', () => {

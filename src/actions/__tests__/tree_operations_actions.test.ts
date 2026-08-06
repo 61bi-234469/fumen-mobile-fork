@@ -152,50 +152,6 @@ const createQuizState = () => {
     } as any;
 };
 
-// 7bagグレー中は全ページのcommentが空になり、実体はinternal.hiddenCommentにある
-const createSevenBagGrayState = () => {
-    const pages: Page[] = [
-        {
-            index: 0,
-            field: { obj: new Field({}) },
-            comment: {},
-            flags: { ...defaultFlags },
-            internal: { hiddenComment: '#Q=[](T)ILJSZO' },
-        },
-        {
-            index: 1,
-            field: { ref: 0 },
-            comment: {},
-            flags: { ...defaultFlags },
-            internal: { hiddenComment: '#Q=[](I)LJSZO' },
-        },
-    ];
-    const tree = createTreeFromPages(pages);
-    const p1Node = findNodeByPageIndex(tree, 1);
-
-    return {
-        fumen: {
-            pages,
-            currentIndex: 1,
-            maxPage: pages.length,
-            guideLineColor: true,
-        },
-        tree: {
-            enabled: true,
-            nodes: tree.nodes,
-            rootId: tree.rootId,
-            activeNodeId: p1Node!.id,
-            addMode: AddMode.Branch,
-            viewMode: TreeViewMode.Tree,
-            dragState: initialTreeDragState,
-            operationScope: 'node',
-            grayAfterLineClear: false,
-            scale: 1.0,
-            autoFocusPending: false,
-        },
-    } as any;
-};
-
 const createPlacedQuizState = () => {
     const state = createQuizState();
     state.fumen.pages[1] = {
@@ -257,43 +213,6 @@ describe('addBranchFromCurrentNode', () => {
     });
 });
 
-describe('tree operations while 7bag gray hides page comments', () => {
-    const expectNoDanglingCommentRef = (pages: Page[]) => {
-        pages.forEach((_, index) => {
-            expect(() => new Pages(pages).getComment(index)).not.toThrow();
-        });
-    };
-
-    test('addBranchFromCurrentNode does not point at a comment-less page', () => {
-        const state = createSevenBagGrayState();
-        const next = treeOperationActions.addBranchFromCurrentNode()(state) as any;
-
-        expect(next.fumen.pages[2].comment).toEqual({});
-        expect(next.fumen.pages[2].flags.quiz).toBe(false);
-        expect(next.fumen.pages[2].internal).toEqual({ hiddenComment: '#Q=[](I)LJSZO' });
-        expectNoDanglingCommentRef(next.fumen.pages);
-    });
-
-    test('insertNodeAfterCurrent does not point at a comment-less page', () => {
-        const state = createSevenBagGrayState();
-        const next = treeOperationActions.insertNodeAfterCurrent()(state) as any;
-
-        expect(next.fumen.pages[2].comment).toEqual({});
-        expect(next.fumen.pages[2].internal).toEqual({ hiddenComment: '#Q=[](I)LJSZO' });
-        expectNoDanglingCommentRef(next.fumen.pages);
-    });
-
-    test('copyTreeNode does not point at a comment-less page', () => {
-        const state = createSevenBagGrayState();
-        const next = treeOperationActions.copyTreeNode({ nodeId: state.tree.activeNodeId })(state) as any;
-
-        const copied = next.fumen.pages.find((page: Page) => page.index === 2);
-        expect(copied.comment).toEqual({});
-        expect(copied.internal).toEqual({ hiddenComment: '#Q=[](I)LJSZO' });
-        expectNoDanglingCommentRef(next.fumen.pages);
-    });
-});
-
 describe('forkSevenBagGrayInputPage', () => {
     test('creates an independent pre-placement page without a tree', () => {
         const state = createBaseState();
@@ -303,8 +222,8 @@ describe('forkSevenBagGrayInputPage', () => {
             ...state.fumen.pages[0],
             field: { obj: new Field({}) },
             piece: createSpawnMove(Piece.T, false),
+            comment: { text: '#Q=[](T)I' },
             internal: {
-                hiddenComment: '#Q=[](T)I',
                 sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 },
             },
         };
@@ -316,8 +235,8 @@ describe('forkSevenBagGrayInputPage', () => {
         expect(workspace.field.obj).toBeDefined();
         expect(workspace.field.ref).toBeUndefined();
         expect(workspace.piece).toEqual(state.fumen.pages[0].piece);
+        expect(workspace.comment).toEqual({ text: '#Q=[](T)I' });
         expect(workspace.internal).toMatchObject({
-            hiddenComment: '#Q=[](T)I',
             sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 },
             sevenBagGrayWorkspace: true,
         });

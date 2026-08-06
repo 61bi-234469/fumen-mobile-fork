@@ -711,9 +711,8 @@ const clonePageForAppend = (page: Page, index: number): Page => {
     };
 };
 
-// 7bagグレー中はページのcommentを空にしてinternal.hiddenCommentへ退避するため、
-// text/refをどちらも持たないページが正当に存在する。そこへrefを張ると
-// Pages.getDescriptionが'Unexpected comment'で落ちるので、参照元が実体を持つときだけrefにする。
+// text/refをどちらも持たないページへrefを張るとPages.getDescriptionが
+// 'Unexpected comment'で落ちるため、参照元が実体を持つときだけrefにする。
 const inheritComment = (source: Page, sourceIndex: number, commentText: string): {
     comment: Page['comment'];
     quiz: boolean;
@@ -730,13 +729,6 @@ const inheritComment = (source: Page, sourceIndex: number, commentText: string):
     return { comment: {}, quiz: false };
 };
 
-// Pages.insertRefPageと同じく、退避済みコメントは新しいページにも引き継ぐ
-const inheritHiddenComment = (source: Page): Page['internal'] => (
-    source.internal?.hiddenComment === undefined
-        ? undefined
-        : { hiddenComment: source.internal.hiddenComment }
-);
-
 const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
     const sourceIndex = state.fumen.currentIndex;
     const source = state.fumen.pages[sourceIndex];
@@ -745,7 +737,6 @@ const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
     const field = new Pages(state.fumen.pages).getField(sourceIndex, PageFieldOperation.Command);
     const sourceInternal = source.internal;
     const internal = {
-        hiddenComment: sourceInternal?.hiddenComment,
         sevenBagGrayProgress: sourceInternal?.sevenBagGrayProgress === undefined
             ? undefined : { ...sourceInternal.sevenBagGrayProgress },
         sevenBagGrayDisplay: sourceInternal?.sevenBagGrayDisplay === undefined ? undefined : {
@@ -1123,7 +1114,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             index: newPageIndex,
             field: { obj: newField },
             flags: { ...currentPage.flags, quiz },
-            internal: inheritHiddenComment(currentPage),
         };
 
         // Add branch to tree
@@ -1324,7 +1314,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             index: newPageIndex,
             field: { obj: newField },
             flags: { ...currentPage.flags, quiz },
-            internal: inheritHiddenComment(currentPage),
         };
 
         // Insert node in tree
@@ -1379,7 +1368,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             index: newPageIndex,
             field: { obj: newField },
             flags: { ...sourcePage.flags, quiz },
-            internal: inheritHiddenComment(sourcePage),
             piece: sourcePage.piece !== undefined ? {
                 type: sourcePage.piece.type,
                 rotation: sourcePage.piece.rotation,

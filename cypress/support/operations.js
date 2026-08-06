@@ -776,24 +776,6 @@ export const operations = {
             // Clicking btn-raw-fumen waits for the clipboard modal to render and finish animating
             // (Cypress actionability), so no fixed wait is needed beforehand.
             cy.get(datatest('btn-raw-fumen')).click();
-            cy.wait(10);
-
-            {
-                let body = cy.get('body');
-                const from = 10;
-                const to = 350;
-                const y = 640;
-                body = body.trigger('mousedown', from, y);
-
-                const maxCount = 10;
-                const dx = (to - from) / maxCount;
-                for (let count = 0; count <= maxCount; count++) {
-                    body = body.trigger('mousemove', dx * count + from, y);
-                }
-
-                body.trigger('mouseup', to, y);
-            }
-
             cy.get(datatest('btn-clipboard-cancel')).click();
             // The fumen data marker is the deterministic completion signal. The toast is
             // transient and can expire before Cypress observes it on a busy CI runner.

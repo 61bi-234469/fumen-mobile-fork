@@ -223,7 +223,6 @@ export const resources = {
         },
         Buttons: {
             ImportExport: 'Import/Export',
-            ForceReload: '最新版に更新',
         },
         Messages: {
             NoAvailableCommentButton: '編集モードのときだけ変更できます',

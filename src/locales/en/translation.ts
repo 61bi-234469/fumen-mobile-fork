@@ -250,7 +250,7 @@
             GhostOff: 'GhostOff',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',
-            ForceReload: 'Update',
+            ForceReload: 'Reload',
             ImportExport: 'Import/Export',
         },
         Messages: {

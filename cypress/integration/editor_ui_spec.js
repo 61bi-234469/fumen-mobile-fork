@@ -898,6 +898,25 @@ describe('Editor UI final concept', () => {
         cy.get(block(7, 10)).should('have.attr', 'color', Color.Z.Normal);
     });
 
+    it('keeps the SPAWN mino visible under a SELECT part preview', () => {
+        visit({ mode: 'edit' });
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        operations.mode.block.click(1, 1);
+
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 1, y: 1 });
+        cy.get(datatest('tray-select-copy')).click();
+        cy.get(datatest('btn-piece-i')).click();
+        operations.mode.block.drag({ x: 4, y: 3 }, { x: 4, y: 20 });
+
+        mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
+            cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
     it('settles a SELECT part in place when the first tap starts outside the preview', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-piece-t')).click();

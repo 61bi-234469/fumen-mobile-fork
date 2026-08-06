@@ -1,4 +1,5 @@
-import { FieldConstants, Piece } from './enums';
+import { FieldConstants, isMinoPiece, Piece } from './enums';
+import { getBlockPositions } from './piece';
 import { Block } from '../state_types';
 import { FloatingSelection, RectSelectState, SelectionRect, State } from '../states';
 
@@ -207,6 +208,20 @@ export const composeSelectionField = (state: State): Block[] => {
                 continue;
             }
             field[index] = { piece };
+        }
+    }
+
+    // The spawn mino is already present in the display field. Restore it after
+    // the SELECT preview so it remains the foreground object, like in PAINT.
+    const spawn = state.fumen?.pages[state.fumen.currentIndex]?.piece;
+    if (spawn !== undefined && isMinoPiece(spawn.type)) {
+        for (const [x, y] of getBlockPositions(
+            spawn.type, spawn.rotation, spawn.coordinate.x, spawn.coordinate.y,
+        )) {
+            if (0 <= x && x < FieldConstants.Width && 0 <= y && y < FieldConstants.Height) {
+                const index = x + y * FieldConstants.Width;
+                field[index] = { ...state.field[index] };
+            }
         }
     }
     return field;

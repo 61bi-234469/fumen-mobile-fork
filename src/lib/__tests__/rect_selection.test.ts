@@ -1,4 +1,6 @@
-import { Piece } from '../enums';
+import { Piece, Rotation } from '../enums';
+import { getBlockPositions } from '../piece';
+import { Block, HighlightType } from '../../state_types';
 import {
     columnTopFilledRow,
     composeSelectionField,
@@ -10,7 +12,6 @@ import {
     rotatePartCellsLeft,
     rotatePartCells,
 } from '../rect_selection';
-import { Block } from '../../state_types';
 import { State } from '../../states';
 
 const emptyField = (): Block[] => Array.from({ length: 230 }).map(() => ({ piece: Piece.Empty }));
@@ -200,6 +201,46 @@ describe('rect selection helpers', () => {
 
         expect(composed[24].highlight).toBeUndefined();
         expect(composed[25].highlight).toBeUndefined();
+    });
+
+    test('keeps the spawn mino in front of a floating selection preview', () => {
+        const source = emptyField();
+        const spawn = { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
+        getBlockPositions(spawn.type, spawn.rotation, spawn.coordinate.x, spawn.coordinate.y)
+            .forEach(([x, y]) => {
+                source[x + y * 10] = { piece: Piece.T, highlight: HighlightType.Highlight2 };
+            });
+        const state = {
+            field: source,
+            fumen: { currentIndex: 0, pages: [{ piece: spawn }] },
+            rectSelect: {
+                status: 'floating',
+                rect: null,
+                anchorIndex: null,
+                floating: {
+                    cells: [Piece.I, Piece.I, Piece.I, Piece.I],
+                    width: 4,
+                    height: 1,
+                    sourceRect: null,
+                    targetX: 3,
+                    targetY: 20,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+            parts: { blackTransparent: true },
+        } as unknown as State;
+
+        const composed = composeSelectionField(state);
+
+        getBlockPositions(spawn.type, spawn.rotation, spawn.coordinate.x, spawn.coordinate.y)
+            .forEach(([x, y]) => {
+                expect(composed[x + y * 10]).toEqual({
+                    piece: Piece.T,
+                    highlight: HighlightType.Highlight2,
+                });
+            });
+        expect(composed[6 + 20 * 10].piece).toBe(Piece.I);
     });
 
     test('reads the top filled row of a single column', () => {

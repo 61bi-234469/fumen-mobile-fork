@@ -178,7 +178,6 @@ export const resources = {
         SpawnMinoToggle: {
             ToPaint: 'ブロック化', ToMino: 'ミノ化', CancelPick: 'やめる',
             UtilsLabel: 'SPAWNミノ ⇄ ブロック',
-            LineClearLost: 'ライン消去は行われなくなりました',
             PersistsToLaterPages: '以降のページにもブロックが残ります',
             QuizConsumptionChanged: 'NEXTの消費が変わりました',
         },

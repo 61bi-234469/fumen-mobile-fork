@@ -207,7 +207,6 @@ export const i18n = {
             ToMino: () => t('EditorUi.SpawnMinoToggle.ToMino'),
             CancelPick: () => t('EditorUi.SpawnMinoToggle.CancelPick'),
             UtilsLabel: () => t('EditorUi.SpawnMinoToggle.UtilsLabel'),
-            LineClearLost: () => t('EditorUi.SpawnMinoToggle.LineClearLost'),
             PersistsToLaterPages: () => t('EditorUi.SpawnMinoToggle.PersistsToLaterPages'),
             QuizConsumptionChanged: () => t('EditorUi.SpawnMinoToggle.QuizConsumptionChanged'),
         },

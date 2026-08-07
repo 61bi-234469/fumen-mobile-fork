@@ -70,6 +70,7 @@
       <div class="card"><h3>Erase</h3><p>Remove blocks. When <strong>Delete spawn mino when paint drag passes over it</strong> is enabled, the drag also removes SPAWN pieces it passes over.</p></div>
       <div class="card"><h3>Fill and Fill row</h3><p>Fill a connected area or one row with the selected color. Choose the empty color to erase the same area.</p></div>
       <div class="card"><h3>COMP</h3><p>Select four cells to infer a piece from its shape and confirm it with the matching color. Long-press to clear colored blocks while leaving gray blocks, and remove SPAWN pieces.</p></div>
+      <div class="card"><h3>Mino ⇄ blocks</h3><p>Use <strong>TO PAINT</strong> in the context tray to turn a SPAWN mino into four blocks at the same position. Without a SPAWN mino, choose <strong>TO MINO</strong> and select four same-color cells forming a tetromino. The action is also available from UTILS and key assignments. Paint blocks do not line-clear through Lock.</p></div>
     </div>
 
     <h3>The right-side rail</h3>
@@ -79,7 +80,6 @@
         <tbody>
           <tr><td>Import<br>(down arrow)</td><td>Open the modal for inserting or loading data from the clipboard</td><td>—</td></tr>
           <tr><td>Export<br>(up arrow)</td><td>Open the modal for saving images, sharing fumen data or URLs, and opening external sites</td><td>—</td></tr>
-          <tr><td>Settings<br>(gear)</td><td>Open the Field tab of User Settings directly</td><td>—</td></tr>
           <tr><td>Add</td><td>Add a page after the current page</td><td>—</td></tr>
           <tr><td>Insert</td><td>Insert clipboard fumen data or a field image as the next page</td><td>Replace all pages with the loaded content</td></tr>
           <tr><td>Copy</td><td>Copy the current page in fumen v115 format</td><td>Copy all pages</td></tr>
@@ -98,7 +98,7 @@
         <tbody>
           <tr><td>PAINT</td><td>Use Pen, Erase, Fill, and Fill row. The palette shows block colors.</td></tr>
           <tr><td>PIECE</td><td>Spawn pieces from the palette, then use Hold, hard drop, horizontal movement, soft drop, and rotation. Long-press horizontal movement to move to the edge.</td></tr>
-          <tr><td>INPUT</td><td>Directly operate the queue's CURRENT piece. HOLD and NEXT are shown, and the palette contains only Empty, Gray, and RESET.</td></tr>
+          <tr><td>INPUT</td><td>Directly operate the queue's CURRENT piece. It shows HOLD/NEXT, the latest clear result, B2B/REN, and totals for pieces, lines, and PCs.</td></tr>
           <tr><td>SELECT</td><td>Drag across the field to select a rectangle, then copy, cut, rotate, or mirror it.</td></tr>
         </tbody>
       </table>
@@ -106,12 +106,15 @@
     <p class="note">Press the selected mode button again to show or hide the context tools below the field. Scroll the tray horizontally when the available width is too small.</p>
 
     <h3>HOLD and NEXT in INPUT and PIECE</h3>
-    <figure class="shot"><img src="../images/en/piece-queue.png" alt="INPUT mode with HOLD on the left and NEXT pieces in order on the right."><figcaption>In INPUT, queue information from the page comment appears beside the field as HOLD and NEXT, and you directly operate CURRENT.</figcaption></figure>
+    <figure class="shot"><img src="../images/en/input.png" alt="INPUT mode after seven placements, showing a grayed field, HOLD and NEXT, placement statistics, infinite 7-bag, and 7bag grey."><figcaption>INPUT with 7bag grey. After one bag is placed, its field is grayed and the next CURRENT is ready to play.</figcaption></figure>
     <ul>
       <li><strong>INPUT:</strong> Open it from <strong>INPUT</strong> on the rail. Spawn and operate the queue's CURRENT piece; NEXT is listed upward from the nearest piece.</li>
       <li><strong>HOLD / NEXT:</strong> These appear in PIECE and INPUT.</li>
-      <li><strong>Piece queue settings:</strong> Select HOLD or NEXT to open the settings. The input is stored in the page comment as queue data such as <code>#Q=[](I)OTLJSZ</code>.</li>
-      <li><strong>Palette:</strong> In PIECE, select a piece to spawn it. Delete removes a SPAWN piece, <strong>RESPAWN</strong> resets its position and rotation, and <strong>∞ 7bag</strong> toggles automatic queue generation.</li>
+      <li><strong>Piece queue settings:</strong> Select HOLD or NEXT to open them. Normally, the queue is stored in the page comment as data such as <code>#Q=[](I)OTLJSZ</code>. Closing the dialog promotes the first NEXT piece when CURRENT is empty.</li>
+      <li><strong>Placement statistics:</strong> Below HOLD, INPUT shows the latest line clear or spin plus B2B, REN, placed pieces, cleared lines, and Perfect Clears. Short screens show fewer rows.</li>
+      <li><strong>∞ 7bag:</strong> Automatically refills the queue with randomized seven-piece bags. <strong>7bag grey</strong> directly below it is available only while infinite 7-bag is on.</li>
+      <li><strong>7bag grey:</strong> Groups every seven placements into one page and grays the completed bag's field. It hides ordinary comments while keeping queue and progress as editor data. INPUT workspace branches are protected in Tree mode.</li>
+      <li><strong>RESET:</strong> Resets the field and CURRENT position/orientation together.</li>
     </ul>
 
     <h3>Reuse a region with SELECT</h3>
@@ -128,7 +131,9 @@
       <li><strong>Mirror all pages:</strong> Mirror every page horizontally.</li>
       <li><strong>Slide:</strong> Move the field up by one row and gray out the newly empty bottom row.</li>
       <li><strong>Lock:</strong> Lock pieces on the page so line clears are applied when moving to the next page.</li>
-      <li><strong>Panels:</strong> Drag a panel heading to move it. Closing with the close button or <kbd>Esc</kbd> keeps the PAINT, PIECE, and SELECT choice.</li>
+      <li><strong>Delete non-gray:</strong> Clear colored blocks while preserving gray blocks.</li>
+      <li><strong>Reset all comments:</strong> Clear comments and quiz data on every page in one undoable action. Tree data is preserved.</li>
+      <li><strong>Panels:</strong> Drag the header to move a panel. An item normally closes UTILS. Enable <strong>Keep the UTILS menu open</strong> to keep choosing items while using the field.</li>
     </ul>
   </section>
 
@@ -139,6 +144,7 @@
       <div class="card"><h3>Insert in the middle</h3><p>Use <strong>+</strong> or <strong>Insert</strong> even when a next page already exists. The new page is inserted between the current and next pages.</p></div>
       <div class="card"><h3>Undo and redo</h3><p>Undo or redo the latest edit. While operating a NEXT queue in INPUT, Undo and Redo move across one consumed piece at a time. History is preserved when editing across screen modes.</p></div>
       <div class="card"><h3>Comments</h3><p>Write explanations or NEXT queue data in the field below the board. In List, edit comments while viewing all pages or replace text in bulk.</p></div>
+      <div class="card"><h3>Page rotation</h3><p>Set a retained page count to drop the oldest page numbers when additions exceed the limit. Set 0 for no limit.</p></div>
     </div>
     <div class="tip warn"><strong>First-page information:</strong> Some settings, such as colors and the kick table, apply to the entire fumen. These settings carry forward automatically even when the first page is replaced.</div>
   </section>
@@ -186,7 +192,7 @@
       <li><strong>Select a node:</strong> Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
       <li><strong>Disable Tree mode:</strong> A confirmation dialog appears because the tree data will be removed.</li>
       <li><strong>Add a parent tree:</strong> Create an independent root that is not connected to the existing branches. Use it to manage another set or loop in the same fumen.</li>
-      <li><strong>Gray out with + button:</strong> When + creates a page, blocks after line clear are grayed out. You can enable <strong>Do not gray out on hard drop</strong>.</li>
+      <li><strong>Gray out with + button:</strong> When + creates a page, blocks after line clear are grayed out.</li>
       <li><strong>To the active node:</strong> Export only the pages from the root through the selected node as a PNG or share URL.</li>
     </ul>
     <div class="tip warn"><strong>Important:</strong> Tree data is stored in the first page comment as <code>#TREE=...</code>. Do not delete or rewrite this string while using Tree. Other fumen tools may display it as an ordinary comment.</div>
@@ -294,11 +300,11 @@
       <table>
         <thead><tr><th>Tab</th><th>Main settings</th></tr></thead>
         <tbody>
-          <tr><td>Field</td><td><strong>Show FLAGS</strong>, <strong>Delete spawn mino when paint drag passes over it</strong>, <strong>Show PAINT palette as mino images</strong>, <strong>Gray out with + button</strong>, <strong>Do not gray out on hard drop</strong>, and <strong>Block surface marker</strong></td></tr>
+          <tr><td>Edit</td><td><strong>Delete spawn mino when an eraser drag passes over it</strong>, <strong>Show PAINT palette as mino images</strong>, <strong>Show FLAGS</strong>, <strong>Block surface marker</strong>, and <strong>Gray out with + button</strong></td></tr>
           <tr><td>List &amp; Tree</td><td><strong>Trim top blank</strong>, <strong>Gray out with + button</strong>, and <strong>Show side panel (PC)</strong></td></tr>
-          <tr><td>Shortcuts</td><td><strong>Show shortcut labels</strong>, palette, edit, and piece shortcuts</td></tr>
-          <tr><td>Piece</td><td><strong>Piece Shortcuts</strong>, <strong>Show the ghost</strong>, <strong>Kick table</strong>, and ARR, DAS, DCD, and SDF (frame units)</td></tr>
-          <tr><td>Others</td><td><strong>Loop on page navigation [Reader]</strong>, <strong>Initial screen</strong>, <strong>Open fumen with tree data (#TREE) in Tree screen</strong>, and GIF page interval</td></tr>
+          <tr><td>Input</td><td><strong>Show the ghost</strong>, <strong>Kick table</strong>, ARR, DAS, DCD, SDF, <strong>Soft drop priority</strong>, and <strong>7-bag gray</strong></td></tr>
+          <tr><td>Keys</td><td>Palette, edit, and piece shortcuts plus <strong>Show shortcut labels</strong></td></tr>
+          <tr><td>General</td><td><strong>Loop on page navigation</strong>, <strong>Initial screen</strong>, <strong>Page rotation</strong>, and <strong>Keep the UTILS menu open</strong></td></tr>
         </tbody>
       </table>
     </div>
@@ -306,9 +312,10 @@
       <li><strong>Show shortcut labels:</strong> Display the assigned key at the bottom right of each button.</li>
       <li><strong>Change a key:</strong> Select a field and press a key. Press Backspace to clear the assignment.</li>
       <li><strong>Kick table:</strong> Choose <strong>Classic</strong>, <strong>SRS</strong>, or <strong>SRS+</strong>. SRS+ also supports 180° rotation.</li>
+      <li><strong>7-bag gray:</strong> This is the same setting as <strong>7bag grey</strong> beside the INPUT field. It is unavailable while infinite 7-bag is off.</li>
       <li><strong>Show PAINT palette as mino images:</strong> Show PAINT color swatches as their corresponding mino images. It does not change the PIECE palette.</li>
       <li><strong>Initial screen:</strong> Choose Reader, Edit, List, or Tree as the screen opened at startup. You can also open fumen data containing <code>#TREE</code> in Tree.</li>
-      <li><strong>Gray out with + button:</strong> Changing this in either Field or List &amp; Tree updates the same setting.</li>
+      <li><strong>Gray out with + button:</strong> Changing this in either Edit or List &amp; Tree updates the same setting.</li>
       <li><strong>Side panel:</strong> Enable the List or Tree panel beside Edit with <strong>Show side panel (PC)</strong>.</li>
       <li><strong>Saving settings:</strong> Settings are saved in the browser. Clearing browser data resets them.</li>
     </ul>
@@ -331,6 +338,8 @@
           <tr><td>Long-press COMP</td><td>Clear colored blocks while leaving gray blocks, and remove SPAWN pieces</td></tr>
           <tr><td>Right-click the field</td><td>Acts as an eraser in PAINT, PIECE, and SELECT. Right-clicking a SPAWN piece returns it to the head of the queue. Right-clicking a selection or a part preview deletes the whole thing and clears the selection, just like the SPAWN piece (PC only)</td></tr>
           <tr><td>HOLD in PIECE</td><td>Swap HOLD and the current piece, and update the page comment queue</td></tr>
+          <tr><td>Spawn mino / blocks</td><td>Convert through the context tray, UTILS, or an assigned shortcut</td></tr>
+          <tr><td><strong>Reload</strong> in Menu</td><td>Reload updated application assets</td></tr>
         </tbody>
       </table>
     </div>

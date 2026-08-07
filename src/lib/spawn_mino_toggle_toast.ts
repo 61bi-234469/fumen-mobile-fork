@@ -12,24 +12,20 @@ const TOAST_DISPLAY_LENGTH = 3000;
  * SPAWNミノ⇄ペイント変換で「見た目以外の意味」が変わったときの事後通知。
  *
  * 変換そのものはブロックしない。確認ダイアログを出さない代わりに、
- * lockによるライン消去・以降ページへの波及・QuizのNEXT消費が実際に変わったときだけ
+ * 以降ページへの波及・QuizのNEXT消費が実際に変わったときだけ
  * 1回だけトーストを出す。通常ケース（lock=true・ライン非完成・非Quiz）では何も出さない。
  */
 export interface SpawnMinoToggleEffects {
-    lineClearLost: boolean;
     persistsToLaterPages: boolean;
     quizConsumptionChanged: boolean;
 }
 
 export const hasSpawnMinoToggleEffect = (effects: SpawnMinoToggleEffects): boolean => (
-    effects.lineClearLost || effects.persistsToLaterPages || effects.quizConsumptionChanged
+    effects.persistsToLaterPages || effects.quizConsumptionChanged
 );
 
 export const showSpawnMinoToggleToast = (effects: SpawnMinoToggleEffects) => {
     const messages: string[] = [];
-    if (effects.lineClearLost) {
-        messages.push(i18n.EditorUi.SpawnMinoToggle.LineClearLost());
-    }
     if (effects.persistsToLaterPages) {
         messages.push(i18n.EditorUi.SpawnMinoToggle.PersistsToLaterPages());
     }

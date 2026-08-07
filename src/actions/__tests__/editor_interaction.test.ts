@@ -6,6 +6,7 @@ jest.mock('../../actions', () => ({
     actions: {
         removeUnsettledItems: () => () => undefined,
         cancelRectSelectionPreview: () => () => undefined,
+        cancelSpawnMinoPick: () => () => undefined,
         convertToBlack: () => () => undefined,
         clearFieldAndPiece: () => () => undefined,
         clearPiece: () => () => undefined,

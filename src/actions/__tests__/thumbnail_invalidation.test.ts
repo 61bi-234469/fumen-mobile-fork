@@ -13,6 +13,7 @@ jest.mock('../../actions', () => ({
         fixInferencePiece: noopAction,
         clearInferencePiece: noopAction,
         commitCommentText: noopAction,
+        cancelSpawnMinoPick: noopAction,
         setComment: noopAction,
         setField: noopAction,
         setFieldColor: noopAction,

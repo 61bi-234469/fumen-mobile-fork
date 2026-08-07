@@ -195,6 +195,9 @@ export const mementoActions: Readonly<MementoActions> = {
         const treeStateWithLock = treeState;
 
         return sequence(state, [
+            // 盤面が巻き戻る以上、SPAWNミノ⇄ペイントの対象選択待ちは無効にする。
+            // 残したままだと次のフィールドタップが意図せず変換へ消費される。
+            actions.cancelSpawnMinoPick(),
             actions.setPages({ pages: cleanedPages, open: false }),
             actions.openPage({ index }),
             actions.setHistoryCount({ undoCount, redoCount }),

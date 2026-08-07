@@ -9,11 +9,17 @@ import {
     toSinglePageTask,
 } from '../history_task';
 import { isQuizCommentResult, PageFieldOperation, Pages, parseToCommands } from '../lib/pages';
-import { FieldConstants, ModeTypes, Piece, Rotation } from '../lib/enums';
+import { FieldConstants, isMinoPiece, ModeTypes, Piece, Rotation } from '../lib/enums';
 import { getBlockPositions, getBlocks, getPieces } from '../lib/piece';
 import { State } from '../states';
 import { Field } from '../lib/fumen/field';
-import { Move } from '../lib/fumen/types';
+import { Move, Page } from '../lib/fumen/types';
+import { findLiftableMinoAt, hasAnyLiftableMino, spawnMinoCellIndices } from '../lib/spawn_mino_convert';
+import {
+    hasSpawnMinoToggleEffect,
+    showSpawnMinoToggleToast,
+    SpawnMinoToggleEffects,
+} from '../lib/spawn_mino_toggle_toast';
 
 export interface ConvertActions {
     shiftToLeft: () => action;
@@ -26,6 +32,10 @@ export interface ConvertActions {
     clearField: () => action;
     convertToMirror: () => action;
     convertAllToMirror: () => action;
+    convertSpawnMinoToBlocks: () => action;
+    convertBlocksToSpawnMino: (data: { index: number }) => action;
+    toggleSpawnMinoAndBlocks: () => action;
+    cancelSpawnMinoPick: () => action;
 }
 
 export const convertActions: Readonly<ConvertActions> = {
@@ -323,6 +333,180 @@ export const convertActions: Readonly<ConvertActions> = {
             convertAllToMirror(),
         ]);
     },
+    // SPAWNミノを、同じ位置・同じ色のペイントブロックへ焼き付ける。
+    // 下に既存ブロックがあっても上書きする（逆変換では空セルに戻り、下の色は復元されない）。
+    convertSpawnMinoToBlocks: () => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        const piece = page !== undefined ? page.piece : undefined;
+        if (page === undefined || piece === undefined || !isMinoPiece(piece.type)) {
+            return undefined;
+        }
+
+        // 焼き付ける前の「lockしたらどうなるか」を見て、意味の変化を判定する
+        const fieldAfterLock = new Pages(state.fumen.pages)
+            .getField(pageIndex, PageFieldOperation.Command).copy();
+        fieldAfterLock.put(piece);
+        const effects: SpawnMinoToggleEffects = {
+            lineClearLost: page.flags.lock && hasFilledLine(fieldAfterLock),
+            persistsToLaterPages: !page.flags.lock,
+            quizConsumptionChanged: page.flags.quiz && page.flags.lock,
+        };
+
+        const indices = spawnMinoCellIndices(piece);
+        const prevPage = toPrimitivePage(page);
+        for (const index of indices) {
+            writeFieldBlock(page, state.cache.currentInitField, index, piece.type);
+        }
+        page.piece = undefined;
+
+        return commitSpawnMinoToggle(state, pageIndex, prevPage, page, effects);
+    },
+    // ミノ形のペイントブロックを持ち上げてSPAWNミノにする。対象は index を含む同色4セル。
+    convertBlocksToSpawnMino: ({ index }) => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (page === undefined || page.piece !== undefined) {
+            return undefined;
+        }
+
+        const rawField = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+        const mino = findLiftableMinoAt(rawField, index);
+        if (mino === undefined) {
+            return undefined;
+        }
+
+        const effects: SpawnMinoToggleEffects = {
+            lineClearLost: false,
+            persistsToLaterPages: false,
+            quizConsumptionChanged: page.flags.quiz && page.flags.lock,
+        };
+
+        const prevPage = toPrimitivePage(page);
+        for (const cell of mino.indices) {
+            writeFieldBlock(page, state.cache.currentInitField, cell, Piece.Empty);
+        }
+        page.piece = { type: mino.piece, rotation: mino.rotation, coordinate: mino.coordinate };
+
+        return commitSpawnMinoToggle(state, pageIndex, prevPage, page, effects);
+    },
+    toggleSpawnMinoAndBlocks: () => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItems(),
+            resolveSpawnMinoToggle,
+        ]);
+    },
+    cancelSpawnMinoPick: () => (state): NextState => {
+        if (!state.editorUi.spawnMinoToggle.pickArmed) {
+            return undefined;
+        }
+        return {
+            editorUi: {
+                ...state.editorUi,
+                spawnMinoToggle: { ...state.editorUi.spawnMinoToggle, pickArmed: false },
+            },
+        };
+    },
+};
+
+// ペイントと同じ規則で1セル書く。最初のフィールドの状態に戻るときはコマンドを消す。
+const writeFieldBlock = (page: Page, initField: Field, index: number, piece: Piece) => {
+    if (!page.commands) {
+        page.commands = { pre: {} };
+    }
+    const key = `block-${index}`;
+    if (initField.getAtIndex(index, true) !== piece) {
+        page.commands.pre[key] = {
+            piece,
+            type: 'block',
+            x: index % FieldConstants.Width,
+            y: Math.floor(index / FieldConstants.Width),
+        };
+    } else {
+        delete page.commands.pre[key];
+    }
+};
+
+const hasFilledLine = (field: Field): boolean => {
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        let filled = true;
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            if (field.getAtIndex(x + y * FieldConstants.Width, true) === Piece.Empty) {
+                filled = false;
+                break;
+            }
+        }
+        if (filled) {
+            return true;
+        }
+    }
+    return false;
+};
+
+const commitSpawnMinoToggle = (
+    state: State,
+    pageIndex: number,
+    prevPage: ReturnType<typeof toPrimitivePage>,
+    page: Page,
+    effects: SpawnMinoToggleEffects,
+): NextState => {
+    return sequence(state, [
+        newState => ({
+            fumen: { ...newState.fumen, pages: [...newState.fumen.pages] },
+            editorUi: {
+                ...newState.editorUi,
+                spawnMinoToggle: { pickArmed: false },
+            },
+        }),
+        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+        actions.reopenCurrentPage(),
+        (): NextState => {
+            if (hasSpawnMinoToggleEffect(effects)) {
+                showSpawnMinoToggleToast(effects);
+            }
+            return undefined;
+        },
+    ]);
+};
+
+// 決定木。removeUnsettledItems のあとの状態に対して評価する。
+// ミノ化の対象は自動で決めない。ボタンは候補をハイライトするところまでで、
+// どのミノを持ち上げるかは必ずユーザーのタップが決める。
+const resolveSpawnMinoToggle = (state: State): NextState => {
+    // 候補表示中にもう一度押したらキャンセルする。出したのと同じ操作で引っ込められるようにする。
+    if (state.editorUi.spawnMinoToggle.pickArmed) {
+        return sequence(state, [
+            convertActions.cancelSpawnMinoPick(),
+            actions.reopenCurrentPage(),
+        ]);
+    }
+
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined) {
+        return undefined;
+    }
+
+    // ブロック化は対象がSPAWNミノ1つに定まるので、そのまま実行する
+    if (page.piece !== undefined && isMinoPiece(page.piece.type)) {
+        return convertActions.convertSpawnMinoToBlocks()(state);
+    }
+
+    // ミノ化は候補をハイライトして対象選択待ちへ。候補がなければ何もしない
+    const rawField = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+    if (!hasAnyLiftableMino(rawField)) {
+        return undefined;
+    }
+    return sequence(state, [
+        () => ({
+            editorUi: {
+                ...state.editorUi,
+                spawnMinoToggle: { pickArmed: true },
+            },
+        }),
+        // ハイライトを盤面へ反映する
+        actions.reopenCurrentPage(),
+    ]);
 };
 
 const convertToGoalField = (callback: (field: Field) => Field) => (state: State): NextState => {

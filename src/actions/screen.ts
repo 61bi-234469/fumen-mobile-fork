@@ -122,6 +122,7 @@ export const modeActions: Readonly<ScreenActions> = {
             actions.setListViewSettingsOpened({ opened: false }),
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
+            actions.cancelSpawnMinoPick(),
             animationActions.pauseAnimation(),
             (currentState) => {
                 clearThumbnailCache(currentState.fumen.pages);
@@ -198,12 +199,25 @@ export const modeActions: Readonly<ScreenActions> = {
         return actions.changePieceAction({ pieceAction: 'drag' })(state);
     },
     changeScreen: ({ screen }) => (state): NextState => {
-        return {
-            mode: {
-                ...state.mode,
-                screen,
-            },
-        };
+        if (screen === state.mode.screen) {
+            return {
+                mode: {
+                    ...state.mode,
+                    screen,
+                },
+            };
+        }
+        // 画面が変わるとフィールドのタップ経路も変わるため、
+        // SPAWNミノ⇄ペイントの対象選択待ちは持ち越さない。
+        return sequence(state, [
+            actions.cancelSpawnMinoPick(),
+            newState => ({
+                mode: {
+                    ...newState.mode,
+                    screen,
+                },
+            }),
+        ]);
     },
     changeCommentMode: ({ type }) => (state): NextState => {
         return {

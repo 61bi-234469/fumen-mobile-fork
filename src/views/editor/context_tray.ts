@@ -18,12 +18,13 @@ import {
     startPieceShortcut,
 } from '../../lib/piece_shortcut';
 import { displayShortcut } from '../../lib/shortcuts';
+import { spawnMinoToggleDirection } from '../../lib/editor_interaction';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
 
 const trayButtonView = ({
     key, datatest, label, iconName, active = false, disabled = false, iconOnly = false, touchActionNone = false,
-    shortcutLabel,
+    shortcutLabel, dataDirection,
     handlers,
 }: {
     key: string;
@@ -35,6 +36,7 @@ const trayButtonView = ({
     iconOnly?: boolean;
     touchActionNone?: boolean;
     shortcutLabel?: string;
+    dataDirection?: string;
     handlers: object;
 }) => {
     return button({
@@ -44,6 +46,7 @@ const trayButtonView = ({
         type: 'button',
         'aria-label': label,
         'aria-pressed': active ? 'true' : 'false',
+        'data-direction': dataDirection,
         ...handlers,
         style: style({
             alignItems: 'center',
@@ -250,6 +253,39 @@ const selectionSummary = (state: State): VNode<{}>[] => {
     ])];
 };
 
+// SPAWNミノ⇄ペイントの相互変換。押す前に行き先が分かるよう、ラベルとアイコンを方向で切り替える。
+// 方向は data-direction 属性でも公開し、Cypressから検証できるようにする。
+// このボタンだけ trayButtonView を直接使う（trayButton のシグネチャは既存4ボタンのまま保つ）。
+const spawnMinoToggleTrayButton = (state: State, actions: Actions): VNode<{}> => {
+    const direction = spawnMinoToggleDirection(state);
+    const { label, iconName } = {
+        'to-paint': { label: i18n.EditorUi.SpawnMinoToggle.ToPaint(), iconName: 'brush' },
+        'to-mino': { label: i18n.EditorUi.SpawnMinoToggle.ToMino(), iconName: 'extension' },
+        // 候補表示中は押すとキャンセルなので、ラベルもそう表示する
+        pick: { label: i18n.EditorUi.SpawnMinoToggle.CancelPick(), iconName: 'close' },
+        none: { label: i18n.EditorUi.SpawnMinoToggle.ToPaint(), iconName: 'brush' },
+    }[direction];
+    const disabled = direction === 'none';
+    return trayButtonView({
+        label,
+        iconName,
+        disabled,
+        key: 'tray-spawn-mino-toggle',
+        datatest: 'tray-spawn-mino-toggle',
+        active: direction === 'pick',
+        dataDirection: direction,
+        handlers: {
+            onclick: (event: MouseEvent) => {
+                if (!disabled) {
+                    actions.toggleSpawnMinoAndBlocks();
+                }
+                event.preventDefault();
+                event.stopPropagation();
+            },
+        },
+    });
+};
+
 const paintTray = (state: State, actions: Actions): VNode<{}>[] => [
     trayButton({
         key: 'tray-paint-pen', datatest: 'tray-paint-pen', label: i18n.EditorUi.Pen(), iconName: 'edit',
@@ -274,6 +310,7 @@ const paintTray = (state: State, actions: Actions): VNode<{}>[] => [
         label: i18n.EditorUi.FillRow(), iconName: 'power_input',
         active: state.editorUi.paintTool === 'fillRow', onclick: () => actions.changePaintTool({ tool: 'fillRow' }),
     }),
+    spawnMinoToggleTrayButton(state, actions),
 ];
 
 const rotationDirection = (rotationName: string): string => ({

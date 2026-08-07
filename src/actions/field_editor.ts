@@ -398,6 +398,15 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
     },
     ontouchStartField: ({ index }) => (state): NextState => {
         const dispatch = (newState: State): NextState => {
+            // The SPAWN mino / paint toggle armed a target pick: this tap chooses the mino to
+            // lift and never reaches the paint or select handlers below. Tapping anything that
+            // cannot be lifted just cancels, so the pick can never trap the next stroke.
+            if (newState.editorUi?.spawnMinoToggle?.pickArmed) {
+                return sequence(newState, [
+                    actions.cancelSpawnMinoPick(),
+                    afterState => actions.convertBlocksToSpawnMino({ index })(afterState),
+                ]);
+            }
             // The paint eraser deletes a selection it is tapped on, like the SPAWN mino below.
             // SELECT keeps its own left-click behaviour (grab and move the selection).
             if (newState.editorUi?.primaryTool === 'paint'

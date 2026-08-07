@@ -19,6 +19,7 @@ export interface SetterActions {
         inferences: number[],
         ghost: boolean,
         allowSplit: boolean,
+        liftableCells?: number[],
     }) => action;
     setFieldColor: (data: { guideLineColor: boolean }) => action;
     setSentLine: (data: { sentLine: Block[] }) => action;
@@ -84,7 +85,7 @@ export const setterActions: Readonly<SetterActions> = {
         };
     },
     setField: (
-        { field, move, filledHighlight, inferences, ghost, allowSplit },
+        { field, move, filledHighlight, inferences, ghost, allowSplit, liftableCells },
     ) => (): NextState => {
         const drawnField: Block[] = field.concat();
 
@@ -195,6 +196,17 @@ export const setterActions: Readonly<SetterActions> = {
                     piece: 'inference',
                     highlight: HighlightType.Highlight2,
                 };
+            }
+        }
+
+        // ミノ化の対象選択待ち: タップできる候補を光らせる。
+        // この状態ではSPAWNミノも推論セルも存在しないため、同じHighlight2を使っても衝突しない。
+        if (liftableCells !== undefined) {
+            for (const cell of liftableCells) {
+                const block = drawnField[cell];
+                if (block !== undefined) {
+                    drawnField[cell] = { ...block, highlight: HighlightType.Highlight2 };
+                }
             }
         }
 

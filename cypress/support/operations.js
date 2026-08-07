@@ -408,6 +408,37 @@ export const operations = {
                 cy.get(datatest('overlay-utils')).should('not.exist');
                 cy.wait(100);
             },
+            spawnMinoToggle: () => {
+                operations.mode.utils.open();
+                cy.get(datatest('btn-spawn-mino-toggle')).click();
+                cy.get(datatest('overlay-utils')).should('not.exist');
+                cy.wait(100);
+            },
+        },
+        // SPAWNミノ⇄ペイントの相互変換。方向はボタンの data-direction に出るので、
+        // 押す前に「どちらへ変換されるか」をspec側から検証できる。
+        spawnMinoToggle: {
+            // PAINTのペントレイを出す。ツール切替は対象選択待ちを解除するため、
+            // pick中のspecからは呼ばずに click だけを使う。
+            open: () => {
+                ensurePaintPenHome();
+            },
+            click: () => {
+                cy.get(datatest('tray-spawn-mino-toggle')).click();
+                cy.wait(100);
+            },
+            expectDirection: (direction) => {
+                cy.get(datatest('tray-spawn-mino-toggle'))
+                    .should('have.attr', 'data-direction', direction);
+            },
+            expectDisabled: () => {
+                cy.get(datatest('tray-spawn-mino-toggle')).should('be.disabled');
+            },
+            shortcut: () => {
+                cy.get('body').trigger('keydown', { code: 'KeyB' });
+                cy.get('body').trigger('keyup', { code: 'KeyB' });
+                cy.wait(100);
+            },
         },
         flags: {
             open: ({ home = true } = {}) => {

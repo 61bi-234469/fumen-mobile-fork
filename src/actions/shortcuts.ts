@@ -46,7 +46,7 @@ type EditShortcutKey = keyof EditShortcuts;
 export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
     [Screens.Editor]: [
         'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
-        'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut',
+        'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle',
     ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome', 'Insert', 'Copy', 'Cut'],
     [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Menu', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
@@ -192,6 +192,9 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
         break;
     case 'Cut':
         actions.cutCurrentPage();
+        break;
+    case 'MinoBlockToggle':
+        actions.toggleSpawnMinoAndBlocks();
         break;
     }
 };

@@ -118,6 +118,7 @@ export const i18n = {
             Insert: () => t('UserSettings.EditShortcuts.Insert'),
             Copy: () => t('UserSettings.EditShortcuts.Copy'),
             Cut: () => t('UserSettings.EditShortcuts.Cut'),
+            MinoBlockToggle: () => t('UserSettings.EditShortcuts.MinoBlockToggle'),
         },
         PieceShortcuts: {
             Title: () => t('UserSettings.PieceShortcuts.Title'),
@@ -201,6 +202,15 @@ export const i18n = {
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         ToBlack: () => t('EditorUi.ToBlack'),
         ResetAllComments: () => t('EditorUi.ResetAllComments'),
+        SpawnMinoToggle: {
+            ToPaint: () => t('EditorUi.SpawnMinoToggle.ToPaint'),
+            ToMino: () => t('EditorUi.SpawnMinoToggle.ToMino'),
+            CancelPick: () => t('EditorUi.SpawnMinoToggle.CancelPick'),
+            UtilsLabel: () => t('EditorUi.SpawnMinoToggle.UtilsLabel'),
+            LineClearLost: () => t('EditorUi.SpawnMinoToggle.LineClearLost'),
+            PersistsToLaterPages: () => t('EditorUi.SpawnMinoToggle.PersistsToLaterPages'),
+            QuizConsumptionChanged: () => t('EditorUi.SpawnMinoToggle.QuizConsumptionChanged'),
+        },
         Clear: () => t('EditorUi.Clear'), Slide: () => t('EditorUi.Slide'), Comment: () => t('EditorUi.Comment'),
         KeyPage: () => t('EditorUi.KeyPage'), ReferencePage: () => t('EditorUi.ReferencePage'),
         Lock: () => t('EditorUi.Lock'), Rise: () => t('EditorUi.Rise'), MirrorFlag: () => t('EditorUi.MirrorFlag'),

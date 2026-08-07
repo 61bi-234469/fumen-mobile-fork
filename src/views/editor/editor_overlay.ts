@@ -10,6 +10,7 @@ import { getSidePanelWidth } from './side_panel_layout';
 import { i18n } from '../../locales/keys';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 import { Screens } from '../../lib/enums';
+import { spawnMinoToggleDirection } from '../../lib/editor_interaction';
 
 const overlayButton = ({
     key, datatest, label, iconName, active = false, danger = false, checkbox = false, disabled = false, onclick,
@@ -253,6 +254,13 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                     key: 'btn-convert-to-black', datatest: 'btn-convert-to-black',
                     label: i18n.EditorUi.ToBlack(), iconName: 'filter_b_and_w',
                     onclick: () => closeAndRun(actions.convertToBlack),
+                }),
+                overlayButton({
+                    key: 'btn-spawn-mino-toggle', datatest: 'btn-spawn-mino-toggle',
+                    label: i18n.EditorUi.SpawnMinoToggle.UtilsLabel(), iconName: 'swap_horiz',
+                    // 一覧なので走査しやすさを優先し、トレイと違って方向でラベルを変えない
+                    disabled: spawnMinoToggleDirection(state) === 'none',
+                    onclick: () => closeAndRun(actions.toggleSpawnMinoAndBlocks),
                 }),
                 overlayButton({
                     key: 'btn-clear-field', datatest: 'btn-clear-field',

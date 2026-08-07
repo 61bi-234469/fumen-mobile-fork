@@ -1,4 +1,4 @@
-import { ModeTypes, parsePieceName, Piece, TouchTypes } from './enums';
+import { isMinoPiece, ModeTypes, parsePieceName, Piece, TouchTypes } from './enums';
 import {
     EditorInspector,
     PaintTool,
@@ -7,6 +7,8 @@ import {
     PrimaryTool,
     State,
 } from '../states';
+import { PageFieldOperation, Pages } from './pages';
+import { hasAnyLiftableMino } from './spawn_mino_convert';
 
 export const getPrimaryTool = (state: State): PrimaryTool => state.editorUi.primaryTool;
 export const getPaintTool = (state: State): PaintTool => state.editorUi.paintTool;
@@ -36,6 +38,30 @@ export const isMinoPaletteSelection = (
 ): selection is Piece.I | Piece.L | Piece.O | Piece.Z | Piece.T | Piece.J | Piece.S => (
     selection !== 'comp' && selection !== Piece.Empty && selection !== Piece.Gray
 );
+
+// SPAWNミノ⇄ペイント トグルボタンの表示方向。押す前に行き先が分かるようにするための表示専用の判定で、
+// 実際の変換対象は toggleSpawnMinoAndBlocks 側の決定木が決める。
+// 'to-paint' はSPAWNミノをブロックへ、'to-mino' はブロックをSPAWNミノへ、
+// 'pick' は対象選択待ち、'none' は対象なし（disabled）。
+export type SpawnMinoToggleDirection = 'to-paint' | 'to-mino' | 'pick' | 'none';
+
+export const spawnMinoToggleDirection = (state: State): SpawnMinoToggleDirection => {
+    if (state.editorUi.spawnMinoToggle.pickArmed) {
+        return 'pick';
+    }
+
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined) {
+        return 'none';
+    }
+    if (page.piece !== undefined && isMinoPiece(page.piece.type)) {
+        return 'to-paint';
+    }
+
+    const rawField = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+    return hasAnyLiftableMino(rawField) ? 'to-mino' : 'none';
+};
 
 export const paletteMinoImageSrc = (piece: Piece, guideLineColor: boolean): string => {
     const name = parsePieceName(piece) ?? '';

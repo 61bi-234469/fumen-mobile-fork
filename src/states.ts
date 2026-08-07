@@ -20,7 +20,7 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
 
 export type EditShortcuts = {
     [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome'
-        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut']: string;
+        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut' | 'MinoBlockToggle']: string;
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
@@ -28,6 +28,7 @@ export const defaultEditShortcuts: EditShortcuts = {
     ListView: 'Tab', TreeView: 'KeyT', EditHome: 'KeyH',
     Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'KeyN',
     Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
+    MinoBlockToggle: 'KeyB',
 };
 
 export type PieceShortcuts = {
@@ -64,6 +65,17 @@ export type PieceQueueFocus = 'hold' | 'current' | 'next';
 // PIECE状態の右列レイアウト。'select'＝カレントミノ選択重視（パレット表示）、
 // 'play'＝テトリス操作重視（HOLD/NEXTキュー表示）
 export type PieceLayoutMode = 'play' | 'select';
+
+// SPAWNミノ⇄ペイントの相互変換トグルの一時状態。永続化しない。
+// pickArmed は「候補をハイライトして、次のフィールドタップで対象を決める」待機状態。
+// ミノ化の対象は必ずユーザーがタップして決めるため、自動対象の記憶は持たない。
+export interface SpawnMinoToggleState {
+    pickArmed: boolean;
+}
+
+export const initialSpawnMinoToggleState: SpawnMinoToggleState = {
+    pickArmed: false,
+};
 
 export interface SelectionRect {
     minX: number;
@@ -335,6 +347,7 @@ export interface State {
         infinitePieceQueue: boolean;
         pieceLayout: PieceLayoutMode;
         bottomSlot: 'sentLine' | 'tray';
+        spawnMinoToggle: SpawnMinoToggleState;
     };
     rectSelect: RectSelectState;
     parts: PartsState;
@@ -525,6 +538,7 @@ export const initState: Readonly<State> = {
         infinitePieceQueue: false,
         pieceLayout: 'select',
         bottomSlot: 'tray',
+        spawnMinoToggle: initialSpawnMinoToggleState,
     },
     rectSelect: initialRectSelectState,
     parts: {

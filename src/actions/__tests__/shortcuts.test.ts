@@ -31,6 +31,7 @@ describe('clipboard insert shortcut', () => {
     let backPage: jest.Mock;
     let nextPage: jest.Mock;
     let undo: jest.Mock;
+    let toggleSpawnMinoAndBlocks: jest.Mock;
 
     beforeAll(() => {
         initShortcutHandlers(() => state, () => actions);
@@ -54,6 +55,7 @@ describe('clipboard insert shortcut', () => {
         backPage = jest.fn();
         nextPage = jest.fn();
         undo = jest.fn();
+        toggleSpawnMinoAndBlocks = jest.fn();
         state = {
             modal: {
                 append: false,
@@ -81,6 +83,7 @@ describe('clipboard insert shortcut', () => {
                     Redo: 'Mod+KeyY',
                     TreeView: 'KeyT',
                     Undo: 'Mod+KeyZ',
+                    MinoBlockToggle: 'KeyB',
                 },
                 loop: false,
                 pieceShortcutDasFrames: 10,
@@ -124,6 +127,7 @@ describe('clipboard insert shortcut', () => {
             nextPage,
             replaceAllFromClipboard,
             selectEditorPalette,
+            toggleSpawnMinoAndBlocks,
             undo,
         } as unknown as Actions;
     });
@@ -154,6 +158,33 @@ describe('clipboard insert shortcut', () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
         window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
     };
+
+    const dispatchMinoBlockToggleShortcut = () => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB', bubbles: true }));
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB', bubbles: true }));
+    };
+
+    test('KeyB toggles the spawn mino and paint blocks on the editor screen', () => {
+        dispatchMinoBlockToggleShortcut();
+
+        expect(toggleSpawnMinoAndBlocks).toHaveBeenCalledTimes(1);
+    });
+
+    test('KeyB does nothing outside the editor screen', () => {
+        state.mode.screen = Screens.ListView;
+
+        dispatchMinoBlockToggleShortcut();
+
+        expect(toggleSpawnMinoAndBlocks).not.toHaveBeenCalled();
+    });
+
+    test('KeyB does nothing while a modal is open', () => {
+        state.modal.menu = true;
+
+        dispatchMinoBlockToggleShortcut();
+
+        expect(toggleSpawnMinoAndBlocks).not.toHaveBeenCalled();
+    });
 
     test('editor page shortcuts pass loop false when disabled', () => {
         dispatchPageShortcut('Digit1');

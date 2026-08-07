@@ -66,7 +66,7 @@ const clearUnsettledAndSetUnlessRepeatedPart = (
 };
 
 const cancelSelectionPreviewAndSet = (update: (state: State) => NextState) => (state: State): NextState => (
-    sequence(state, [actions.cancelRectSelectionPreview(), update])
+    sequence(state, [actions.cancelRectSelectionPreview(), actions.cancelSpawnMinoPick(), update])
 );
 
 const previousPrimaryTool = (state: State): Exclude<PrimaryTool, 'piece'> | undefined => (

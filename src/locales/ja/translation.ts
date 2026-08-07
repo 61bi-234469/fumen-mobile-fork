@@ -109,6 +109,7 @@ export const resources = {
             Insert: '挿入',
             Copy: 'コピー',
             Cut: '切り取り',
+            MinoBlockToggle: 'SPAWNミノ ⇄ ブロック',
         },
         PieceShortcuts: {
             Title: 'ピースショートカット',
@@ -174,6 +175,13 @@ export const resources = {
         UtilsPages: 'ページ削除',
         AllMirror: '全ページ反転', ToGray: 'グレー化', ToBlack: 'グレー以外削除',
         ResetAllComments: '全ページコメントリセット',
+        SpawnMinoToggle: {
+            ToPaint: 'ブロック化', ToMino: 'ミノ化', CancelPick: 'やめる',
+            UtilsLabel: 'SPAWNミノ ⇄ ブロック',
+            LineClearLost: 'ライン消去は行われなくなりました',
+            PersistsToLaterPages: '以降のページにもブロックが残ります',
+            QuizConsumptionChanged: 'NEXTの消費が変わりました',
+        },
         Clear: 'クリア', Slide: 'スライド', Comment: 'コメント',
         KeyPage: 'キーページ', ReferencePage: '参照ページ', Lock: '固定', Rise: 'せり上がり', MirrorFlag: '反転フラグ',
         UpGray: '上へ + グレー', Up: '上', Left: '左', Right: '右', Down: '下', Done: '完了',

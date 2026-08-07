@@ -113,6 +113,7 @@
             Insert: 'Insert',
             Copy: 'Copy',
             Cut: 'Cut',
+            MinoBlockToggle: 'Spawn mino / blocks',
         },
         PieceShortcuts: {
             Title: 'Piece shortcuts',
@@ -179,6 +180,13 @@
         UtilsPages: 'Delete pages',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
         ResetAllComments: 'Reset all comments',
+        SpawnMinoToggle: {
+            ToPaint: 'TO PAINT', ToMino: 'TO MINO', CancelPick: 'CANCEL',
+            UtilsLabel: 'Spawn mino / blocks',
+            LineClearLost: 'Line clear no longer happens',
+            PersistsToLaterPages: 'The blocks now stay on later pages',
+            QuizConsumptionChanged: 'NEXT consumption changed',
+        },
         Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
         KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',

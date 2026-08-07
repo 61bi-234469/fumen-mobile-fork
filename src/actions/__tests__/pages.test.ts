@@ -7,6 +7,7 @@ jest.mock('../../actions', () => ({
     actions: {
         removeUnsettledItems: noopAction,
         commitCommentText: noopAction,
+        cancelSpawnMinoPick: noopAction,
         registerHistoryTask: noopAction,
         reopenCurrentPage: noopAction,
         startAnimation: noopAction,

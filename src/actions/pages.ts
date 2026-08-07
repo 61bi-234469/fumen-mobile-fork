@@ -19,6 +19,7 @@ import { State } from '../states';
 import { FumenError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { decode, encode } from '../lib/fumen/fumen';
+import { liftableCellIndices } from '../lib/spawn_mino_convert';
 import {
     embedTreeInPages,
     createTreeFromPages,
@@ -146,6 +147,8 @@ export const pageActions: Readonly<PageActions> = {
             state.fumen.currentIndex !== index && actions.clearRectSelection !== undefined
                 ? actions.clearRectSelection() : undefined,
             state.fumen.currentIndex !== index ? actions.commitCommentText() : undefined,
+            // ページが変わると対象候補も変わるため、SPAWNミノ⇄ペイントの対象選択待ちは持ち越さない
+            state.fumen.currentIndex !== index ? actions.cancelSpawnMinoPick() : undefined,
             actions.setComment({ comment: text }),
             actions.setField({
                 field: blocks.playField,
@@ -154,6 +157,10 @@ export const pageActions: Readonly<PageActions> = {
                 inferences: state.events.inferences,
                 ghost: state.mode.ghostVisible,
                 allowSplit: state.mode.touch === TouchTypes.Drawing,
+                // 対象選択待ちのときだけ、タップできるミノ化候補を算出して光らせる
+                liftableCells: state.editorUi?.spawnMinoToggle?.pickArmed
+                    ? liftableCellIndices(pages.getField(index, PageFieldOperation.Command))
+                    : undefined,
             }),
             actions.setFieldColor({ guideLineColor }),
             actions.setSentLine({ sentLine: blocks.sentLine }),

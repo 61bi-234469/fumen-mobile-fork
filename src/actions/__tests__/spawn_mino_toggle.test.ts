@@ -30,7 +30,7 @@ jest.mock('../../actions', () => ({
 const mockShowToast = jest.fn();
 jest.mock('../../lib/spawn_mino_toggle_toast', () => ({
     hasSpawnMinoToggleEffect: (effects: any) => (
-        effects.lineClearLost || effects.persistsToLaterPages || effects.quizConsumptionChanged
+        effects.persistsToLaterPages || effects.quizConsumptionChanged
     ),
     showSpawnMinoToggleToast: (effects: any) => mockShowToast(effects),
 }));
@@ -208,7 +208,7 @@ describe('意味変更の通知', () => {
         expect(mockShowToast.mock.calls[0][0].persistsToLaterPages).toBe(true);
     });
 
-    test('lockでラインが揃うときは消去が失われることを通知する', () => {
+    test('lockでラインが揃っても通知しない', () => {
         // Iミノ横置きで最下段が埋まる盤面
         const initField = new Field({});
         for (const x of [0, 1, 2, 3, 8, 9]) {
@@ -219,8 +219,7 @@ describe('意味変更の通知', () => {
 
         convertActions.convertSpawnMinoToBlocks()(createState([page], { initField }));
 
-        expect(mockShowToast).toHaveBeenCalledTimes(1);
-        expect(mockShowToast.mock.calls[0][0].lineClearLost).toBe(true);
+        expect(mockShowToast).not.toHaveBeenCalled();
     });
 
     test('QuizページではNEXT消費の変化を双方向で通知する', () => {

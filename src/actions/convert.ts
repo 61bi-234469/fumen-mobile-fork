@@ -343,12 +343,7 @@ export const convertActions: Readonly<ConvertActions> = {
             return undefined;
         }
 
-        // 焼き付ける前の「lockしたらどうなるか」を見て、意味の変化を判定する
-        const fieldAfterLock = new Pages(state.fumen.pages)
-            .getField(pageIndex, PageFieldOperation.Command).copy();
-        fieldAfterLock.put(piece);
         const effects: SpawnMinoToggleEffects = {
-            lineClearLost: page.flags.lock && hasFilledLine(fieldAfterLock),
             persistsToLaterPages: !page.flags.lock,
             quizConsumptionChanged: page.flags.quiz && page.flags.lock,
         };
@@ -377,7 +372,6 @@ export const convertActions: Readonly<ConvertActions> = {
         }
 
         const effects: SpawnMinoToggleEffects = {
-            lineClearLost: false,
             persistsToLaterPages: false,
             quizConsumptionChanged: page.flags.quiz && page.flags.lock,
         };
@@ -425,22 +419,6 @@ const writeFieldBlock = (page: Page, initField: Field, index: number, piece: Pie
     } else {
         delete page.commands.pre[key];
     }
-};
-
-const hasFilledLine = (field: Field): boolean => {
-    for (let y = 0; y < FieldConstants.Height; y += 1) {
-        let filled = true;
-        for (let x = 0; x < FieldConstants.Width; x += 1) {
-            if (field.getAtIndex(x + y * FieldConstants.Width, true) === Piece.Empty) {
-                filled = false;
-                break;
-            }
-        }
-        if (filled) {
-            return true;
-        }
-    }
-    return false;
 };
 
 const commitSpawnMinoToggle = (

@@ -183,7 +183,6 @@
         SpawnMinoToggle: {
             ToPaint: 'TO PAINT', ToMino: 'TO MINO', CancelPick: 'CANCEL',
             UtilsLabel: 'Spawn mino / blocks',
-            LineClearLost: 'Line clear no longer happens',
             PersistsToLaterPages: 'The blocks now stay on later pages',
             QuizConsumptionChanged: 'NEXT consumption changed',
         },

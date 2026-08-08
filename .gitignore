@@ -11,6 +11,7 @@ package-lock.json
 deploy.yml
 src/**/*.js
 !src/lib/cold_clear_wasm/*.js
+!src/lib/ttrm/chalk_stub.js
 src/**/*.js.map
 dest/
 coverage/

@@ -44,6 +44,8 @@ describe('view settings tree operation scope migration', () => {
             coldClearNextLimit: null,
             coldClearWeightsPreset: 0,
             coldClearThinkMs: 1000,
+            replaySelfPlayer: null,
+            replayShowOpponent: true,
         });
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
@@ -52,6 +54,23 @@ describe('view settings tree operation scope migration', () => {
         expect(saved.pieceLayout).toBe('play');
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
         expect(localStorageWrapper.loadViewSettings().pieceLayout).toBe('play');
+    });
+
+    // FR-34: 相手盤面の表示可否
+    test('saves and restores the opponent board visibility', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowOpponent: false }));
+        expect(localStorageWrapper.loadViewSettings().replayShowOpponent).toBe(false);
+
+        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowOpponent: true }));
+        expect(localStorageWrapper.loadViewSettings().replayShowOpponent).toBe(true);
+    });
+
+    test('rejects a non-boolean opponent visibility so the default stays in effect', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowOpponent: 'yes' }));
+        expect(localStorageWrapper.loadViewSettings().replayShowOpponent).toBeUndefined();
+
+        localStorage.setItem('view-settings@1', JSON.stringify({}));
+        expect(localStorageWrapper.loadViewSettings().replayShowOpponent).toBeUndefined();
     });
 
     test('loads a valid PIECE layout and rejects anything else', () => {

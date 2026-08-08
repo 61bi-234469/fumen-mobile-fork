@@ -16,7 +16,9 @@ export const animationActions: Readonly<AnimationActions> = {
                     ...state.play,
                     status: AnimationState.Play,
                 },
+                // handlers は他のクロック（replayClock）も持つので必ず引き継ぐ
                 handlers: {
+                    ...state.handlers,
                     animation: setInterval(() => {
                         main.nextLoopPage();
                     }, state.play.intervalTime),
@@ -37,6 +39,7 @@ export const animationActions: Readonly<AnimationActions> = {
                 status: AnimationState.Pause,
             },
             handlers: {
+                ...state.handlers,
                 animation: undefined,
             },
         };

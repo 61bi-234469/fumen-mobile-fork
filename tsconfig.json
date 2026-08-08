@@ -7,9 +7,11 @@
     "baseUrl": ".",
     "paths": {
       "*": ["*"],
-      "@hyperapp/*": ["node_modules/*", "mytypes/@hyperapp/*"]
+      "@hyperapp/*": ["node_modules/*", "mytypes/@hyperapp/*"],
+      "@haelp/teto/engine": ["node_modules/@haelp/teto/dist/engine/index.d.ts"]
     },
     "moduleResolution": "node",
+    "skipLibCheck": true,
     "jsx": "react",
     "jsxFactory": "h",
     "target": "es5",

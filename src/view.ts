@@ -6,6 +6,7 @@ import { Screens } from './lib/enums';
 import { view as readerView } from './views/reader';
 import { view as editorView } from './views/editor/editor';
 import { view as listView } from './views/list_view';
+import { view as replayView } from './views/replay';
 import { OpenFumenModal } from './components/modals/open';
 import { MenuModal } from './components/modals/menu';
 import { AppendFumenModal } from './components/modals/append';
@@ -52,6 +53,8 @@ export const view: View<State, Actions> = (state, actions) => {
             return editorView(state, actions);
         case Screens.ListView:
             return listView(state, actions);
+        case Screens.Replay:
+            return replayView(state, actions);
         default:
             return div(['Unexpected mode']);
         }

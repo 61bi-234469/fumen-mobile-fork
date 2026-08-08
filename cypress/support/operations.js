@@ -958,4 +958,48 @@ export const operations = {
             cy.get(datatest(`editor-panel-tab-${tab}`)).click();
         },
     },
+    replay: {
+        // Utils メニューから Replay 画面を開く（Editor / ListView から）
+        open: () => {
+            operations.mode.utils.open();
+            cy.get(datatest('btn-open-replay')).click();
+            cy.get(datatest('replay-screen')).should('exist');
+        },
+        // .ttrm ファイルの投入。fileOrOptions は selectFile() にそのまま渡す
+        importFile: (fileOrOptions) => {
+            cy.get(datatest('replay-file-input')).selectFile(fileOrOptions, { force: true });
+        },
+        selectSelfPlayer: (playerId) => {
+            cy.get(datatest(`replay-self-player-${playerId}`)).click();
+        },
+        selectRound: (index) => {
+            cy.get(datatest(`replay-round-${index}`)).click();
+        },
+        start: () => {
+            cy.get(datatest('btn-replay-start')).click();
+            cy.get(datatest('replay-playing-phase')).should('exist');
+        },
+        next: () => cy.get(datatest('btn-replay-next-lock')).click(),
+        prev: () => cy.get(datatest('btn-replay-prev-lock')).click(),
+        first: () => cy.get(datatest('btn-replay-first')).click(),
+        last: () => cy.get(datatest('btn-replay-last')).click(),
+        openInEditor: () => cy.get(datatest('btn-replay-open-editor')).click(),
+        backToSelect: () => cy.get(datatest('btn-replay-back-select')).click(),
+        reset: () => cy.get(datatest('btn-replay-reset')).click(),
+        // P2: 自陣盤面は replay-board-self に改名。相手側は replay-board-opponent。
+        board: (side = 'self') => cy.get(datatest(`replay-board-${side}`)),
+        // 再生／一時停止（FR-23）
+        playPause: () => cy.get(datatest('btn-replay-play-pause')).click(),
+        setSpeed: (speed) => cy.get(datatest('replay-speed-select')).select(String(speed)),
+        // 任意時刻へのシーク（FR-25）
+        seek: (frame) => {
+            cy.get(datatest('replay-timeline')).invoke('val', frame).trigger('input');
+        },
+        // 手番送りの基準（FR-22）
+        setBasis: (side) => cy.get(datatest(`btn-replay-basis-${side}`)).click(),
+        // 自陣／相手の入れ替え（FR-11）
+        swapSides: () => cy.get(datatest('btn-replay-swap-sides')).click(),
+        // 相手盤面の表示／非表示（FR-34）
+        toggleOpponent: () => cy.get(datatest('btn-replay-toggle-opponent')).click(),
+    },
 };

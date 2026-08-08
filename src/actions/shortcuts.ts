@@ -50,6 +50,8 @@ export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = 
     ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome', 'Insert', 'Copy', 'Cut'],
     [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Menu', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
+    // Replay画面は閲覧専用。キー入力の誤爆を避けるため編集ショートカットは全て無効にする。
+    [Screens.Replay]: [],
 };
 
 // どれか1つでもモーダルが開いていればグローバルショートカットを無効化する。

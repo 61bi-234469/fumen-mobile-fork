@@ -156,6 +156,72 @@ import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
 import { PlacementResult } from './lib/input_stats';
+import { ReplayIR } from './lib/ttrm/types';
+
+export type ReplayPhase = 'empty' | 'parsing' | 'select' | 'playing' | 'failed';
+
+// 手番送りボタンがどちらのプレイヤーの lock を刻むか（FR-22）
+export type ReplayStepBasis = 'self' | 'opponent';
+
+// 自動再生の速度倍率（FR-27）。localStorage には保存しない。
+export type ReplaySpeed = 0.25 | 0.5 | 1 | 2 | 4;
+export const REPLAY_SPEEDS: ReplaySpeed[] = [0.25, 0.5, 1, 2, 4];
+export const DEFAULT_REPLAY_SPEED: ReplaySpeed = 1;
+export const DEFAULT_REPLAY_SHOW_OPPONENT = true;
+
+export interface ReplayState {
+    phase: ReplayPhase;
+    fileName?: string;
+    // 解析結果。サイズが大きいため immutable 更新の対象にせず、差し替えは取り込み時のみ。
+    ir?: ReplayIR;
+    // インポート試行ごとに一意な ID。File.text() / Worker 応答が古い試行のものであれば
+    // 状態を更新しないための照合に使う（複数ファイル連続選択・リセットの競合対策）。
+    requestId: number;
+    selection: {
+        roundIndex: number;
+        selfPlayerId: string | null;
+    };
+    // P2 §3-2: フレームが共通軸で唯一の真実。両者の index は frame と整合させる。
+    cursor: {
+        frame: number;
+        selfIndex: number;
+        opponentIndex: number;
+        stepBasis: ReplayStepBasis;
+    };
+    playback: {
+        status: AnimationState;
+        speed: ReplaySpeed;
+    };
+    view: {
+        showOpponent: boolean;
+    };
+    error?: { stage: string; message: string };
+}
+
+export const initialReplayState: ReplayState = {
+    phase: 'empty',
+    fileName: undefined,
+    ir: undefined,
+    requestId: 0,
+    selection: {
+        roundIndex: 0,
+        selfPlayerId: null,
+    },
+    cursor: {
+        frame: 0,
+        selfIndex: 0,
+        opponentIndex: 0,
+        stepBasis: 'self',
+    },
+    playback: {
+        status: AnimationState.Pause,
+        speed: DEFAULT_REPLAY_SPEED,
+    },
+    view: {
+        showOpponent: DEFAULT_REPLAY_SHOW_OPPONENT,
+    },
+    error: undefined,
+};
 
 const VERSION = PageEnv.Version;
 
@@ -265,6 +331,8 @@ export interface State {
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
+        // Replay 画面専用のクロック（FR-23）。Reader の animation とは意味も速度も違う。
+        replayClock?: ReturnType<typeof setInterval>;
     };
     events: {
         piece?: Piece;
@@ -352,6 +420,7 @@ export interface State {
     rectSelect: RectSelectState;
     parts: PartsState;
     tree: TreeState;
+    replay: ReplayState;
     coldClear: {
         isRunning: boolean;
         abortRequested: boolean;
@@ -464,6 +533,7 @@ export const initState: Readonly<State> = {
     },
     handlers: {
         animation: undefined,
+        replayClock: undefined,
     },
     events: {
         piece: undefined,  // 描画処理中のピースの種類
@@ -541,6 +611,7 @@ export const initState: Readonly<State> = {
         spawnMinoToggle: initialSpawnMinoToggleState,
     },
     rectSelect: initialRectSelectState,
+    replay: initialReplayState,
     parts: {
         items: loadParts(),
         selectedId: null,

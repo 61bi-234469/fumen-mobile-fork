@@ -46,6 +46,7 @@ export enum Screens {
     Reader = 'Reader',
     Editor = 'Editor',
     ListView = 'ListView',
+    Replay = 'Replay',
 }
 
 export enum ModeTypes {

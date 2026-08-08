@@ -292,6 +292,18 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             ],
         }),
         overlaySection({
+            key: 'utils-replay',
+            datatest: 'utils-scope-replay',
+            label: i18n.Replay.Title(),
+            children: [
+                overlayButton({
+                    key: 'btn-open-replay', datatest: 'btn-open-replay',
+                    label: i18n.Replay.OpenMenu(), iconName: 'movie',
+                    onclick: () => closeAndRun(actions.openReplayScreen),
+                }),
+            ],
+        }),
+        overlaySection({
             key: 'utils-pages',
             datatest: 'utils-scope-pages',
             label: i18n.EditorUi.UtilsPages(),

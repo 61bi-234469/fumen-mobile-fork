@@ -18,7 +18,34 @@ type ViewSettingsOverrides = Partial<{
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    replaySelfPlayer: string | null;
+    replayShowOpponent: boolean;
 }>;
+
+// 自陣プレイヤー名は state に持たないため、全体置換の saveViewSettings で
+// 消さないように保存済みの値を読み戻す。
+export const loadPersistedReplaySelfPlayer = (): string | null => {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+        return localStorageWrapper.loadViewSettings().replaySelfPlayer ?? null;
+    } catch {
+        return null;
+    }
+};
+
+// 相手盤面の表示可否（FR-34）。Replay 以外からの保存で消さないよう、同じく読み戻す。
+// states.ts の DEFAULT_REPLAY_SHOW_OPPONENT と同値。states.ts は env.ts のビルド時置換に
+// 依存するため、ここから値として import はしない。
+const REPLAY_SHOW_OPPONENT_FALLBACK = true;
+
+const loadPersistedReplayShowOpponent = (): boolean => {
+    if (typeof localStorage === 'undefined') return REPLAY_SHOW_OPPONENT_FALLBACK;
+    try {
+        return localStorageWrapper.loadViewSettings().replayShowOpponent ?? REPLAY_SHOW_OPPONENT_FALLBACK;
+    } catch {
+        return REPLAY_SHOW_OPPONENT_FALLBACK;
+    }
+};
 
 export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
     if (typeof localStorage === 'undefined') return;
@@ -40,5 +67,11 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
             ? overrides.coldClearNextLimit : state.coldClear.nextLimit,
         coldClearWeightsPreset: overrides.coldClearWeightsPreset ?? state.coldClear.weightsPreset,
         coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
+        // 自陣プレイヤー名の記憶（FR-13）。ユーザ名で保存し、次回取り込み時に一致すれば復元する。
+        replaySelfPlayer: overrides.replaySelfPlayer !== undefined
+            ? overrides.replaySelfPlayer
+            : loadPersistedReplaySelfPlayer(),
+        // 相手盤面の表示可否（FR-34）
+        replayShowOpponent: overrides.replayShowOpponent ?? loadPersistedReplayShowOpponent(),
     });
 };

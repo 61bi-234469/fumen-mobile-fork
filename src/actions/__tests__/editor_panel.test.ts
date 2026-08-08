@@ -81,6 +81,8 @@ describe('editorPanelActions', () => {
                 coldClearNextLimit: null,
                 coldClearWeightsPreset: 0,
                 coldClearThinkMs: 1000,
+                replaySelfPlayer: null,
+                replayShowOpponent: true,
             });
         });
 

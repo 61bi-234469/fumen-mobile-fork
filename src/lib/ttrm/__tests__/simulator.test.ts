@@ -123,6 +123,44 @@ describe('simulator', () => {
         expect(holdUsed).toBeGreaterThan(0);
     });
 
+    test('the initial point holds the empty board and the opening queue (P2 §3-3)', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        expect(result.initial.frame).toEqual(0);
+        expect(result.initial.hold).toBeNull();
+        expect(result.initial.field).toHaveLength(FieldConstants.PlayBlocks);
+        expect(result.initial.field.every(cell => cell === Piece.Empty)).toBeTruthy();
+
+        // 構築直後にキューが読めていること。読めずに 1 tick フォールバックへ落ちた場合も
+        // ここは満たすが、盤面が空であることと併せて開始局面であることを固定する。
+        expect(result.initial.current).not.toBeNull();
+        expect(result.initial.next.length).toBeGreaterThan(0);
+        for (const piece of result.initial.next) {
+            expect(piece).not.toEqual(Piece.Empty);
+            expect(piece).not.toEqual(Piece.Gray);
+        }
+    });
+
+    test('the first placement comes from the initial current or hold (P2 §3-3)', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        // hold は空なので、初手は current そのものか、hold して繰り上がった next[0]
+        const { current, next } = result.initial;
+        expect([current, next[0]]).toContain(result.locks[0].piece);
+        if (result.locks[0].piece !== current) {
+            expect(result.locks[0].hold).toEqual(current);
+        }
+    });
+
+    test('meta carries the measured parse time (NFR-02)', () => {
+        const ir = buildReplayIR(leagueWin);
+        expect(typeof ir.meta.parseMs).toEqual('number');
+        expect(Number.isFinite(ir.meta.parseMs)).toBeTruthy();
+        expect(ir.meta.parseMs).toBeGreaterThanOrEqual(0);
+    });
+
     test('terminal carries its own queue', () => {
         const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const result = simulatePlayerRound(winner);

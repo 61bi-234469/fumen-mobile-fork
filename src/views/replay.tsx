@@ -2,18 +2,22 @@ import { h, View } from 'hyperapp';
 import { Actions } from '../actions';
 import { State } from '../states';
 import { i18n } from '../locales/keys';
-import { FieldConstants, parsePieceName, Piece } from '../lib/enums';
-import { paletteMinoImageSrc } from '../lib/editor_interaction';
+import { FieldConstants, Piece } from '../lib/enums';
 import { px, style } from '../lib/types';
 import {
     getCurrentReplayClippedRowCount,
-    getCurrentReplayField,
-    getCurrentReplayQueue,
+    getOpponentPlayerRound,
+    getReplayEndFrame,
+    getReplayOpponentPoint,
+    getReplaySelfPoint,
+    getReplayStats,
     getSelectedRound,
     getSelfPlayerRound,
 } from '../actions/replay';
-import { renderReplayBoard } from '../components/replay/replay_board';
-import { LockPoint, ReplayIR, RoundIR } from '../lib/ttrm/types';
+import { MINO_SLOT_WIDTH, replaySide } from '../components/replay/replay_side';
+import { replayTransport } from '../components/replay/replay_transport';
+import { lastPointIndex, ReplayPoint } from '../lib/ttrm/timeline';
+import { LockPoint, PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
 
 const ACCENT = '#00796b';
 
@@ -67,7 +71,8 @@ const headerBar = (state: State, actions: Actions) => (
             style={style({ color: '#fff', display: 'flex', alignItems: 'center' })}
             onclick={(e: MouseEvent) => {
                 e.preventDefault();
-                actions.changeToDrawerScreen({});
+                // 再生クロックを止めてから離れる（P2 §3-5 の明示停止経路）
+                actions.closeReplayScreen();
             }}
         >
             <i className="material-icons">close</i>
@@ -136,6 +141,48 @@ const importPhase = (state: State, actions: Actions) => {
             <p key="drop-hint" style={style({ color: '#777', fontSize: px(12) })}>
                 {i18n.Replay.Import.DropHint()}
             </p>
+
+            {/* FR-02: ファイルを選べない環境向けに、JSON テキストからも取り込めるようにする */}
+            <div
+                key="replay-import-text-block"
+                style={style({ margin: '20px auto 0', maxWidth: px(480), textAlign: 'left' })}
+            >
+                <div key="paste-label" style={style({ color: '#777', fontSize: px(12) })}>
+                    {i18n.Replay.Import.PasteLabel()}
+                </div>
+                <textarea
+                    key="replay-import-text"
+                    datatest="replay-import-text"
+                    placeholder={i18n.Replay.Import.PastePlaceholder()}
+                    style={style({
+                        border: '1px solid #ccc',
+                        borderRadius: px(4),
+                        fontFamily: 'monospace',
+                        fontSize: px(11),
+                        height: px(80),
+                        padding: px(6),
+                        width: '100%',
+                    })}
+                />
+                <a
+                    href="#"
+                    key="btn-replay-import-text"
+                    datatest="btn-replay-import-text"
+                    className="btn"
+                    style={style({ backgroundColor: ACCENT, marginTop: px(8), width: '100%' })}
+                    onclick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        const area = document.querySelector(
+                            '[datatest="replay-import-text"]') as HTMLTextAreaElement | null;
+                        const text = area !== null ? area.value.trim() : '';
+                        if (text !== '') {
+                            actions.importTtrmText({ text });
+                        }
+                    }}
+                >
+                    {i18n.Replay.Import.PasteButton()}
+                </a>
+            </div>
         </div>
     );
 };
@@ -222,6 +269,10 @@ const selectPhase = (state: State, actions: Actions) => {
         >
             <div key="meta" style={style({ color: '#777', fontSize: px(12), marginBottom: px(12) })}>
                 {ir.meta.gamemode.toUpperCase()} / {ir.meta.ts.slice(0, 10)} / {ir.rounds.length} rounds
+                {/* NFR-02: 実機での解析所要時間を出す */}
+                <span key="replay-parse-time" datatest="replay-parse-time" style={style({ marginLeft: px(8) })}>
+                    {i18n.Replay.Select.ParseTime(ir.meta.parseMs)}
+                </span>
             </div>
 
             <div key="self-player-label" style={style({ fontWeight: 'bold', marginBottom: px(4) })}>
@@ -290,98 +341,61 @@ const selectPhase = (state: State, actions: Actions) => {
     );
 };
 
-// HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
-const MINO_SLOT_WIDTH = 34;
+// 相手盤面は自陣より小さく並置する（P2 §3-6。タブ切替にはしない）。
+const OPPONENT_SCALE = 0.55;
+const MIN_OPPONENT_BLOCK_SIZE = 4;
 
-const pieceSlot = (piece: Piece | null, keyName: string, guideLineColor: boolean) => (
-    <div
-        key={keyName}
-        datatest={keyName}
-        data-piece={piece !== null ? parsePieceName(piece) : 'none'}
-        style={style({
-            alignItems: 'center',
-            display: 'flex',
-            height: px(MINO_SLOT_WIDTH / 2),
-            justifyContent: 'center',
-            width: px(MINO_SLOT_WIDTH),
-        })}
-    >
-        {piece !== null ? (
-            <img
-                key={`${keyName}-img`}
-                src={paletteMinoImageSrc(piece, guideLineColor)}
-                alt={parsePieceName(piece) ?? ''}
-                style={style({
-                    display: 'block',
-                    maxHeight: '100%',
-                    maxWidth: '100%',
-                    objectFit: 'contain',
-                })}
-            />
-        ) : undefined}
-    </div>
-);
+// ポイントの表示ラベル。「開始」→「手番 1..L」→「終了 (reason)」（§7-4）。
+const pointCounterText = (player: PlayerRoundIR, point: ReplayPoint): string => {
+    if (point.kind === 'initial') {
+        return i18n.Replay.Playing.Start();
+    }
+    if (point.kind === 'terminal') {
+        return `${i18n.Replay.Playing.Terminal()} (${player.terminal.reason})`;
+    }
+    return `${point.index} / ${player.locks.length}`;
+};
 
-const queueColumn = (
-    keyName: string, label: string, pieces: (Piece | null)[], guideLineColor: boolean,
-) => (
-    <div key={keyName} style={style({ width: px(MINO_SLOT_WIDTH) })}>
-        <div key={`${keyName}-label`} style={style({ color: '#777', fontSize: px(10) })}>{label}</div>
-        {pieces.map((piece, index) => (
-            <div key={`${keyName}-slot-${index}`} style={style({ marginBottom: px(3) })}>
-                {pieceSlot(piece, `${keyName}-${index}`, guideLineColor)}
-            </div>
-        ))}
-    </div>
-);
-
-const transportButton = (
-    keyName: string, icon: string, disabled: boolean, onclick: () => void,
-) => (
-    <a
-        href="#"
-        key={keyName}
-        datatest={keyName}
-        className={`btn-flat ${disabled ? 'disabled' : ''}`}
-        style={style({ padding: '0 8px' })}
-        onclick={(e: MouseEvent) => {
-            e.preventDefault();
-            if (!disabled) {
-                onclick();
-            }
-        }}
-    >
-        <i className="material-icons">{icon}</i>
-    </a>
-);
+// 自陣の blockSize は、相手盤面ぶんの幅を差し引いてから決める。
+const decideBlockSizes = (state: State, showOpponent: boolean) => {
+    const selfColumns = (MINO_SLOT_WIDTH + 10) * 2 + 32;
+    const available = Math.min(state.display.width, 480) - selfColumns;
+    // 相手は自陣ブロックの OPPONENT_SCALE 倍。自陣 1 ブロックあたりの所要幅から逆算する。
+    const widthPerBlock = showOpponent ? 1 + OPPONENT_SCALE : 1;
+    const blockSize = Math.max(6, Math.min(
+        16,
+        Math.floor((state.display.height - 330) / FieldConstants.Height),
+        Math.floor(available / (FieldConstants.Width * widthPerBlock)),
+    ));
+    return {
+        blockSize,
+        opponentBlockSize: Math.floor(blockSize * OPPONENT_SCALE),
+    };
+};
 
 const playingPhase = (state: State, actions: Actions) => {
     const ir = state.replay.ir!;
     const player = getSelfPlayerRound(state)!;
     const round = getSelectedRound(state)!;
-    const { lockIndex, atTerminal } = state.replay.cursor;
-    const field = getCurrentReplayField(state)!;
+    const opponent = getOpponentPlayerRound(state);
+    const selfPoint = getReplaySelfPoint(state)!;
+    const opponentPoint = getReplayOpponentPoint(state);
+    const stats = getReplayStats(state)!;
     const clipped = getCurrentReplayClippedRowCount(state);
-    const lock = player.locks[lockIndex];
+    const lock = selfPoint.kind === 'lock' ? player.locks[selfPoint.index - 1] : undefined;
     const guideLineColor = state.fumen.guideLineColor;
-    const queue = getCurrentReplayQueue(state);
-    // 設置直後に操作対象となっているミノは NEXT 列の先頭に並べる。
-    // Editor へ引き渡す quiz でもこのミノがカレントになる。
-    const nextPieces: (Piece | null)[] = queue === undefined ? []
-        : [queue.current, ...queue.next].slice(0, 5);
 
-    // 盤面は高さと、HOLD/NEXT 列を差し引いた幅の両方に収める。
-    const sideColumns = (MINO_SLOT_WIDTH + 10) * 2 + 32;
-    const blockSize = Math.max(6, Math.min(
-        16,
-        Math.floor((state.display.height - 250) / FieldConstants.Height),
-        Math.floor((Math.min(state.display.width, 480) - sideColumns) / FieldConstants.Width),
-    ));
-    const boardImage = renderReplayBoard(field, blockSize, guideLineColor);
+    const sizes = decideBlockSizes(state, state.replay.view.showOpponent);
+    // 幅が足りず相手ブロックが潰れる場合は自陣だけにフォールバックする（§3-6）。
+    const showOpponent = state.replay.view.showOpponent
+        && opponentPoint !== undefined
+        && MIN_OPPONENT_BLOCK_SIZE <= sizes.opponentBlockSize;
+    const { blockSize } = showOpponent ? sizes : decideBlockSizes(state, false);
 
-    const counterText = atTerminal
-        ? `${i18n.Replay.Playing.Terminal()} (${player.terminal.reason})`
-        : `${lockIndex + 1} / ${player.locks.length}`;
+    const basisPlayer = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined
+        ? opponent : player;
+    const basisPointIndex = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined
+        ? state.replay.cursor.opponentIndex : state.replay.cursor.selfIndex;
 
     return (
         <div
@@ -389,32 +403,74 @@ const playingPhase = (state: State, actions: Actions) => {
             datatest="replay-playing-phase"
             style={style({ margin: '0 auto', maxWidth: px(480), padding: '12px 16px', textAlign: 'center' })}
         >
-            <div key="playing-meta" style={style({ color: '#777', fontSize: px(12), marginBottom: px(8) })}>
-                R{round.index + 1} — {displayName(ir, player.id)}
+            <div
+                key="playing-meta"
+                style={style({
+                    alignItems: 'center', color: '#777', display: 'flex', fontSize: px(12),
+                    justifyContent: 'space-between', marginBottom: px(8),
+                })}
+            >
+                <span key="playing-meta-text">
+                    R{round.index + 1} — {displayName(ir, player.id)}
+                    {opponent !== undefined ? ` vs ${displayName(ir, opponent.id)}` : ''}
+                </span>
+                <span key="playing-meta-buttons" style={style({ display: 'flex', gap: px(4) })}>
+                    {opponent !== undefined ? (
+                        <a
+                            href="#"
+                            key="btn-replay-toggle-opponent"
+                            datatest="btn-replay-toggle-opponent"
+                            className="btn-flat"
+                            style={style({ color: '#555', fontSize: px(11), padding: '0 6px', textTransform: 'none' })}
+                            onclick={(e: MouseEvent) => {
+                                e.preventDefault();
+                                actions.toggleReplayOpponent();
+                            }}
+                        >
+                            {state.replay.view.showOpponent
+                                ? i18n.Replay.Playing.HideOpponent()
+                                : i18n.Replay.Playing.ShowOpponent()}
+                        </a>
+                    ) : undefined}
+                    {opponent !== undefined ? (
+                        <a
+                            href="#"
+                            key="btn-replay-swap-sides"
+                            datatest="btn-replay-swap-sides"
+                            className="btn-flat"
+                            style={style({ color: '#555', fontSize: px(11), padding: '0 6px', textTransform: 'none' })}
+                            onclick={(e: MouseEvent) => {
+                                e.preventDefault();
+                                actions.swapReplaySides();
+                            }}
+                        >
+                            ⇄ {i18n.Replay.Playing.Swap()}
+                        </a>
+                    ) : undefined}
+                </span>
             </div>
 
             <div
                 key="board-row"
-                style={style({ alignItems: 'flex-start', display: 'flex', gap: px(10), justifyContent: 'center' })}
+                style={style({
+                    alignItems: 'flex-start', display: 'flex', gap: px(8), justifyContent: 'center',
+                })}
             >
-                {queueColumn(
-                    'replay-hold', i18n.Replay.Playing.Hold(),
-                    [queue !== undefined ? queue.hold : null], guideLineColor,
-                )}
-                <img
-                    key={`replay-board-${lockIndex}-${atTerminal ? 't' : 'l'}`}
-                    datatest="replay-board"
-                    src={boardImage}
-                    alt="board"
-                    style={style({
-                        border: '1px solid #90a4ae',
-                        display: 'block',
-                        // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
-                        height: px(blockSize * FieldConstants.Height),
-                        width: px(blockSize * FieldConstants.Width),
-                    })}
-                />
-                {queueColumn('replay-next', i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
+                {replaySide({
+                    blockSize, guideLineColor,
+                    variant: 'self',
+                    point: selfPoint,
+                    label: i18n.Replay.Playing.Self(),
+                    counterText: pointCounterText(player, selfPoint),
+                })}
+                {showOpponent && opponentPoint !== undefined ? replaySide({
+                    guideLineColor,
+                    variant: 'opponent',
+                    point: opponentPoint,
+                    blockSize: sizes.opponentBlockSize,
+                    label: i18n.Replay.Playing.Opponent(),
+                    counterText: pointCounterText(opponent!, opponentPoint),
+                }) : undefined}
             </div>
 
             {clipped > 0 ? (
@@ -440,9 +496,9 @@ const playingPhase = (state: State, actions: Actions) => {
                 style={style({ color: '#555', fontSize: px(13), margin: '6px 0' })}
             >
                 <span key="replay-lock-counter" datatest="replay-lock-counter">
-                    {i18n.Replay.Playing.LockLabel()} {counterText}
+                    {i18n.Replay.Playing.LockLabel()} {pointCounterText(player, selfPoint)}
                 </span>
-                {!atTerminal && lock !== undefined ? (
+                {lock !== undefined ? (
                     <span key="lock-details" style={style({ color: '#777', marginLeft: px(8) })}>
                         {framesToSeconds(lock.frame)}s
                         {clearLabel(lock) !== '' ? ` / ${clearLabel(lock)}` : ''}
@@ -450,23 +506,13 @@ const playingPhase = (state: State, actions: Actions) => {
                 ) : undefined}
             </div>
 
-            <div
-                key="transport"
-                style={style({
-                    alignItems: 'center', display: 'flex', justifyContent: 'center', marginBottom: px(8),
-                })}
-            >
-                {transportButton('btn-replay-first', 'first_page',
-                                 (lockIndex === 0 && !atTerminal) || player.locks.length === 0,
-                                 actions.replayFirstLock)}
-                {transportButton('btn-replay-prev-lock', 'chevron_left',
-                                 (lockIndex === 0 && !atTerminal) || player.locks.length === 0,
-                                 () => actions.stepReplayLock({ step: -1 }))}
-                {transportButton('btn-replay-next-lock', 'chevron_right',
-                                 atTerminal, () => actions.stepReplayLock({ step: 1 }))}
-                {transportButton('btn-replay-last', 'last_page',
-                                 atTerminal, actions.replayLastLock)}
-            </div>
+            {replayTransport({
+                state, actions, stats,
+                endFrame: getReplayEndFrame(state),
+                canStepBack: 0 < basisPointIndex,
+                canStepForward: basisPointIndex < lastPointIndex(basisPlayer),
+                hasOpponent: opponent !== undefined,
+            })}
 
             <a
                 href="#"

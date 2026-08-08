@@ -83,6 +83,16 @@ export interface LockPoint {
     clippedRowCount: number;
 }
 
+// ラウンド開始地点（設置 0 手目）。相手の初手は自陣より後になることが普通にあるため、
+// 「まだ 1 手も置いていない」状態を指せないと共通フレーム軸で盤面を返せない（P2 §3-3）。
+export interface InitialPoint {
+    frame: number;          // 常に 0
+    field: IRField;         // 開始時の盤面（実質は空）
+    hold: Piece | null;     // 常に null
+    current: Piece | null;  // 最初に操作するミノ
+    next: Piece[];          // 開始時のキュー全件
+}
+
 // State after the last lock, ticked through to replay.frames. The losing
 // side's terminal board contains the killing garbage, which no lock captures.
 export interface TerminalPoint {
@@ -124,6 +134,7 @@ export interface PlayerRoundIR {
     username: string;
     resolvedOptions: { [key: string]: any };
     optionWarnings: string[];
+    initial: InitialPoint;
     locks: LockPoint[];
     terminal: TerminalPoint;
     garbageEvents: GarbageEvent[];
@@ -153,6 +164,8 @@ export interface ReplayMeta {
     gamemode: string;
     ts: string;
     version: number;
+    // 取り込み全体の解析所要時間（ミリ秒）。NFR-02 の実測を選択フェーズで出すために持つ。
+    parseMs: number;
 }
 
 export interface ReplayIR {

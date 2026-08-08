@@ -6,6 +6,7 @@ import { TtrmError } from './parser';
 import { resolveTtrmOptions } from './options';
 import {
     GarbageEvent,
+    InitialPoint,
     LockPoint,
     PlayerRoundIR,
     ReplayIR,
@@ -13,6 +14,12 @@ import {
     TtrmFile,
     TtrmPlayerRound,
 } from './types';
+
+// NFR-02 の実測用。Worker でも jsdom でも使えるようにフォールバックを持つ。
+export const nowMs = (): number =>
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
 
 // エンジンが保持しているキューを全部読む。表示件数で切らないのは、Editor へ
 // 引き渡す NEXT をリプレイから読める分だけ残らず持たせるため（画面側で切る）。
@@ -30,6 +37,25 @@ const readFalling = (engine: Engine): Piece | null => {
     }
     const piece = minoToPiece(symbol);
     return isMinoPiece(piece) ? piece : null;
+};
+
+// ラウンド開始地点（P2 §3-3）。Engine#falling / Engine#queue は型定義上 optional では
+// ないが、構築直後に未初期化だった場合に備えて 1 tick 進めてから読み直す。
+const readInitialPoint = (engine: Engine): InitialPoint => {
+    const read = (): InitialPoint => ({
+        frame: 0,
+        field: convertEngineBoard(engine.board.state as EngineBoardState).field,
+        hold: engine.held !== null && engine.held !== undefined ? minoToPiece(engine.held) : null,
+        current: readFalling(engine),
+        next: readQueue(engine),
+    });
+
+    const initial = read();
+    if (initial.current !== null && initial.next.length > 0) {
+        return initial;
+    }
+    engine.tick([]);
+    return read();
 };
 
 const collectOpponents = (playerRound: TtrmPlayerRound): number[] => {
@@ -62,6 +88,9 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
     }
 
     const engine = new Engine(buildEngineConfig(options, collectOpponents(playerRound)));
+
+    // 手を進める前の開始局面。以降の tick で潰れるので必ずここで読む。
+    const initial = readInitialPoint(engine);
 
     const locks: LockPoint[] = [];
     const garbageEvents: GarbageEvent[] = [];
@@ -171,6 +200,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
     };
 
     return {
+        initial,
         locks,
         garbageEvents,
         verification,
@@ -237,14 +267,17 @@ const buildRound = (round: TtrmPlayerRound[], index: number): RoundIR => {
     }
 };
 
-export const buildReplayIR = (file: TtrmFile): ReplayIR => {
+// startedAt を渡すと、そこからの経過を meta.parseMs にする（Worker は JSON パースも含めて計る）。
+export const buildReplayIR = (file: TtrmFile, startedAt: number = nowMs()): ReplayIR => {
+    const rounds = file.replay.rounds.map(buildRound);
     return {
+        rounds,
         meta: {
             users: (file.users ?? []).map(user => ({ id: user.id, username: user.username })),
             gamemode: file.gamemode ?? '',
             ts: file.ts ?? '',
             version: file.version ?? 1,
+            parseMs: Math.round(nowMs() - startedAt),
         },
-        rounds: file.replay.rounds.map(buildRound),
     };
 };

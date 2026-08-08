@@ -83,6 +83,21 @@ describe('irPointToPage', () => {
         expect(page.flags.quiz).toBeFalsy();
     });
 
+    // P2 §3-3: 開始地点（空盤面 ＋ ホールド無し ＋ NEXT 全件）も切り出しの対象にする。
+    test('the round start point becomes an empty board with the whole opening queue', async () => {
+        const empty: IRField = Array.from({ length: FieldConstants.PlayBlocks }).map(() => Piece.Empty);
+        const page = irPointToPage(empty, {
+            hold: null, current: Piece.T, next: [Piece.I, Piece.O, Piece.S, Piece.Z],
+        });
+        expect(page.comment.text).toEqual('#Q=[](T)IOSZ');
+        expect(page.flags.quiz).toBeTruthy();
+        expect(page.field.obj!.toPlayFieldPieces().every(cell => cell === Piece.Empty)).toBeTruthy();
+
+        const pages: Page[] = await decode(`v115@${await encode([page])}`);
+        expect(pages[0].comment.text).toEqual('#Q=[](T)IOSZ');
+        expect(pages[0].field.obj!.toPlayFieldPieces().every(cell => cell === Piece.Empty)).toBeTruthy();
+    });
+
     test('the field cells survive an encode/decode round trip', async () => {
         const cells = sampleField();
         const encoded = await encode([irPointToPage(cells)]);

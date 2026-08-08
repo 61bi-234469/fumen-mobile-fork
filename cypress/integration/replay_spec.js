@@ -60,13 +60,19 @@ describe('TETR.IO Replay', () => {
         // 3. 再生フェーズへ。手番カーソルは1始まり
         operations.replay.start();
         cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
-        cy.get(datatest('replay-board')).should('exist');
+        operations.replay.board('self').should('exist');
 
         // 4. 手番送りと終端（FR-21/28）。最終 lock の次は終端状態になる
         operations.replay.next();
         cy.get(datatest('replay-lock-counter')).should('contain', `2 / ${PLAYER_A_LOCKS}`);
         operations.replay.prev();
         cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        // P2 §7-2 の意図的変更: 先頭ボタンは「手番 1」ではなく「開始（設置 0）」へ戻る
+        operations.replay.first();
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+        operations.replay.next();
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+
         operations.replay.last();
         cy.get(datatest('replay-lock-counter')).should('contain', 'End');
         cy.get(datatest('replay-lock-counter')).should('contain', 'garbagesmash');
@@ -122,5 +128,197 @@ describe('TETR.IO Replay', () => {
         cy.get(datatest('replay-error')).should('be.visible');
         cy.get(datatest('replay-select-phase')).should('not.exist');
         cy.get(datatest('replay-playing-phase')).should('not.exist');
+    });
+
+    // ---- P2: 相手盤面と時間軸 ----
+
+    // 再生フェーズまで一気に進める共通手順。
+    // reload は同一テスト内で 2 回目に呼ぶとき用。cy.visit は同じ URL・同じハッシュだと
+    // 再読み込みしないため、Replay 画面に留まったままになる。
+    const startPlaying = ({ selfId = 'player-a-id', reload = false } = {}) => {
+        visit({ mode: 'edit', reload });
+        operations.replay.open();
+        importLeagueLoss();
+        operations.replay.selectSelfPlayer(selfId);
+        operations.replay.selectRound(0);
+        operations.replay.start();
+    };
+
+    // カウンタ文字列からポイント index を読む。'Piece 12 / 78' → 12、
+    // 開始地点（設置 0）は 'Start' と出るので 0 に読み替える。
+    const pieceNumberOf = ($el) => {
+        const text = $el.text();
+        const matched = /(\d+)\s*\/\s*\d+/.exec(text);
+        if (matched !== null) {
+            return Number(matched[1]);
+        }
+        return text.includes('Start') ? 0 : null;
+    };
+
+    it('shows the opponent board at the same instant as your own (FR-30)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.board('self').should('exist');
+        operations.replay.board('opponent').should('exist');
+        cy.get(datatest('replay-opponent-counter')).should('exist');
+
+        // 相手の手番は自陣と独立に進む。両者の設置数は一致しないので、
+        // 自陣を 5 手送った時点で相手が同じ手番数になっている保証はない。
+        cy.get(datatest('replay-opponent-counter')).then(($before) => {
+            const opponentBefore = pieceNumberOf($before);
+
+            for (let i = 0; i < 5; i += 1) {
+                operations.replay.next();
+            }
+            cy.get(datatest('replay-lock-counter')).should('contain', `6 / ${PLAYER_A_LOCKS}`);
+
+            // 相手側も同一時刻の地点まで進む（進んだかどうかは時刻依存なので、
+            // 後退しないことと盤面が出続けることを見る）
+            cy.get(datatest('replay-opponent-counter')).then(($after) => {
+                const opponentAfter = pieceNumberOf($after);
+                if (opponentBefore !== null && opponentAfter !== null) {
+                    expect(opponentAfter).to.be.at.least(opponentBefore);
+                }
+            });
+            operations.replay.board('opponent').should('exist');
+        });
+    });
+
+    it('remembers that the opponent board is hidden (FR-34)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.board('opponent').should('exist');
+        operations.replay.toggleOpponent();
+        operations.replay.board('opponent').should('not.exist');
+        operations.replay.board('self').should('exist');
+
+        // 再訪問しても消えたまま（localStorage 経由の復元）
+        startPlaying({ reload: true });
+        operations.replay.board('opponent').should('not.exist');
+
+        // 戻せることも確認しておく
+        operations.replay.toggleOpponent();
+        operations.replay.board('opponent').should('exist');
+    });
+
+    it('swaps the two sides while holding the playback position (FR-11/12)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        for (let i = 0; i < 9; i += 1) {
+            operations.replay.next();
+        }
+        cy.get(datatest('replay-lock-counter')).should('contain', `10 / ${PLAYER_A_LOCKS}`);
+
+        cy.get(datatest('replay-time-label')).invoke('text').then((timeBefore) => {
+            cy.get(datatest('replay-opponent-counter')).invoke('text').then((opponentBefore) => {
+                operations.replay.swapSides();
+
+                // 時刻は動かない
+                cy.get(datatest('replay-time-label')).should('have.text', timeBefore);
+                // 自陣に出るのは、入れ替え前に相手側で見えていた手番
+                const swappedPiece = /(\d+)\s*\/\s*\d+/.exec(opponentBefore);
+                if (swappedPiece !== null) {
+                    cy.get(datatest('replay-lock-counter'))
+                        .should('contain', `${swappedPiece[1]} / `);
+                }
+            });
+        });
+    });
+
+    // FR-55（相手盤面の fumen 化）は入れ替え → 切り出しで到達できる（P2 §3-8）
+    it('exports the opponent side by swapping first', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.swapSides();
+        operations.replay.openInEditor();
+
+        cy.get(datatest('replay-screen')).should('not.exist');
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+    });
+
+    it('plays on a clock and stops when paused (FR-23/27)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        cy.get(datatest('replay-timeline')).invoke('val').then((startValue) => {
+            const start = Number(startValue);
+
+            // Date と interval だけを差し替える。setTimeout / rAF は実物のままにして
+            // Hyperapp の再描画を止めない。
+            cy.clock(Date.now(), ['Date', 'setInterval', 'clearInterval']);
+
+            // 1 倍で 2 秒 = 120 フレーム進む
+            operations.replay.playPause();
+            cy.tick(2000);
+            cy.get(datatest('replay-timeline')).should('have.value', String(start + 120));
+
+            // 一時停止後は進まない
+            operations.replay.playPause();
+            cy.tick(2000);
+            cy.get(datatest('replay-timeline')).should('have.value', String(start + 120));
+
+            // 2 倍だと同じ 1 秒で 2 倍進む
+            operations.replay.setSpeed(2);
+            operations.replay.playPause();
+            cy.tick(1000);
+            cy.get(datatest('replay-timeline')).should('have.value', String(start + 240));
+            operations.replay.playPause();
+        });
+    });
+
+    it('seeks to an arbitrary time on the timeline (FR-25)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        // 先頭へシークすると開始地点（設置 0）になる
+        operations.replay.seek(0);
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+        cy.get(datatest('replay-time-label')).should('contain', '0:00.0');
+
+        // 終端へシークすると終了地点になる
+        cy.get(datatest('replay-timeline')).invoke('attr', 'max').then((max) => {
+            operations.replay.seek(Number(max));
+            cy.get(datatest('replay-lock-counter')).should('contain', 'End');
+        });
+    });
+
+    it('steps by the opponent placements when the basis is switched (FR-22)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.setBasis('opponent');
+        cy.get(datatest('replay-opponent-counter')).then(($before) => {
+            const before = pieceNumberOf($before);
+            expect(before, 'opponent point index before stepping').to.not.equal(null);
+
+            operations.replay.next();
+            cy.get(datatest('replay-opponent-counter')).then(($after) => {
+                // 相手基準では相手の設置が 1 つずつ進む
+                expect(pieceNumberOf($after)).to.equal(before + 1);
+            });
+        });
+    });
+
+    it('imports the same replay from pasted JSON (FR-02)', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+        operations.replay.open();
+
+        cy.readFile(FIXTURE).then((json) => {
+            operations.replay.importText(JSON.stringify(json));
+        });
+
+        // ファイル選択と同じ選択フェーズに到達する
+        cy.get(datatest('replay-select-phase')).should('exist');
+        cy.get(datatest('replay-self-player-player-a-id')).should('contain', 'player-a');
+        cy.get(datatest('replay-parse-time')).should('exist');
+
+        operations.replay.selectSelfPlayer('player-a-id');
+        operations.replay.start();
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
     });
 });

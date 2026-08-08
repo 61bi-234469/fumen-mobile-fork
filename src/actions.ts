@@ -484,6 +484,9 @@ const loadUserSettings = () => {
     if (viewSettings.coldClearThinkMs !== undefined) {
         main.setColdClearThinkMs({ thinkMs: viewSettings.coldClearThinkMs });
     }
+    if (viewSettings.replayShowOpponent !== undefined) {
+        main.setReplayShowOpponent({ showOpponent: viewSettings.replayShowOpponent });
+    }
 
     const treeViewSettings: Partial<State['tree']> = {};
     if (viewSettings.treeOperationScope !== undefined) {

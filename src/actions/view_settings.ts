@@ -19,6 +19,7 @@ type ViewSettingsOverrides = Partial<{
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
     replaySelfPlayer: string | null;
+    replayShowOpponent: boolean;
 }>;
 
 // 自陣プレイヤー名は state に持たないため、全体置換の saveViewSettings で
@@ -29,6 +30,20 @@ export const loadPersistedReplaySelfPlayer = (): string | null => {
         return localStorageWrapper.loadViewSettings().replaySelfPlayer ?? null;
     } catch {
         return null;
+    }
+};
+
+// 相手盤面の表示可否（FR-34）。Replay 以外からの保存で消さないよう、同じく読み戻す。
+// states.ts の DEFAULT_REPLAY_SHOW_OPPONENT と同値。states.ts は env.ts のビルド時置換に
+// 依存するため、ここから値として import はしない。
+const REPLAY_SHOW_OPPONENT_FALLBACK = true;
+
+const loadPersistedReplayShowOpponent = (): boolean => {
+    if (typeof localStorage === 'undefined') return REPLAY_SHOW_OPPONENT_FALLBACK;
+    try {
+        return localStorageWrapper.loadViewSettings().replayShowOpponent ?? REPLAY_SHOW_OPPONENT_FALLBACK;
+    } catch {
+        return REPLAY_SHOW_OPPONENT_FALLBACK;
     }
 };
 
@@ -56,5 +71,7 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         replaySelfPlayer: overrides.replaySelfPlayer !== undefined
             ? overrides.replaySelfPlayer
             : loadPersistedReplaySelfPlayer(),
+        // 相手盤面の表示可否（FR-34）
+        replayShowOpponent: overrides.replayShowOpponent ?? loadPersistedReplayShowOpponent(),
     });
 };

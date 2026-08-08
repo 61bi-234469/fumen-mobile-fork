@@ -5,9 +5,38 @@ import { IRField } from '../../lib/ttrm/types';
 
 const RENDER_SCALE = 2;
 
+// P2 §4-5: 自動再生のクロックは 20Hz で state を更新するため、素直に書くと
+// 1 秒あたり 40 回（2 盤面）の PNG 生成になる。IR のフィールド配列は取り込み以降
+// 参照が不変なので、WeakMap をキーにして「ポイントが変わった瞬間だけ」描き直す。
+// IR ごと捨てれば自動的に解放される。
+interface BoardMemo {
+    blockSize: number;
+    guideLineColor: boolean;
+    url: string;
+}
+
+const boardMemo = new WeakMap<object, BoardMemo>();
+
 // IRField（y=0が最下段）をサムネイルと同じ流儀でcanvasに描き、data URLで返す。
 // Replay画面は読み取り専用なのでkonvaステージは使わない。
 export const renderReplayBoard = (
+    field: IRField,
+    blockSize: number,
+    guideLineColor: boolean,
+): string => {
+    const memo = boardMemo.get(field);
+    if (memo !== undefined && memo.blockSize === blockSize && memo.guideLineColor === guideLineColor) {
+        return memo.url;
+    }
+
+    const url = drawReplayBoard(field, blockSize, guideLineColor);
+    if (url !== '') {
+        boardMemo.set(field, { blockSize, guideLineColor, url });
+    }
+    return url;
+};
+
+const drawReplayBoard = (
     field: IRField,
     blockSize: number,
     guideLineColor: boolean,

@@ -160,6 +160,15 @@ import { ReplayIR } from './lib/ttrm/types';
 
 export type ReplayPhase = 'empty' | 'parsing' | 'select' | 'playing' | 'failed';
 
+// 手番送りボタンがどちらのプレイヤーの lock を刻むか（FR-22）
+export type ReplayStepBasis = 'self' | 'opponent';
+
+// 自動再生の速度倍率（FR-27）。localStorage には保存しない。
+export type ReplaySpeed = 0.25 | 0.5 | 1 | 2 | 4;
+export const REPLAY_SPEEDS: ReplaySpeed[] = [0.25, 0.5, 1, 2, 4];
+export const DEFAULT_REPLAY_SPEED: ReplaySpeed = 1;
+export const DEFAULT_REPLAY_SHOW_OPPONENT = true;
+
 export interface ReplayState {
     phase: ReplayPhase;
     fileName?: string;
@@ -172,9 +181,19 @@ export interface ReplayState {
         roundIndex: number;
         selfPlayerId: string | null;
     };
+    // P2 §3-2: フレームが共通軸で唯一の真実。両者の index は frame と整合させる。
     cursor: {
-        lockIndex: number;
-        atTerminal: boolean;
+        frame: number;
+        selfIndex: number;
+        opponentIndex: number;
+        stepBasis: ReplayStepBasis;
+    };
+    playback: {
+        status: AnimationState;
+        speed: ReplaySpeed;
+    };
+    view: {
+        showOpponent: boolean;
     };
     error?: { stage: string; message: string };
 }
@@ -189,8 +208,17 @@ export const initialReplayState: ReplayState = {
         selfPlayerId: null,
     },
     cursor: {
-        lockIndex: 0,
-        atTerminal: false,
+        frame: 0,
+        selfIndex: 0,
+        opponentIndex: 0,
+        stepBasis: 'self',
+    },
+    playback: {
+        status: AnimationState.Pause,
+        speed: DEFAULT_REPLAY_SPEED,
+    },
+    view: {
+        showOpponent: DEFAULT_REPLAY_SHOW_OPPONENT,
     },
     error: undefined,
 };
@@ -303,6 +331,8 @@ export interface State {
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
+        // Replay 画面専用のクロック（FR-23）。Reader の animation とは意味も速度も違う。
+        replayClock?: ReturnType<typeof setInterval>;
     };
     events: {
         piece?: Piece;
@@ -503,6 +533,7 @@ export const initState: Readonly<State> = {
     },
     handlers: {
         animation: undefined,
+        replayClock: undefined,
     },
     events: {
         piece: undefined,  // 描画処理中のピースの種類

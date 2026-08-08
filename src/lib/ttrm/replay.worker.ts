@@ -1,5 +1,5 @@
 import { parseTtrm, TtrmError } from './parser';
-import { buildReplayIR } from './simulator';
+import { buildReplayIR, nowMs } from './simulator';
 import { ReplayWorkerRequest, ReplayWorkerResponse } from './types';
 
 const postResponse = (msg: ReplayWorkerResponse) => {
@@ -12,8 +12,10 @@ const postResponse = (msg: ReplayWorkerResponse) => {
         return;
     }
     try {
+        // NFR-02: JSON パースからシミュレーションまでの実測を meta.parseMs に載せる。
+        const startedAt = nowMs();
         const file = parseTtrm(msg.text);
-        postResponse({ type: 'ir', ir: buildReplayIR(file) });
+        postResponse({ type: 'ir', ir: buildReplayIR(file, startedAt) });
     } catch (e) {
         postResponse({
             type: 'error',

@@ -820,36 +820,6 @@ describe('replayActions', () => {
         });
     });
 
-    describe('pasted JSON import (FR-02)', () => {
-        test('rejects text over the size limit', () => {
-            const result = replayActions.importTtrmText(
-                { text: 'x'.repeat(8 * 1024 * 1024 + 1) })(createState())!;
-            expect(result.replay!.phase).toEqual('failed');
-            expect(result.replay!.error!.stage).toEqual('size');
-        });
-
-        test('reaches beginTtrmParse once the state carries the new requestId', async () => {
-            (main.beginTtrmParse as jest.Mock).mockClear();
-            const result = replayActions.importTtrmText({ text: '{"a":1}' })(createState())!;
-            expect(result.replay!.phase).toEqual('parsing');
-
-            // 同期呼び出しだと requestId の照合前に走って必ず弾かれる。
-            // マイクロタスクを挟んでいるので、この時点ではまだ呼ばれていない。
-            expect(main.beginTtrmParse).not.toHaveBeenCalled();
-            await flushPromises();
-            expect(main.beginTtrmParse).toHaveBeenCalledWith(expect.objectContaining({
-                requestId: result.replay!.requestId,
-                text: '{"a":1}',
-            }));
-        });
-
-        test('assigns a fresh, increasing requestId on each call', () => {
-            const first = replayActions.importTtrmText({ text: '{}' })(createState())!;
-            const second = replayActions.importTtrmText({ text: '{}' })(createState())!;
-            expect(second.replay!.requestId).toBeGreaterThan(first.replay!.requestId!);
-        });
-    });
-
     describe('selectors', () => {
         test('the opponent point is read at the same instant as the self point', () => {
             const state = playingState(3, 3);

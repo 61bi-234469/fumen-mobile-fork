@@ -2,7 +2,7 @@ import { h, View } from 'hyperapp';
 import { Actions } from '../actions';
 import { State } from '../states';
 import { i18n } from '../locales/keys';
-import { FieldConstants, Piece } from '../lib/enums';
+import { Piece } from '../lib/enums';
 import { px, style } from '../lib/types';
 import {
     getCurrentReplayClippedRowCount,
@@ -14,8 +14,9 @@ import {
     getSelectedRound,
     getSelfPlayerRound,
 } from '../actions/replay';
-import { MINO_SLOT_WIDTH, replaySide } from '../components/replay/replay_side';
+import { replaySide } from '../components/replay/replay_side';
 import { replayTransport } from '../components/replay/replay_transport';
+import { getReplayLayout } from './replay_layout';
 import { lastPointIndex, ReplayPoint } from '../lib/ttrm/timeline';
 import { LockPoint, PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
 
@@ -141,48 +142,6 @@ const importPhase = (state: State, actions: Actions) => {
             <p key="drop-hint" style={style({ color: '#777', fontSize: px(12) })}>
                 {i18n.Replay.Import.DropHint()}
             </p>
-
-            {/* FR-02: ファイルを選べない環境向けに、JSON テキストからも取り込めるようにする */}
-            <div
-                key="replay-import-text-block"
-                style={style({ margin: '20px auto 0', maxWidth: px(480), textAlign: 'left' })}
-            >
-                <div key="paste-label" style={style({ color: '#777', fontSize: px(12) })}>
-                    {i18n.Replay.Import.PasteLabel()}
-                </div>
-                <textarea
-                    key="replay-import-text"
-                    datatest="replay-import-text"
-                    placeholder={i18n.Replay.Import.PastePlaceholder()}
-                    style={style({
-                        border: '1px solid #ccc',
-                        borderRadius: px(4),
-                        fontFamily: 'monospace',
-                        fontSize: px(11),
-                        height: px(80),
-                        padding: px(6),
-                        width: '100%',
-                    })}
-                />
-                <a
-                    href="#"
-                    key="btn-replay-import-text"
-                    datatest="btn-replay-import-text"
-                    className="btn"
-                    style={style({ backgroundColor: ACCENT, marginTop: px(8), width: '100%' })}
-                    onclick={(e: MouseEvent) => {
-                        e.preventDefault();
-                        const area = document.querySelector(
-                            '[datatest="replay-import-text"]') as HTMLTextAreaElement | null;
-                        const text = area !== null ? area.value.trim() : '';
-                        if (text !== '') {
-                            actions.importTtrmText({ text });
-                        }
-                    }}
-                >
-                    {i18n.Replay.Import.PasteButton()}
-                </a>
-            </div>
         </div>
     );
 };
@@ -341,10 +300,6 @@ const selectPhase = (state: State, actions: Actions) => {
     );
 };
 
-// 相手盤面は自陣より小さく並置する（P2 §3-6。タブ切替にはしない）。
-const OPPONENT_SCALE = 0.55;
-const MIN_OPPONENT_BLOCK_SIZE = 4;
-
 // ポイントの表示ラベル。「開始」→「手番 1..L」→「終了 (reason)」（§7-4）。
 const pointCounterText = (player: PlayerRoundIR, point: ReplayPoint): string => {
     if (point.kind === 'initial') {
@@ -354,23 +309,6 @@ const pointCounterText = (player: PlayerRoundIR, point: ReplayPoint): string => 
         return `${i18n.Replay.Playing.Terminal()} (${player.terminal.reason})`;
     }
     return `${point.index} / ${player.locks.length}`;
-};
-
-// 自陣の blockSize は、相手盤面ぶんの幅を差し引いてから決める。
-const decideBlockSizes = (state: State, showOpponent: boolean) => {
-    const selfColumns = (MINO_SLOT_WIDTH + 10) * 2 + 32;
-    const available = Math.min(state.display.width, 480) - selfColumns;
-    // 相手は自陣ブロックの OPPONENT_SCALE 倍。自陣 1 ブロックあたりの所要幅から逆算する。
-    const widthPerBlock = showOpponent ? 1 + OPPONENT_SCALE : 1;
-    const blockSize = Math.max(6, Math.min(
-        16,
-        Math.floor((state.display.height - 330) / FieldConstants.Height),
-        Math.floor(available / (FieldConstants.Width * widthPerBlock)),
-    ));
-    return {
-        blockSize,
-        opponentBlockSize: Math.floor(blockSize * OPPONENT_SCALE),
-    };
 };
 
 const playingPhase = (state: State, actions: Actions) => {
@@ -385,12 +323,11 @@ const playingPhase = (state: State, actions: Actions) => {
     const lock = selfPoint.kind === 'lock' ? player.locks[selfPoint.index - 1] : undefined;
     const guideLineColor = state.fumen.guideLineColor;
 
-    const sizes = decideBlockSizes(state, state.replay.view.showOpponent);
-    // 幅が足りず相手ブロックが潰れる場合は自陣だけにフォールバックする（§3-6）。
-    const showOpponent = state.replay.view.showOpponent
-        && opponentPoint !== undefined
-        && MIN_OPPONENT_BLOCK_SIZE <= sizes.opponentBlockSize;
-    const { blockSize } = showOpponent ? sizes : decideBlockSizes(state, false);
+    // レイアウトは state に持たず毎描画で導出する。幅が足りなければ相手は描かれない（§3-6）。
+    const layout = getReplayLayout(
+        state, state.replay.view.showOpponent && opponentPoint !== undefined);
+    const showOpponent = layout.showOpponent && opponentPoint !== undefined;
+    const isWide = layout.mode === 'wide';
 
     const basisPlayer = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined
         ? opponent : player;
@@ -401,7 +338,12 @@ const playingPhase = (state: State, actions: Actions) => {
         <div
             key="replay-playing-phase"
             datatest="replay-playing-phase"
-            style={style({ margin: '0 auto', maxWidth: px(480), padding: '12px 16px', textAlign: 'center' })}
+            style={style({
+                margin: '0 auto',
+                maxWidth: px(layout.containerMaxWidth),
+                padding: '12px 16px',
+                textAlign: 'center',
+            })}
         >
             <div
                 key="playing-meta"
@@ -453,23 +395,32 @@ const playingPhase = (state: State, actions: Actions) => {
             <div
                 key="board-row"
                 style={style({
-                    alignItems: 'flex-start', display: 'flex', gap: px(8), justifyContent: 'center',
+                    alignItems: 'flex-start',
+                    display: 'flex',
+                    gap: px(isWide ? 24 : 8),
+                    justifyContent: 'center',
                 })}
             >
                 {replaySide({
-                    blockSize, guideLineColor,
+                    guideLineColor,
                     variant: 'self',
+                    size: 'full',
                     point: selfPoint,
+                    blockSize: layout.blockSize,
                     label: i18n.Replay.Playing.Self(),
                     counterText: pointCounterText(player, selfPoint),
+                    // PC は 2 盤面が対等なので、どちらの側かはプレイヤー名で示す（§3-6-2）
+                    heading: isWide ? displayName(ir, player.id) : undefined,
                 })}
                 {showOpponent && opponentPoint !== undefined ? replaySide({
                     guideLineColor,
                     variant: 'opponent',
+                    size: isWide ? 'full' : 'compact',
                     point: opponentPoint,
-                    blockSize: sizes.opponentBlockSize,
+                    blockSize: layout.opponentBlockSize,
                     label: i18n.Replay.Playing.Opponent(),
                     counterText: pointCounterText(opponent!, opponentPoint),
+                    heading: isWide ? displayName(ir, opponent!.id) : undefined,
                 }) : undefined}
             </div>
 

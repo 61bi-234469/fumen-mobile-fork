@@ -12,7 +12,6 @@ import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
 import { ReplayWorkerWrapper } from '../lib/ttrm/ReplayWorkerWrapper';
 import { MAX_TTRM_TEXT_LENGTH } from '../lib/ttrm/parser';
 import { PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
-import { i18n } from '../locales/keys';
 import {
     clampPointIndex,
     frameAt,
@@ -158,7 +157,6 @@ const stopReplayClock = (state: State): NextState => {
 export interface ReplayActions {
     openReplayScreen: () => action;
     importTtrmFile: (data: { file: File }) => action;
-    importTtrmText: (data: { text: string }) => action;
     beginTtrmParse: (data: { requestId: number, text: string, fileName: string }) => action;
     setReplayIR: (data: { ir: ReplayIR, fileName: string, requestId: number }) => action;
     setReplayError: (data: { stage: string, message: string, requestId: number }) => action;
@@ -232,45 +230,6 @@ export const replayActions: Readonly<ReplayActions> = {
                 view: state.replay.view,
                 phase: 'parsing',
                 fileName: file.name,
-            },
-        };
-    },
-    // FR-02: JSON テキストの貼り付け取り込み。ファイル経路と同じ requestId 照合と
-    // Worker を通す。beginTtrmParse は state.replay.requestId と照合するため、
-    // 同期で呼ぶと更新前の値と比べて必ず弾かれる。ファイル経路が await file.text() で
-    // 自然に満たしている「state 更新後に呼ぶ」条件を、貼り付け経路では明示的に作る。
-    importTtrmText: ({ text }) => (state): NextState => {
-        const requestId = nextReplayRequestId;
-        nextReplayRequestId += 1;
-
-        const fileName = i18n.Replay.Import.PastedName();
-        if (text.length > MAX_TTRM_TEXT_LENGTH) {
-            return {
-                replay: {
-                    ...initialReplayState,
-                    requestId,
-                    fileName,
-                    view: state.replay.view,
-                    phase: 'failed',
-                    error: {
-                        stage: 'size',
-                        message: `${Math.ceil(text.length / (1024 * 1024))}MB > 8MB`,
-                    },
-                },
-            };
-        }
-
-        Promise.resolve().then(() => {
-            main.beginTtrmParse({ requestId, text, fileName });
-        });
-
-        return {
-            replay: {
-                ...initialReplayState,
-                requestId,
-                fileName,
-                view: state.replay.view,
-                phase: 'parsing',
             },
         };
     },

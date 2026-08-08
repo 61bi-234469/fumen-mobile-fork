@@ -323,10 +323,6 @@ export const i18n = {
             Prompt: () => t('Replay.Import.Prompt'),
             Button: () => t('Replay.Import.Button'),
             DropHint: () => t('Replay.Import.DropHint'),
-            PasteLabel: () => t('Replay.Import.PasteLabel'),
-            PastePlaceholder: () => t('Replay.Import.PastePlaceholder'),
-            PasteButton: () => t('Replay.Import.PasteButton'),
-            PastedName: () => t('Replay.Import.PastedName'),
         },
         Parsing: () => t('Replay.Parsing'),
         Select: {

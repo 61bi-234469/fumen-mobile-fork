@@ -9,11 +9,15 @@ import { ReplayPoint } from '../../lib/ttrm/timeline';
 // HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
 export const MINO_SLOT_WIDTH = 34;
 
-// 自陣は縦列 5 件、相手は幅を食わないよう盤面の上に横並びの小アイコンで出す（P2 §3-6）。
+// variant は「どちらのプレイヤーか」（datatest 接頭辞と FR-31 の制限）、
+// size は「どう描くか」（P2 §4-1）。
+// full: 縦列 HOLD 1 ＋ NEXT 5。自陣は常にこちら。PC では相手も同じ。
+// compact: 盤面の上に横並びで HOLD 1 ＋ NEXT 3。モバイルの相手側だけ。
 export type ReplaySideVariant = 'self' | 'opponent';
+export type ReplaySideSize = 'full' | 'compact';
 
-const SELF_NEXT_COUNT = 5;
-const OPPONENT_NEXT_COUNT = 3;
+const FULL_NEXT_COUNT = 5;
+const COMPACT_NEXT_COUNT = 3;
 
 const pieceSlot = (
     piece: Piece | null, keyName: string, guideLineColor: boolean, slotWidth: number,
@@ -74,24 +78,30 @@ const queueRow = (
 
 interface ReplaySideProps {
     variant: ReplaySideVariant;
+    size: ReplaySideSize;
     point: ReplayPoint;
     blockSize: number;
     guideLineColor: boolean;
     label: string;
     counterText: string;
+    // PC レイアウトでのみ盤面の上に出すプレイヤー名（§3-6-2）
+    heading?: string;
 }
 
 // 1 プレイヤーぶんの「盤面＋HOLD/NEXT＋手番ラベル」。
 // 相手側には切り捨てチップも Editor ボタンも出さない（FR-31）。切り捨ては行数だけ添える。
 export const replaySide = (
-    { variant, point, blockSize, guideLineColor, label, counterText }: ReplaySideProps,
+    { variant, size, point, blockSize, guideLineColor, label, counterText, heading }: ReplaySideProps,
 ) => {
     const isSelf = variant === 'self';
     const boardImage = renderReplayBoard(point.field, blockSize, guideLineColor);
     // 設置直後に操作対象となっているミノは NEXT の先頭に並べる。
     // Editor へ引き渡す quiz でもこのミノがカレントになる。
     const nextPieces: (Piece | null)[] = [point.current, ...point.next]
-        .slice(0, isSelf ? SELF_NEXT_COUNT : OPPONENT_NEXT_COUNT);
+        .slice(0, size === 'full' ? FULL_NEXT_COUNT : COMPACT_NEXT_COUNT);
+    // datatest は variant だけで決まる。size を変えても名前は変わらない。
+    const holdKey = isSelf ? 'replay-hold' : 'replay-opponent-hold';
+    const nextKey = isSelf ? 'replay-next' : 'replay-opponent-next';
     const boardWidth = blockSize * FieldConstants.Width;
     const board = (
         <img
@@ -110,18 +120,56 @@ export const replaySide = (
         />
     );
 
-    if (isSelf) {
+    const headingLine = heading !== undefined ? (
+        <div
+            key={`replay-side-${variant}-heading`}
+            style={style({ color: '#777', fontSize: px(12) })}
+        >
+            {heading}
+        </div>
+    ) : undefined;
+
+    // 相手の手番カウンタ。full / compact のどちらでも盤面の下に 1 つだけ置く。
+    const opponentFooter = !isSelf ? [
+        <div
+            key="replay-opponent-counter"
+            datatest="replay-opponent-counter"
+            style={style({ color: '#777', fontSize: px(11) })}
+        >
+            {label} {counterText}
+        </div>,
+        point.clippedRowCount > 0 ? (
+            <div
+                key="replay-opponent-clip"
+                datatest="replay-opponent-clip"
+                style={style({ color: '#e65100', fontSize: px(10) })}
+            >
+                {i18n.Replay.Playing.ClipNotice(point.clippedRowCount)}
+            </div>
+        ) : undefined,
+    ] : undefined;
+
+    if (size === 'full') {
         return (
             <div
-                key="replay-side-self"
-                datatest="replay-side-self"
+                key={`replay-side-${variant}`}
+                datatest={`replay-side-${variant}`}
                 style={style({
-                    alignItems: 'flex-start', display: 'flex', gap: px(10), justifyContent: 'center',
+                    alignItems: 'center', display: 'flex', flexDirection: 'column', gap: px(3),
                 })}
             >
-                {queueColumn('replay-hold', i18n.Replay.Playing.Hold(), [point.hold], guideLineColor)}
-                {board}
-                {queueColumn('replay-next', i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
+                {headingLine}
+                <div
+                    key={`replay-side-${variant}-body`}
+                    style={style({
+                        alignItems: 'flex-start', display: 'flex', gap: px(10), justifyContent: 'center',
+                    })}
+                >
+                    {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [point.hold], guideLineColor)}
+                    {board}
+                    {queueColumn(nextKey, i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
+                </div>
+                {opponentFooter}
             </div>
         );
     }
@@ -129,36 +177,23 @@ export const replaySide = (
     const slotWidth = Math.max(14, Math.floor(boardWidth / 5));
     return (
         <div
-            key="replay-side-opponent"
-            datatest="replay-side-opponent"
+            key={`replay-side-${variant}`}
+            datatest={`replay-side-${variant}`}
             style={style({
-                display: 'flex', flexDirection: 'column', gap: px(3), width: px(boardWidth),
+                display: 'flex', flexDirection: 'column', gap: px(3),
+                textAlign: 'left', width: px(boardWidth),
             })}
         >
+            {headingLine}
             <div
                 key="replay-opponent-queues"
                 style={style({ display: 'flex', gap: px(6), justifyContent: 'space-between' })}
             >
-                {queueRow('replay-opponent-hold', [point.hold], guideLineColor, slotWidth)}
-                {queueRow('replay-opponent-next', nextPieces, guideLineColor, slotWidth)}
+                {queueRow(holdKey, [point.hold], guideLineColor, slotWidth)}
+                {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
             {board}
-            <div
-                key="replay-opponent-counter"
-                datatest="replay-opponent-counter"
-                style={style({ color: '#777', fontSize: px(11), textAlign: 'left' })}
-            >
-                {label} {counterText}
-            </div>
-            {point.clippedRowCount > 0 ? (
-                <div
-                    key="replay-opponent-clip"
-                    datatest="replay-opponent-clip"
-                    style={style({ color: '#e65100', fontSize: px(10), textAlign: 'left' })}
-                >
-                    {i18n.Replay.Playing.ClipNotice(point.clippedRowCount)}
-                </div>
-            ) : undefined}
+            {opponentFooter}
         </div>
     );
 };

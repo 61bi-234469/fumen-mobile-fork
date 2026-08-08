@@ -275,10 +275,6 @@ export const resources = {
             Prompt: 'TETR.IO の対戦リプレイ（.ttrm）を選択してください',
             Button: 'ファイルを選択',
             DropHint: 'ここにファイルをドロップでも読み込めます',
-            PasteLabel: 'または JSON を貼り付け',
-            PastePlaceholder: '.ttrm の中身（JSON）を貼り付けてください',
-            PasteButton: '貼り付けた JSON を読み込む',
-            PastedName: '貼り付けた JSON',
         },
         Parsing: 'リプレイを解析中...',
         Select: {

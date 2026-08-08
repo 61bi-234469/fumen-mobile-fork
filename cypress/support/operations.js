@@ -979,11 +979,6 @@ export const operations = {
             cy.get(datatest('btn-replay-start')).click();
             cy.get(datatest('replay-playing-phase')).should('exist');
         },
-        // JSON テキストの貼り付け取り込み（FR-02）
-        importText: (text) => {
-            cy.get(datatest('replay-import-text')).invoke('val', text).trigger('input');
-            cy.get(datatest('btn-replay-import-text')).click();
-        },
         next: () => cy.get(datatest('btn-replay-next-lock')).click(),
         prev: () => cy.get(datatest('btn-replay-prev-lock')).click(),
         first: () => cy.get(datatest('btn-replay-first')).click(),

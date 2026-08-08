@@ -304,10 +304,6 @@
             Prompt: 'Select a TETR.IO multiplayer replay (.ttrm)',
             Button: 'Select file',
             DropHint: 'Or drop the file here',
-            PasteLabel: 'Or paste JSON',
-            PasteButton: 'Load pasted JSON',
-            PastePlaceholder: 'Paste the contents of a .ttrm file (JSON)',
-            PastedName: 'pasted JSON',
         },
         Parsing: 'Analyzing replay...',
         Select: {

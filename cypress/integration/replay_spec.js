@@ -303,22 +303,100 @@ describe('TETR.IO Replay', () => {
         });
     });
 
-    it('imports the same replay from pasted JSON (FR-02)', () => {
+    it('shows only 3 opponent NEXT pieces on a phone', () => {
         cy.clearLocalStorage();
-        visit({ mode: 'edit' });
-        operations.replay.open();
+        startPlaying();
 
-        cy.readFile(FIXTURE).then((json) => {
-            operations.replay.importText(JSON.stringify(json));
-        });
-
-        // ファイル選択と同じ選択フェーズに到達する
-        cy.get(datatest('replay-select-phase')).should('exist');
-        cy.get(datatest('replay-self-player-player-a-id')).should('contain', 'player-a');
-        cy.get(datatest('replay-parse-time')).should('exist');
-
-        operations.replay.selectSelfPlayer('player-a-id');
-        operations.replay.start();
-        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-opponent-next-2')).should('exist');
+        cy.get(datatest('replay-opponent-next-3')).should('not.exist');
     });
+
+    // ---- PC レイアウト（P2 §3-6-2）----
+
+    // PC 判定は UA ではなく ?mobile=1 の有無で決まる（states.ts の getPlatform）。
+    // mobile: false で PC 扱いになり、viewport 幅で wide / narrow が分かれる。
+    const startPlayingOnPC = ({ width = 1280, reload = false } = {}) => {
+        cy.viewport(width, 800);
+        visit({ mode: 'edit', mobile: false, reload });
+        operations.replay.open();
+        importLeagueLoss();
+        operations.replay.selectSelfPlayer('player-a-id');
+        operations.replay.selectRound(0);
+        operations.replay.start();
+    };
+
+    const boardWidth = (side) => operations.replay.board(side).then(($el) => $el.width());
+
+    it('draws both boards at the same size on PC', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        boardWidth('self').then((self) => {
+            boardWidth('opponent').then((opponent) => {
+                expect(opponent, 'opponent board width').to.equal(self);
+            });
+        });
+    });
+
+    it('gives the opponent the same NEXT queue as your own on PC', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        // 自陣と同じ縦列 5 件。モバイルの横並び 3 件から増える
+        cy.get(datatest('replay-next-4')).should('exist');
+        cy.get(datatest('replay-opponent-next-4')).should('exist');
+        cy.get(datatest('replay-opponent-hold-0')).should('exist');
+    });
+
+    it('keeps both piece counters usable on PC', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-opponent-counter')).should('exist');
+
+        operations.replay.next();
+        cy.get(datatest('replay-lock-counter')).should('contain', `2 / ${PLAYER_A_LOCKS}`);
+    });
+
+    it('swaps which player is yours on PC (FR-11/12)', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        // 左が自陣で固定。入れ替えると見出しのプレイヤー名が左右で入れ替わる
+        cy.get(datatest('replay-side-self')).should('contain', 'player-a');
+        cy.get(datatest('replay-side-opponent')).should('contain', 'player-b');
+
+        cy.get(datatest('replay-time-label')).invoke('text').then((timeBefore) => {
+            operations.replay.swapSides();
+
+            cy.get(datatest('replay-time-label')).should('have.text', timeBefore);
+            cy.get(datatest('replay-side-self')).should('contain', 'player-b');
+            cy.get(datatest('replay-side-opponent')).should('contain', 'player-a');
+        });
+    });
+
+    it('hides the opponent side on PC too (FR-34)', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        operations.replay.board('opponent').should('exist');
+        operations.replay.toggleOpponent();
+        operations.replay.board('opponent').should('not.exist');
+        operations.replay.board('self').should('exist');
+    });
+
+    it('falls back to the shrunken opponent board in a narrow PC window', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC({ width: 600 });
+
+        // 幅が閾値を下回るので、PC でもモバイルと同じ縮小並置になる
+        boardWidth('self').then((self) => {
+            boardWidth('opponent').then((opponent) => {
+                expect(opponent, 'opponent board width').to.be.lessThan(self);
+            });
+        });
+        cy.get(datatest('replay-opponent-next-3')).should('not.exist');
+    });
+
 });

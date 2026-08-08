@@ -256,8 +256,14 @@ export const replayActions: Readonly<ReplayActions> = {
         if (field === undefined) {
             return undefined;
         }
-        // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる
-        const page = irPointToPage(field, getCurrentReplayQueue(state), state.fumen.guideLineColor);
+        // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる。
+        // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す
+        const page = irPointToPage(
+            field,
+            getCurrentReplayQueue(state),
+            state.fumen.guideLineColor,
+            state.mode.rotationSystem !== 'classic',
+        );
         const pageIndex = state.fumen.currentIndex + 1;
 
         // appendPages は履歴登録と挿入ページへの移動まで行う（クリップボード貼り付けと同じ経路）

@@ -9,14 +9,16 @@ import { operations } from '../support/operations';
 // いずれも 2 ページ構成で、1 ページ目は visit({mode:'edit'}) の既定の空白ページ
 // （= 切り出しが既存ページを上書きしていない証拠）、2 ページ目が取り込んだ地点。
 // 盤面に続く quiz コメント（#Q=[hold](current)next...）は Editor へ引き継ぐ
-// HOLD / カレント / NEXT を表す。
+// HOLD / カレント / NEXT を表す。NEXT は画面表示の5件ではなく、リプレイから
+// 読める分（エンジンのキュー全件）が入る。カレントは quiz だけでなく
+// spawn 位置の操作対象ミノとしてもページに載る（2 ページ目の piece）。
 const FIXTURE = 'src/lib/ttrm/__tests__/fixtures/league_loss.json';
 const PLAYER_A_LOCKS = 78;
 const TERMINAL_FUMEN = 'v115@vhAAgHEeAtBeAtxhilBtAeBtwhQ4AeAtywglQ4g0wh?'
     + 'g0Q4AeBtywAtwhI8AeI8AeG8AeG8AeI8AeI8AeI8AeI8AeL?'
     + '8AeI8AeI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8Je?'
-    + 'AgWaAFLDmClcJSAVDVSAVG88A4W88AZyTxCK+AAA';
-const LOCK1_FUMEN = 'v115@vhAAgHRhRpHeRpReAgWZAFLDmClcJSAVDEHBEooRBJ?oAVBsuLuCqAAAA';
+    + 'TnWgAFLDmClcJSAVDVSAVG88A4W88AZyTxCKeHgCzXWWC';
+const LOCK1_FUMEN = 'v115@vhAAgHRhRpHeRpReRsWgAFLDmClcJSAVDEHBEooRBJ?oAVBsuLuCq3/wCPd9VC';
 
 const importLeagueLoss = () => {
     operations.replay.importFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
@@ -96,6 +98,11 @@ describe('TETR.IO Replay', () => {
         // 確認を挟まず遷移し、INPUT レイアウト（HOLD/NEXT キュー）で開く
         cy.get(datatest('replay-screen')).should('not.exist');
         cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+
+        // カレント（手番1では I）が spawn 位置の操作対象ミノとして載っている
+        for (const x of [3, 4, 5, 6]) {
+            cy.get(block(x, 20)).should('have.attr', 'color', Color.I.Highlight2);
+        }
 
         // 描いたブロックは 1 ページ目に残り、取り込んだ地点が 2 ページ目になる
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');

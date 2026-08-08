@@ -73,6 +73,7 @@ export interface LockPoint {
     // 設置直後に操作対象となっているミノ。falling.lock 時点で次のミノは
     // すでに spawn されているため、next[] とは別に保持する。
     current: Piece | null;
+    // エンジンが保持している NEXT を全件。表示は画面側で切る
     next: Piece[];
     clear: LockClear;
     attack: number;
@@ -92,6 +93,7 @@ export interface TerminalPoint {
     garbageGauge: number;
     hold: Piece | null;
     current: Piece | null;
+    // エンジンが保持している NEXT を全件。表示は画面側で切る
     next: Piece[];
     reason: string;
     alive: boolean;

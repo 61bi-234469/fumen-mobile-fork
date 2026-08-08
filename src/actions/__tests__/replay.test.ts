@@ -38,7 +38,7 @@ jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => ({
 import { getCurrentReplayQueue, replayActions } from '../replay';
 import { main } from '../../actions';
 import { initialReplayState, State } from '../../states';
-import { FieldConstants, Piece } from '../../lib/enums';
+import { FieldConstants, Piece, Rotation } from '../../lib/enums';
 import { IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from '../view_settings';
 
@@ -287,6 +287,28 @@ describe('replayActions', () => {
             expect(call.pageIndex).toEqual(3);
             expect(call.pages).toHaveLength(1);
             expect(call.pages[0].comment.text).toEqual('#Q=[](O)I');
+        });
+
+        test('hands the current mino over as a spawned piece', () => {
+            replayActions.openReplayInEditor()(playingState(3));
+
+            const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+            expect(call.pages[0].piece).toEqual({
+                type: Piece.O,
+                rotation: Rotation.Spawn,
+                coordinate: { x: 4, y: 20 },
+            });
+        });
+
+        test('the spawn position follows the rotation system setting', () => {
+            const state = playingState(3);
+            replayActions.openReplayInEditor()({
+                ...state,
+                mode: { ...state.mode, rotationSystem: 'classic' },
+            } as State);
+
+            const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+            expect(call.pages[0].piece.coordinate).toEqual({ x: 5, y: 21 });
         });
 
         test('opens the editor in the INPUT layout', () => {

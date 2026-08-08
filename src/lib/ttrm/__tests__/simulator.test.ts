@@ -134,6 +134,29 @@ describe('simulator', () => {
         }
     });
 
+    test('the next queue is kept whole, not cut down to the displayed count', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        // 画面が出すのは5件だが、IR はエンジンのキューを全部持つ（1バッグ=7を超える）
+        for (const lock of result.locks) {
+            expect(lock.next.length).toBeGreaterThan(7);
+        }
+
+        // 隣り合う地点のキューは、先頭を 1〜2 個（hold でもう1個引くことがある）
+        // 消費しただけの連続した並びになる。途中で切っていると成立しない。
+        const continues = (prev: Piece[], cur: Piece[], consumed: number): boolean => {
+            const tail = prev.slice(consumed);
+            const length = Math.min(tail.length, cur.length);
+            return length > 0 && tail.slice(0, length).every((piece, j) => piece === cur[j]);
+        };
+        for (let i = 0; i < result.locks.length - 1; i += 1) {
+            const prev = result.locks[i].next;
+            const cur = result.locks[i + 1].next;
+            expect(continues(prev, cur, 1) || continues(prev, cur, 2)).toBeTruthy();
+        }
+    });
+
     test('locks carry hold/next and clear metadata', () => {
         const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const result = simulatePlayerRound(winner);

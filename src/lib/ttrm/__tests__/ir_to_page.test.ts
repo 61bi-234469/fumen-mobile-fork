@@ -1,4 +1,4 @@
-import { FieldConstants, Piece } from '../../enums';
+import { FieldConstants, Piece, Rotation } from '../../enums';
 import { decode, encode } from '../../fumen/fumen';
 import { Field } from '../../fumen/field';
 import { Page } from '../../fumen/types';
@@ -52,6 +52,29 @@ describe('irPointToPage', () => {
         expect(irPointToPage(sampleField(), {
             hold: Piece.T, current: null, next: [],
         }).comment.text).toEqual('#Q=[](T)');
+    });
+
+    test('spawns the current mino so INPUT can move it right away', () => {
+        const page = irPointToPage(sampleField(), sampleQueue());
+        expect(page.piece).toEqual({
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        });
+    });
+
+    test('the spawn position follows the rotation system', () => {
+        const page = irPointToPage(sampleField(), sampleQueue(), true, false);
+        expect(page.piece).toEqual({
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 21 },
+        });
+    });
+
+    test('nothing is spawned when the point has no current', () => {
+        expect(irPointToPage(sampleField(), { hold: Piece.T, current: null, next: [] }).piece)
+            .toBeUndefined();
     });
 
     test('writes no comment when the queue holds nothing usable', () => {

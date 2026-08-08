@@ -14,10 +14,11 @@ import {
     TtrmPlayerRound,
 } from './types';
 
-const NEXT_COUNT = 5;
-
-const readQueue = (engine: Engine, count: number): Piece[] =>
-    Array.prototype.slice.call(engine.queue, 0, count).map(minoToPiece);
+// エンジンが保持しているキューを全部読む。表示件数で切らないのは、Editor へ
+// 引き渡す NEXT をリプレイから読める分だけ残らず持たせるため（画面側で切る）。
+// 実測ではバッグ補充の都合で 9〜15 個の幅がある。
+const readQueue = (engine: Engine): Piece[] =>
+    Array.prototype.slice.call(engine.queue).map(minoToPiece).filter(isMinoPiece);
 
 // falling.lock / 終端時点の「操作対象のミノ」。エンジンは lock 処理内で次のミノを
 // spawn するため、その時点の falling がそのまま次に置かれるミノになる
@@ -105,7 +106,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             y: preLock ? preLock.y : 0,
             hold: engine.held !== null ? minoToPiece(engine.held) : null,
             current: readFalling(engine),
-            next: readQueue(engine, NEXT_COUNT),
+            next: readQueue(engine),
             clear: {
                 lines: res.lines || 0,
                 spin: res.spin || 'none',
@@ -185,7 +186,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             garbageGauge: (engine.garbageQueue as any).size ?? 0,
             hold: engine.held !== null ? minoToPiece(engine.held) : null,
             current: readFalling(engine),
-            next: readQueue(engine, NEXT_COUNT),
+            next: readQueue(engine),
             reason: playerRound.replay.results.gameoverreason,
             alive: playerRound.alive,
         },

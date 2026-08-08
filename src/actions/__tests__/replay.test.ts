@@ -8,7 +8,11 @@ jest.mock('../../actions', () => ({
             mode: { ...state.mode, screen },
         }),
     },
-    main: {},
+    main: {
+        appendPages: jest.fn(),
+        changeToDrawerScreen: jest.fn(),
+        selectPieceLayout: jest.fn(),
+    },
 }));
 jest.mock('../view_settings', () => ({
     loadPersistedReplaySelfPlayer: jest.fn(() => null),
@@ -32,6 +36,7 @@ jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => ({
 }));
 
 import { getCurrentReplayQueue, replayActions } from '../replay';
+import { main } from '../../actions';
 import { initialReplayState, State } from '../../states';
 import { FieldConstants, Piece } from '../../lib/enums';
 import { IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
@@ -114,8 +119,9 @@ const createState = (overrides: Partial<State['replay']> = {}, undoCount: number
         ...overrides,
     },
     history: { undoCount, redoCount: 0 },
-    modal: { replayDiscardConfirm: false },
+    modal: {},
     mode: { screen: 'Editor' },
+    fumen: { currentIndex: 2, guideLineColor: true },
 } as unknown as State);
 
 const playingState = (lockCount: number, cursor?: State['replay']['cursor']): State =>
@@ -265,19 +271,49 @@ describe('replayActions', () => {
         });
     });
 
-    describe('open in editor discard confirmation (Q2)', () => {
-        test('opens the confirm modal when undoCount > 0', () => {
-            const state = playingState(3);
-            const withEdits = { ...state, history: { undoCount: 2, redoCount: 0 } } as State;
-            const result = replayActions.openReplayInEditor()(withEdits)!;
-            expect(result.modal!.replayDiscardConfirm).toBeTruthy();
+    describe('openReplayInEditor', () => {
+        beforeEach(() => {
+            (main.appendPages as jest.Mock).mockClear();
+            (main.changeToDrawerScreen as jest.Mock).mockClear();
+            (main.selectPieceLayout as jest.Mock).mockClear();
         });
 
-        test('closeReplayDiscardConfirmModal keeps the replay state untouched', () => {
-            const state = playingState(3);
-            const result = replayActions.closeReplayDiscardConfirmModal()(state)!;
-            expect(result.modal!.replayDiscardConfirm).toBeFalsy();
-            expect(result.replay).toBeUndefined();
+        test('inserts the point as a new page after the current one', () => {
+            // currentIndex は 2。既存ページを置き換えず 3 番目の次に挿入する
+            replayActions.openReplayInEditor()(playingState(3));
+
+            expect(main.appendPages).toHaveBeenCalledTimes(1);
+            const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+            expect(call.pageIndex).toEqual(3);
+            expect(call.pages).toHaveLength(1);
+            expect(call.pages[0].comment.text).toEqual('#Q=[](O)I');
+        });
+
+        test('opens the editor in the INPUT layout', () => {
+            replayActions.openReplayInEditor()(playingState(3));
+
+            expect(main.changeToDrawerScreen).toHaveBeenCalledWith({});
+            expect(main.selectPieceLayout).toHaveBeenCalledWith({ layout: 'play' });
+        });
+
+        test('does nothing outside the playing phase', () => {
+            const state = createState({
+                ir: buildIR(3),
+                phase: 'select',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+            });
+            expect(replayActions.openReplayInEditor()(state)).toBeUndefined();
+            expect(main.appendPages).not.toHaveBeenCalled();
+        });
+
+        test('never asks to discard: editing the session does not change the flow', () => {
+            const withEdits = {
+                ...playingState(3),
+                history: { undoCount: 5, redoCount: 0 },
+            } as State;
+            replayActions.openReplayInEditor()(withEdits);
+
+            expect(main.appendPages).toHaveBeenCalledTimes(1);
         });
     });
 });

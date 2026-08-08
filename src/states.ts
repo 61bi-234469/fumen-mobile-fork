@@ -266,7 +266,6 @@ export interface State {
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
         pieceQueue: boolean;
-        replayDiscardConfirm: boolean;
     };
     temporary: {
         userSettings: {
@@ -467,7 +466,6 @@ export const initState: Readonly<State> = {
         treeDisableConfirm: false,
         coldClearMenu: false,
         pieceQueue: false,
-        replayDiscardConfirm: false,
     },
     temporary: {
         userSettings: {
@@ -616,7 +614,6 @@ export const resources = {
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
         pieceQueue: undefined as any,
-        replayDiscardConfirm: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

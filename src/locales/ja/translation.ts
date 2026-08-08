@@ -295,12 +295,6 @@ export const resources = {
             OpenInEditor: 'この地点を Editor で開く',
             BackToSelect: 'ラウンド / 自陣を選び直す',
         },
-        DiscardConfirm: {
-            Title: 'Editor で開く',
-            Message: '編集中の内容は失われます。この地点を Editor で開きますか？',
-            Cancel: 'キャンセル',
-            Confirm: '破棄して開く',
-        },
         Error: {
             Title: 'リプレイを読み込めませんでした',
             Retry: '別のファイルを選択',

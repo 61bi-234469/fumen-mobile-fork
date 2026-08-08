@@ -324,12 +324,6 @@
             OpenInEditor: 'Open this point in Editor',
             BackToSelect: 'Choose round / side again',
         },
-        DiscardConfirm: {
-            Title: 'Open in Editor',
-            Message: 'The content you are editing will be lost. Open this point in the editor?',
-            Cancel: 'Cancel',
-            Confirm: 'Discard and open',
-        },
         Error: {
             Title: 'Failed to load the replay',
             Retry: 'Select another file',

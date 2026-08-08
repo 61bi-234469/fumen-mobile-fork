@@ -27,17 +27,17 @@ const buildQuizComment = (queue: IRQueue | undefined): string => {
     return Quiz.create(hold, nexts).format().toString();
 };
 
-// FR-50: IR の 1 地点 → 単独のキーページ。ref は使わず、生成ページは常に
-// 先頭ページになるため colorize を明示する。
-export const irPointToPage = (cells: IRField, queue?: IRQueue): Page => {
+// FR-50: IR の 1 地点 → 単独のキーページ。ref は使わない。
+// colorize は fumen 全体の設定なので、挿入先に合わせて呼び出し側から渡す。
+export const irPointToPage = (cells: IRField, queue?: IRQueue, colorize: boolean = true): Page => {
     const comment = buildQuizComment(queue);
     return {
         index: 0,
         field: { obj: irFieldToField(cells) },
         comment: { text: comment },
         flags: {
+            colorize,
             lock: true,
-            colorize: true,
             mirror: false,
             rise: false,
             quiz: comment !== '',

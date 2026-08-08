@@ -343,12 +343,6 @@ export const i18n = {
             OpenInEditor: () => t('Replay.Playing.OpenInEditor'),
             BackToSelect: () => t('Replay.Playing.BackToSelect'),
         },
-        DiscardConfirm: {
-            Title: () => t('Replay.DiscardConfirm.Title'),
-            Message: () => t('Replay.DiscardConfirm.Message'),
-            Cancel: () => t('Replay.DiscardConfirm.Cancel'),
-            Confirm: () => t('Replay.DiscardConfirm.Confirm'),
-        },
         Error: {
             Title: () => t('Replay.Error.Title'),
             Retry: () => t('Replay.Error.Retry'),

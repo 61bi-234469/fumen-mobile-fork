@@ -1,19 +1,22 @@
-import { datatest, expectFumen, visit } from '../support/common';
+import { block, Color, datatest, expectFumen, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 // League の1ラウンド抜粋（player-a が garbagesmash で敗北する側）。
 // 期待 fumen は同じ fixture に対する Jest（simulator + ir_to_page + encode）の
 // 決定論的な出力から取得している。値を変える前に .agents/skills/e2e/SKILL.md の
 // fumen 分類手順を踏むこと。
+//
+// いずれも 2 ページ構成で、1 ページ目は visit({mode:'edit'}) の既定の空白ページ
+// （= 切り出しが既存ページを上書きしていない証拠）、2 ページ目が取り込んだ地点。
 // 盤面に続く quiz コメント（#Q=[hold](current)next...）は Editor へ引き継ぐ
 // HOLD / カレント / NEXT を表す。
 const FIXTURE = 'src/lib/ttrm/__tests__/fixtures/league_loss.json';
 const PLAYER_A_LOCKS = 78;
-const TERMINAL_FUMEN = 'v115@EeAtBeAtxhilBtAeBtwhQ4AeAtywglQ4g0whg0Q4Ae?'
-    + 'BtywAtwhI8AeI8AeG8AeG8AeI8AeI8AeI8AeI8AeL8AeI8A?'
-    + 'eI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8JeAgWaAF?'
-    + 'LDmClcJSAVDVSAVG88A4W88AZyTxCK+AAA';
-const LOCK1_FUMEN = 'v115@RhRpHeRpReAgWZAFLDmClcJSAVDEHBEooRBJoAVBsu?LuCqAAAA';
+const TERMINAL_FUMEN = 'v115@vhAAgHEeAtBeAtxhilBtAeBtwhQ4AeAtywglQ4g0wh?'
+    + 'g0Q4AeBtywAtwhI8AeI8AeG8AeG8AeI8AeI8AeI8AeI8AeL?'
+    + '8AeI8AeI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8Je?'
+    + 'AgWaAFLDmClcJSAVDVSAVG88A4W88AZyTxCK+AAA';
+const LOCK1_FUMEN = 'v115@vhAAgHRhRpHeRpReAgWZAFLDmClcJSAVDEHBEooRBJ?oAVBsuLuCqAAAA';
 
 const importLeagueLoss = () => {
     operations.replay.importFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
@@ -69,45 +72,35 @@ describe('TETR.IO Replay', () => {
         // 6. この地点は 25 行スタックなので切り捨てチップが出る（FR-56）
         cy.get(datatest('replay-clip-notice')).should('be.visible');
 
-        // 5. 編集していない状態では確認モーダルなしで Editor へ遷移する
+        // 5. Editor へ遷移し、既存ページの次に新規ページとして挿入される
         operations.replay.openInEditor();
-        cy.get(datatest('replay-discard-confirm')).should('not.exist');
         cy.get(datatest('replay-screen')).should('not.exist');
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
         expectFumen(TERMINAL_FUMEN);
     });
 
-    it('asks for confirmation before discarding edits (Q2)', () => {
+    it('inserts as a new page and opens the INPUT layout without overwriting edits', () => {
         visit({ mode: 'edit' });
+
+        // Editor で 1 ブロック描いておく（この編集は保持されなければならない）
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
 
         operations.replay.open();
         importLeagueLoss();
         operations.replay.selectSelfPlayer('player-a-id');
         operations.replay.start();
         operations.replay.openInEditor();
+
+        // 確認を挟まず遷移し、INPUT レイアウト（HOLD/NEXT キュー）で開く
         cy.get(datatest('replay-screen')).should('not.exist');
+        cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
 
-        // Editor で 1 ブロック描く → undoCount > 0
-        operations.mode.block.open();
-        operations.mode.block.Gray();
-        operations.mode.block.click(0, 0);
-
-        // 5b. 再度 Replay から Editor を開こうとすると確認モーダルが出る
-        operations.replay.open();
-        cy.get(datatest('replay-playing-phase')).should('exist');
-        operations.replay.openInEditor();
-        cy.get(datatest('replay-discard-confirm')).should('be.visible');
-
-        // キャンセルで Replay に留まる
-        cy.get(datatest('btn-replay-discard-cancel')).click();
-        cy.get(datatest('replay-discard-confirm')).should('not.exist');
-        cy.get(datatest('replay-playing-phase')).should('exist');
-
-        // 破棄して開くで遷移する
-        operations.replay.openInEditor();
-        cy.get(datatest('btn-replay-discard-ok')).click();
-        cy.get(datatest('replay-screen')).should('not.exist');
-        // player-a の手番1（fieldAfter）を HOLD/カレント/NEXT ごと開き直せている
-        expectFumen(LOCK1_FUMEN);
+        // 描いたブロックは 1 ページ目に残り、取り込んだ地点が 2 ページ目になる
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        operations.menu.firstPage();
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
     });
 
     it('shows an explicit error for a broken file instead of guessing (FR-60)', () => {

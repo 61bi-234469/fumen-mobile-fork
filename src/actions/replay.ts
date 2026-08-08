@@ -2,7 +2,6 @@ import { NextState } from './commons';
 import { action, actions, main } from '../actions';
 import { Screens } from '../lib/enums';
 import { initialReplayState, State } from '../states';
-import { encode } from '../lib/fumen/fumen';
 import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
 import { ReplayWorkerWrapper } from '../lib/ttrm/ReplayWorkerWrapper';
 import { MAX_TTRM_TEXT_LENGTH } from '../lib/ttrm/parser';
@@ -55,9 +54,6 @@ export interface ReplayActions {
     replayFirstLock: () => action;
     replayLastLock: () => action;
     openReplayInEditor: () => action;
-    confirmReplayOpenInEditor: () => action;
-    openReplayDiscardConfirmModal: () => action;
-    closeReplayDiscardConfirmModal: () => action;
 }
 
 export const replayActions: Readonly<ReplayActions> = {
@@ -253,53 +249,23 @@ export const replayActions: Readonly<ReplayActions> = {
             },
         };
     },
+    // FR-51: 既存ページを置き換えず、カレントの次に新規ページとして挿入する。
+    // 上書きが起きないので破棄確認は不要で、挿入自体も undo できる。
     openReplayInEditor: () => (state): NextState => {
-        if (getCurrentReplayField(state) === undefined) {
-            return undefined;
-        }
-        // この session で編集していたら破棄確認を挟む（Q2）
-        if (state.history.undoCount > 0) {
-            return replayActions.openReplayDiscardConfirmModal()(state);
-        }
-        return replayActions.confirmReplayOpenInEditor()(state);
-    },
-    confirmReplayOpenInEditor: () => (state): NextState => {
         const field = getCurrentReplayField(state);
         if (field === undefined) {
             return undefined;
         }
-        const page = irPointToPage(field, getCurrentReplayQueue(state));
-        (async () => {
-            try {
-                const encoded = await encode([page]);
-                // 既存の fumen 読み込み経路に載せる（FR-51）: 履歴登録も同じ扱いになる
-                main.loadPages({ pages: [page], loadedFumen: `v115@${encoded}` });
-                main.changeToDrawerScreen({ refresh: true });
-            } catch (e) {
-                console.error(e);
-                main.setReplayError({
-                    stage: 'export',
-                    message: e instanceof Error ? e.message : String(e),
-                });
-            }
-        })();
+        // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる
+        const page = irPointToPage(field, getCurrentReplayQueue(state), state.fumen.guideLineColor);
+        const pageIndex = state.fumen.currentIndex + 1;
+
+        // appendPages は履歴登録と挿入ページへの移動まで行う（クリップボード貼り付けと同じ経路）
+        main.appendPages({ pageIndex, pages: [page] });
+        main.changeToDrawerScreen({});
+        // 取り込んだ地点からそのまま操作できるよう INPUT レイアウトで開く
+        main.selectPieceLayout({ layout: 'play' });
         return undefined;
-    },
-    openReplayDiscardConfirmModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                replayDiscardConfirm: true,
-            },
-        };
-    },
-    closeReplayDiscardConfirmModal: () => (state): NextState => {
-        return {
-            modal: {
-                ...state.modal,
-                replayDiscardConfirm: false,
-            },
-        };
     },
 };
 

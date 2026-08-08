@@ -173,6 +173,14 @@ const ALLOWLIST: ReadonlyArray<string> = [
     'input-piece-shortcut-Hold',
     'input-piece-shortcut-Reset',
     'input-piece-shortcut-SoftDrop',
+    // generated at src/components/replay/replay_side.tsx: replaySide builds the
+    // HOLD/NEXT datatest values through queueColumn/queueRow and pieceSlot helpers;
+    // the selector contract cannot infer the interpolated queue indexes.
+    'replay-next-4',
+    'replay-opponent-hold-0',
+    'replay-opponent-next-2',
+    'replay-opponent-next-3',
+    'replay-opponent-next-4',
 ];
 
 const existsAsStatic = (name: string): boolean => {

@@ -5,6 +5,8 @@ import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { ReplaySpeed, ReplayStepBasis, REPLAY_SPEEDS, State } from '../../states';
 import { formatFrameTime, ReplayStats } from '../../lib/ttrm/timeline';
+import { PlayerRoundIR } from '../../lib/ttrm/types';
+import { MARKER_BAND_HEIGHT, renderReplayTimelineMarkers } from './replay_timeline_markers';
 
 const ACCENT = '#00796b';
 
@@ -65,11 +67,18 @@ interface ReplayTransportProps {
     canStepBack: boolean;
     canStepForward: boolean;
     hasOpponent: boolean;
+    // ガベージ表示がオンのときだけ渡す。☢ の統計とマーカー帯の両方がこれで決まる
+    garbagePlayer?: PlayerRoundIR;
+    // タイムラインの実幅は取れないので、レイアウトが決めた最大幅を使う
+    markerWidth: number;
 }
 
 // タイムライン、再生／一時停止、速度、基準切り替え、手番送りをまとめて持つ（FR-22/23/25/26/27）。
 export const replayTransport = (
-    { state, actions, stats, endFrame, canStepBack, canStepForward, hasOpponent }: ReplayTransportProps,
+    {
+        state, actions, stats, endFrame, canStepBack, canStepForward, hasOpponent,
+        garbagePlayer, markerWidth,
+    }: ReplayTransportProps,
 ) => {
     const { cursor, playback } = state.replay;
     const playing = playback.status === AnimationState.Play;
@@ -90,11 +99,15 @@ export const replayTransport = (
                     margin: '6px 0',
                 })}
             >
-                <span key="stat-pps">{stats.pps.toFixed(1)} pps</span>
-                <span key="stat-apm">{Math.round(stats.apm)} apm</span>
-                <span key="stat-b2b">B2B {stats.b2b}</span>
-                <span key="stat-ren">REN {stats.ren}</span>
+                {/* pps / apm / B2B / REN は盤面の左（HOLD 列）へ移した */}
                 <span key="stat-attack">↑ {stats.attack}</span>
+                {/* ☢ は TETR.IO の集計ではなくエンジン基準であることを示す印（§3-8） */}
+                {garbagePlayer !== undefined ? (
+                    <span key="stat-gauge" datatest="replay-stat-gauge">☢ {stats.gauge}</span>
+                ) : undefined}
+                {garbagePlayer !== undefined ? (
+                    <span key="stat-tanked" datatest="replay-stat-tanked">☢↓ {stats.tanked}</span>
+                ) : undefined}
             </div>
 
             <input
@@ -111,6 +124,22 @@ export const replayTransport = (
                     actions.seekReplayFrame({ frame: Number((e.target as HTMLInputElement).value) });
                 }}
             />
+
+            {/* 被弾＝赤 / 相殺＝緑。受信は描かない（§7-4）。設置マーカーは 1.7px 間隔に
+                なって帯にしか見えないため対象外（§2） */}
+            {garbagePlayer !== undefined ? (
+                <img
+                    key="replay-garbage-markers"
+                    datatest="replay-garbage-markers"
+                    src={renderReplayTimelineMarkers(garbagePlayer, markerWidth, endFrame)}
+                    alt=""
+                    style={style({
+                        display: 'block',
+                        height: px(MARKER_BAND_HEIGHT),
+                        width: '100%',
+                    })}
+                />
+            ) : undefined}
 
             <div
                 key="replay-time-label"

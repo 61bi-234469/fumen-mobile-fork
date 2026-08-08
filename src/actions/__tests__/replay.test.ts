@@ -32,12 +32,13 @@ jest.mock('../../states', () => ({
         selection: { roundIndex: 0, selfPlayerId: null },
         cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, stepBasis: 'self' },
         playback: { status: 'pause', speed: 1 },
-        view: { showOpponent: true },
+        view: { showOpponent: true, showGarbage: true },
         error: undefined,
     },
     REPLAY_SPEEDS: [0.25, 0.5, 1, 2, 4],
     DEFAULT_REPLAY_SPEED: 1,
     DEFAULT_REPLAY_SHOW_OPPONENT: true,
+    DEFAULT_REPLAY_SHOW_GARBAGE: true,
 }));
 jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => {
     const start = jest.fn();
@@ -53,7 +54,10 @@ jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => {
 
 import {
     getCurrentReplayQueue,
+    getReplayKiller,
+    getReplayOpponentGarbage,
     getReplayOpponentPoint,
+    getReplaySelfGarbage,
     getReplaySelfPoint,
     getReplayStats,
     replayActions,
@@ -61,7 +65,7 @@ import {
 import { main } from '../../actions';
 import { initialReplayState, State } from '../../states';
 import { FieldConstants, Piece, Rotation } from '../../lib/enums';
-import { IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
+import { GarbageEvent, IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
 import { clampPointIndex, frameAt, indexAtFrame } from '../../lib/ttrm/timeline';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from '../view_settings';
 
@@ -93,7 +97,6 @@ const lockAt = (pieceIndex: number, offset: number = 0): LockPoint => ({
     clear: { lines: 0, spin: 'none', b2b: 0, ren: 0, perfectClear: false },
     attack: 0,
     garbageGauge: 0,
-    pendingHoles: 0,
     sourceHeight: 1,
     clippedRowCount: 0,
 });
@@ -812,11 +815,196 @@ describe('replayActions', () => {
         });
 
         test('the setting survives a new import', () => {
-            const hidden = playingState(3, 1, {}, { view: { showOpponent: false } });
+            const hidden = playingState(3, 1, {}, { view: { showOpponent: false, showGarbage: true } });
             expect(replayActions.resetReplayImport()(hidden)!.replay!.view.showOpponent).toBeFalsy();
             expect(replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 },
             )(hidden)!.replay!.view.showOpponent).toBeFalsy();
+        });
+    });
+
+    // ---- P3: ガベージ（FR-40 / 41 / 45 / 54） ----
+
+    describe('garbage', () => {
+        // player-a の locks は frame 30/60/90、terminal は 150。
+        // frame 45 に 4 行受信し、frame 100 に列 7 で全量が盤面へ入る。
+        const SELF_EVENTS: GarbageEvent[] = [
+            { frame: 45, iid: 1, amount: 4, kind: 'receive' },
+            { frame: 100, iid: 1, amount: 4, column: 7, size: 1, kind: 'tank' },
+        ];
+
+        const withGarbage = (
+            selfIndex: number,
+            events: { self?: GarbageEvent[], opponent?: GarbageEvent[] } = {},
+            selfPlayerId: string = 'player-a-id',
+        ): State => {
+            const ir = buildIR(3);
+            ir.rounds[0].players[0].garbageEvents = events.self ?? SELF_EVENTS;
+            ir.rounds[0].players[1].garbageEvents = events.opponent ?? [];
+            const players = selfPlayerId === 'player-a-id'
+                ? ir.rounds[0].players
+                : [ir.rounds[0].players[1], ir.rounds[0].players[0]];
+            const frame = frameAt(players[0], selfIndex);
+            return createState({
+                ir,
+                phase: 'playing',
+                selection: { selfPlayerId, roundIndex: 0 },
+                cursor: {
+                    frame,
+                    selfIndex: clampPointIndex(players[0], selfIndex),
+                    opponentIndex: indexAtFrame(players[1], frame),
+                    stepBasis: 'self',
+                },
+            });
+        };
+
+        // FR-40: ゲージ量はカーソルのフレームで決まる（lock 単位のスナップショットではない）
+        test('the gauge follows the cursor frame', () => {
+            expect(getReplaySelfGarbage(withGarbage(1))!.gauge).toEqual(0);
+            expect(getReplaySelfGarbage(withGarbage(2))!.gauge).toEqual(4);
+            expect(getReplaySelfGarbage(withGarbage(3))!.gauge).toEqual(4);
+            // terminal（frame 150）では tank 済みなので 0 に戻る
+            expect(getReplaySelfGarbage(withGarbage(4))!.gauge).toEqual(0);
+        });
+
+        // FR-42/43: 予告は実測の tank をそのまま読む。ゲージ 0 の地点では出さない。
+        test('the rise forecast is the tank that actually followed', () => {
+            expect(getReplaySelfGarbage(withGarbage(1))!.rise).toBeUndefined();
+            const view = getReplaySelfGarbage(withGarbage(2))!;
+            expect(view.rise!.column).toEqual(7);
+            expect(view.moreRows).toEqual(3);
+        });
+
+        test('the opponent gauge is read at the same instant', () => {
+            const state = withGarbage(2, {
+                self: SELF_EVENTS,
+                opponent: [{ frame: 40, iid: 9, amount: 2, kind: 'receive' }],
+            });
+            expect(getReplayOpponentGarbage(state)!.gauge).toEqual(2);
+        });
+
+        test('the garbage selectors are undefined outside the playing phase', () => {
+            const state = createState({
+                ir: buildIR(3),
+                phase: 'select',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+            });
+            expect(getReplaySelfGarbage(state)).toBeUndefined();
+            expect(getReplayOpponentGarbage(state)).toBeUndefined();
+            expect(getReplayKiller(state)).toBeUndefined();
+        });
+
+        // FR-45: 死因は自陣の終端地点でのみ返る
+        test('the cause of loss only shows at the terminal point of a losing side', () => {
+            // player-b は garbagesmash 側。locks は 45/75/105、terminal は 150
+            const killerEvents: GarbageEvent[] = [
+                { frame: 100, iid: 5, gameid: 3, senderFrame: 80, amount: 0, kind: 'confirm' },
+                { frame: 100, iid: 5, amount: 4, kind: 'receive' },
+                { frame: 120, iid: 5, amount: 4, column: 3, size: 1, kind: 'tank' },
+            ];
+            expect(getReplayKiller(withGarbage(2, { opponent: killerEvents }, 'player-b-id')))
+                .toBeUndefined();
+
+            const killer = getReplayKiller(
+                withGarbage(4, { opponent: killerEvents }, 'player-b-id'))!;
+            expect(killer.amount).toEqual(4);
+            expect(killer.column).toEqual(3);
+            expect(killer.senderFrame).toEqual(80);
+        });
+
+        test('the winning side never reports a cause of loss', () => {
+            expect(getReplayKiller(withGarbage(4))).toBeUndefined();
+        });
+
+        // FR-54: ゲージがある地点でだけ、せり上がり行を切り出しに載せる
+        describe('carrying the gauge into the editor (FR-54)', () => {
+            const sentLineOf = (call: any) => call.pages[0].field.obj.toSentLintPieces();
+
+            beforeEach(() => {
+                (main.appendPages as jest.Mock).mockClear();
+            });
+
+            test('a point with no gauge exports exactly what P1 / P2 exported', () => {
+                replayActions.openReplayInEditor()(withGarbage(1));
+                const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+                expect(call.pages[0].flags.rise).toBeFalsy();
+                expect(sentLineOf(call).every((cell: Piece) => cell === Piece.Empty)).toBeTruthy();
+            });
+
+            test('a point with a gauge exports the next rise as the sent line', () => {
+                replayActions.openReplayInEditor()(withGarbage(2));
+                const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+                expect(call.pages[0].flags.rise).toBeTruthy();
+                const sentLine = sentLineOf(call);
+                expect(sentLine[7]).toEqual(Piece.Empty);
+                expect(sentLine.filter((cell: Piece) => cell === Piece.Gray)).toHaveLength(9);
+            });
+
+            // FR-11 × FR-54: 入れ替え後は「新しい自陣」のゲージが載る
+            test('after swapping sides the new self side supplies the gauge', () => {
+                const state = withGarbage(2, {
+                    self: [],
+                    opponent: [
+                        { frame: 40, iid: 9, amount: 2, kind: 'receive' },
+                        { frame: 200, iid: 9, amount: 2, column: 1, size: 1, kind: 'tank' },
+                    ],
+                });
+                // 入れ替え前の自陣はガベージ無しなので、せり上がり行は空
+                expect(getReplaySelfGarbage(state)!.gauge).toEqual(0);
+
+                const swapped = applyResult(state, replayActions.swapReplaySides()(state));
+                expect(getReplaySelfGarbage(swapped)!.gauge).toEqual(2);
+
+                replayActions.openReplayInEditor()(swapped);
+                const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+                expect(call.pages[0].flags.rise).toBeTruthy();
+                expect(sentLineOf(call)[1]).toEqual(Piece.Empty);
+            });
+
+            // §7-4: 表示の好みと成果物の内容は別の関心事
+            test('hiding the garbage display does not change what gets exported', () => {
+                const hidden = {
+                    ...withGarbage(2),
+                    replay: {
+                        ...withGarbage(2).replay,
+                        view: { showOpponent: true, showGarbage: false },
+                    },
+                } as State;
+                replayActions.openReplayInEditor()(hidden);
+                const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+                expect(call.pages[0].flags.rise).toBeTruthy();
+            });
+        });
+    });
+
+    describe('garbage visibility (NFR-08)', () => {
+        test('toggling saves through persistViewSettings', () => {
+            (persistViewSettings as jest.Mock).mockClear();
+            const state = playingState(3, 1);
+            const result = replayActions.toggleReplayGarbage()(state)!;
+
+            expect(result.replay!.view.showGarbage).toBeFalsy();
+            expect(persistViewSettings).toHaveBeenCalledWith(state, { replayShowGarbage: false });
+        });
+
+        test('restoring from localStorage does not write back', () => {
+            (persistViewSettings as jest.Mock).mockClear();
+            const result = replayActions.setReplayShowGarbage(
+                { showGarbage: false, persist: false })(playingState(3, 1))!;
+
+            expect(result.replay!.view.showGarbage).toBeFalsy();
+            expect(persistViewSettings).not.toHaveBeenCalled();
+        });
+
+        // P2 §8 で踏んだ initialReplayState の全体置換と同じ罠
+        test('the setting survives a new import and a reset', () => {
+            const hidden = playingState(3, 1, {}, {
+                view: { showOpponent: true, showGarbage: false },
+            });
+            expect(replayActions.resetReplayImport()(hidden)!.replay!.view.showGarbage).toBeFalsy();
+            expect(replayActions.setReplayIR(
+                { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 },
+            )(hidden)!.replay!.view.showGarbage).toBeFalsy();
         });
     });
 

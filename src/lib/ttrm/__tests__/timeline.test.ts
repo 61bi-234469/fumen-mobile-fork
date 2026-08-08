@@ -29,7 +29,6 @@ const lockAt = (frame: number, overrides: Partial<LockPoint> = {}): LockPoint =>
     clear: { lines: 0, spin: 'none', b2b: 0, ren: 0, perfectClear: false },
     attack: 0,
     garbageGauge: 0,
-    pendingHoles: 0,
     sourceHeight: 1,
     clippedRowCount: 0,
     ...overrides,
@@ -197,6 +196,53 @@ describe('timeline point space', () => {
             expect(stats.attack).toEqual(6);
             expect(stats.seconds).toBeCloseTo(10);
             expect(stats.pps).toBeCloseTo(0.3);
+        });
+
+        // P3 §3-8。TETR.IO の received は出さず、エンジン基準の 2 値を添える。
+        test('the garbage gauge and the tanked total follow the cursor', () => {
+            const withGarbage: PlayerRoundIR = {
+                ...player,
+                garbageEvents: [
+                    { frame: 90, iid: 1, amount: 4, kind: 'receive' },
+                    { frame: 150, iid: 1, amount: 3, column: 5, size: 1, kind: 'tank' },
+                ],
+            };
+            // 手番 1（frame 60）はまだ受信前
+            expect(statsAt(withGarbage, 1).gauge).toEqual(0);
+            expect(statsAt(withGarbage, 1).tanked).toEqual(0);
+            // 手番 2（frame 120）は受信後・被弾前
+            expect(statsAt(withGarbage, 2).gauge).toEqual(4);
+            expect(statsAt(withGarbage, 2).tanked).toEqual(0);
+            // 手番 3（frame 180）は被弾後
+            expect(statsAt(withGarbage, 3).gauge).toEqual(1);
+            expect(statsAt(withGarbage, 3).tanked).toEqual(3);
+
+            // 既存の項目は影響を受けない
+            expect(statsAt(withGarbage, 2).attack).toEqual(statsAt(player, 2).attack);
+            expect(statsAt(withGarbage, 2).pps).toEqual(statsAt(player, 2).pps);
+        });
+
+        test('a round without garbage reports zeros instead of nothing', () => {
+            expect(statsAt(player, 2).gauge).toEqual(0);
+            expect(statsAt(player, 2).tanked).toEqual(0);
+        });
+
+        // ゲージバーはカーソルのフレームで描くので、統計行も同じ瞬間を指せる必要がある
+        test('an explicit frame overrides the point frame for the garbage values only', () => {
+            const withGarbage: PlayerRoundIR = {
+                ...player,
+                garbageEvents: [
+                    { frame: 130, iid: 1, amount: 4, kind: 'receive' },
+                    { frame: 160, iid: 1, amount: 4, column: 5, size: 1, kind: 'tank' },
+                ],
+            };
+            // 手番 2（frame 120）に留まったまま、カーソルだけ 150 まで進んだ状態
+            expect(statsAt(withGarbage, 2).gauge).toEqual(0);
+            expect(statsAt(withGarbage, 2, 150).gauge).toEqual(4);
+            expect(statsAt(withGarbage, 2, 170).tanked).toEqual(4);
+            // 手番由来の値は動かない
+            expect(statsAt(withGarbage, 2, 170).frame).toEqual(120);
+            expect(statsAt(withGarbage, 2, 170).placed).toEqual(2);
         });
     });
 

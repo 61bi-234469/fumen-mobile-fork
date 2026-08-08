@@ -22,6 +22,12 @@ import {
     ReplayStats,
     statsAt,
 } from '../lib/ttrm/timeline';
+import {
+    garbageViewAt,
+    KillerGarbage,
+    killerGarbageOf,
+    ReplayGarbageView,
+} from '../lib/ttrm/garbage';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_settings';
 
 const worker = new ReplayWorkerWrapper();
@@ -173,6 +179,8 @@ export interface ReplayActions {
     setReplayStepBasis: (data: { basis: ReplayStepBasis }) => action;
     toggleReplayOpponent: () => action;
     setReplayShowOpponent: (data: { showOpponent: boolean, persist?: boolean }) => action;
+    toggleReplayGarbage: () => action;
+    setReplayShowGarbage: (data: { showGarbage: boolean, persist?: boolean }) => action;
     setReplaySpeed: (data: { speed: ReplaySpeed }) => action;
     toggleReplayPlayback: () => action;
     pauseReplayPlayback: () => action;
@@ -447,6 +455,23 @@ export const replayActions: Readonly<ReplayActions> = {
             },
         };
     },
+    toggleReplayGarbage: () => (state): NextState => {
+        return replayActions.setReplayShowGarbage({
+            showGarbage: !state.replay.view.showGarbage,
+        })(state);
+    },
+    // 表示の好みだけを切り替える。切り出しのゲージ保持（FR-54）は連動させない（§7-4）。
+    setReplayShowGarbage: ({ showGarbage, persist = true }) => (state): NextState => {
+        if (persist) {
+            persistViewSettings(state, { replayShowGarbage: showGarbage });
+        }
+        return {
+            replay: {
+                ...state.replay,
+                view: { ...state.replay.view, showGarbage },
+            },
+        };
+    },
     setReplaySpeed: ({ speed }) => (state): NextState => {
         return {
             replay: {
@@ -547,6 +572,7 @@ export const replayActions: Readonly<ReplayActions> = {
             getCurrentReplayQueue(state),
             state.fumen.guideLineColor,
             state.mode.rotationSystem !== 'classic',
+            getReplayExportRise(state),
         );
         const pageIndex = state.fumen.currentIndex + 1;
 
@@ -590,11 +616,62 @@ export const getCurrentReplayQueue = (state: State): IRQueue | undefined => {
 export const getCurrentReplayClippedRowCount = (state: State): number =>
     getReplaySelfPoint(state)?.clippedRowCount ?? 0;
 
-// FR-26。受信量は含めない（R7）。
+// FR-26。TETR.IO の received は出さない（R7 / §3-8）。
 export const getReplayStats = (state: State): ReplayStats | undefined => {
     const player = getSelfPlayerRound(state);
     if (player === undefined || state.replay.phase !== 'playing') {
         return undefined;
     }
-    return statsAt(player, state.replay.cursor.selfIndex);
+    // ガベージの 2 値はカーソルのフレームで引く（ゲージバーと同じ瞬間にする）
+    return statsAt(player, state.replay.cursor.selfIndex, state.replay.cursor.frame);
+};
+
+// 相手側の統計。自陣と同じ並びで盤面の左に出す（自陣は selfIndex、相手は opponentIndex）。
+export const getReplayOpponentStats = (state: State): ReplayStats | undefined => {
+    const player = getOpponentPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return statsAt(player, state.replay.cursor.opponentIndex, state.replay.cursor.frame);
+};
+
+// ---- P3: ガベージ（FR-40〜45 / 54） ----
+
+export const getReplaySelfGarbage = (state: State): ReplayGarbageView | undefined => {
+    const player = getSelfPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return garbageViewAt(player, state.replay.cursor.frame);
+};
+
+export const getReplayOpponentGarbage = (state: State): ReplayGarbageView | undefined => {
+    const player = getOpponentPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return garbageViewAt(player, state.replay.cursor.frame);
+};
+
+// FR-45。自陣の終端地点でだけ死因を出す。相手側には出さない（§7-4）。
+export const getReplayKiller = (state: State): KillerGarbage | undefined => {
+    const player = getSelfPlayerRound(state);
+    const point = getReplaySelfPoint(state);
+    if (player === undefined || point === undefined || point.kind !== 'terminal') {
+        return undefined;
+    }
+    return killerGarbageOf(player);
+};
+
+// FR-54。ゲージがある地点でだけ、次にせり上がる 1 行を切り出しに載せる。
+// 表示トグル（view.showGarbage）には連動させない ―― 画面を整理したら fumen の
+// 中身が変わっていた、を避けるため（§7-4）。
+export const getReplayExportRise = (
+    state: State,
+): { column: number, size: number } | undefined => {
+    const garbage = getReplaySelfGarbage(state);
+    if (garbage === undefined || garbage.rise === undefined) {
+        return undefined;
+    }
+    return { column: garbage.rise.column, size: garbage.rise.size };
 };

@@ -122,7 +122,6 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         totalLines += res.lines || 0;
         const attack = Math.max(0, (res.stats.garbage.attack ?? 0) - prevAttack);
         prevAttack = res.stats.garbage.attack ?? prevAttack;
-        const gaugeQueue = (engine.garbageQueue as any).queue as any[] | undefined;
         locks.push({
             attack,
             pieceIndex: locks.length,
@@ -144,23 +143,37 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
                 perfectClear: (res.lines || 0) > 0 && after.field.every(cell => cell === Piece.Empty),
             },
             garbageGauge: (engine.garbageQueue as any).size ?? 0,
-            pendingHoles: gaugeQueue ? gaugeQueue.length : 0,
             sourceHeight: after.sourceHeight,
             clippedRowCount: after.clippedRowCount,
         });
         preLock = null;
     });
 
+    // P3 §3-3。ゲージ恒等式（receive − cancel − tank == garbageQueue.size）が
+    // 成り立つのは passthrough 相殺後の amount のほう。originalAmount では合わない。
     engine.events.on('garbage.receive', (ev) => {
-        garbageEvents.push({ frame: engine.frame, kind: 'receive', amount: ev.originalAmount ?? ev.amount ?? 0 });
+        garbageEvents.push({
+            frame: engine.frame, kind: 'receive', iid: ev.iid, amount: ev.amount ?? 0,
+        });
+    });
+    // 送信元（gameid）と送信側クロックのフレーム。FR-45 の攻撃元表示に使う。
+    engine.events.on('garbage.confirm', (ev) => {
+        garbageEvents.push({
+            frame: engine.frame, kind: 'confirm', iid: ev.iid, amount: 0,
+            gameid: ev.gameid, senderFrame: ev.frame,
+        });
     });
     engine.events.on('garbage.tank', (ev) => {
         garbageEvents.push({
-            frame: engine.frame, kind: 'tank', amount: ev.amount ?? 0, column: ev.column, size: ev.size,
+            frame: engine.frame, kind: 'tank', iid: ev.iid,
+            amount: ev.amount ?? 0, column: ev.column, size: ev.size,
         });
     });
     engine.events.on('garbage.cancel', (ev) => {
-        garbageEvents.push({ frame: engine.frame, kind: 'cancel', amount: ev.amount ?? 0, size: ev.size });
+        garbageEvents.push({
+            frame: engine.frame, kind: 'cancel', iid: ev.iid,
+            amount: ev.amount ?? 0, size: ev.size,
+        });
     });
 
     // Tick loop ported unchanged from the verified P0 harness. 'end' events

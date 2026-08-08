@@ -306,6 +306,18 @@ export const resources = {
             Speed: '速度',
             Basis: '基準',
             Timeline: 'タイムライン',
+            ShowGarbage: 'ガベージを表示',
+            HideGarbage: 'ガベージを隠す',
+            Gauge: 'ゲージ',
+            // 予告は当時見えていた情報ではなく、実際にせり上がった行の後知恵である
+            RiseRow: 'せり上がり段',
+            RiseRowMore: 'せり上がり段(+{{more}})',
+            GarbageTank: '↓{{rows}} 被弾',
+            GarbageCancel: '✕{{rows}} 相殺',
+            GarbageReceive: '☢{{rows}} 受信',
+            Killer: '死因',
+            KillerGarbage: '相手 {{time}} の攻撃 {{rows}} 行（列 {{column}}）',
+            KillerSeek: 'その地点へ',
         },
         Error: {
             Title: 'リプレイを読み込めませんでした',

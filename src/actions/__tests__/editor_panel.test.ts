@@ -83,6 +83,7 @@ describe('editorPanelActions', () => {
                 coldClearThinkMs: 1000,
                 replaySelfPlayer: null,
                 replayShowOpponent: true,
+                replayShowGarbage: true,
             });
         });
 

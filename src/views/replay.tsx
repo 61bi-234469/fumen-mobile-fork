@@ -8,7 +8,11 @@ import {
     getCurrentReplayClippedRowCount,
     getOpponentPlayerRound,
     getReplayEndFrame,
+    getReplayKiller,
+    getReplayOpponentGarbage,
     getReplayOpponentPoint,
+    getReplayOpponentStats,
+    getReplaySelfGarbage,
     getReplaySelfPoint,
     getReplayStats,
     getSelectedRound,
@@ -17,8 +21,8 @@ import {
 import { replaySide } from '../components/replay/replay_side';
 import { replayTransport } from '../components/replay/replay_transport';
 import { getReplayLayout } from './replay_layout';
-import { lastPointIndex, ReplayPoint } from '../lib/ttrm/timeline';
-import { LockPoint, PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
+import { formatFrameTime, lastPointIndex, ReplayPoint } from '../lib/ttrm/timeline';
+import { GarbageEvent, LockPoint, PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
 
 const ACCENT = '#00796b';
 
@@ -311,6 +315,18 @@ const pointCounterText = (player: PlayerRoundIR, point: ReplayPoint): string => 
     return `${point.index} / ${player.locks.length}`;
 };
 
+// FR-41 の直近イベント。受信は必ず被弾か相殺に解決されるが、直近 1 件の表示では
+// 「いま何が起きたか」を示すため 3 種とも出す。
+const recentGarbageText = (event: GarbageEvent): string => {
+    if (event.kind === 'tank') {
+        return i18n.Replay.Playing.GarbageTank(event.amount);
+    }
+    if (event.kind === 'cancel') {
+        return i18n.Replay.Playing.GarbageCancel(event.amount);
+    }
+    return i18n.Replay.Playing.GarbageReceive(event.amount);
+};
+
 const playingPhase = (state: State, actions: Actions) => {
     const ir = state.replay.ir!;
     const player = getSelfPlayerRound(state)!;
@@ -319,9 +335,24 @@ const playingPhase = (state: State, actions: Actions) => {
     const selfPoint = getReplaySelfPoint(state)!;
     const opponentPoint = getReplayOpponentPoint(state);
     const stats = getReplayStats(state)!;
+    const opponentStats = getReplayOpponentStats(state);
     const clipped = getCurrentReplayClippedRowCount(state);
     const lock = selfPoint.kind === 'lock' ? player.locks[selfPoint.index - 1] : undefined;
+    const opponentLock = opponent !== undefined && opponentPoint !== undefined
+        && opponentPoint.kind === 'lock'
+        ? opponent.locks[opponentPoint.index - 1] : undefined;
     const guideLineColor = state.fumen.guideLineColor;
+
+    // ガベージ表示（NFR-08）。オフにするとゲージ・予告・マーカー・死因がすべて消え、
+    // P2 と同じ見た目に戻る。切り出しのゲージ保持（FR-54）はこれに連動しない（§7-4）。
+    const showGarbage = state.replay.view.showGarbage;
+    const selfGarbage = showGarbage ? getReplaySelfGarbage(state) : undefined;
+    const opponentGarbage = showGarbage ? getReplayOpponentGarbage(state) : undefined;
+    const killer = showGarbage ? getReplayKiller(state) : undefined;
+    // 終端で死因の攻撃が特定できないとき（topout など）は理由の文字列だけを出す（§7-4）
+    const terminalReason = showGarbage && selfPoint.kind === 'terminal'
+        && player.terminal.reason !== 'winner'
+        ? player.terminal.reason : undefined;
 
     // レイアウトは state に持たず毎描画で導出する。幅が足りなければ相手は描かれない（§3-6）。
     const layout = getReplayLayout(
@@ -349,6 +380,8 @@ const playingPhase = (state: State, actions: Actions) => {
                 key="playing-meta"
                 style={style({
                     alignItems: 'center', color: '#777', display: 'flex', fontSize: px(12),
+                    // P3 でトグルが 3 つになった。375px では 1 行に収まらないので折り返す
+                    flexWrap: 'wrap', gap: px(4),
                     justifyContent: 'space-between', marginBottom: px(8),
                 })}
             >
@@ -356,14 +389,20 @@ const playingPhase = (state: State, actions: Actions) => {
                     R{round.index + 1} — {displayName(ir, player.id)}
                     {opponent !== undefined ? ` vs ${displayName(ir, opponent.id)}` : ''}
                 </span>
-                <span key="playing-meta-buttons" style={style({ display: 'flex', gap: px(4) })}>
+                <span
+                    key="playing-meta-buttons"
+                    style={style({ display: 'flex', gap: px(4), marginLeft: 'auto' })}
+                >
                     {opponent !== undefined ? (
                         <a
                             href="#"
                             key="btn-replay-toggle-opponent"
                             datatest="btn-replay-toggle-opponent"
                             className="btn-flat"
-                            style={style({ color: '#555', fontSize: px(11), padding: '0 6px', textTransform: 'none' })}
+                            style={style({
+                                color: '#555', fontSize: px(11), padding: '0 6px',
+                                textTransform: 'none', whiteSpace: 'nowrap',
+                            })}
                             onclick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 actions.toggleReplayOpponent();
@@ -374,13 +413,34 @@ const playingPhase = (state: State, actions: Actions) => {
                                 : i18n.Replay.Playing.ShowOpponent()}
                         </a>
                     ) : undefined}
+                    <a
+                        href="#"
+                        key="btn-replay-toggle-garbage"
+                        datatest="btn-replay-toggle-garbage"
+                        className="btn-flat"
+                        style={style({
+                            color: '#555', fontSize: px(11), padding: '0 6px',
+                            textTransform: 'none', whiteSpace: 'nowrap',
+                        })}
+                        onclick={(e: MouseEvent) => {
+                            e.preventDefault();
+                            actions.toggleReplayGarbage();
+                        }}
+                    >
+                        {showGarbage
+                            ? i18n.Replay.Playing.HideGarbage()
+                            : i18n.Replay.Playing.ShowGarbage()}
+                    </a>
                     {opponent !== undefined ? (
                         <a
                             href="#"
                             key="btn-replay-swap-sides"
                             datatest="btn-replay-swap-sides"
                             className="btn-flat"
-                            style={style({ color: '#555', fontSize: px(11), padding: '0 6px', textTransform: 'none' })}
+                            style={style({
+                                color: '#555', fontSize: px(11), padding: '0 6px',
+                                textTransform: 'none', whiteSpace: 'nowrap',
+                            })}
                             onclick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 actions.swapReplaySides();
@@ -403,6 +463,7 @@ const playingPhase = (state: State, actions: Actions) => {
             >
                 {replaySide({
                     guideLineColor,
+                    stats,
                     variant: 'self',
                     size: 'full',
                     point: selfPoint,
@@ -411,8 +472,12 @@ const playingPhase = (state: State, actions: Actions) => {
                     counterText: pointCounterText(player, selfPoint),
                     // PC は 2 盤面が対等なので、どちらの側かはプレイヤー名で示す（§3-6-2）
                     heading: isWide ? displayName(ir, player.id) : undefined,
+                    garbage: selfGarbage,
+                    queueWidth: layout.queueWidth,
+                    clearText: lock !== undefined && clearLabel(lock) !== ''
+                        ? clearLabel(lock) : undefined,
                 })}
-                {showOpponent && opponentPoint !== undefined ? replaySide({
+                {showOpponent && opponentPoint !== undefined && opponentStats !== undefined ? replaySide({
                     guideLineColor,
                     variant: 'opponent',
                     size: isWide ? 'full' : 'compact',
@@ -421,6 +486,11 @@ const playingPhase = (state: State, actions: Actions) => {
                     label: i18n.Replay.Playing.Opponent(),
                     counterText: pointCounterText(opponent!, opponentPoint),
                     heading: isWide ? displayName(ir, opponent!.id) : undefined,
+                    garbage: opponentGarbage,
+                    queueWidth: layout.queueWidth,
+                    stats: opponentStats,
+                    clearText: opponentLock !== undefined && clearLabel(opponentLock) !== ''
+                        ? clearLabel(opponentLock) : undefined,
                 }) : undefined}
             </div>
 
@@ -449,10 +519,19 @@ const playingPhase = (state: State, actions: Actions) => {
                 <span key="replay-lock-counter" datatest="replay-lock-counter">
                     {i18n.Replay.Playing.LockLabel()} {pointCounterText(player, selfPoint)}
                 </span>
+                {/* ライン消去の内訳は HOLD の下へ移した。ここは手番と時刻だけ残す */}
                 {lock !== undefined ? (
                     <span key="lock-details" style={style({ color: '#777', marginLeft: px(8) })}>
                         {framesToSeconds(lock.frame)}s
-                        {clearLabel(lock) !== '' ? ` / ${clearLabel(lock)}` : ''}
+                    </span>
+                ) : undefined}
+                {selfGarbage !== undefined && selfGarbage.recent !== undefined ? (
+                    <span
+                        key="replay-garbage-recent"
+                        datatest="replay-garbage-recent"
+                        style={style({ color: '#b3261e', marginLeft: px(8) })}
+                    >
+                        {recentGarbageText(selfGarbage.recent)}
                     </span>
                 ) : undefined}
             </div>
@@ -463,7 +542,58 @@ const playingPhase = (state: State, actions: Actions) => {
                 canStepBack: 0 < basisPointIndex,
                 canStepForward: basisPointIndex < lastPointIndex(basisPlayer),
                 hasOpponent: opponent !== undefined,
+                garbagePlayer: showGarbage ? player : undefined,
+                markerWidth: layout.containerMaxWidth - 32,
             })}
+
+            {/* FR-45。自陣の終端でだけ出す。相手側に出すと画面が死因だらけになる（§7-4） */}
+            {terminalReason !== undefined ? (
+                <div
+                    key="replay-killer"
+                    datatest="replay-killer"
+                    style={style({
+                        alignItems: 'center',
+                        border: '1px solid #b3261e',
+                        borderRadius: px(4),
+                        color: '#b3261e',
+                        display: 'flex',
+                        fontSize: px(12),
+                        gap: px(8),
+                        justifyContent: 'center',
+                        margin: '0 0 8px',
+                        padding: '3px 8px',
+                    })}
+                >
+                    <span key="replay-killer-text">
+                        {i18n.Replay.Playing.Killer()}: {killer !== undefined
+                            ? i18n.Replay.Playing.KillerGarbage(
+                                formatFrameTime(killer.senderFrame ?? killer.frame),
+                                killer.amount, killer.column)
+                            : terminalReason}
+                    </span>
+                    {killer !== undefined ? (
+                        <a
+                            href="#"
+                            key="btn-replay-killer-seek"
+                            datatest="btn-replay-killer-seek"
+                            className="btn-flat"
+                            style={style({
+                                color: '#b3261e', fontSize: px(11), padding: '0 6px',
+                                textTransform: 'none',
+                            })}
+                            onclick={(e: MouseEvent) => {
+                                e.preventDefault();
+                                // V-01 の共通フレーム軸により、相手の攻撃フレームへそのまま跳べる
+                                actions.seekReplayFrame({
+                                    frame: killer.senderFrame ?? killer.frame,
+                                });
+                            }}
+                        >
+                            ▸ {i18n.Replay.Playing.KillerSeek()}
+                        </a>
+                    ) : undefined}
+                </div>
+            ) : undefined}
 
             <a
                 href="#"

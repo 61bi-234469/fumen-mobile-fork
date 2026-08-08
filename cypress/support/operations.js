@@ -1001,5 +1001,18 @@ export const operations = {
         swapSides: () => cy.get(datatest('btn-replay-swap-sides')).click(),
         // 相手盤面の表示／非表示（FR-34）
         toggleOpponent: () => cy.get(datatest('btn-replay-toggle-opponent')).click(),
+        // P3: ガベージ表示（FR-40〜45 / NFR-08）
+        // ゲージバーはゲージ 0 でも枠を残すため、常に存在する。量は data-gauge で読む。
+        gauge: (side = 'self') => cy.get(datatest(`replay-gauge-${side}`)),
+        // せり上がり予告行（FR-42/43）。保留が無い地点では存在しない。
+        risePreview: (side = 'self') => cy.get(datatest(
+            side === 'self' ? 'replay-rise-preview' : 'replay-rise-preview-opponent')),
+        // 予告行の穴セル。列は data-column で読む
+        riseHole: (side = 'self') => cy.get(datatest(
+            side === 'self' ? 'replay-rise-hole' : 'replay-rise-hole-opponent')),
+        // 死因バッジ（FR-45）とその地点へのジャンプ
+        killer: () => cy.get(datatest('replay-killer')),
+        killerSeek: () => cy.get(datatest('btn-replay-killer-seek')).click(),
+        toggleGarbage: () => cy.get(datatest('btn-replay-toggle-garbage')).click(),
     },
 };

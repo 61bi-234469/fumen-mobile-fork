@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TETR.IO リプレイ（.ttrm）ガベージ可視化 P3 実装設計書</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1f24;
+    --muted: #5b6672;
+    --line: #d8dee6;
+    --line-soft: #eceff3;
+    --accent: #1565c0;
+    --accent-soft: #e8f1fb;
+    --warn: #b26a00;
+    --warn-soft: #fff5e0;
+    --ok: #1b7f4b;
+    --ok-soft: #e6f5ec;
+    --ng: #b3261e;
+    --ng-soft: #fdecea;
+    --code-bg: #f4f6f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a;
+      --fg: #e7ebef;
+      --muted: #9aa6b2;
+      --line: #333b44;
+      --line-soft: #232a31;
+      --accent: #6fb2ff;
+      --accent-soft: #16283c;
+      --warn: #f0b45e;
+      --warn-soft: #33270f;
+      --ok: #6fd39b;
+      --ok-soft: #14301f;
+      --ng: #ff9a90;
+      --ng-soft: #3a1d1a;
+      --code-bg: #1b2027;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 96px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+    line-height: 1.75;
+    font-size: 15px;
+  }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 {
+    font-size: 25px; line-height: 1.45; margin: 0 0 8px;
+    border-bottom: 3px solid var(--accent); padding-bottom: 12px;
+  }
+  h2 {
+    font-size: 20px; margin: 46px 0 12px; padding-left: 12px;
+    border-left: 5px solid var(--accent);
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; color: var(--accent); }
+  h4 { font-size: 14px; margin: 18px 0 6px; }
+  p, li { margin: 6px 0; }
+  ul, ol { padding-left: 22px; }
+  code {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: .88em; background: var(--code-bg);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 12px 14px; overflow-x: auto;
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.65;
+  }
+  pre code { background: none; padding: 0; }
+  dl.meta {
+    display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px;
+    background: var(--line-soft); border: 1px solid var(--line);
+    border-radius: 8px; padding: 14px 18px; margin: 0 0 22px; font-size: 13.5px;
+  }
+  dl.meta dt { color: var(--muted); font-weight: 700; }
+  dl.meta dd { margin: 0; }
+  .toc {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 18px 14px; margin: 0 0 28px; font-size: 14px;
+  }
+  .toc ol { margin: 4px 0 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 4px; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--line-soft); font-weight: 700; }
+  .tw { overflow-x: auto; }
+  .note, .warn, .ok, .ng {
+    border-radius: 6px; padding: 12px 16px; margin: 14px 0; font-size: 14px;
+  }
+  .note { background: var(--accent-soft); border-left: 4px solid var(--accent); }
+  .warn { background: var(--warn-soft); border-left: 4px solid var(--warn); }
+  .ok   { background: var(--ok-soft);   border-left: 4px solid var(--ok); }
+  .ng   { background: var(--ng-soft);   border-left: 4px solid var(--ng); }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
+    padding: 1px 8px; border-radius: 999px; letter-spacing: .04em; vertical-align: middle;
+  }
+  .tag.new { background: #2e7d32; }
+  .tag.mod { background: #1565c0; }
+  .tag.none { background: #78909c; }
+  .tag.rec { background: #6a1b9a; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .card h4 { margin-top: 0; }
+  small.f { font-size: 12px; color: var(--muted); }
+
+  /* ---------- mockups ---------- */
+  .mockrow { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin: 14px 0 6px; }
+  .mockbox {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+    background: var(--bg); max-width: 100%; overflow-x: auto;
+  }
+  .mockcap { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  .screen {
+    position: relative; background: #f4f6f8; border: 1px solid #b9c2cc;
+    overflow: hidden; color: #1b1f24;
+  }
+  .screen .navbar {
+    position: absolute; left: 0; right: 0; top: 0; background: #37474f;
+    color: #fff; font-size: 9px; line-height: 22px; padding: 0 6px;
+  }
+  .screen .playfield {
+    position: absolute; background:
+      repeating-linear-gradient(0deg,#e3e8ee 0 1px,transparent 1px 100%),
+      repeating-linear-gradient(90deg,#e3e8ee 0 1px,transparent 1px 100%), #fbfcfd;
+    border: 1px solid #90a4ae;
+  }
+  .screen .sent { position: absolute; background: #cfd8dc; border: 1px solid #90a4ae; }
+  .screen .gauge { position: absolute; background: #1565c0; border-radius: 1px; }
+  .screen .gaugebg { position: absolute; background: #eceff1; border: 1px solid #b0bec5; }
+  .screen .gaugefill { position: absolute; background: #e53935; border-radius: 1px; }
+  .screen .gaugewarn { position: absolute; background: #ef6c00; border-radius: 1px; }
+  .screen .hole { position: absolute; background: #fbfcfd; border: 1px solid #90a4ae; }
+  .screen .mark { position: absolute; background: #e53935; }
+  .screen .markc { position: absolute; background: #43a047; }
+  .screen .qbox {
+    position: absolute; background: #fafafa; border: 1px solid #333;
+    text-align: center; font-size: 9px;
+  }
+  .screen .qhead {
+    background: #333; color: #fff; font-size: 8px; font-weight: 700;
+    letter-spacing: .06em; line-height: 15px; height: 15px;
+  }
+  .screen .lab { position: absolute; font-size: 9px; color: #37474f; }
+  .screen .bar {
+    position: absolute; background: #fff; border: 1px solid #b9c2cc;
+    display: flex; align-items: center; justify-content: space-around; font-size: 9px;
+  }
+  .screen .bar b { font-weight: 700; color: #1565c0; }
+  .screen .chip {
+    position: absolute; background: #fff3e0; border: 1px solid #ef6c00;
+    color: #e65100; font-size: 8px; padding: 1px 4px; border-radius: 3px;
+  }
+  .screen .chipng {
+    position: absolute; background: #fdecea; border: 1px solid #b3261e;
+    color: #b3261e; font-size: 8px; padding: 1px 4px; border-radius: 3px;
+  }
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin: 12px 0; font-size: 13px;
+  }
+  .flow .step {
+    border: 1px solid var(--accent); background: var(--accent-soft);
+    border-radius: 6px; padding: 6px 12px; font-weight: 700;
+  }
+  .flow .arr { color: var(--muted); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>TETR.IO リプレイ（.ttrm）ガベージ可視化<br>― P3 実装設計書</h1>
+
+<dl class="meta">
+  <dt>作成日</dt><dd>2026-08-08</dd>
+  <dt>状態</dt><dd>実装済み（2026-08-09。結果は §8）</dd>
+  <dt>対象ブランチ</dt><dd><code>develop</code></dd>
+  <dt>設計作成者</dt><dd>Claude Opus 5</dd>
+  <dt>レビュー者</dt><dd>未実施</dd>
+  <dt>実装者</dt><dd>Claude Opus 5</dd>
+  <dt>前提文書</dt>
+  <dd>
+    要件定義: <code>docs/notes/2026-08-07-tetrio-ttrm-replay-requirements-draft.md</code><br>
+    （FR-xx / NFR-xx / RV-xx / R5〜R8 の番号は本設計でもこの文書を参照する）<br>
+    P1 実装設計書: <code>docs/plans/2026_08_07_tetrio-ttrm-replay-p1.html</code><br>
+    P2 実装設計書: <code>docs/plans/2026_08_08_tetrio-ttrm-replay-p2.html</code><br>
+    （IR・解析パイプライン・ポイント空間・フレーム共通軸・メモ化方針は再掲しない）<br>
+    検証ハーネス: <code>docs/notes/poc-ttrm/</code>（本設計では <code>ttrm_garbage_v02.js</code> を追加）
+  </dd>
+  <dt>P2 の到達点</dt>
+  <dd>
+    取り込み → ラウンド／自陣選択 → 相手盤面つきのフレーム軸再生 → Editor へ切り出し、まで
+    実装済み・<code>develop</code> へ反映済み
+    （<code>bde91e2</code> → <code>5a6572f</code> → <code>a0f31f5</code> → <code>08073f6</code> → <code>7235ee9</code>）
+  </dd>
+</dl>
+
+<nav class="toc">
+  <strong>目次</strong>
+  <ol>
+    <li><a href="#s1">目的</a></li>
+    <li><a href="#s2">対象範囲</a></li>
+    <li><a href="#s3">現状と変更後の差分</a></li>
+    <li><a href="#s4">影響ファイルとデータフロー</a></li>
+    <li><a href="#s5">不変条件の確認</a></li>
+    <li><a href="#s6">テスト計画</a></li>
+    <li><a href="#s7">未確定事項・リスク</a></li>
+    <li><a href="#s8">進捗・結果・課題</a></li>
+  </ol>
+</nav>
+
+<h2 id="s1">1. 目的</h2>
+
+<p>
+P1 は「自陣の手番を送って気になった地点を切り出す」を 1 画面で完結させ、
+P2 は「相手盤面」と「フレーム共通軸」を足した。P3 は残る 1 つ、<strong>ガベージ</strong>を足す。
+</p>
+
+<p>依頼者の主目的は変わらず「特定状況の再現」である。P3 が主目的に効くのは次の 2 点。</p>
+
+<ol>
+  <li>
+    <strong>切り出した局面の意味が変わる（FR-54）</strong> ―― ゲージに 4 行背負っている局面と、
+    ゲージ 0 の局面は、盤面が同じでも<strong>まったく別の局面</strong>である。
+    P2 までの切り出しは前者を後者として Editor へ渡していた。
+    ここを塞がないと「特定状況の再現」が成立しない場面が残る。
+  </li>
+  <li>
+    <strong>「なぜこの状況になったか」の最後の一片（FR-40〜45）</strong> ―― 自陣と相手盤面が
+    同一時刻で並んでも、その瞬間に何行保留されていて、次にどこへ穴が開いたかが見えなければ、
+    崩れた原因は読めない。とくに敗北ラウンドの検討は死因の可視化（FR-45）が中心になる。
+  </li>
+</ol>
+
+<h3>本設計のスコープ判断</h3>
+
+<div class="note">
+P2 の割り切り（<strong>盤面の更新粒度は lock 固定・落下描写なし</strong>）はそのまま維持する。
+ガベージも同じで、<strong>ゲージ量とせり上がり予告は「その時点の値」を数値と図で出すだけ</strong>とし、
+せり上がりのアニメーションは作らない。すべて IR への参照だけで済み、エンジンの再実行は要らない
+（NFR-03 を維持）。
+</div>
+
+<div class="ok">
+本設計は <strong>V-02（§3-7 / §8）を実施したうえで書いている</strong>。
+「ゲージは記録済みイベント列だけから任意フレームで再構成できる（2,844 検査 / 不一致 0）」
+「穴位置はエンジンの <code>garbage.tank</code> が正であり、<code>.ttrm</code> の <code>ige.x</code> は使えない（一致 30/355）」
+の 2 点が実測で確定しているため、P3 の中核は推測に立っていない。
+</div>
+
+<h2 id="s2">2. 対象範囲</h2>
+
+<h3>対象</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>内容</th><th>要件</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>ガベージのライフサイクル IR（受信 → 確定 → 相殺／被弾 を <code>iid</code> で束ねる）</td><td>FR-41 の基盤</td></tr>
+<tr><td>2</td><td>現在地点のゲージ量（未確定ガベージ）を数値とバーで表示。自陣・相手の両方</td><td>FR-40</td></tr>
+<tr><td>3</td><td>次にせり上がる行の穴位置を盤面下に表示</td><td>FR-42</td></tr>
+<tr><td>4</td><td>複数行が保留中のとき、せり上がる順に穴位置を並べる</td><td>FR-43</td></tr>
+<tr><td>5</td><td>受信／相殺／被弾を時系列イベントとして保持し、直近イベントを 1 行で表示</td><td>FR-41</td></tr>
+<tr><td>6</td><td>タイムライン上のガベージマーカー（被弾・相殺）</td><td>P2 §2 で P3 送りにしたもの</td></tr>
+<tr><td>7</td><td>死因の可視化（どの攻撃で落ちたか＋その時刻へジャンプ）</td><td>FR-45</td></tr>
+<tr><td>8</td><td>切り出し時にゲージを fumen のせり上がり行として保持する</td><td>FR-54</td></tr>
+<tr><td>9</td><td>ガベージ表示の非表示トグル（localStorage 記憶）</td><td>NFR-08 の実務対応</td></tr>
+<tr><td>10</td><td>R7（<code>received</code> の定義差）に決着をつける</td><td>R7 / FR-26</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>対象外</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>内容</th><th>フェーズ</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td><strong>FR-44（送信元の対応付け表示）</strong></td><td>P4</td>
+    <td>1 対 1 では送信元は常に「相手」であり、独立した表示としては情報量がゼロ。
+        <code>gameid</code> は IR に持たせる（§3-3）ので、FR-16（3 人以上）と同時に実装するのが正しい。
+        <strong>ただし死因（FR-45）の攻撃元表示は P3 に含む</strong>（そこは「どの攻撃か」が意味を持つため）</td></tr>
+<tr><td><strong>タイムライン上の設置マーカー</strong></td><td>対象外</td>
+    <td>P2 §2 では「ガベージマーカーとまとめて P3」としていたが、実測で 1 ラウンドの設置数は
+        78〜188 手。幅 312px のタイムラインに引くと 1.7px 間隔となり<strong>帯にしか見えない</strong>。
+        読めないものは描かない。ガベージマーカー（1 ラウンドあたり数〜24 本）のみ描く</td></tr>
+<tr><td>ゲージ 2 行目以降を fumen へ持ち込むこと</td><td>対象外</td>
+    <td>fumen のせり上がり行は 1 行しかない（<code>FieldConstants.SentLine = 1</code>）。
+        コメントへの退避も不可（§3-6 で実証）。要件定義 §10.3 の「1 行のみ予告、残りは数値」の
+        とおりに割り切る</td></tr>
+<tr><td>せり上がりアニメーション、落下中ミノの描画</td><td>対象外</td><td>P2 と同じ。L3 は要件定義でも対象外</td></tr>
+<tr><td>区間書き出し、マーク機能</td><td>P4</td><td>FR-52, 57</td></tr>
+<tr><td>相手側の直接 fumen 化</td><td>P4</td><td>FR-55。入れ替え → 切り出しで到達できる（P2 §3-8）。<strong>ゲージも入れ替え後は自陣として書き出される</strong></td></tr>
+<tr><td>JSON テキスト貼り付け取り込み（FR-02）</td><td>取り止め</td>
+    <td>P2 で一度実装したが、依頼者要望により <code>a0f31f5</code> で削除済み。P3 で復活させない</td></tr>
+<tr><td>Replay 画面のキーボードショートカット</td><td>対象外</td>
+    <td><code>src/actions/shortcuts.ts</code> の <code>[Screens.Replay]: []</code> は空のまま（P2 と同じ）</td></tr>
+<tr><td>ラウンドを跨いだ通し再生、3 人以上、<code>.ttr</code> / Zenith</td><td>対象外</td><td>要件定義で確定済み</td></tr>
+<tr><td>リプレイ状態の URL 保存、undo/redo 対象化</td><td>対象外</td><td>P1 / P2 と同じ。§5 参照</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>前提</h3>
+
+<ul>
+  <li>P1 / P2 の前提（10 幅固定、10×23 への切り捨て、<code>@haelp/teto</code> 4.2.7 版固定、
+      Hyperapp の既存流儀、lock 粒度の盤面更新）をすべて引き継ぐ。</li>
+  <li>両プレイヤーの <code>frame</code> が同一のラウンド時計を指すこと（P2 の V-01 で実証済み）。
+      死因の攻撃元をタイムライン上で指せるのはこの前提があるため。</li>
+  <li>ガベージの穴位置・量・タイミングは <strong>エンジンの <code>garbage.*</code> イベントを唯一の真実</strong>とする。
+      <code>.ttrm</code> の <code>ige</code> が申告する <code>x</code> は使わない（§3-7 の D）。</li>
+  <li>ゲージの規模は実測で最大 18 行・保留エントリ最大 6 件（§8）。
+      既定の <code>garbagecap</code> は 8。バーはこの実測に合わせて設計する。</li>
+</ul>
+
+<h2 id="s3">3. 現状と変更後の差分</h2>
+
+<h3>3-1. 現状（P2 実装）の整理</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>領域</th><th>現状</th><th>P3 で必要なこと</th></tr></thead>
+<tbody>
+<tr><td>ガベージ IR</td>
+    <td><code>garbageEvents: { frame, kind, amount, column?, size? }[]</code> を収集済み。
+        <strong>ただし <code>iid</code> を捨てており</strong>、受信と被弾を対応付けられない</td>
+    <td><code>iid</code> を残し、<code>confirm</code> も拾う。イベントを parcel（1 回の攻撃）に束ねる</td></tr>
+<tr><td>ゲージ量</td>
+    <td><code>locks[i].garbageGauge</code> / <code>terminal.garbageGauge</code> のみ。
+        <strong>lock と lock の間の値が無い</strong></td>
+    <td>任意フレームで求める。イベント列から再構成できることは V-02 で実証済み</td></tr>
+<tr><td>穴位置</td>
+    <td><code>locks[i].pendingHoles</code> は<strong>キューの件数</strong>であって穴位置ではない。
+        名前が実体と合っていない</td>
+    <td><code>garbage.tank</code> の <code>column</code> / <code>size</code> を使う。<code>pendingHoles</code> は廃止</td></tr>
+<tr><td>表示</td><td>ガベージ関連の表示は一切なし</td><td>ゲージバー、せり上がり予告、直近イベント、マーカー、死因</td></tr>
+<tr><td>切り出し</td>
+    <td><code>irPointToPage</code> は盤面と <code>#Q=</code> のみ。せり上がり行は常に空</td>
+    <td>ゲージがあるときだけ、次にせり上がる 1 行を <code>sentLine</code> ＋ <code>rise</code> で載せる</td></tr>
+<tr><td>統計</td><td>FR-26 は送信累計のみ。受信量は R7 のため未表示</td><td>R7 に決着をつけ、出すものを確定する（§3-8）</td></tr>
+<tr><td>記憶</td><td><code>replaySelfPlayer</code> / <code>replayShowOpponent</code></td><td><code>replayShowGarbage</code> を追加</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>3-2. 中核: ガベージ parcel とゲージ恒等式</h3>
+
+<p>
+P3 の設計はこの一点に集約される。<strong>1 回の攻撃（<code>iid</code>）を 1 つの parcel として扱い、
+その一生（受信 → 相殺／被弾）を記録する。</strong>
+</p>
+
+<pre><code>// src/lib/ttrm/garbage.ts
+export interface GarbageResolution {
+    frame: number;
+    kind: 'tank' | 'cancel';
+    amount: number;
+    column?: number;   // tank のみ。実際に穴が開いた列（0 始まり）
+    size?: number;     // 穴幅
+}
+
+export interface GarbageParcel {
+    iid: number;
+    receivedFrame: number;
+    amount: number;        // 受信時にキューへ入った行数（passthrough 相殺後）
+    size: number;
+    gameid?: number;       // confirm から。FR-44 / FR-45 用
+    senderFrame?: number;  // 送信側クロックでの生成フレーム（V-01 で共通軸と実証済み）
+    resolutions: GarbageResolution[];   // frame 昇順
+}</code></pre>
+
+<p><strong>ゲージ恒等式</strong> ―― 任意フレーム <code>f</code> のゲージ量は次で求まる。</p>
+
+<pre><code>gauge(f) = Σ receive.amount − Σ cancel.amount − Σ tank.amount   （frame ≤ f のイベント）</code></pre>
+
+<div class="ok">
+V-02 でこの恒等式が <strong>エンジンの <code>garbageQueue.size</code> と全 2,844 検査点で一致</strong>した
+（不一致 0 件、実サンプル 2 本・34 プレイヤーラウンド）。
+つまり <strong>ゲージは記録済みイベント列だけから完全に再構成でき、エンジンの再実行も
+lock ごとのスナップショットも要らない</strong>。
+</div>
+
+<p>
+実装は「イベント直後のゲージ値」を累積した配列を 1 本作り、二分探索で引く。
+ポイント空間（P2 §3-2）と同じ流儀で、IR にも state にも依存しない純関数に閉じる。
+</p>
+
+<pre><code>gaugePoints: { frame: number, gauge: number }[]   // 昇順・イベント直後の値
+gaugeAtFrame(timeline, f) → f 以下で最後の gaugePoint の gauge（無ければ 0）</code></pre>
+
+<h4>「保留中」と「次にせり上がる行」は別物である</h4>
+
+<div class="warn">
+<strong>ゲージ（FR-40）とせり上がり予告（FR-42/43）は情報の性質が違う。</strong>
+ゲージは「その瞬間にプレイヤーが見ていた保留量」で、当時の視界そのもの。
+一方せり上がり予告は、リプレイである以上<strong>「実際に次に何がせり上がったか」という後知恵</strong>になる。
+保留分は相殺されて結局せり上がらないこともあるため、両者は一致しない。
+<strong>UI では予告側に「実測」であることが分かるラベルを付ける</strong>（§3-5）。
+推測で穴位置を当てにいく必要はない ―― 答えは記録に残っている。
+</div>
+
+<p>
+したがって「次にせり上がる行」は、保留中の parcel から予測するのではなく、
+<strong><code>f</code> より後の <code>tank</code> resolution を時刻順に取るだけ</strong>で求まる。
+</p>
+
+<pre><code>riseForecastAt(timeline, f, maxRows):
+  frame &gt; f の tank resolution を frame 昇順に取り、
+  1 件 = { column, size, rows: amount } として maxRows 行ぶんまで返す</code></pre>
+
+<p>
+保留中 parcel の一覧（FR-41 の「受信 / 相殺 / 被弾を保持し表示する」）は parcel から引く。
+</p>
+
+<pre><code>pendingParcelsAt(timeline, f):
+  receivedFrame ≤ f かつ「amount − Σresolutions(frame ≤ f).amount &gt; 0」の parcel を
+  receivedFrame 昇順で返す</code></pre>
+
+<div class="ok">
+V-02 で parcel の収支が閉じることを確認済み ―― 605 iid のうち 596 が完全解決、
+9 が終端時点で保留、<strong>収支破綻（受信していない iid の tank／過剰消費）は 0 件</strong>。
+さらに「保留残の合計 == 終端ゲージ」が 34/34 で一致した。parcel モデルは実データで閉じている。
+</div>
+
+<h3>3-3. IR の拡張 <span class="tag mod">MOD</span></h3>
+
+<pre><code>// src/lib/ttrm/types.ts
+export type GarbageEventKind = 'receive' | 'confirm' | 'tank' | 'cancel';
+
+export interface GarbageEvent {
+    frame: number;
+    kind: GarbageEventKind;
+    iid: number;           // 追加。攻撃の同定子。全イベントに載る
+    amount: number;        // confirm は 0
+    column?: number;       // tank のみ
+    size?: number;         // receive / tank / cancel
+    gameid?: number;       // confirm のみ（送信元）
+    senderFrame?: number;  // confirm のみ（送信側クロック）
+}</code></pre>
+
+<p>収集は <code>simulator.ts</code> の既存 3 本の購読に <code>garbage.confirm</code> を足すだけで済む。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>エンジンイベント</th><th>取れる値</th><th>P3 での用途</th></tr></thead>
+<tbody>
+<tr><td><code>garbage.receive</code></td><td><code>iid</code>, <code>amount</code>, <code>originalAmount</code></td>
+    <td>ゲージ加算。<code>amount</code>（passthrough 相殺後）を採る</td></tr>
+<tr><td><code>garbage.confirm</code> <span class="tag new">NEW</span></td><td><code>iid</code>, <code>gameid</code>, <code>frame</code></td>
+    <td>送信元と送信側フレーム。FR-45 の攻撃元表示</td></tr>
+<tr><td><code>garbage.tank</code></td><td><code>iid</code>, <code>column</code>, <code>amount</code>, <code>size</code></td>
+    <td>ゲージ減算＋<strong>実際の穴位置</strong>。FR-42/43/45 の中核</td></tr>
+<tr><td><code>garbage.cancel</code></td><td><code>iid</code>, <code>amount</code>, <code>size</code></td>
+    <td>ゲージ減算。相殺イベント</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn">
+<strong><code>garbageQueue.queue</code> の要素は <code>iid</code> を持たない</strong>（<code>cid</code> / <code>gameid</code> のみ）。
+キュー本体を覗いて parcel と対応付けようとすると必ず外れる。
+<strong>parcel はイベント列だけから組む</strong>こと。V-02 で最初にこれを踏んで検出済み。
+</div>
+
+<p>あわせて次の 2 点を整理する。</p>
+
+<ul>
+  <li><code>LockPoint.pendingHoles</code> を<strong>廃止</strong>する。実体はキューの件数であって
+      穴位置ではなく、名前が誤解を招く。保留件数が要るなら <code>pendingParcelsAt</code> から得る。</li>
+  <li><code>LockPoint.garbageGauge</code> / <code>TerminalPoint.garbageGauge</code> は<strong>残す</strong>。
+      恒等式の突き合わせ先として Jest で使う（§6）。表示は <code>gaugeAtFrame</code> に一本化する。</li>
+</ul>
+
+<div class="ng">
+<strong>FR-63 の自己突合（<code>verification.matched</code>）に <code>received</code> を足してはいけない。</strong>
+V-02 で <code>results.stats.garbage.received</code> と一致する定義が見つからず（最良でも 21/34）、
+足すと 13/34 のラウンドが <code>status: 'failed'</code> になり、<strong>再生できるラウンドが消える</strong>。
+現行の 3 項目（<code>piecesplaced</code> / <code>lines</code> / <code>sent</code>）のままにする。
+</div>
+
+<h3>3-4. <code>garbage.ts</code> ―― 純関数と 1 段のキャッシュ <span class="tag new">NEW</span></h3>
+
+<p>
+クロックは 20Hz で回る（P2 §3-5）。ゲージ・予告・直近イベントを毎 tick で
+イベント列から作り直すと 2 プレイヤーぶん無駄が出るため、<strong>プレイヤーラウンド 1 つに対して
+派生表現を 1 回だけ組み、<code>WeakMap</code> に載せる</strong>。P2 で盤面描画に使ったメモ化と同じ流儀で、
+IR を捨てれば自動的に解放される。
+</p>
+
+<pre><code>const timelineCache = new WeakMap&lt;PlayerRoundIR, GarbageTimeline&gt;();
+
+export interface GarbageTimeline {
+    parcels: GarbageParcel[];                       // receivedFrame 昇順
+    gaugePoints: { frame: number, gauge: number }[];// 昇順
+    tanks: GarbageResolution[];                     // frame 昇順（予告の先読み用）
+    events: GarbageEvent[];                         // frame 昇順（直近イベント用）
+    maxGauge: number;                               // バーのスケール決定用
+}
+
+export const getGarbageTimeline = (player: PlayerRoundIR): GarbageTimeline
+export const gaugeAtFrame = (t: GarbageTimeline, frame: number): number
+export const pendingParcelsAt = (t: GarbageTimeline, frame: number): PendingParcel[]
+export const riseForecastAt = (t: GarbageTimeline, frame: number, maxRows: number): RiseRow[]
+export const recentEventAt = (t: GarbageTimeline, frame: number): GarbageEvent | undefined
+export const killerGarbageOf = (player: PlayerRoundIR): KillerGarbage | undefined</code></pre>
+
+<p>
+すべて <code>frame</code> を引数に取り、二分探索で O(log n)。
+1 ラウンドのイベント数は実測で最大 39 receive + 24 tank 程度なので、
+実際には線形でも足りるが、<code>timeline.ts</code> の既存関数と流儀を揃える。
+</p>
+
+<h4>死因（FR-45）</h4>
+
+<pre><code>export interface KillerGarbage {
+    frame: number;      // 着弾フレーム（自陣クロック）
+    amount: number;
+    column: number;
+    senderFrame?: number;   // 相手の攻撃フレーム。共通軸なので相手の手番へ写せる
+    gameid?: number;
+}
+
+killerGarbageOf(player):
+  terminal.reason === 'winner'                     → undefined（勝者に死因はない）
+  最後の tank が「最後の lock の frame 以降」      → その tank を返す
+  それ以外                                          → undefined（せり上がりではなく設置で詰んだ）</code></pre>
+
+<div class="ok">
+V-02 で敗北 17 ラウンド中 <strong>16 ラウンドで死因 tank を特定できた</strong>。
+特定できなかった 1 件は <code>reason: 'topout'</code>（ガベージ死ではない）で、
+判定規則と矛盾しない。<code>garbagesmash</code> 16 件は全件特定できている。
+</div>
+
+<p>
+<code>senderFrame</code> が取れれば、V-01 で実証した共通フレーム軸により
+<strong>「相手の何手目の攻撃か」を <code>indexAtFrame(opponent, senderFrame)</code> で直接引ける</strong>。
+死因バッジをタップすると <code>seekReplayFrame({ frame: senderFrame })</code> でその瞬間へ跳ぶ。
+</p>
+
+<h3>3-5. 画面設計</h3>
+
+<p>
+ガベージ表示は 3 か所に分けて置く。<strong>いずれも既存要素の外側に足し、P2 のレイアウト計算を壊さない</strong>。
+</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>要素</th><th>置き場所</th><th>要件</th></tr></thead>
+<tbody>
+<tr><td>ゲージバー（縦）＋数値</td><td>盤面の左端に密着。TETR.IO と同じ位置なので説明が要らない</td><td>FR-40</td></tr>
+<tr><td>せり上がり予告行</td><td>盤面のすぐ下に 10 セルの帯。<strong>盤面 canvas には描かない</strong></td><td>FR-42, 43</td></tr>
+<tr><td>直近イベント</td><td>手番ラベルの行に小さく併記（例: <code>↓4 被弾</code> / <code>✕2 相殺</code>）</td><td>FR-41</td></tr>
+<tr><td>ガベージマーカー</td><td>タイムラインの直下に細い帯として重ねる</td><td>P2 からの持ち越し</td></tr>
+<tr><td>死因バッジ</td><td>終端ポイントでのみ、盤面下に表示</td><td>FR-45</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="ng">
+<strong>予告行を盤面 canvas に描いてはいけない。</strong> P2 §4-5 のメモ化は
+<code>WeakMap&lt;IRField, url&gt;</code>、つまり<strong>盤面配列の参照</strong>をキーにしている。
+同じ盤面でも時刻によって予告が変わるため、canvas に混ぜた瞬間にキャッシュが嘘をつく
+（同じ盤面 = 同じ絵、が成り立たなくなる）。予告は <strong>DOM の別要素</strong>として盤面の下に置き、
+<code>replay_board.ts</code> には手を入れない。
+</div>
+
+<div class="mockrow">
+  <div class="mockbox">
+    <p class="mockcap">再生フェーズ（モバイル縦 375×640 想定・自陣＋相手＋ガベージ）</p>
+    <div class="screen" style="width:320px;height:600px;">
+      <div class="navbar">REPLAY — league.ttrm　　　　　　　　　　　　　　　　✕</div>
+
+      <div class="lab" style="left:6px;top:26px;">R2　player-a　vs　player-b</div>
+      <div class="bar" style="left:246px;top:24px;width:68px;height:16px;">☢ ⇄ 入替</div>
+
+      <!-- self side -->
+      <div class="qbox" style="left:2px;top:46px;width:32px;height:33px;">
+        <div class="qhead">HOLD</div><div>T</div>
+      </div>
+      <div class="qbox" style="left:2px;top:86px;width:32px;height:110px;">
+        <div class="qhead">NEXT</div><div>I</div><div>O</div><div>S</div><div>Z</div>
+      </div>
+
+      <!-- gauge bar -->
+      <div class="gaugebg" style="left:40px;top:46px;width:7px;height:230px;"></div>
+      <div class="gaugefill" style="left:41px;top:186px;width:5px;height:89px;"></div>
+      <div class="lab" style="left:36px;top:278px;color:#b3261e;">4</div>
+
+      <div class="playfield" style="left:50px;top:46px;width:100px;height:230px;"></div>
+
+      <!-- rise forecast row -->
+      <div class="sent" style="left:50px;top:278px;width:100px;height:9px;"></div>
+      <div class="hole" style="left:110px;top:278px;width:10px;height:9px;"></div>
+      <div class="lab" style="left:50px;top:290px;">次のせり上がり（実測）1 行</div>
+
+      <!-- opponent side -->
+      <div class="qbox" style="left:176px;top:46px;width:18px;height:14px;"><div class="qhead">H</div></div>
+      <div class="qbox" style="left:198px;top:46px;width:46px;height:14px;"><div class="qhead">NEXT</div></div>
+      <div class="gaugebg" style="left:170px;top:64px;width:5px;height:130px;"></div>
+      <div class="gaugewarn" style="left:171px;top:154px;width:3px;height:39px;"></div>
+      <div class="playfield" style="left:178px;top:64px;width:56px;height:130px;"></div>
+      <div class="sent" style="left:178px;top:196px;width:56px;height:6px;"></div>
+      <div class="hole" style="left:200px;top:196px;width:6px;height:6px;"></div>
+      <div class="lab" style="left:170px;top:206px;">相手　手番 29　☢2</div>
+
+      <div class="chip" style="left:50px;top:306px;">上部 2 行を切り捨て</div>
+
+      <div class="bar" style="left:4px;top:326px;width:312px;height:20px;">
+        <span>手番 <b>34</b> / 78</span><span>12.4s</span><span>TSD</span><span>↓4 被弾</span>
+      </div>
+      <div class="bar" style="left:4px;top:350px;width:312px;height:20px;">
+        <span>2.7 pps</span><span>74 apm</span><span>B2B 3</span><span>REN 2</span>
+        <span>↑ 18</span><span>☢ 4</span>
+      </div>
+
+      <div class="gaugebg" style="left:4px;top:382px;width:312px;height:12px;"></div>
+      <div class="gauge" style="left:4px;top:382px;width:96px;height:12px;"></div>
+      <!-- garbage markers -->
+      <div class="mark" style="left:52px;top:396px;width:2px;height:6px;"></div>
+      <div class="mark" style="left:99px;top:396px;width:2px;height:6px;"></div>
+      <div class="markc" style="left:132px;top:396px;width:2px;height:6px;"></div>
+      <div class="mark" style="left:171px;top:396px;width:2px;height:6px;"></div>
+      <div class="markc" style="left:205px;top:396px;width:2px;height:6px;"></div>
+      <div class="mark" style="left:262px;top:396px;width:2px;height:6px;"></div>
+      <div class="lab" style="left:4px;top:404px;">0:00</div>
+      <div class="lab" style="left:140px;top:404px;">0:12.4</div>
+      <div class="lab" style="left:288px;top:404px;">0:41</div>
+
+      <div class="bar" style="left:4px;top:424px;width:312px;height:26px;">
+        <span>⏮</span><span>◀</span><span>▶</span><span>⏭</span>
+        <span><b>▶ 再生</b></span><span>x1 ▾</span>
+      </div>
+      <div class="bar" style="left:4px;top:456px;width:312px;height:20px;">
+        <span>基準:</span><span><b>自陣</b></span><span>相手</span>
+      </div>
+
+      <div class="chipng" style="left:4px;top:484px;width:312px;">
+        死因: 相手 0:31.2 の攻撃 4 行（列 8） ▸ その地点へ
+      </div>
+
+      <div class="bar" style="left:4px;top:506px;width:312px;height:26px;background:#e8f1fb;border-color:#1565c0;">
+        <b>この地点を Editor で開く（ゲージ 1 行を含む）</b>
+      </div>
+      <div class="lab" style="left:100px;top:540px;">ラウンド / 自陣を選び直す</div>
+    </div>
+  </div>
+</div>
+
+<p><small class="f">
+※ モックアップは配置の意図を示すもので、実寸・実配色は既存コンポーネントに合わせる。
+死因バッジは終端ポイントでのみ出るため、通常の手番では非表示。
+</small></p>
+
+<h4>細部の規則</h4>
+
+<ul>
+  <li><strong>ゲージバーのスケール</strong> ―― 満尺は <code>max(garbagecap, その時点までの最大ゲージ)</code>。
+      <code>garbagecap</code> の既定は 8 で、実測の最大は 18（2,810 設置地点のうちゲージ 8 超は 19 地点）。
+      固定 8 だと稀に振り切れ、固定 18 だと普段が細すぎるため、この 2 段構えにする。
+      <code>garbagecap</code> 超過ぶんは色を変える（通常 <span style="color:#e53935">赤</span> /
+      超過 <span style="color:#ef6c00">橙</span>）。</li>
+  <li><strong>ゲージ 0 のときもバーの枠は残す</strong>。出たり消えたりすると盤面位置が横にずれ、
+      再生中ずっと目が泳ぐ。</li>
+  <li><strong>予告行</strong>は 1 行ぶんだけ描く（FR-42）。2 行以上保留されているときは
+      帯の右に <code>+3</code> のように残数を添える（FR-43）。
+      複数行の穴位置を全部並べる案は、モバイル幅で読めないため採らない。</li>
+  <li><strong>相手側</strong>もゲージバーと予告行を出す。ただし narrow レイアウトでは
+      バー幅 5px・予告行 6px と細くする。相手側に死因バッジは出さない
+      （自陣の検討が主目的であり、両方出すと画面が死因だらけになる）。</li>
+  <li><strong>ガベージマーカー</strong>は被弾（tank）を <span style="color:#e53935">赤</span>、
+      相殺（cancel）を <span style="color:#43a047">緑</span> で描く。受信（receive）は描かない
+      ―― 受信は必ず被弾か相殺のどちらかに解決されるので、3 色にすると密度が上がるだけで
+      読み取れる情報が増えない。</li>
+  <li><strong>非表示トグル</strong>（<code>replayShowGarbage</code>）を相手表示トグルの隣に置く。
+      既定は表示。オフにするとゲージバー・予告行・マーカー・死因バッジがすべて消え、
+      P2 と同じ見た目に戻る。<strong>切り出し時のゲージ保持（FR-54）はこのトグルに連動させない</strong>
+      （§7-4）。</li>
+</ul>
+
+<h3>3-6. FR-54 ―― 切り出しにゲージを持ち込む</h3>
+
+<p>
+要件定義 FR-54 は「コメント or せり上がり行」と両論併記だったが、
+<strong>コメント方式は本アプリでは成立しない</strong>ことがコード上確定している。
+</p>
+
+<div class="ng">
+<code>Quiz.isQuizComment</code> は <code>comment.startsWith('#Q=')</code> で判定する
+（<code>src/lib/fumen/quiz.ts</code>）。一方 <code>comment_metadata.ts</code> の既存方式は
+<strong>トークンを先頭に置き <code>' | '</code> で連結する</strong>（<code>withSevenBagGrayProgress</code> ほか）。
+P1 以降、切り出しページのコメントは <code>#Q=</code> を先頭に持つため、
+既存方式でトークンを足すと <strong>quiz として認識されなくなる</strong>。
+末尾に足す案も、<code>Quiz</code> の NEXT 解析が <code>)</code> 以降を全部ミノ列として読むため壊れる。
+<strong>よってゲージはせり上がり行に載せる。</strong>
+</div>
+
+<p>実装は次の 3 か所だけで済む。</p>
+
+<pre><code>// board_converter.ts
+export const irFieldToField = (cells: IRField, sentLine?: IRField): Field
+
+// ir_to_page.ts  ―― 第 5 引数として追加（既存呼び出しは省略可能）
+export const irPointToPage = (
+    cells: IRField, queue?: IRQueue, colorize = true, srs = true,
+    rise?: { column: number, size: number },
+): Page
+
+// actions/replay.ts の openReplayInEditor
+const forecast = riseForecastAt(timeline, cursor.frame, 1);
+irPointToPage(field, queue, colorize, srs, forecast[0]);</code></pre>
+
+<ul>
+  <li>せり上がり行は <strong>穴の列（<code>column</code> から <code>size</code> 個）を空、残りを
+      <code>Piece.Gray</code></strong> で埋める。</li>
+  <li><code>flags.rise = true</code> にする。fumen の意味論では「このページの lock 後にせり上がる」で、
+      Editor で操作対象ミノを置いた直後にガベージが上がる ―― リプレイの挙動と一致する。</li>
+  <li><strong>ゲージが 0 の地点では従来どおり</strong>（せり上がり行は空、<code>rise: false</code>）。
+      余計な差分を作らない。</li>
+</ul>
+
+<div class="ok">
+<strong>この条件付けにより、P1 から続く Cypress の期待 fumen 2 件は変わらない。</strong>
+実測（V-02 を fixture <code>league_loss.json</code> に適用）で、
+<strong>両プレイヤーとも終端ゲージは 0</strong>、手番 1 の時点でも当然 0 だった。
+期待 fumen が変わったら、それは条件付けの実装ミスか退行である（§6）。
+</div>
+
+<div class="warn">
+UX の留保: <code>openReplayInEditor</code> は P1 から <code>selectPieceLayout({ layout: 'play' })</code> で
+INPUT レイアウトを開く。<code>src/views/editor/editor.ts</code> の
+<code>sentLineVisible = !bottomTrayVisible</code> により、
+<strong>下部トレイが出ている状態ではせり上がり行が画面に映らない可能性がある</strong>。
+fumen データとしては保持されている（＝ FR-54 の「保持する手段」は満たす）が、
+実装時に実機で確認し、見えないようなら §7 の Q3 として依頼者に戻す。
+</div>
+
+<h3>3-7. 事前検証 V-02 ―― ガベージ土台の実測（<span style="color:#1b7f4b;font-weight:700">実施済み</span>）</h3>
+
+<p>
+P2 が V-01 で「フレーム軸の相互整合」を着手前に確かめたのと同じ理由で、
+P3 も土台を先に測った。スクリプト: <code>docs/notes/poc-ttrm/ttrm_garbage_v02.js</code>。
+実サンプル 2 本・34 プレイヤーラウンド。
+</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>確かめたこと</th><th>これが崩れたら</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>エンジンの <code>garbage.*</code> イベントに <code>iid</code> / <code>column</code> / <code>gameid</code> が載るか</td>
+    <td>parcel モデルが組めない。設計をやり直す</td></tr>
+<tr><td>B</td><td>ゲージ恒等式がエンジンの <code>garbageQueue.size</code> と一致するか</td>
+    <td>FR-40 が成立しない。lock ごとのスナップショットを IR に足す必要が出る</td></tr>
+<tr><td>C</td><td><code>iid</code> の収支が閉じるか（受信 == 相殺 + 被弾 + 保留）</td>
+    <td>FR-41 / FR-43 の保留一覧が信用できない</td></tr>
+<tr><td>D</td><td>エンジンの穴位置と <code>.ttrm</code> の <code>ige.x</code> のどちらが正か</td>
+    <td>どちらでもない場合、FR-42 を取り下げる</td></tr>
+<tr><td>E</td><td>R7: <code>results.stats.garbage.received</code> に一致する定義があるか</td>
+    <td>FR-26 の受信量表示を諦める</td></tr>
+<tr><td>F</td><td>死因の tank を終端から特定できるか</td>
+    <td>FR-45 の表現を「reason の文字列のみ」に落とす</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>結果は §8 に記録した。<strong>D と E は設計前提を変える結果になったため、本文にも反映済み</strong>である。</p>
+
+<h3>3-8. R7 の決着 ―― <code>received</code> は「合わせられない」と確定する</h3>
+
+<p>
+P2 §7-3 は「R7 は P3 で定義を合わせる」としていた。V-02 で 7 通りの定義を
+34 プレイヤーラウンドに突き合わせた結果、<strong>完全一致する定義は存在しなかった</strong>。
+</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>候補</th><th>一致数</th><th>備考</th></tr></thead>
+<tbody>
+<tr><td>Σ <code>receive.amount</code>（passthrough 相殺後）</td><td>20 / 34</td><td>エンジンの <code>stats.garbage.receive</code> と常に同値</td></tr>
+<tr><td>Σ <code>receive.amount</code> − 終端ゲージ</td><td><strong>21 / 34</strong></td><td>最良。Σtank + Σcancel と常に同値</td></tr>
+<tr><td>Σ <code>receive.originalAmount</code></td><td>0 / 34</td><td>常に過大</td></tr>
+<tr><td>Σ <code>tank.amount</code>（盤面に入った量）</td><td>0 / 34</td><td>常に過小</td></tr>
+<tr><td>Σ <code>ige.amt</code>（<code>.ttrm</code> の申告値）</td><td>0 / 34</td><td>常に過大</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+不一致 13 件はいずれも <strong>TETR.IO 側の値のほうが小さく、差は 1〜6 行</strong>。
+系統的な小さい欠損であり、集計単位（相殺の一部を受信に数えない等）の差と見られるが、
+サンプル 2 本では特定できない。<strong>P3 では次のとおり決着させる。</strong>
+</p>
+
+<ul>
+  <li><strong><code>results.stats.garbage.received</code> と一致させることは断念する。</strong>
+      R7 は「解消」ではなく「<strong>再現不能と確定</strong>」としてクローズする。</li>
+  <li>FR-26 の統計行には、TETR.IO の <code>received</code> ではなく
+      <strong>エンジン基準で自己整合する 2 つの値</strong>を出す:
+      <code>☢ ゲージ</code>（現在の保留量）と、必要なら <code>被弾累計</code>（Σtank）。
+      いずれもゲージ恒等式（B）で裏が取れている数字である。</li>
+  <li>数字の出所が TETR.IO の集計と違うことは、<strong>ラベルで区別する</strong>
+      （送信は <code>↑</code> で TETR.IO と一致、ガベージ側は <code>☢</code> でエンジン基準）。</li>
+  <li>FR-63 の突合には足さない（§3-3 の警告）。</li>
+</ul>
+
+<h2 id="s4">4. 影響ファイルとデータフロー</h2>
+
+<h3>4-1. 新規ファイル</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>パス</th><th>役割</th></tr></thead>
+<tbody>
+<tr><td><code>src/lib/ttrm/garbage.ts</code> <span class="tag new">NEW</span></td>
+    <td>parcel 構築とフレーム問い合わせの純関数群（§3-4）。<code>WeakMap</code> で 1 段キャッシュ</td></tr>
+<tr><td><code>src/lib/ttrm/__tests__/garbage.test.ts</code> <span class="tag new">NEW</span></td>
+    <td>上記の単体テスト</td></tr>
+<tr><td><code>src/components/replay/replay_gauge.tsx</code> <span class="tag new">NEW</span></td>
+    <td>ゲージバー（縦）とせり上がり予告行。<code>variant</code>（self / opponent）と
+        <code>size</code>（full / compact）で寸法を切り替える</td></tr>
+<tr><td><code>src/components/replay/replay_timeline_markers.ts</code> <span class="tag new">NEW</span></td>
+    <td>ガベージマーカーの帯を canvas → data URL で生成し、
+        <code>WeakMap&lt;PlayerRoundIR, ...&gt;</code> でメモ化（<code>replay_board.ts</code> と同じ流儀）</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>4-2. 変更ファイル</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>パス</th><th>変更内容</th></tr></thead>
+<tbody>
+<tr><td><code>src/lib/ttrm/types.ts</code></td>
+    <td><code>GarbageEvent</code> に <code>iid</code> / <code>gameid</code> / <code>senderFrame</code> 追加、
+        <code>kind</code> に <code>'confirm'</code> 追加、<code>LockPoint.pendingHoles</code> 削除</td></tr>
+<tr><td><code>src/lib/ttrm/simulator.ts</code></td>
+    <td><code>garbage.confirm</code> の購読を追加。3 本の既存購読に <code>iid</code> を足す。
+        <code>pendingHoles</code> の収集を削除</td></tr>
+<tr><td><code>src/lib/ttrm/board_converter.ts</code></td>
+    <td><code>irFieldToField</code> に <code>sentLine</code> 引数を追加（省略時は現行と同一）</td></tr>
+<tr><td><code>src/lib/ttrm/ir_to_page.ts</code></td>
+    <td><code>rise</code> 引数を追加。せり上がり行の生成と <code>flags.rise</code>（§3-6）</td></tr>
+<tr><td><code>src/lib/ttrm/timeline.ts</code></td>
+    <td><code>ReplayStats</code> に <code>gauge</code> / <code>tanked</code> を追加（§3-8）。
+        <code>statsAt</code> は <code>garbage.ts</code> の関数へ委譲する</td></tr>
+<tr><td><code>src/states.ts</code></td><td><code>ReplayState.view.showGarbage</code> と既定値を追加</td></tr>
+<tr><td><code>src/actions/replay.ts</code></td>
+    <td>セレクタ追加（<code>getReplaySelfGarbage</code> / <code>getReplayOpponentGarbage</code> /
+        <code>getReplayKiller</code>）、<code>toggleReplayGarbage</code> /
+        <code>setReplayShowGarbage</code>、<code>openReplayInEditor</code> に FR-54 の分岐</td></tr>
+<tr><td><code>src/views/replay.tsx</code></td>
+    <td><code>playingPhase</code> にゲージ・予告・直近イベント・死因バッジ・マーカーを配線</td></tr>
+<tr><td><code>src/components/replay/replay_side.tsx</code></td>
+    <td>盤面の左にゲージ、下に予告行を差し込む。<strong><code>replay_board.ts</code> は触らない</strong></td></tr>
+<tr><td><code>src/components/replay/replay_transport.tsx</code></td>
+    <td>統計行に <code>☢</code> を追加。タイムライン直下にマーカー帯を敷く</td></tr>
+<tr><td><code>src/views/replay_layout.ts</code></td>
+    <td><strong>ゲージバーぶんの幅を予約する</strong>。予約しないと盤面が右へはみ出す（§7-2）</td></tr>
+<tr><td><code>src/actions/view_settings.ts</code>, <code>src/memento.ts</code>, <code>src/actions.ts</code></td>
+    <td><code>replayShowGarbage</code> の保存・型・復元を同一コミットで揃える（P2 と同じ 3 点セット）</td></tr>
+<tr><td><code>src/locales/keys.ts</code>, <code>src/locales/{en,ja}/translation.ts</code></td>
+    <td><code>Replay.Playing.*</code> に追加キー（§6 の datatest 表と対応）</td></tr>
+<tr><td><code>cypress/support/operations.js</code>, <code>cypress/integration/replay_spec.js</code></td>
+    <td>ヘルパと新規ケース（§6）</td></tr>
+<tr><td><code>src/components/replay/replay_board.ts</code></td>
+    <td><span class="tag none">変更なし</span>（§3-5 の警告のとおり、意図的に触れない）</td></tr>
+<tr><td><code>src/lib/ttrm/parser.ts</code>, <code>replay.worker.ts</code>, <code>options.ts</code>, <code>engine_config.ts</code></td>
+    <td><span class="tag none">変更なし</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+<code>src/view.ts</code> / <code>src/lib/enums.ts</code> / <code>src/actions/shortcuts.ts</code> /
+<code>webpack.config.js</code> / <code>tsconfig.json</code> / <code>package.json</code> は
+<strong>変更なし</strong>（P1 / P2 で導入済み）。
+</p>
+
+<h3>4-3. データフロー</h3>
+
+<pre><code>[取り込み]  ファイル / D&amp;D
+   ▼
+replay.worker.ts : parser → simulator
+   │   engine.events.on('garbage.receive' | 'confirm' | 'tank' | 'cancel')
+   │        └─ iid つきの GarbageEvent[] として IR に載せる（frame 昇順）
+   ▼
+ReplayIR（メモリのみ・localStorage にも URL にも出さない）
+   │
+   ▼  phase='playing'
+[再生]  ── 状態は cursor.frame ただ 1 本（P2 のまま）────────────────
+   │
+   ▼  描画のたびに
+garbage.ts : getGarbageTimeline(player)      ← WeakMap で 1 回だけ構築
+   ├ gaugeAtFrame(t, frame)        → ゲージバー（FR-40）
+   ├ riseForecastAt(t, frame, 1)   → せり上がり予告行（FR-42/43）
+   ├ recentEventAt(t, frame)       → 直近イベント表示（FR-41）
+   └ killerGarbageOf(player)       → 死因バッジ（FR-45）
+   │
+   ▼
+views/replay.tsx
+   ├ replay_side（自陣）  ─ replay_board（P2 のメモ化のまま）＋ replay_gauge
+   ├ replay_side（相手）  ─ 同上
+   └ replay_transport    ─ replay_timeline_markers（メモ化）
+   │
+   ▼  [この地点を Editor で開く]（自陣側のみ）
+riseForecastAt(t, frame, 1) → irPointToPage(..., rise)
+   → sentLine ＋ flags.rise を持つ 1 ページ
+   → appendPages（currentIndex + 1 に挿入）→ Editor / INPUT</code></pre>
+
+<h3>4-4. 性能上の注意</h3>
+
+<ul>
+  <li><strong>派生表現は WeakMap で 1 回だけ</strong>（§3-4）。20Hz × 2 プレイヤーで
+      parcel を組み直さない。</li>
+  <li><strong>マーカー帯は canvas → data URL でメモ化</strong>。
+      SVG や <code>div</code> の並びにすると Hyperapp が毎 tick で数十ノードを差分計算する。
+      キーは <code>PlayerRoundIR</code>＋幅＋<code>endFrame</code>。</li>
+  <li><strong>ゲージバーと予告行は DOM のまま</strong>で良い。要素数が 10 数個で、
+      値が変わったときだけ属性が書き換わる。canvas にする理由がない。</li>
+  <li>初期ロードサイズは P2 で +4.1KB gzip だった。P3 も同規模を見込むが、
+      実装後に <code>scripts/check-build-performance.js</code> と gzip 実測を取る（§7-2）。</li>
+</ul>
+
+<h2 id="s5">5. 不変条件の確認</h2>
+
+<p>AGENTS.md「Data And State Invariants」の各項目について確認する。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>不変条件</th><th>本変更での扱い</th></tr></thead>
+<tbody>
+<tr><td><code>field.ref</code> / <code>comment.ref</code> は先行ページを指す</td>
+    <td><strong>触れない（P1 から不変）。</strong> 切り出しは引き続き単一のキーページを
+        <code>appendPages</code> へ渡す。せり上がり行を足しても ref は生まれない</td></tr>
+<tr><td>先頭ページの <code>colorize</code> は再配置・抽出・置換で維持される</td>
+    <td><strong>触れない。</strong> <code>irPointToPage</code> に <code>state.fumen.guideLineColor</code> を
+        渡す実装をそのまま使う</td></tr>
+<tr><td>回転法則はユーザ設定であり、ページの <code>srs</code> フラグではない</td>
+    <td><strong>触れない。</strong> P1 の実装（spawn 位置決定に <code>rotationSystem !== 'classic'</code>）を維持</td></tr>
+<tr><td>Tree ルートは仮想（<code>pageIndex === -1</code>）。変更後は <code>normalizeTreeAndPages</code></td>
+    <td><strong>触れない。</strong> P3 でも Tree は生成しない</td></tr>
+<tr><td>Tree メタデータは先頭ページコメントの <code>#TREE=</code></td>
+    <td><strong>触れない。</strong> 読み書きしない。<strong>ゲージをコメントに載せない判断（§3-6）は
+        この不変条件を守るためでもある</strong> ―― コメント欄は <code>#Q=</code> / <code>#TREE=</code> /
+        <code>comment_metadata.ts</code> が同居する場所で、新しい書式を持ち込む余地がない</td></tr>
+<tr><td>List reorder は Tree 有効時は無効</td>
+    <td><strong>触れない。</strong> List/Tree の操作に関与しない</td></tr>
+<tr><td>Piece/HOLD/NEXT キューは <code>#Q=</code> で表現され、Editor と Cold Clear が consumer</td>
+    <td><strong>触れる（形式は不変）。</strong> 生成は P1 と同じ <code>Quiz.create</code> へ委譲し、
+        <strong>コメント文字列には一切追記しない</strong>（§3-6）。ゲージはフィールド側（せり上がり行）に載る</td></tr>
+<tr><td><code>localStorageWrapper.saveViewSettings</code> は全体置換</td>
+    <td><strong>触れる。</strong> <code>replayShowGarbage</code> の保存は
+        <code>persistViewSettings</code> を経由する（<code>saveViewSettings</code> を直接呼ばない）。
+        <code>memento.ts</code> の <code>ViewSettings</code> 型と <code>safer.boolean</code> パース、
+        <code>actions.ts</code> の復元処理を同一コミットで揃える。
+        P2 で <code>replayShowOpponent</code> を通した経路をそのまま踏襲する</td></tr>
+<tr><td>URL/hash・localStorage 復元・履歴スナップショット・画面遷移は横断的</td>
+    <td><strong>限定的に触れる。</strong>
+      <ul>
+        <li>URL には載せない（<code>src/params.ts</code> 変更なし）。</li>
+        <li><code>state.replay</code> は <code>src/memento.ts</code> のスナップショット対象外のまま。</li>
+        <li><strong>新しい横断要素は追加しない。</strong> クロック（<code>handlers.replayClock</code>）の
+            ライフサイクルは P2 のまま。P3 はタイマを増やさない。</li>
+        <li>localStorage に保存するのは自陣ユーザ名（P1）・相手表示可否（P2）・
+            ガベージ表示可否（P3）のみ。IR は保存しない。</li>
+        <li>切り出しは <code>appendPages</code> 経由なので、<strong>せり上がり行つきページの挿入も
+            そのまま undo できる</strong>（履歴の扱いは P1 から不変）。</li>
+      </ul>
+    </td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>追加で確認する既存の約束事</h3>
+
+<ul>
+  <li><strong>Worker の後始末</strong> ―― P1 の <code>worker.terminate()</code> 経路は変更しない。</li>
+  <li><strong>ユーザ可視文字列</strong> ―― 追加分をすべて <code>src/locales/</code> の英日両方へ入れる。
+      「B2B」「REN」等と同じく、<strong>単位記号（<code>↑</code> / <code>☢</code>）は翻訳対象外</strong>とし、
+      説明ラベル（「次のせり上がり（実測）」「死因」など）のみ翻訳する。</li>
+  <li><strong><code>dest/</code> は生成物</strong> ―― Cypress 前に必ず再ビルドする。</li>
+  <li><strong>期待 fumen を安易に置き換えない</strong> ―― §6 に手順を明記。</li>
+</ul>
+
+<h2 id="s6">6. テスト計画</h2>
+
+<h3>Jest</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>ファイル</th><th>検証内容</th></tr></thead>
+<tbody>
+<tr><td><code>src/lib/ttrm/__tests__/garbage.test.ts</code> <span class="tag new">NEW</span></td>
+    <td>
+      <ul>
+        <li><strong>ゲージ恒等式の回帰</strong>: fixture の全 lock で
+            <code>gaugeAtFrame(t, lock.frame) === lock.garbageGauge</code>、
+            終端でも <code>=== terminal.garbageGauge</code>。
+            <strong>V-02 の B をそのままユニットテストに落とすもので、上流エンジンの版差（R5）に対する
+            実効的な防御になる</strong></li>
+        <li>parcel 収支: 各 parcel で <code>amount ≥ Σresolutions.amount</code>、
+            残余の合計が終端ゲージと一致</li>
+        <li><code>gaugeAtFrame</code>: 最初の受信より前 → 0、受信直後 → その量、
+            被弾直後 → 減算後、終端以降 → 終端ゲージ</li>
+        <li><code>riseForecastAt</code>: 指定フレーム以降の tank を時刻順に返す。
+            以降に tank が無ければ空。<code>maxRows</code> で打ち切る</li>
+        <li><code>pendingParcelsAt</code>: 受信済みかつ未解決のものだけを <code>receivedFrame</code> 昇順で返す</li>
+        <li><code>killerGarbageOf</code>: <code>reason === 'winner'</code> は <code>undefined</code>、
+            <code>garbagesmash</code> の fixture で最終 lock 以降の tank を返す。
+            <strong>合成データで「最後の tank が最終 lock より前」なら <code>undefined</code></strong>（topout 相当）</li>
+        <li>ガベージが 1 件も無いラウンド（合成データ）で全関数が破綻しないこと</li>
+      </ul>
+    </td></tr>
+<tr><td><code>src/lib/ttrm/__tests__/simulator.test.ts</code> <span class="tag mod">更新</span></td>
+    <td>
+      <ul>
+        <li><code>garbageEvents</code> の全件に <code>iid</code> が載ること</li>
+        <li><code>kind: 'confirm'</code> が <code>gameid</code> と <code>senderFrame</code> を持つこと</li>
+        <li><code>kind: 'tank'</code> が <code>column</code> を持ち、<code>0 ≤ column &lt; 10</code> であること</li>
+        <li><code>pendingHoles</code> が <code>LockPoint</code> から消えていること（型で担保されるが明示）</li>
+        <li><strong><code>verification.matched</code> の判定項目が 3 つのままであること</strong>（§3-3 の警告）</li>
+      </ul>
+    </td></tr>
+<tr><td><code>src/lib/ttrm/__tests__/ir_to_page.test.ts</code> <span class="tag mod">更新</span></td>
+    <td>
+      <ul>
+        <li><code>rise</code> を渡さない場合、<strong>生成ページが現行と完全一致</strong>すること
+            （<code>flags.rise === false</code>、せり上がり行が空）</li>
+        <li><code>rise: { column: 3, size: 1 }</code> を渡すと、せり上がり行が
+            <code>x=3</code> だけ空・残り Gray、<code>flags.rise === true</code> になること</li>
+        <li><code>size: 2</code> で穴が 2 列ぶん空くこと</li>
+        <li><code>encode</code> → <code>decode</code> の往復でせり上がり行が保たれること</li>
+        <li>コメントが <code>#Q=</code> で始まったままであること（§3-6 の要）</li>
+      </ul>
+    </td></tr>
+<tr><td><code>src/lib/ttrm/__tests__/timeline.test.ts</code> <span class="tag mod">更新</span></td>
+    <td><code>statsAt</code> に <code>gauge</code> / <code>tanked</code> が入り、
+        既存項目（pps / apm / b2b / ren / attack）が変わらないこと</td></tr>
+<tr><td><code>src/actions/__tests__/replay.test.ts</code> <span class="tag mod">更新・追加</span></td>
+    <td>
+      <ul>
+        <li><strong>FR-40</strong>: <code>getReplaySelfGarbage</code> がカーソル移動に追従すること</li>
+        <li><strong>FR-45</strong>: <code>getReplayKiller</code> が終端でのみ値を返すこと</li>
+        <li><strong>FR-54</strong>: ゲージ 0 の地点では <code>irPointToPage</code> に
+            <code>rise</code> が渡らないこと（spy で確認）。ゲージがある地点では渡ること</li>
+        <li><strong>FR-11 との整合</strong>: <code>swapReplaySides</code> 後に切り出すと
+            <strong>入れ替え後の自陣（＝元の相手）のゲージ</strong>が載ること</li>
+        <li><code>toggleReplayGarbage</code> が <code>persistViewSettings</code> を全体置換で呼ぶこと</li>
+        <li>取り込み・リセット時に <code>view.showGarbage</code> が既定へ戻らないこと
+            （P2 §8 で踏んだ <code>initialReplayState</code> の全体置換と同じ罠）</li>
+      </ul>
+    </td></tr>
+<tr><td><code>src/__tests__/memento_view_settings.test.ts</code> <span class="tag mod">更新</span></td>
+    <td><code>replayShowGarbage</code> の保存・復元・不正値フォールバック</td></tr>
+<tr><td><code>src/views/__tests__/replay_layout.test.ts</code> <span class="tag mod">更新</span></td>
+    <td>ゲージ幅の予約後も、モバイル 375px で相手盤面が成立すること（P2 の期待値を更新）</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn">
+<strong>期待 fumen の扱い</strong> ―― 現行の <code>TERMINAL_FUMEN</code> / <code>LOCK1_FUMEN</code> は
+<strong>変わらないはず</strong>である（§3-6 の実測: fixture の終端ゲージは両者 0）。
+変わった場合は、まず「ゲージ 0 なら従来どおり」の条件付けが効いていないことを疑う。
+やむを得ず変える場合は AGENTS.md / <code>.agents/skills/e2e/SKILL.md</code> の分類手順を踏み、
+decode してせり上がり行以外に差分が無いことを確認したうえで §8 に記録する。
+</div>
+
+<h3>Cypress</h3>
+
+<p><code>cypress/integration/replay_spec.js</code> に追加する（既存 18 ケースは原則そのまま通る想定）。</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>操作</th><th>確認</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>再生開始 → ゲージが立つ時刻までシーク</td>
+    <td><code>replay-gauge-self</code> が数値を表示し、相手側 <code>replay-gauge-opponent</code> も出ること（FR-40）</td></tr>
+<tr><td>2</td><td>被弾フレームの直前へシーク</td>
+    <td><code>replay-rise-preview</code> が出て、穴セルが 1 つだけ空いていること（FR-42）</td></tr>
+<tr><td>3</td><td>終端へジャンプ</td>
+    <td><code>replay-killer</code> が出て、<code>garbagesmash</code> の攻撃行数が読めること（FR-45）</td></tr>
+<tr><td>3b</td><td>死因バッジの「その地点へ」を押す</td>
+    <td><code>replay-time-label</code> が終端より前の時刻に変わること（共通軸ジャンプ）</td></tr>
+<tr><td>4</td><td>ガベージ表示トグル → 再読み込み</td>
+    <td>ゲージ・予告・マーカーが消え、再訪問しても消えたままであること（localStorage）</td></tr>
+<tr><td>5</td><td>ゲージがある地点で「Editor で開く」</td>
+    <td>挿入ページのせり上がり行にグレーが入っていること。<strong>新しい期待 fumen 1 件を追加する</strong>（FR-54）</td></tr>
+<tr><td>6</td><td>ゲージ 0 の地点（手番 1）で「Editor で開く」</td>
+    <td><strong>既存の <code>LOCK1_FUMEN</code> と一致すること</strong>（＝条件付けが効いている証拠）</td></tr>
+<tr><td>7</td><td>入れ替え → ゲージのある地点で切り出し</td>
+    <td>入れ替え後の自陣のゲージが載ること（FR-11 × FR-54）</td></tr>
+<tr><td>8</td><td>PC 幅（1280）で再生</td>
+    <td>両側のゲージバーが同じ寸法で出て、盤面幅が P2 と同じであること</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>datatest 属性（<code>cypress/support/operations.js</code> に操作ヘルパを追加）</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>datatest</th><th>要素</th></tr></thead>
+<tbody>
+<tr><td><code>replay-gauge-self</code> / <code>replay-gauge-opponent</code></td><td>ゲージバー＋数値（FR-40）</td></tr>
+<tr><td><code>replay-rise-preview</code> / <code>replay-rise-preview-opponent</code></td><td>せり上がり予告行（FR-42/43）</td></tr>
+<tr><td><code>replay-rise-hole</code></td><td>予告行の穴セル（列の確認用に <code>data-column</code> を持たせる）</td></tr>
+<tr><td><code>replay-garbage-recent</code></td><td>直近イベント表示（FR-41）</td></tr>
+<tr><td><code>replay-garbage-markers</code></td><td>タイムライン下のマーカー帯</td></tr>
+<tr><td><code>replay-killer</code> / <code>btn-replay-killer-seek</code></td><td>死因バッジとジャンプ（FR-45）</td></tr>
+<tr><td><code>btn-replay-toggle-garbage</code></td><td>ガベージ表示トグル</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+既存の <code>replay-board-*</code> / <code>replay-side-*</code> / <code>replay-lock-counter</code> /
+<code>replay-timeline</code> / <code>replay-time-label</code> / <code>replay-stats</code> /
+<code>btn-replay-*</code> は<strong>名前を変えない</strong>。
+</p>
+
+<h2 id="s7">7. 未確定事項・リスク</h2>
+
+<h3>7-1. 依頼者確認事項</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>論点</th><th>推奨案</th><th>状態</th></tr></thead>
+<tbody>
+<tr><td>Q1</td><td><strong>切り出しにゲージを載せるのを既定にするか</strong></td>
+    <td><strong>既定で載せる。</strong> ゲージ込みでこそ「その局面」であり、
+        ゲージ 0 の地点では現行と 1 ビットも変わらないため実害が小さい</td>
+    <td><strong>要確認。</strong> 「盤面だけ欲しい」用途があるなら設定に逃がす</td></tr>
+<tr><td>Q2</td><td>せり上がり予告は「実測の先読み」でよいか</td>
+    <td>よい。当時見えていなかった情報だが、検討用途では価値が高い。ラベルで明示する（§3-2）</td>
+    <td>推奨案で進める</td></tr>
+<tr><td>Q3</td><td>INPUT レイアウトでせり上がり行が隠れる件（§3-6）</td>
+    <td>まず実機で確認。隠れるなら「切り出し直後だけトレイを畳む」か「そのまま」の二択</td>
+    <td><strong>実装時に実機確認 → 結果を持って確認</strong></td></tr>
+<tr><td>Q4</td><td>R7 を「再現不能」でクローズしてよいか</td>
+    <td>よい（§3-8）。TETR.IO の <code>received</code> と数字が食い違うより、
+        エンジン基準で自己整合する値を別ラベルで出すほうが誠実</td>
+    <td><strong>要確認。</strong> 実測は §8</td></tr>
+<tr><td>Q5</td><td>FR-44（送信元表示）を P3 から外すこと</td>
+    <td>外す。1 対 1 では常に「相手」で情報量ゼロ（§2）</td><td>推奨案で進める</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7-2. 退行・整合性の懸念</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>懸念</th><th>対処</th></tr></thead>
+<tbody>
+<tr><td>1</td>
+    <td><strong>切り出し出力の変化。</strong> FR-54 は P1 から続く唯一の「成果物」に手を入れる。
+        条件付けを誤ると全地点の fumen が変わる</td>
+    <td>「ゲージ 0 なら <code>rise</code> を渡さない」を実装の最初に固定し、
+        §6 のケース 6（<code>LOCK1_FUMEN</code> 一致）で守る。
+        <strong>期待 fumen は変えない</strong>のが正常系</td></tr>
+<tr><td>2</td>
+    <td><strong>盤面描画メモ化の破壊。</strong> 予告行を canvas に描くと
+        <code>WeakMap&lt;IRField&gt;</code> のキーが意味を失い、
+        「同じ盤面・違う時刻」で古い絵が出る</td>
+    <td>§3-5 の警告どおり <code>replay_board.ts</code> を触らない。
+        §4-2 で「変更なし」と明記済み。レビュー時にここを見る</td></tr>
+<tr><td>3</td>
+    <td><strong>レイアウトのはみ出し。</strong> ゲージバーぶんの幅を
+        <code>replay_layout.ts</code> に予約しないと、375px で盤面が右へ溢れる</td>
+    <td>幅計算に <code>GAUGE_COLUMN_WIDTH</code> を足す。
+        既存の <code>replay_layout.test.ts</code> の期待値更新とセットで行う</td></tr>
+<tr><td>4</td>
+    <td><code>pendingHoles</code> の削除が他所を壊す</td>
+    <td>調査済み: 消費箇所は <code>simulator.ts</code> の書き込み、<code>types.ts</code> の宣言、
+        および <code>actions/__tests__/replay.test.ts</code> と
+        <code>lib/ttrm/__tests__/timeline.test.ts</code> のテスト用ダミー lock の 4 か所のみ。
+        表示側は 1 か所も参照していない。着手時に <code>grep -rn "pendingHoles" src/ cypress/</code> で再確認する</td></tr>
+<tr><td>5</td>
+    <td><strong>20Hz でのマーカー再描画</strong>。素直に SVG / div で描くと毎 tick で数十ノード差分</td>
+    <td>canvas → data URL ＋ <code>WeakMap</code> メモ化（P2 §4-5 と同じ）。
+        実機で再生中に <code>img</code> の <code>src</code> が変わらないことを確認</td></tr>
+<tr><td>6</td>
+    <td><code>received</code> を FR-63 の突合に足してしまう</td>
+    <td>§3-3 の <span class="tag none">NG</span> ボックス。
+        Jest で「判定項目が 3 つのまま」を固定（§6）</td></tr>
+<tr><td>7</td>
+    <td>初期ロードサイズ。P1 +24.5KB、P2 +4.1KB gzip に P3 が乗る</td>
+    <td>実装後に <code>scripts/check-build-performance.js</code> と gzip 実測。
+        <strong>本設計では webpack 設定を変更しない</strong></td></tr>
+<tr><td>8</td>
+    <td><code>view</code> に項目が増えることによる <code>initialReplayState</code> の取りこぼし</td>
+    <td>P2 §8 で同じ罠を踏んでいる。全経路で <code>view: state.replay.view</code> を
+        引き継ぐ実装になっていることを Jest で固定</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7-3. 残存リスク（要件定義から引き継ぎ）</h3>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>内容</th><th>P3 での扱い</th></tr></thead>
+<tbody>
+<tr><td>R5</td><td>上流エンジンの破壊的変更</td>
+    <td>版固定を維持。P3 は <code>garbage.*</code> イベントの形に新たに依存する。
+        壊れた場合は <strong>ゲージ恒等式の Jest が最初に落ちる</strong>ように設計してある（§6）</td></tr>
+<tr><td>R6</td><td>23 行制約による限定的データ損失</td>
+    <td>P2 のまま。せり上がり行はこの 23 行の外側（<code>SentLine</code>）なので影響しない</td></tr>
+<tr><td>R7</td><td><code>received</code> の定義差</td>
+    <td><strong>「再現不能」として §3-8 でクローズする。</strong> P2 §7-3 の
+        「P3 で定義を合わせる」は、V-02 の実測により<strong>達成できないと確定した</strong></td></tr>
+<tr><td>R8</td><td>将来の Zenith 対応</td>
+    <td>parcel は 1 プレイヤーぶんの純関数で、送信元は <code>gameid</code> で持つ。
+        プレイヤー数が増えても構造は流用できる</td></tr>
+<tr><td>新</td><td>実サンプルが 2 本のみ</td>
+    <td>V-02 も同じ 2 本での実測であり、「この 2 本では」という限定付きである。
+        とくに R7 の不一致 13 件は、サンプルが増えれば定義が判明する可能性が残る</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>7-4. 仕様として固定しておく細部</h3>
+
+<ul>
+  <li>ゲージバーの満尺は <code>max(garbagecap, その時点までの最大ゲージ)</code>。
+      <code>garbagecap</code> 超過ぶんは色を変える。</li>
+  <li>ゲージが 0 でもバーの枠は残す（レイアウトを動かさない）。</li>
+  <li>せり上がり予告は <strong>1 行のみ</strong>描き、残数は数値で添える。</li>
+  <li>マーカーは被弾＝赤、相殺＝緑。<strong>受信は描かない</strong>。</li>
+  <li>死因バッジは <strong>自陣の終端ポイントでのみ</strong>出す。相手側には出さない。</li>
+  <li><code>reason === 'topout'</code>（ガベージ死でない）ときは、死因バッジに攻撃を出さず
+      理由の文字列だけを出す。</li>
+  <li>ガベージ表示可否（<code>replayShowGarbage</code>）は localStorage に保存する。既定は表示。</li>
+  <li><strong>表示トグルをオフにしても、切り出し時のゲージ保持（FR-54）は止めない。</strong>
+      表示の好みと成果物の内容は別の関心事であり、
+      「画面を整理したら fumen の中身が変わっていた」は事故になる。</li>
+  <li>FR-26 の統計行には TETR.IO の <code>received</code> を出さない（§3-8）。</li>
+</ul>
+
+<h2 id="s8">8. 進捗・結果・課題</h2>
+
+<h3>V-02 ―― ガベージ土台の実測（2026-08-08 実施・<span style="color:#1b7f4b;font-weight:700">条件付き合格</span>）</h3>
+
+<p>
+スクリプト: <code>docs/notes/poc-ttrm/ttrm_garbage_v02.js</code>。
+実サンプル 2 本（<code>docs/samples/</code>）・全 17 ラウンド・34 プレイヤーラウンド。
+シミュレーションエラー 0 件。
+</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>検証</th><th>実測</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>イベントの中身</td>
+    <td>receive 605 件（<code>iid</code> 605/605）、confirm 604 件（<code>gameid</code> 604/604）、
+        tank 355 件（<code>iid</code> 355/355）、cancel 271 件</td>
+    <td><span class="tag new">合格</span> 必要な識別子はすべて載る</td></tr>
+<tr><td>B</td><td>ゲージ恒等式</td>
+    <td>検査 2,844 点 / <strong>不一致 0 件</strong></td>
+    <td><span class="tag new">合格</span> ゲージはイベント列だけから完全に再構成できる</td></tr>
+<tr><td>C</td><td><code>iid</code> の収支</td>
+    <td>605 iid のうち 596 が完全解決、9 が終端時点で保留、<strong>収支破綻 0 件</strong>。
+        「保留残の合計 == 終端ゲージ」が 34/34</td>
+    <td><span class="tag new">合格</span> parcel モデルは実データで閉じる</td></tr>
+<tr><td>D</td><td>穴位置の出所</td>
+    <td>エンジンの <code>tank.column</code> と <code>.ttrm</code> の <code>ige.x</code> の一致は
+        <strong>355 件中 30 件（8.5%）</strong>。10 列に対する偶然一致率 10% とほぼ同じ</td>
+    <td><span class="tag new">合格（ただし前提を訂正）</span> 下記参照</td></tr>
+<tr><td>E</td><td>R7 の定義探索</td>
+    <td>7 候補すべて不一致。最良は「Σreceive.amount − 終端ゲージ」で <strong>21/34</strong></td>
+    <td><span class="tag none">不成立</span> §3-8 で「再現不能」としてクローズ</td></tr>
+<tr><td>F</td><td>死因の特定</td>
+    <td>敗北 17 ラウンド中 <strong>16 件</strong>で最終 lock 以降の tank を特定。
+        取れなかった 1 件は <code>reason: 'topout'</code></td>
+    <td><span class="tag new">合格</span> <code>garbagesmash</code> は 16/16</td></tr>
+<tr><td>G</td><td>ゲージの規模</td>
+    <td>最大 18 行 / 保留エントリ最大 6 件 / 全 2,810 設置地点のうちゲージ 8 超は 19 地点</td>
+    <td>― バー設計に反映（§3-5）</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>D の含意 ―― 要件定義 §3.6 の見立ては誤りだった</h4>
+
+<div class="warn">
+要件定義 §3.6 は「穴列 <code>x</code> がイベントに載っているため、ガベージ穴位置の表示（FR-42）は
+エンジン内部 RNG の完全一致に頼らなくても実現できる可能性が高い」としていた。
+<strong>実測ではこれは成り立たない。</strong> <code>ige.x</code> とエンジンが実際に開けた列の一致率は
+8.5% で、偶然一致（10%）と区別できない。
+<br><br>
+一方 P0 は League 全 16 ラウンドで <strong>最終盤面 400 セルの完全一致</strong>を確認している。
+ガベージ行は「9 セル埋まり＋穴 1 つ」なので、列が 1 つでも違えば必ず不一致になる。
+つまり <strong>エンジンの <code>tank.column</code> が実際の盤面と一致する側であり、
+<code>.ttrm</code> の <code>ige.x</code> は当てにならない</strong>（送信側の申告値で、
+受信側の messiness 再抽選で上書きされるものと解される）。
+<br><br>
+結論として FR-42 は「エンジン内部 RNG に頼らずに実現」ではなく、
+<strong>「エンジンの出した結果をそのまま読む」形でのみ実現できる</strong>。
+本設計はそちらに立っている（§3-2）。
+</div>
+
+<h4>E の含意 ―― R7 は閉じられない</h4>
+
+<p>
+不一致 13 件はいずれも TETR.IO 側の値が小さく、差は 1〜6 行。
+系統的な小さい欠損だが、実サンプル 2 本では原因を特定できなかった。
+<strong>「合わせる」ことを目標に据えると P3 が終わらない</strong>ため、§3-8 のとおり
+「TETR.IO の <code>received</code> は再現不能」と確定させ、
+エンジン基準の値を別ラベルで出す方針に切り替える。依頼者確認事項 Q4。
+</p>
+
+<h4>fixture への適用</h4>
+
+<p>
+Jest / Cypress の fixture（<code>src/lib/ttrm/__tests__/fixtures/league_loss.json</code>）に
+同じ計測を当てた結果、<strong>両プレイヤーとも終端ゲージ 0</strong>、最大ゲージ 8、
+保留エントリ最大 3 件だった。
+したがって §3-6 の条件付け（ゲージ 0 なら従来どおり）のもとでは
+<strong>既存の期待 fumen 2 件は変化しない</strong>。FR-54 の Cypress は、
+ゲージが立っている中盤の地点で新しい期待 fumen を 1 件追加して確認する。
+</p>
+
+<h3>実装結果（2026-08-09 実施・実装者 Claude Opus 5）</h3>
+
+<div class="ok">
+<strong>§2 の対象 10 項目すべてを実装した。</strong>
+設計どおり <code>replay_board.ts</code> は 1 行も触っておらず、
+P1 / P2 から続く期待 fumen 2 件（<code>LOCK1_FUMEN</code> / <code>TERMINAL_FUMEN</code>）は変化していない。
+</div>
+
+<h4>検証結果</h4>
+
+<div class="tw">
+<table>
+<thead><tr><th>検証</th><th>結果</th></tr></thead>
+<tbody>
+<tr><td><code>yarn lint</code></td><td>クリーン</td></tr>
+<tr><td><code>yarn test</code></td>
+    <td>89 suites / 1,283 通過・1 skip（既存）。新規 <code>garbage.test.ts</code> 25 件を含み、
+        <code>simulator</code> / <code>ir_to_page</code> / <code>timeline</code> /
+        <code>actions/replay</code> / <code>memento_view_settings</code> /
+        <code>replay_layout</code> の各テストも §6 のとおり追加更新した</td></tr>
+<tr><td><code>yarn webpack-prod</code></td><td>成功（既存の asset size 警告 2 件のみ）</td></tr>
+<tr><td><code>replay_spec.js</code></td><td>27 件全通過（既存 18 → 新規 9 追加）。0:38</td></tr>
+<tr><td>Cypress 全スイート</td>
+    <td>333 件 / 330 通過・0 失敗・3 pending（<code>url_behavior_spec</code> の既存 skip）。16:50。
+        <code>operations.js</code> と <code>persistViewSettings</code>（全体置換）に触れたため、
+        影響が横断的とみて全件回した</td></tr>
+<tr><td><strong>ゲージ恒等式（V-02 の B）</strong></td>
+    <td><strong>fixture の全 lock ＋ 終端で一致</strong>。
+        <code>gaugeAtFrame</code> はフレーム引きなので、V-02 の
+        「lock ハンドラ内での突き合わせ」より条件が厳しい（同一フレームで
+        <code>falling.lock</code> より後に発火する garbage イベントも含む）が、
+        それでも不一致 0 だった</td></tr>
+<tr><td><strong>期待 fumen の不変性</strong></td>
+    <td>新しい経路（<code>simulator → garbage → ir_to_page → encode</code>）で手番 1 を再生成した結果が
+        既存の <code>LOCK1_FUMEN</code> と<strong>完全一致</strong>。
+        条件付け（ゲージ 0 なら <code>rise</code> を渡さない）が効いている証拠として
+        Cypress にも 1 ケース追加した</td></tr>
+<tr><td>実機確認</td>
+    <td>375×812（モバイル）と 1280×800（PC）で、ゲージバー・予告行・直近イベント・
+        マーカー帯・死因バッジ・トグル OFF 時の P2 相当表示をスクリーンショットで確認済み</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>新しい期待 fumen（FR-54）</h4>
+
+<p>
+<code>frame 1800</code>（fixture の player-a：<code>frame 1697</code> に 5 行受信、
+<code>frame 1808</code> に列 5 で着弾）で切り出したもの。盤面と <code>#Q=</code> は P2 と同一で、
+せり上がり行と <code>flags.rise</code> だけが増える。
+</p>
+
+<pre><code>GAUGE_FUMEN = 'v115@vhAAgHpgQ4EeglBewhR4BtilBewhg0Q4AeBtywAtwh'
+            + 'I8AeI8AeG8AeG8AeD8WkYkAFLDmClcJSAVztSAVG88AYP88'
+            + 'A52TxCs3HgCpuHgCMdNFD'</code></pre>
+
+<h4>設計からの変更点</h4>
+
+<div class="tw">
+<table>
+<thead><tr><th>#</th><th>変更</th><th>理由</th></tr></thead>
+<tbody>
+<tr><td>1</td>
+    <td><strong><code>statsAt</code> に省略可能な <code>frame</code> 引数を追加</strong>し、
+        <code>gauge</code> / <code>tanked</code> だけはそこで引く</td>
+    <td><strong>Cypress が実際に検出した不整合。</strong> §4-2 のとおり
+        <code>statsAt(player, index)</code> のままだと、ゲージバーは
+        <code>cursor.frame</code>、統計行は <code>pointAt(index).frame</code>（最後の設置）を見るため、
+        同じ画面に違う ☢ の数字が並ぶ。
+        カーソルのフレームが唯一の真実（P2 §3-2）なので、ガベージの 2 値はそちらに揃えた。
+        pps / apm / placed は従来どおりポイント基準のまま</td></tr>
+<tr><td>2</td>
+    <td><code>ReplayGarbageView</code> と <code>garbageViewAt</code> を
+        <code>actions/replay.ts</code> ではなく <code>lib/ttrm/garbage.ts</code> に置いた
+        （セレクタ 3 本は設計どおり <code>actions/replay.ts</code>）</td>
+    <td><code>replay_gauge.tsx</code> がこの型を必要とするため。
+        コンポーネント → <code>actions/</code> の import を張らずに済み、純関数として Jest で直接叩ける</td></tr>
+<tr><td>3</td>
+    <td><code>GarbageParcel</code> に <code>size</code> を持たせない。
+        <code>GarbageEvent.size</code> も receive には載せない</td>
+    <td>エンジン 4.2.7 の <code>garbage.receive</code> の型は
+        <code>{ iid, amount, originalAmount }</code> だけで <code>size</code> が無い（実測・型定義とも）。
+        穴幅は <code>tank.size</code> から取る</td></tr>
+<tr><td>4</td>
+    <td><code>replay-rise-hole-opponent</code> を追加（§6 の表には <code>replay-rise-hole</code> のみ）</td>
+    <td>両側が予告行を描くため、同一 <code>datatest</code> だと
+        <code>cy.get</code> が 2 件返り「穴が 1 つだけ空いている」を検証できない</td></tr>
+<tr><td>5</td>
+    <td>せり上がり予告（FR-42）を <strong>ゲージ &gt; 0 の地点でだけ</strong>表示する</td>
+    <td><code>riseForecastAt</code> は設計どおり純粋に「f より後の tank」を返すが、
+        ゲージ 0 の地点でも将来の tank は存在する。そこで予告を出すと
+        「いま何も保留していないのに次のせり上がりを予告する」ことになる。
+        FR-54 の切り出し条件とも判定を揃えた</td></tr>
+<tr><td>6</td>
+    <td><code>playing-meta</code> 行を <code>flex-wrap</code> にし、トグルに <code>nowrap</code> を付けた</td>
+    <td><strong>実機確認で検出。</strong> トグルが 3 つになり 375px で 1 行に収まらず、
+        ラベルが盤面の上に溢れていた</td></tr>
+<tr><td>7</td>
+    <td>ゲージ幅の予約（<code>replay_layout.ts</code>）は
+        <strong>トグルの状態にかかわらず常に行う</strong></td>
+    <td>予約を条件付きにすると、トグルで盤面サイズが変わる。
+        「ゲージ 0 でも枠は残す（レイアウトを動かさない）」と同じ理由で不可</td></tr>
+<tr><td>8</td>
+    <td>バーの満尺は <code>resolvedOptions.garbagecap</code>（無ければ 8）を使う</td>
+    <td>§3-5 の <code>max(garbagecap, 最大ゲージ)</code> を実装するために、
+        cap をラウンドの解決済みオプションから読む <code>garbageCapOf</code> を足した</td></tr>
+<tr><td>9</td>
+    <td>統計行は <code>☢ ゲージ</code> と <code>☢↓ 被弾累計</code> の 2 つを出す</td>
+    <td>§3-8 の「必要なら被弾累計も」を採用した。FR-26 が求める受信量の代替として、
+        TETR.IO の <code>received</code> ではなくエンジン基準の値であることを ☢ で明示している</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>追加対応結果（2026-08-09・実装者 GPT-5）</h4>
+
+<div class="ok">
+<p>
+せり上がり予告行の段数表示を、説明ラベルではなく <code>+数値</code> のみへ変更した。
+表示はせり上がり対象を示す<strong>白い穴セルの先頭</strong>に重ねるため、数値の位置から対象列を判別できる。
+</p>
+<p>
+あわせて UTILS の <code>TETR.IO リプレイを開く</code> をメニュー最下段へ移動した。
+既存の <code>datatest</code> は維持しているため、操作ヘルパーへの変更は不要である。
+</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>対象</th><th>対応</th><th>検証</th></tr></thead>
+<tbody>
+<tr><td>せり上がり予告</td>
+    <td><code>replay_gauge.tsx</code> で <code>replay-rise-preview-label</code> を白い穴セル内へ描画</td>
+    <td><code>replay_spec.js</code> で <code>+4</code> と穴列の一致を確認</td></tr>
+<tr><td>UTILS</td>
+    <td><code>utils-replay</code> セクションを utilities 配列の末尾へ移動</td>
+    <td>ボタンの key / datatest / 遷移アクションは不変</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Q3（INPUT レイアウトでせり上がり行が隠れる件）</h4>
+
+<p>
+<code>src/views/editor/editor.ts</code> の <code>trayInBottom = !pageSliderVisible</code> により、
+<code>sentLineVisible</code> が false になるのは<strong>ページスライダが出ていないとき</strong>、
+すなわち 1 ページだけの fumen に限られる。切り出しは必ず既存ページの次に挿入するため
+遷移後は 2 ページ以上あり、スライダが出る ―― したがって
+<strong>通常の切り出し経路ではせり上がり行は隠れない</strong>。Q3 は懸念どおりの事象は起きない、
+として閉じてよい。</p>
+
+<h4>残っている依頼者確認事項</h4>
+
+<ul>
+  <li><strong>Q1</strong>（切り出しにゲージを載せるのを既定にするか）―― 推奨案どおり
+      <strong>既定で載せる</strong>実装にしてある。ゲージ 0 の地点では出力が 1 ビットも変わらないことを
+      Jest / Cypress の両方で固定済み。「盤面だけ欲しい」用途があるなら設定に逃がす。</li>
+  <li><strong>Q4</strong>（R7 を「再現不能」でクローズ）―― 推奨案どおり
+      <code>results.stats.garbage.received</code> は表示せず、FR-63 の突合にも足していない
+      （「判定項目が 3 つのまま」を Jest で固定）。</li>
+</ul>
+
+<h3>P4 以降への申し送り</h3>
+
+<ul>
+  <li>FR-44（送信元の対応付け）は <code>garbageEvents</code> の <code>gameid</code> /
+      <code>senderFrame</code> で即座に実装できる状態になる。FR-16（3 人以上）と同時にやるのが自然。</li>
+  <li>R7 は追加サンプルが手に入ったときに再訪する価値がある。
+      V-02 は候補定義を差し替えるだけで再実行できる作りにしてある。</li>
+  <li>FR-52（区間書き出し）でゲージを扱う場合、<strong>ページごとにせり上がり行が変わる</strong>ため、
+      <code>rise</code> フラグの連鎖（前ページの rise が次ページの盤面に効く）を
+      P3 の単一ページ生成とは別に設計し直す必要がある。P3 の <code>irPointToPage</code> は
+      単独ページ専用であることを前提にしている。</li>
+</ul>
+
+</main>
+</body>
+</html>

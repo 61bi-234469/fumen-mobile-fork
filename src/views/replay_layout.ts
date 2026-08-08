@@ -1,6 +1,11 @@
 import { FieldConstants, Platforms } from '../lib/enums';
 import { State } from '../states';
-import { MINO_SLOT_WIDTH } from '../components/replay/replay_side';
+import {
+    REPLAY_QUEUE_COLUMN_UNITS, REPLAY_QUEUE_GAP, replayQueueColumnWidth,
+} from '../components/replay/replay_side';
+import {
+    GAUGE_COLUMN_WIDTH_COMPACT, GAUGE_COLUMN_WIDTH_FULL,
+} from '../components/replay/replay_gauge';
 
 // Replay 再生画面のレイアウト（P2 §3-6）。
 // narrow: 相手を 0.55 倍で並置し、相手のキューは盤面上に横並び（モバイル）。
@@ -22,8 +27,15 @@ const WIDE_MAX_BLOCK_SIZE = 22;
 const OPPONENT_SCALE = 0.55;
 const MIN_OPPONENT_BLOCK_SIZE = 4;
 
-// HOLD 列 + gap + 盤面 + gap + NEXT 列。gap は replay_side の 10px
-const SIDE_QUEUE_COLUMNS = (MINO_SLOT_WIDTH + 10) * 2;
+// HOLD 列 + gap + 盤面 + gap + NEXT 列。列幅は盤面 3.4 マス基準なので、
+// 「盤面 10 マス + キュー 6.8 マス + gap 2 つ」を解いてブロックサイズを決める。
+const SIDE_QUEUE_GAPS = REPLAY_QUEUE_GAP * 2;
+const SIDE_QUEUE_UNITS = REPLAY_QUEUE_COLUMN_UNITS * 2;
+// P3 §7-2 の懸念 3: ゲージバーぶんの幅を予約しないと 375px で盤面が右へ溢れる。
+// 表示トグルの状態にかかわらず常に予約する ―― トグルで盤面の大きさが変わると
+// 「ゲージ 0 でも枠は残す」（レイアウトを動かさない）と矛盾するため。
+const GAUGE_COLUMN_FULL = GAUGE_COLUMN_WIDTH_FULL + 2;
+const GAUGE_COLUMN_COMPACT = GAUGE_COLUMN_WIDTH_COMPACT + 2;
 // playingPhase の左右 padding
 const CONTAINER_PADDING = 32;
 // wide で 2 面の間に置く間隔
@@ -39,6 +51,8 @@ export interface ReplayLayout {
     blockSize: number;
     // wide では blockSize と同値
     opponentBlockSize: number;
+    // HOLD / NEXT 列の幅。blockSize と一緒に決まる（replay_side が受け取る）
+    queueWidth: number;
     // 幅不足のフォールバックを適用したあとの最終判断
     showOpponent: boolean;
 }
@@ -46,16 +60,23 @@ export interface ReplayLayout {
 const blockSizeByHeight = (displayHeight: number): number =>
     Math.floor((displayHeight - VERTICAL_RESERVE) / FieldConstants.Height);
 
+const clampBlockSize = (maxBlockSize: number, displayHeight: number, byWidth: number): number =>
+    Math.max(MIN_BLOCK_SIZE, Math.min(
+        maxBlockSize, blockSizeByHeight(displayHeight), Math.floor(byWidth)));
+
 const narrowLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLayout => {
     const available = Math.min(state.display.width, REPLAY_NARROW_MAX_WIDTH)
-        - SIDE_QUEUE_COLUMNS - CONTAINER_PADDING;
+        - SIDE_QUEUE_GAPS - CONTAINER_PADDING
+        - GAUGE_COLUMN_FULL - (wantsOpponent ? GAUGE_COLUMN_COMPACT : 0);
     // 相手は自陣ブロックの OPPONENT_SCALE 倍。自陣 1 ブロックあたりの所要幅から逆算する。
     const widthPerBlock = wantsOpponent ? 1 + OPPONENT_SCALE : 1;
-    const blockSize = Math.max(MIN_BLOCK_SIZE, Math.min(
-        NARROW_MAX_BLOCK_SIZE,
-        blockSizeByHeight(state.display.height),
-        Math.floor(available / (FieldConstants.Width * widthPerBlock)),
-    ));
+    const boardUnits = FieldConstants.Width * widthPerBlock;
+    // 列幅は下限・上限で丸まるので、まず概算のブロックサイズから列幅を確定し、
+    // その実寸を引いた残りで盤面を決め直す。
+    const queueWidth = replayQueueColumnWidth(clampBlockSize(
+        NARROW_MAX_BLOCK_SIZE, state.display.height, available / (boardUnits + SIDE_QUEUE_UNITS)));
+    const blockSize = clampBlockSize(
+        NARROW_MAX_BLOCK_SIZE, state.display.height, (available - queueWidth * 2) / boardUnits);
     const opponentBlockSize = Math.floor(blockSize * OPPONENT_SCALE);
 
     if (wantsOpponent && opponentBlockSize < MIN_OPPONENT_BLOCK_SIZE) {
@@ -66,6 +87,7 @@ const narrowLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLay
     return {
         blockSize,
         opponentBlockSize,
+        queueWidth,
         mode: 'narrow',
         containerMaxWidth: REPLAY_NARROW_MAX_WIDTH,
         showOpponent: wantsOpponent,
@@ -75,15 +97,18 @@ const narrowLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLay
 const wideLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLayout => {
     const available = Math.min(state.display.width, REPLAY_WIDE_MAX_WIDTH) - CONTAINER_PADDING
         - (wantsOpponent ? WIDE_BOARD_GAP : 0);
-    const perSide = (wantsOpponent ? Math.floor(available / 2) : available) - SIDE_QUEUE_COLUMNS;
-    const blockSize = Math.max(MIN_BLOCK_SIZE, Math.min(
-        WIDE_MAX_BLOCK_SIZE,
-        blockSizeByHeight(state.display.height),
-        Math.floor(perSide / FieldConstants.Width),
-    ));
+    const perSide = (wantsOpponent ? Math.floor(available / 2) : available)
+        - SIDE_QUEUE_GAPS - GAUGE_COLUMN_FULL;
+    const queueWidth = replayQueueColumnWidth(clampBlockSize(
+        WIDE_MAX_BLOCK_SIZE, state.display.height,
+        perSide / (FieldConstants.Width + SIDE_QUEUE_UNITS)));
+    const blockSize = clampBlockSize(
+        WIDE_MAX_BLOCK_SIZE, state.display.height,
+        (perSide - queueWidth * 2) / FieldConstants.Width);
 
     return {
         blockSize,
+        queueWidth,
         mode: 'wide',
         containerMaxWidth: REPLAY_WIDE_MAX_WIDTH,
         // 2 盤面を対等に見せるのが wide の目的なので、相手も同じサイズ

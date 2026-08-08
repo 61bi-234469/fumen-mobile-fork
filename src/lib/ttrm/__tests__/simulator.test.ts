@@ -195,6 +195,61 @@ describe('simulator', () => {
         }
     });
 
+    // ---- P3 §3-3: ガベージイベントの識別子 ----
+
+    test('every garbage event carries the interaction id it belongs to', () => {
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(loser);
+
+        expect(result.garbageEvents.length).toBeGreaterThan(0);
+        for (const event of result.garbageEvents) {
+            expect(typeof event.iid).toEqual('number');
+            expect(Number.isFinite(event.iid)).toBeTruthy();
+        }
+    });
+
+    test('confirm events carry the sender and the sender-side frame (FR-45)', () => {
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const confirms = simulatePlayerRound(loser).garbageEvents
+            .filter(event => event.kind === 'confirm');
+
+        expect(confirms.length).toBeGreaterThan(0);
+        for (const event of confirms) {
+            expect(typeof event.gameid).toEqual('number');
+            expect(typeof event.senderFrame).toEqual('number');
+            expect(event.amount).toEqual(0);
+        }
+    });
+
+    test('tank events carry the column the hole actually opened in (FR-42)', () => {
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const tanks = simulatePlayerRound(loser).garbageEvents
+            .filter(event => event.kind === 'tank');
+
+        expect(tanks.length).toBeGreaterThan(0);
+        for (const event of tanks) {
+            expect(event.column).toBeGreaterThanOrEqual(0);
+            expect(event.column).toBeLessThan(FieldConstants.Width);
+        }
+    });
+
+    // §3-3 の NG ボックス: received を足すと再生できるラウンドが消える（V-02 で 13/34 が failed）
+    test('the self-check still weighs exactly three values (FR-63)', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const { verification } = simulatePlayerRound(winner);
+
+        expect(Object.keys(verification).sort())
+            .toEqual(['lines', 'matched', 'piecesplaced', 'sent']);
+        expect((verification as any).received).toBeUndefined();
+    });
+
+    // pendingHoles は「キューの件数」であって穴位置ではなかったので廃止した（§3-3）
+    test('locks no longer expose the misnamed pendingHoles counter', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+        expect((result.locks[0] as any).pendingHoles).toBeUndefined();
+    });
+
     test('locks carry hold/next and clear metadata', () => {
         const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const result = simulatePlayerRound(winner);

@@ -31,11 +31,11 @@ jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => ({
     },
 }));
 
-import { replayActions } from '../replay';
+import { getCurrentReplayQueue, replayActions } from '../replay';
 import { initialReplayState, State } from '../../states';
 import { FieldConstants, Piece } from '../../lib/enums';
 import { IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
-import { persistViewSettings } from '../view_settings';
+import { loadPersistedReplaySelfPlayer, persistViewSettings } from '../view_settings';
 
 const emptyField = (): IRField =>
     Array.from({ length: FieldConstants.PlayBlocks }).map(() => Piece.Empty);
@@ -50,6 +50,7 @@ const lockAt = (pieceIndex: number): LockPoint => ({
     x: 4,
     y: 0,
     hold: null,
+    current: Piece.O,
     next: [Piece.I],
     clear: { lines: 0, spin: 'none', b2b: 0, ren: 0, perfectClear: false },
     attack: 0,
@@ -72,6 +73,9 @@ const buildIR = (lockCount: number, roundStatus: 'ok' | 'failed' = 'ok'): Replay
             sourceHeight: 0,
             clippedRowCount: 0,
             garbageGauge: 0,
+            hold: null,
+            current: Piece.S,
+            next: [Piece.Z],
             reason: id === 'player-a-id' ? 'winner' : 'garbagesmash',
             alive: id === 'player-a-id',
         },
@@ -124,11 +128,23 @@ const playingState = (lockCount: number, cursor?: State['replay']['cursor']): St
 
 describe('replayActions', () => {
     describe('phase transitions', () => {
-        test('setReplayIR moves to select phase', () => {
+        test('setReplayIR moves to select phase with the left player selected', () => {
             const result = replayActions.setReplayIR({ ir: buildIR(3), fileName: 'a.ttrm' })(createState())!;
             expect(result.replay!.phase).toEqual('select');
             expect(result.replay!.fileName).toEqual('a.ttrm');
-            expect(result.replay!.selection.selfPlayerId).toBeNull();
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-a-id');
+        });
+
+        test('setReplayIR prefers the remembered player over the left one (FR-13)', () => {
+            (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('player-b');
+            const result = replayActions.setReplayIR({ ir: buildIR(3), fileName: 'a.ttrm' })(createState())!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
+        });
+
+        test('setReplayIR falls back to the left player when the remembered name is absent', () => {
+            (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('someone-else');
+            const result = replayActions.setReplayIR({ ir: buildIR(3), fileName: 'a.ttrm' })(createState())!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-a-id');
         });
 
         test('setReplayError moves to failed phase and keeps the file name', () => {
@@ -222,6 +238,30 @@ describe('replayActions', () => {
                 .toEqual({ lockIndex: 0, atTerminal: false });
             expect(replayActions.replayLastLock()(state)!.replay!.cursor)
                 .toEqual({ lockIndex: 4, atTerminal: true });
+        });
+    });
+
+    describe('getCurrentReplayQueue', () => {
+        test('reads the lock point queue while stepping', () => {
+            expect(getCurrentReplayQueue(playingState(3))).toEqual({
+                hold: null, current: Piece.O, next: [Piece.I],
+            });
+        });
+
+        test('reads the terminal queue at the end', () => {
+            const state = playingState(3, { lockIndex: 2, atTerminal: true });
+            expect(getCurrentReplayQueue(state)).toEqual({
+                hold: null, current: Piece.S, next: [Piece.Z],
+            });
+        });
+
+        test('is undefined outside the playing phase', () => {
+            const state = createState({
+                ir: buildIR(3),
+                phase: 'select',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+            });
+            expect(getCurrentReplayQueue(state)).toBeUndefined();
         });
     });
 

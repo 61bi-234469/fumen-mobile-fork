@@ -70,6 +70,9 @@ export interface LockPoint {
     x: number;
     y: number;
     hold: Piece | null;
+    // 設置直後に操作対象となっているミノ。falling.lock 時点で次のミノは
+    // すでに spawn されているため、next[] とは別に保持する。
+    current: Piece | null;
     next: Piece[];
     clear: LockClear;
     attack: number;
@@ -87,6 +90,9 @@ export interface TerminalPoint {
     sourceHeight: number;
     clippedRowCount: number;
     garbageGauge: number;
+    hold: Piece | null;
+    current: Piece | null;
+    next: Piece[];
     reason: string;
     alive: boolean;
 }

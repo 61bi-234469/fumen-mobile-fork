@@ -3,7 +3,7 @@ import { action, actions, main } from '../actions';
 import { Screens } from '../lib/enums';
 import { initialReplayState, State } from '../states';
 import { encode } from '../lib/fumen/fumen';
-import { irPointToPage } from '../lib/ttrm/ir_to_page';
+import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
 import { ReplayWorkerWrapper } from '../lib/ttrm/ReplayWorkerWrapper';
 import { MAX_TTRM_TEXT_LENGTH } from '../lib/ttrm/parser';
 import { PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
@@ -36,7 +36,9 @@ const decideInitialSelfPlayer = (ir: ReplayIR): string | null => {
             return matched.id;
         }
     }
-    return null;
+    // 記憶がない（または今回のリプレイに居ない）ときは左側のプレイヤーを既定にする。
+    // 未選択のままだとラウンド一覧の勝敗が出ず、再生も開始できないため。
+    return ir.meta.users[0].id;
 };
 
 export interface ReplayActions {
@@ -266,7 +268,7 @@ export const replayActions: Readonly<ReplayActions> = {
         if (field === undefined) {
             return undefined;
         }
-        const page = irPointToPage(field);
+        const page = irPointToPage(field, getCurrentReplayQueue(state));
         (async () => {
             try {
                 const encoded = await encode([page]);
@@ -311,6 +313,21 @@ export const getCurrentReplayField = (state: State) => {
         return player.terminal.field;
     }
     return player.locks[lockIndex]?.fieldAfter;
+};
+
+// 現在地点の HOLD / カレント / NEXT。Editor へ引き渡す quiz コメントと
+// 再生画面の表示の両方がここを参照する。
+export const getCurrentReplayQueue = (state: State): IRQueue | undefined => {
+    const player = getSelfPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    const { lockIndex, atTerminal } = state.replay.cursor;
+    const point = atTerminal ? player.terminal : player.locks[lockIndex];
+    if (point === undefined) {
+        return undefined;
+    }
+    return { hold: point.hold, current: point.current, next: point.next };
 };
 
 export const getCurrentReplayClippedRowCount = (state: State): number => {

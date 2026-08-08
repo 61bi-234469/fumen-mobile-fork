@@ -1,5 +1,5 @@
 import { Engine } from '@haelp/teto/engine';
-import { Piece } from '../enums';
+import { isMinoPiece, Piece } from '../enums';
 import { convertEngineBoard, EngineBoardState, minoToPiece } from './board_converter';
 import { buildEngineConfig } from './engine_config';
 import { TtrmError } from './parser';
@@ -15,6 +15,21 @@ import {
 } from './types';
 
 const NEXT_COUNT = 5;
+
+const readQueue = (engine: Engine, count: number): Piece[] =>
+    Array.prototype.slice.call(engine.queue, 0, count).map(minoToPiece);
+
+// falling.lock / 終端時点の「操作対象のミノ」。エンジンは lock 処理内で次のミノを
+// spawn するため、その時点の falling がそのまま次に置かれるミノになる
+// （hold を挟むと入れ替わるが、盤面状態としては falling が正しい）。
+const readFalling = (engine: Engine): Piece | null => {
+    const symbol = engine.falling !== undefined ? engine.falling.symbol : undefined;
+    if (symbol === undefined) {
+        return null;
+    }
+    const piece = minoToPiece(symbol);
+    return isMinoPiece(piece) ? piece : null;
+};
 
 const collectOpponents = (playerRound: TtrmPlayerRound): number[] => {
     const opponents: number[] = [];
@@ -89,7 +104,8 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             x: preLock ? preLock.x : 0,
             y: preLock ? preLock.y : 0,
             hold: engine.held !== null ? minoToPiece(engine.held) : null,
-            next: Array.prototype.slice.call(engine.queue, 0, NEXT_COUNT).map(minoToPiece),
+            current: readFalling(engine),
+            next: readQueue(engine, NEXT_COUNT),
             clear: {
                 lines: res.lines || 0,
                 spin: res.spin || 'none',
@@ -167,6 +183,9 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             sourceHeight: terminalBoard.sourceHeight,
             clippedRowCount: terminalBoard.clippedRowCount,
             garbageGauge: (engine.garbageQueue as any).size ?? 0,
+            hold: engine.held !== null ? minoToPiece(engine.held) : null,
+            current: readFalling(engine),
+            next: readQueue(engine, NEXT_COUNT),
             reason: playerRound.replay.results.gameoverreason,
             alive: playerRound.alive,
         },

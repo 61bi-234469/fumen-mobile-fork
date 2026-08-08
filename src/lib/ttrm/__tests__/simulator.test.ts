@@ -101,6 +101,39 @@ describe('simulator', () => {
         expect(ir.rounds[0].failure!.stage).toEqual('validate');
     });
 
+    test('current is the piece already spawned when the lock fires', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        // 各設置後の (hold, current, next) から、次に置かれるミノは
+        //   hold を挟まなければ current、挟めば hold（hold が空なら next[0] が繰り上がる）
+        // のどちらかになる。current が単なる next[0] だとこの関係は崩れる。
+        let holdUsed = 0;
+        for (let i = 0; i < result.locks.length - 1; i += 1) {
+            const { current, hold, next } = result.locks[i];
+            const placed = result.locks[i + 1].piece;
+            expect(current).not.toBeNull();
+            expect([current, hold !== null ? hold : next[0]]).toContain(placed);
+            if (placed !== current) {
+                holdUsed += 1;
+                // hold を使ったなら、直前の current が hold へ移る
+                expect(result.locks[i + 1].hold).toEqual(current);
+            }
+        }
+        expect(holdUsed).toBeGreaterThan(0);
+    });
+
+    test('terminal carries its own queue', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+        expect(result.terminal.current).not.toBeNull();
+        expect(result.terminal.next.length).toBeGreaterThan(0);
+        for (const piece of result.terminal.next) {
+            expect(piece).not.toEqual(Piece.Empty);
+            expect(piece).not.toEqual(Piece.Gray);
+        }
+    });
+
     test('locks carry hold/next and clear metadata', () => {
         const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const result = simulatePlayerRound(winner);

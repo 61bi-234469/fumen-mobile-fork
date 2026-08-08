@@ -3,12 +3,12 @@ import { Actions } from '../actions';
 import { State } from '../states';
 import { i18n } from '../locales/keys';
 import { FieldConstants, parsePieceName, Piece } from '../lib/enums';
-import { decidePieceColor } from '../lib/colors';
-import { HighlightType } from '../state_types';
+import { paletteMinoImageSrc } from '../lib/editor_interaction';
 import { px, style } from '../lib/types';
 import {
     getCurrentReplayClippedRowCount,
     getCurrentReplayField,
+    getCurrentReplayQueue,
     getSelectedRound,
     getSelfPlayerRound,
 } from '../actions/replay';
@@ -290,24 +290,48 @@ const selectPhase = (state: State, actions: Actions) => {
     );
 };
 
-const pieceChip = (piece: Piece | null, keyName: string, guideLineColor: boolean) => (
+// HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
+const MINO_SLOT_WIDTH = 34;
+
+const pieceSlot = (piece: Piece | null, keyName: string, guideLineColor: boolean) => (
     <div
         key={keyName}
+        datatest={keyName}
+        data-piece={piece !== null ? parsePieceName(piece) : 'none'}
         style={style({
             alignItems: 'center',
-            backgroundColor: piece !== null ? decidePieceColor(piece, HighlightType.Normal, guideLineColor) : '#eee',
-            borderRadius: px(3),
-            color: '#fff',
             display: 'flex',
-            fontSize: px(12),
-            fontWeight: 'bold',
-            height: px(22),
+            height: px(MINO_SLOT_WIDTH / 2),
             justifyContent: 'center',
-            textShadow: '0 0 2px rgba(0,0,0,.6)',
-            width: px(30),
+            width: px(MINO_SLOT_WIDTH),
         })}
     >
-        {piece !== null ? parsePieceName(piece)[0] : ''}
+        {piece !== null ? (
+            <img
+                key={`${keyName}-img`}
+                src={paletteMinoImageSrc(piece, guideLineColor)}
+                alt={parsePieceName(piece) ?? ''}
+                style={style({
+                    display: 'block',
+                    maxHeight: '100%',
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                })}
+            />
+        ) : undefined}
+    </div>
+);
+
+const queueColumn = (
+    keyName: string, label: string, pieces: (Piece | null)[], guideLineColor: boolean,
+) => (
+    <div key={keyName} style={style({ width: px(MINO_SLOT_WIDTH) })}>
+        <div key={`${keyName}-label`} style={style({ color: '#777', fontSize: px(10) })}>{label}</div>
+        {pieces.map((piece, index) => (
+            <div key={`${keyName}-slot-${index}`} style={style({ marginBottom: px(3) })}>
+                {pieceSlot(piece, `${keyName}-${index}`, guideLineColor)}
+            </div>
+        ))}
     </div>
 );
 
@@ -340,10 +364,18 @@ const playingPhase = (state: State, actions: Actions) => {
     const clipped = getCurrentReplayClippedRowCount(state);
     const lock = player.locks[lockIndex];
     const guideLineColor = state.fumen.guideLineColor;
+    const queue = getCurrentReplayQueue(state);
+    // 設置直後に操作対象となっているミノは NEXT 列の先頭に並べる。
+    // Editor へ引き渡す quiz でもこのミノがカレントになる。
+    const nextPieces: (Piece | null)[] = queue === undefined ? []
+        : [queue.current, ...queue.next].slice(0, 5);
 
-    const blockSize = Math.max(8, Math.min(
+    // 盤面は高さと、HOLD/NEXT 列を差し引いた幅の両方に収める。
+    const sideColumns = (MINO_SLOT_WIDTH + 10) * 2 + 32;
+    const blockSize = Math.max(6, Math.min(
         16,
-        Math.floor((state.display.height - 260) / FieldConstants.Height),
+        Math.floor((state.display.height - 250) / FieldConstants.Height),
+        Math.floor((Math.min(state.display.width, 480) - sideColumns) / FieldConstants.Width),
     ));
     const boardImage = renderReplayBoard(field, blockSize, guideLineColor);
 
@@ -365,25 +397,24 @@ const playingPhase = (state: State, actions: Actions) => {
                 key="board-row"
                 style={style({ alignItems: 'flex-start', display: 'flex', gap: px(10), justifyContent: 'center' })}
             >
-                <div key="hold-box">
-                    <div style={style({ color: '#777', fontSize: px(10) })}>{i18n.Replay.Playing.Hold()}</div>
-                    {pieceChip(atTerminal ? null : lock !== undefined ? lock.hold : null, 'hold-chip', guideLineColor)}
-                </div>
+                {queueColumn(
+                    'replay-hold', i18n.Replay.Playing.Hold(),
+                    [queue !== undefined ? queue.hold : null], guideLineColor,
+                )}
                 <img
                     key={`replay-board-${lockIndex}-${atTerminal ? 't' : 'l'}`}
                     datatest="replay-board"
                     src={boardImage}
                     alt="board"
-                    style={style({ border: '1px solid #90a4ae' })}
+                    style={style({
+                        border: '1px solid #90a4ae',
+                        display: 'block',
+                        // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
+                        height: px(blockSize * FieldConstants.Height),
+                        width: px(blockSize * FieldConstants.Width),
+                    })}
                 />
-                <div key="next-box">
-                    <div style={style({ color: '#777', fontSize: px(10) })}>{i18n.Replay.Playing.Next()}</div>
-                    {(atTerminal || lock === undefined ? [] : lock.next).map((piece, index) => (
-                        <div key={`next-${index}`} style={style({ marginBottom: px(2) })}>
-                            {pieceChip(piece, `next-chip-${index}`, guideLineColor)}
-                        </div>
-                    ))}
-                </div>
+                {queueColumn('replay-next', i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
             </div>
 
             {clipped > 0 ? (

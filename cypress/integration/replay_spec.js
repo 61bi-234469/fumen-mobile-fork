@@ -5,11 +5,15 @@ import { operations } from '../support/operations';
 // 期待 fumen は同じ fixture に対する Jest（simulator + ir_to_page + encode）の
 // 決定論的な出力から取得している。値を変える前に .agents/skills/e2e/SKILL.md の
 // fumen 分類手順を踏むこと。
+// 盤面に続く quiz コメント（#Q=[hold](current)next...）は Editor へ引き継ぐ
+// HOLD / カレント / NEXT を表す。
 const FIXTURE = 'src/lib/ttrm/__tests__/fixtures/league_loss.json';
 const PLAYER_A_LOCKS = 78;
 const TERMINAL_FUMEN = 'v115@EeAtBeAtxhilBtAeBtwhQ4AeAtywglQ4g0whg0Q4Ae?'
     + 'BtywAtwhI8AeI8AeG8AeG8AeI8AeI8AeI8AeI8AeL8AeI8A?'
-    + 'eI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8JeAgH';
+    + 'eI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8JeAgWaAF?'
+    + 'LDmClcJSAVDVSAVG88A4W88AZyTxCK+AAA';
+const LOCK1_FUMEN = 'v115@RhRpHeRpReAgWZAFLDmClcJSAVDEHBEooRBJoAVBsu?LuCqAAAA';
 
 const importLeagueLoss = () => {
     operations.replay.importFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
@@ -18,6 +22,8 @@ const importLeagueLoss = () => {
 
 describe('TETR.IO Replay', () => {
     it('imports a .ttrm and shows the round summary from the selected side', () => {
+        // 自陣の記憶（FR-13）が残っていると既定選択が変わるため、明示的に消す
+        cy.clearLocalStorage();
         visit({ mode: 'edit' });
 
         // 1. Utils メニューから起動してファイルを投入
@@ -26,6 +32,10 @@ describe('TETR.IO Replay', () => {
 
         cy.get(datatest('replay-self-player-player-a-id')).should('contain', 'player-a');
         cy.get(datatest('replay-self-player-player-b-id')).should('contain', 'player-b');
+
+        // 記憶がなければ左側のプレイヤー（このfixtureでは player-b）が既定で選ばれ、
+        // そのラウンドの勝敗がすぐ読める
+        cy.get(datatest('replay-round-0')).should('contain', 'Win');
 
         // 2. 勝敗表示は自陣基準で反転する
         operations.replay.selectSelfPlayer('player-a-id');
@@ -96,8 +106,8 @@ describe('TETR.IO Replay', () => {
         operations.replay.openInEditor();
         cy.get(datatest('btn-replay-discard-ok')).click();
         cy.get(datatest('replay-screen')).should('not.exist');
-        // player-a の手番1（fieldAfter）を素の状態で開き直せている
-        expectFumen('v115@RhRpHeRpReAgH');
+        // player-a の手番1（fieldAfter）を HOLD/カレント/NEXT ごと開き直せている
+        expectFumen(LOCK1_FUMEN);
     });
 
     it('shows an explicit error for a broken file instead of guessing (FR-60)', () => {

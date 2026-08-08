@@ -5,7 +5,7 @@ import {
     REPLAY_WIDE_MAX_WIDTH,
     REPLAY_WIDE_MIN_DISPLAY_WIDTH,
 } from '../replay_layout';
-import { MINO_SLOT_WIDTH } from '../../components/replay/replay_side';
+import { REPLAY_QUEUE_GAP } from '../../components/replay/replay_side';
 import {
     GAUGE_COLUMN_WIDTH_COMPACT, GAUGE_COLUMN_WIDTH_FULL,
 } from '../../components/replay/replay_gauge';
@@ -38,12 +38,14 @@ describe('getReplayLayout', () => {
         });
 
         test('keeps the values the mobile layout shipped with', () => {
-            // 375x667 は Cypress の既定ビューポート。ここが動いたらモバイル表示の退行
+            // 375x667 は Cypress の既定ビューポート。ここが動いたらモバイル表示の退行。
+            // HOLD / NEXT を盤面 3.4 マス基準に広げたぶん、盤面は 14px から 1px 縮む。
             const layout = getReplayLayout(
                 createState({ platform: Platforms.Mobile, width: 375, height: 667 }), true);
 
-            expect(layout.blockSize).toEqual(14);
+            expect(layout.blockSize).toEqual(13);
             expect(layout.opponentBlockSize).toEqual(7);
+            expect(layout.queueWidth).toEqual(44);
         });
 
         test('the self board grows when the opponent is hidden', () => {
@@ -60,7 +62,7 @@ describe('getReplayLayout', () => {
                 createState({ width, platform: Platforms.Mobile, height: 900 }), true);
 
             const used = (layout.blockSize + layout.opponentBlockSize) * FieldConstants.Width
-                + (MINO_SLOT_WIDTH + 10) * 2
+                + (layout.queueWidth + REPLAY_QUEUE_GAP) * 2
                 + CONTAINER_PADDING
                 + (GAUGE_COLUMN_WIDTH_FULL + 2) + (GAUGE_COLUMN_WIDTH_COMPACT + 2);
 

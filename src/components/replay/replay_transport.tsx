@@ -99,10 +99,7 @@ export const replayTransport = (
                     margin: '6px 0',
                 })}
             >
-                <span key="stat-pps">{stats.pps.toFixed(1)} pps</span>
-                <span key="stat-apm">{Math.round(stats.apm)} apm</span>
-                <span key="stat-b2b">B2B {stats.b2b}</span>
-                <span key="stat-ren">REN {stats.ren}</span>
+                {/* pps / apm / B2B / REN は盤面の左（HOLD 列）へ移した */}
                 <span key="stat-attack">↑ {stats.attack}</span>
                 {/* ☢ は TETR.IO の集計ではなくエンジン基準であることを示す印（§3-8） */}
                 {garbagePlayer !== undefined ? (

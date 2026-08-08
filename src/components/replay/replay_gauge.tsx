@@ -127,7 +127,11 @@ export const replayRisePreview = (
     const isSelf = variant === 'self';
     const previewKey = isSelf ? 'replay-rise-preview' : 'replay-rise-preview-opponent';
     const holeKey = isSelf ? 'replay-rise-hole' : 'replay-rise-hole-opponent';
-    const cellHeight = size === 'full' ? 9 : 6;
+    // 段数はバーの中に重ねて書く。行の高さは文字が収まる分だけ確保する。
+    const fontSize = size === 'full' ? 10 : 8;
+    const cellHeight = size === 'full' ? 14 : 10;
+    // 白い穴セルがせり上がり対象なので、その先頭セルに段数を表示する。
+    const labelColumn = rise.column;
 
     // 幅は盤面画像と同じ規則で決まるよう flex で等分する。個別に px を振ると
     // 盤面側の枠線ぶんとずれる。
@@ -140,12 +144,29 @@ export const replayRisePreview = (
                 datatest={isHole ? holeKey : undefined}
                 data-column={isHole ? String(x) : undefined}
                 style={style({
+                    alignItems: 'center',
                     backgroundColor: isHole ? RISE_HOLE_COLOR : RISE_FILL_COLOR,
                     borderRight: x < FieldConstants.Width - 1 ? '1px solid #90a4ae' : 'none',
+                    color: '#37474f',
+                    display: 'flex',
                     flex: '1 1 0',
+                    fontSize: px(fontSize),
                     height: px(cellHeight),
+                    justifyContent: 'center',
+                    lineHeight: px(cellHeight),
+                    whiteSpace: 'nowrap',
                 })}
-            />,
+            >
+                {x === labelColumn ? (
+                    <span
+                        key={`${previewKey}-label`}
+                        datatest={`${previewKey}-label`}
+                        data-column={String(labelColumn)}
+                    >
+                        {`+${garbage.moreRows}`}
+                    </span>
+                ) : undefined}
+            </div>,
         );
     }
 
@@ -171,19 +192,6 @@ export const replayRisePreview = (
                 })}
             >
                 {cells}
-            </div>
-            <div
-                key={`${previewKey}-label`}
-                style={style({
-                    color: '#777',
-                    fontSize: px(size === 'full' ? 10 : 9),
-                    lineHeight: px(13),
-                    whiteSpace: 'nowrap',
-                })}
-            >
-                {/* 予告は「当時見えていた情報」ではなく実測の後知恵なので、その旨を明示する（§3-2） */}
-                {i18n.Replay.Playing.RiseForecast()}
-                {0 < garbage.moreRows ? ` +${garbage.moreRows}` : ''}
             </div>
         </div>
     );

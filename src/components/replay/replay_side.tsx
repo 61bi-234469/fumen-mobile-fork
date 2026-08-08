@@ -1,15 +1,26 @@
-import { h } from 'hyperapp';
+import { h, VNode } from 'hyperapp';
 import { FieldConstants, parsePieceName, Piece } from '../../lib/enums';
 import { paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { renderReplayBoard } from './replay_board';
 import { gaugeColumnWidth, replayGauge, replayRisePreview } from './replay_gauge';
-import { ReplayPoint } from '../../lib/ttrm/timeline';
+import { ReplayPoint, ReplayStats } from '../../lib/ttrm/timeline';
 import { ReplayGarbageView } from '../../lib/ttrm/garbage';
 
 // HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
-export const MINO_SLOT_WIDTH = 34;
+// 列幅は Editor の INPUT レイアウトと同じ「盤面 3.4 マス」基準（responsive_layout.ts の
+// PIECE_QUEUE_COLUMN_UNITS）で決める。固定 34px だと盤面に対して小さすぎた。
+export const REPLAY_QUEUE_COLUMN_UNITS = 3.4;
+export const MIN_REPLAY_QUEUE_WIDTH = 34;
+export const MAX_REPLAY_QUEUE_WIDTH = 96;
+// 盤面と HOLD / NEXT 列の間隔
+export const REPLAY_QUEUE_GAP = 10;
+
+export const replayQueueColumnWidth = (blockSize: number): number => Math.min(
+    MAX_REPLAY_QUEUE_WIDTH,
+    Math.max(MIN_REPLAY_QUEUE_WIDTH, Math.round(blockSize * REPLAY_QUEUE_COLUMN_UNITS)),
+);
 
 // variant は「どちらのプレイヤーか」（datatest 接頭辞と FR-31 の制限）、
 // size は「どう描くか」（P2 §4-1）。
@@ -54,16 +65,48 @@ const pieceSlot = (
 
 const queueColumn = (
     keyName: string, label: string, pieces: (Piece | null)[], guideLineColor: boolean,
+    slotWidth: number, footer?: (VNode<{}> | undefined)[],
 ) => (
-    <div key={keyName} style={style({ width: px(MINO_SLOT_WIDTH) })}>
+    <div
+        key={keyName}
+        style={style({
+            display: 'flex', flexDirection: 'column', textAlign: 'left', width: px(slotWidth),
+        })}
+    >
         <div key={`${keyName}-label`} style={style({ color: '#777', fontSize: px(10) })}>{label}</div>
         {pieces.map((piece, index) => (
             <div key={`${keyName}-slot-${index}`} style={style({ marginBottom: px(3) })}>
-                {pieceSlot(piece, `${keyName}-${index}`, guideLineColor, MINO_SLOT_WIDTH)}
+                {pieceSlot(piece, `${keyName}-${index}`, guideLineColor, slotWidth)}
             </div>
         ))}
+        {footer}
     </div>
 );
+
+// HOLD 列に添える行。B2B / REN / ライン消去と pps / apm を同じ幅で縦に積む。
+const infoLine = (keyName: string, text: string, color: string, fontSize: number) => (
+    <div
+        key={keyName}
+        style={style({
+            color, fontSize: px(fontSize), lineHeight: px(fontSize + 4), whiteSpace: 'nowrap',
+        })}
+    >
+        {text}
+    </div>
+);
+
+const clearLines = (
+    keyPrefix: string, stats: ReplayStats, clearText: string | undefined, font: number,
+) => [
+    infoLine(`${keyPrefix}-b2b`, `B2B ${stats.b2b}`, 0 < stats.b2b ? '#00796b' : '#9e9e9e', font),
+    infoLine(`${keyPrefix}-ren`, `REN ${stats.ren}`, 0 < stats.ren ? '#00796b' : '#9e9e9e', font),
+    infoLine(`${keyPrefix}-clear`, clearText !== undefined ? clearText : '', '#e65100', font),
+];
+
+const statsLines = (keyPrefix: string, stats: ReplayStats, font: number) => [
+    infoLine(`${keyPrefix}-pps`, `${stats.pps.toFixed(1)} pps`, '#555', font),
+    infoLine(`${keyPrefix}-apm`, `${Math.round(stats.apm)} apm`, '#555', font),
+];
 
 // 相手側の HOLD / NEXT。盤面幅に収めるため 1 行に並べる。
 const queueRow = (
@@ -90,6 +133,12 @@ interface ReplaySideProps {
     heading?: string;
     // P3。ガベージ表示がオフのときは undefined（枠ごと出さない）
     garbage?: ReplayGarbageView;
+    // HOLD / NEXT の列幅（盤面 3.4 マス基準）。レイアウトが盤面と一緒に決める
+    queueWidth: number;
+    // HOLD の下に出す B2B / REN / pps / apm。自陣と相手で同じ並びにする
+    stats: ReplayStats;
+    // 直近の設置で消えたライン（Quad / TSD など）。消していないときは undefined
+    clearText?: string;
 }
 
 // 1 プレイヤーぶんの「盤面＋HOLD/NEXT＋手番ラベル」。
@@ -97,6 +146,7 @@ interface ReplaySideProps {
 export const replaySide = (
     {
         variant, size, point, blockSize, guideLineColor, label, counterText, heading, garbage,
+        queueWidth, stats, clearText,
     }: ReplaySideProps,
 ) => {
     const isSelf = variant === 'self';
@@ -181,7 +231,29 @@ export const replaySide = (
         ) : undefined,
     ] : undefined;
 
+    // ライン消去と pps / apm は盤面の左（HOLD 列）に置く。HOLD の直下がライン消去、
+    // 列の一番下が pps / apm。Editor の INPUT レイアウトと同じ並びにする。
+    const infoKey = isSelf ? 'replay-info' : 'replay-opponent-info';
+    const statsKey = isSelf ? 'replay-side-stats' : 'replay-opponent-side-stats';
+
     if (size === 'full') {
+        const holdFooter = [
+            <div
+                key={`${infoKey}-clear`}
+                datatest={infoKey}
+                style={style({ marginTop: px(2) })}
+            >
+                {clearLines(infoKey, stats, clearText, 11)}
+            </div>,
+            <div
+                key={`${statsKey}-block`}
+                datatest={statsKey}
+                style={style({ marginTop: 'auto', paddingBottom: px(2) })}
+            >
+                {statsLines(statsKey, stats, 12)}
+            </div>,
+        ];
+
         return (
             <div
                 key={`replay-side-${variant}`}
@@ -194,12 +266,15 @@ export const replaySide = (
                 <div
                     key={`replay-side-${variant}-body`}
                     style={style({
-                        alignItems: 'flex-start', display: 'flex', gap: px(10), justifyContent: 'center',
+                        alignItems: 'stretch', display: 'flex', gap: px(REPLAY_QUEUE_GAP),
+                        justifyContent: 'center',
                     })}
                 >
-                    {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [point.hold], guideLineColor)}
+                    {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [point.hold], guideLineColor,
+                                 queueWidth, holdFooter)}
                     {boardBlock}
-                    {queueColumn(nextKey, i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
+                    {queueColumn(nextKey, i18n.Replay.Playing.Next(), nextPieces, guideLineColor,
+                                 queueWidth)}
                 </div>
                 {opponentFooter}
             </div>
@@ -225,6 +300,25 @@ export const replaySide = (
                 {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
             {boardBlock}
+            {/* compact には縦列が無いので、同じ内容を盤面の下に 1 行で置く */}
+            <div
+                key={`${infoKey}-row`}
+                datatest={infoKey}
+                style={style({
+                    display: 'flex', flexWrap: 'wrap', gap: px(6), justifyContent: 'flex-start',
+                })}
+            >
+                {clearLines(infoKey, stats, clearText, 10)}
+            </div>
+            <div
+                key={`${statsKey}-row`}
+                datatest={statsKey}
+                style={style({
+                    display: 'flex', flexWrap: 'wrap', gap: px(6), justifyContent: 'flex-start',
+                })}
+            >
+                {statsLines(statsKey, stats, 10)}
+            </div>
             {opponentFooter}
         </div>
     );

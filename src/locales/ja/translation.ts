@@ -310,7 +310,8 @@ export const resources = {
             HideGarbage: 'ガベージを隠す',
             Gauge: 'ゲージ',
             // 予告は当時見えていた情報ではなく、実際にせり上がった行の後知恵である
-            RiseForecast: '次のせり上がり（実測）',
+            RiseRow: 'せり上がり段',
+            RiseRowMore: 'せり上がり段(+{{more}})',
             GarbageTank: '↓{{rows}} 被弾',
             GarbageCancel: '✕{{rows}} 相殺',
             GarbageReceive: '☢{{rows}} 受信',

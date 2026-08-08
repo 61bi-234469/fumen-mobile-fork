@@ -437,6 +437,9 @@ describe('TETR.IO Replay', () => {
 
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.risePreview().should('exist');
+        cy.get(datatest('replay-rise-preview-label'))
+            .should('have.text', '+4')
+            .and('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
         // 穴は 1 列だけ空き、それが実際に開いた列である
         operations.replay.riseHole().should('have.length', 1);
         operations.replay.riseHole().should('have.attr', 'data-column', GAUGE_HOLE_COLUMN);

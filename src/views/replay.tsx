@@ -11,6 +11,7 @@ import {
     getReplayKiller,
     getReplayOpponentGarbage,
     getReplayOpponentPoint,
+    getReplayOpponentStats,
     getReplaySelfGarbage,
     getReplaySelfPoint,
     getReplayStats,
@@ -334,8 +335,12 @@ const playingPhase = (state: State, actions: Actions) => {
     const selfPoint = getReplaySelfPoint(state)!;
     const opponentPoint = getReplayOpponentPoint(state);
     const stats = getReplayStats(state)!;
+    const opponentStats = getReplayOpponentStats(state);
     const clipped = getCurrentReplayClippedRowCount(state);
     const lock = selfPoint.kind === 'lock' ? player.locks[selfPoint.index - 1] : undefined;
+    const opponentLock = opponent !== undefined && opponentPoint !== undefined
+        && opponentPoint.kind === 'lock'
+        ? opponent.locks[opponentPoint.index - 1] : undefined;
     const guideLineColor = state.fumen.guideLineColor;
 
     // ガベージ表示（NFR-08）。オフにするとゲージ・予告・マーカー・死因がすべて消え、
@@ -458,6 +463,7 @@ const playingPhase = (state: State, actions: Actions) => {
             >
                 {replaySide({
                     guideLineColor,
+                    stats,
                     variant: 'self',
                     size: 'full',
                     point: selfPoint,
@@ -467,8 +473,11 @@ const playingPhase = (state: State, actions: Actions) => {
                     // PC は 2 盤面が対等なので、どちらの側かはプレイヤー名で示す（§3-6-2）
                     heading: isWide ? displayName(ir, player.id) : undefined,
                     garbage: selfGarbage,
+                    queueWidth: layout.queueWidth,
+                    clearText: lock !== undefined && clearLabel(lock) !== ''
+                        ? clearLabel(lock) : undefined,
                 })}
-                {showOpponent && opponentPoint !== undefined ? replaySide({
+                {showOpponent && opponentPoint !== undefined && opponentStats !== undefined ? replaySide({
                     guideLineColor,
                     variant: 'opponent',
                     size: isWide ? 'full' : 'compact',
@@ -478,6 +487,10 @@ const playingPhase = (state: State, actions: Actions) => {
                     counterText: pointCounterText(opponent!, opponentPoint),
                     heading: isWide ? displayName(ir, opponent!.id) : undefined,
                     garbage: opponentGarbage,
+                    queueWidth: layout.queueWidth,
+                    stats: opponentStats,
+                    clearText: opponentLock !== undefined && clearLabel(opponentLock) !== ''
+                        ? clearLabel(opponentLock) : undefined,
                 }) : undefined}
             </div>
 
@@ -506,10 +519,10 @@ const playingPhase = (state: State, actions: Actions) => {
                 <span key="replay-lock-counter" datatest="replay-lock-counter">
                     {i18n.Replay.Playing.LockLabel()} {pointCounterText(player, selfPoint)}
                 </span>
+                {/* ライン消去の内訳は HOLD の下へ移した。ここは手番と時刻だけ残す */}
                 {lock !== undefined ? (
                     <span key="lock-details" style={style({ color: '#777', marginLeft: px(8) })}>
                         {framesToSeconds(lock.frame)}s
-                        {clearLabel(lock) !== '' ? ` / ${clearLabel(lock)}` : ''}
                     </span>
                 ) : undefined}
                 {selfGarbage !== undefined && selfGarbage.recent !== undefined ? (

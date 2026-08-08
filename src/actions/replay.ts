@@ -626,6 +626,15 @@ export const getReplayStats = (state: State): ReplayStats | undefined => {
     return statsAt(player, state.replay.cursor.selfIndex, state.replay.cursor.frame);
 };
 
+// 相手側の統計。自陣と同じ並びで盤面の左に出す（自陣は selfIndex、相手は opponentIndex）。
+export const getReplayOpponentStats = (state: State): ReplayStats | undefined => {
+    const player = getOpponentPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return statsAt(player, state.replay.cursor.opponentIndex, state.replay.cursor.frame);
+};
+
 // ---- P3: ガベージ（FR-40〜45 / 54） ----
 
 export const getReplaySelfGarbage = (state: State): ReplayGarbageView | undefined => {

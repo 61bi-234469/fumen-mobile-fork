@@ -74,4 +74,76 @@ describe('parseTtrm', () => {
             expect((e as TtrmError).stage).toEqual('size');
         }
     });
+
+    // P1 レビュー対応: frame が数値でない/負/非整数だと simulator の tick ループが
+    // 終了条件を満たせず Worker が無限ループするため、parser で必ず弾く。
+    describe('rejects malformed events / frames with stage structure', () => {
+        test('non-numeric event frame', () => {
+            const copy = JSON.parse(JSON.stringify(leagueWin));
+            copy.replay.rounds[0][0].replay.events[0].frame = 'not-a-number';
+            try {
+                parseTtrm(JSON.stringify(copy));
+                fail('should throw');
+            } catch (e) {
+                expect((e as TtrmError).stage).toEqual('structure');
+            }
+        });
+
+        test('negative event frame', () => {
+            const copy = JSON.parse(JSON.stringify(leagueWin));
+            copy.replay.rounds[0][0].replay.events[0].frame = -1;
+            try {
+                parseTtrm(JSON.stringify(copy));
+                fail('should throw');
+            } catch (e) {
+                expect((e as TtrmError).stage).toEqual('structure');
+            }
+        });
+
+        test('non-integer event frame', () => {
+            const copy = JSON.parse(JSON.stringify(leagueWin));
+            copy.replay.rounds[0][0].replay.events[0].frame = 1.5;
+            try {
+                parseTtrm(JSON.stringify(copy));
+                fail('should throw');
+            } catch (e) {
+                expect((e as TtrmError).stage).toEqual('structure');
+            }
+        });
+
+        test('event without a type', () => {
+            const copy = JSON.parse(JSON.stringify(leagueWin));
+            delete copy.replay.rounds[0][0].replay.events[0].type;
+            try {
+                parseTtrm(JSON.stringify(copy));
+                fail('should throw');
+            } catch (e) {
+                expect((e as TtrmError).stage).toEqual('structure');
+            }
+        });
+
+        test('non-object event', () => {
+            const copy = JSON.parse(JSON.stringify(leagueWin));
+            copy.replay.rounds[0][0].replay.events[0] = 'not-an-event';
+            try {
+                parseTtrm(JSON.stringify(copy));
+                fail('should throw');
+            } catch (e) {
+                expect((e as TtrmError).stage).toEqual('structure');
+            }
+        });
+
+        test('invalid replay.frames (non-integer / negative)', () => {
+            for (const bad of [1.5, -1]) {
+                const copy = JSON.parse(JSON.stringify(leagueWin));
+                copy.replay.rounds[0][0].replay.frames = bad;
+                try {
+                    parseTtrm(JSON.stringify(copy));
+                    fail('should throw');
+                } catch (e) {
+                    expect((e as TtrmError).stage).toEqual('structure');
+                }
+            }
+        });
+    });
 });

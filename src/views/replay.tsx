@@ -457,9 +457,11 @@ const playingPhase = (state: State, actions: Actions) => {
                 })}
             >
                 {transportButton('btn-replay-first', 'first_page',
-                                 lockIndex === 0 && !atTerminal, actions.replayFirstLock)}
+                                 (lockIndex === 0 && !atTerminal) || player.locks.length === 0,
+                                 actions.replayFirstLock)}
                 {transportButton('btn-replay-prev-lock', 'chevron_left',
-                                 lockIndex === 0 && !atTerminal, () => actions.stepReplayLock({ step: -1 }))}
+                                 (lockIndex === 0 && !atTerminal) || player.locks.length === 0,
+                                 () => actions.stepReplayLock({ step: -1 }))}
                 {transportButton('btn-replay-next-lock', 'chevron_right',
                                  atTerminal, () => actions.stepReplayLock({ step: 1 }))}
                 {transportButton('btn-replay-last', 'last_page',

@@ -165,6 +165,9 @@ export interface ReplayState {
     fileName?: string;
     // 解析結果。サイズが大きいため immutable 更新の対象にせず、差し替えは取り込み時のみ。
     ir?: ReplayIR;
+    // インポート試行ごとに一意な ID。File.text() / Worker 応答が古い試行のものであれば
+    // 状態を更新しないための照合に使う（複数ファイル連続選択・リセットの競合対策）。
+    requestId: number;
     selection: {
         roundIndex: number;
         selfPlayerId: string | null;
@@ -180,6 +183,7 @@ export const initialReplayState: ReplayState = {
     phase: 'empty',
     fileName: undefined,
     ir: undefined,
+    requestId: 0,
     selection: {
         roundIndex: 0,
         selfPlayerId: null,

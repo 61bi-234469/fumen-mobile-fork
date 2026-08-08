@@ -10,6 +10,10 @@ import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_setti
 
 const worker = new ReplayWorkerWrapper();
 
+// インポート試行ごとに単調増加する ID。state.replay.requestId が reset で戻っても
+// 衝突しないよう、state とは独立したカウンタで発行する（P1: 複数ファイル連続選択対策）。
+let nextReplayRequestId = 1;
+
 export const getSelectedRound = (state: State): RoundIR | undefined => {
     return state.replay.ir?.rounds[state.replay.selection.roundIndex];
 };
@@ -43,8 +47,9 @@ const decideInitialSelfPlayer = (ir: ReplayIR): string | null => {
 export interface ReplayActions {
     openReplayScreen: () => action;
     importTtrmFile: (data: { file: File }) => action;
-    setReplayIR: (data: { ir: ReplayIR, fileName: string }) => action;
-    setReplayError: (data: { stage: string, message: string }) => action;
+    beginTtrmParse: (data: { requestId: number, text: string, fileName: string }) => action;
+    setReplayIR: (data: { ir: ReplayIR, fileName: string, requestId: number }) => action;
+    setReplayError: (data: { stage: string, message: string, requestId: number }) => action;
     selectReplayRound: (data: { roundIndex: number }) => action;
     selectReplaySelfPlayer: (data: { playerId: string }) => action;
     startReplayPlayback: () => action;
@@ -60,11 +65,18 @@ export const replayActions: Readonly<ReplayActions> = {
     openReplayScreen: () => (state): NextState => {
         return actions.changeScreen({ screen: Screens.Replay })(state);
     },
+    // P1 レビュー対応: 複数ファイルを連続選択した場合や resetReplayImport 後に、
+    // 先に選択したファイルの File.text() / Worker 応答が後から届いても
+    // 状態を上書きしないよう、試行ごとの requestId で最新性を照合する。
     importTtrmFile: ({ file }) => (state): NextState => {
+        const requestId = nextReplayRequestId;
+        nextReplayRequestId += 1;
+
         if (file.size > MAX_TTRM_TEXT_LENGTH) {
             return {
                 replay: {
                     ...initialReplayState,
+                    requestId,
                     phase: 'failed',
                     fileName: file.name,
                     error: {
@@ -81,35 +93,50 @@ export const replayActions: Readonly<ReplayActions> = {
                 text = await file.text();
             } catch (e) {
                 main.setReplayError({
+                    requestId,
                     stage: 'read',
                     message: e instanceof Error ? e.message : String(e),
                 });
                 return;
             }
-            worker.start(text, (msg) => {
-                worker.terminate();
-                if (msg.type === 'ir') {
-                    main.setReplayIR({ ir: msg.ir, fileName: file.name });
-                } else {
-                    main.setReplayError({ stage: msg.stage, message: msg.message });
-                }
-            });
+            main.beginTtrmParse({ requestId, text, fileName: file.name });
         })();
 
         return {
             replay: {
                 ...initialReplayState,
+                requestId,
                 phase: 'parsing',
                 fileName: file.name,
             },
         };
     },
-    setReplayIR: ({ ir, fileName }) => (state): NextState => {
+    // file.text() 完了時点で、この試行がまだ最新（他のインポートやリセットに
+    // 上書きされていない）ことを確認してから Worker を起動する。
+    beginTtrmParse: ({ requestId, text, fileName }) => (state): NextState => {
+        if (state.replay.requestId !== requestId) {
+            return undefined;
+        }
+        worker.start(text, (msg) => {
+            worker.terminate();
+            if (msg.type === 'ir') {
+                main.setReplayIR({ fileName, requestId, ir: msg.ir });
+            } else {
+                main.setReplayError({ requestId, stage: msg.stage, message: msg.message });
+            }
+        });
+        return undefined;
+    },
+    setReplayIR: ({ ir, fileName, requestId }) => (state): NextState => {
+        if (state.replay.requestId !== requestId) {
+            return undefined;
+        }
         return {
             replay: {
                 ...initialReplayState,
                 ir,
                 fileName,
+                requestId,
                 phase: 'select',
                 selection: {
                     roundIndex: 0,
@@ -118,10 +145,14 @@ export const replayActions: Readonly<ReplayActions> = {
             },
         };
     },
-    setReplayError: ({ stage, message }) => (state): NextState => {
+    setReplayError: ({ stage, message, requestId }) => (state): NextState => {
+        if (state.replay.requestId !== requestId) {
+            return undefined;
+        }
         return {
             replay: {
                 ...initialReplayState,
+                requestId,
                 phase: 'failed',
                 fileName: state.replay.fileName,
                 error: { stage, message },
@@ -162,17 +193,20 @@ export const replayActions: Readonly<ReplayActions> = {
     },
     startReplayPlayback: () => (state): NextState => {
         const round = getSelectedRound(state);
+        const player = getSelfPlayerRound(state);
         // 自陣未選択のままでは再生できない（FR-10）。失敗ラウンドも再生不可。
-        if (round === undefined || round.status !== 'ok' || getSelfPlayerRound(state) === undefined) {
+        if (round === undefined || round.status !== 'ok' || player === undefined) {
             return undefined;
         }
+        // P2 レビュー対応: 設置数 0（piecesplaced: 0 で自己突合済み）のラウンドは
+        // locks が空で lockIndex:0 の盤面が存在しないため、最初から terminal を表示する。
         return {
             replay: {
                 ...state.replay,
                 phase: 'playing',
                 cursor: {
                     lockIndex: 0,
-                    atTerminal: false,
+                    atTerminal: player.locks.length === 0,
                 },
             },
         };
@@ -212,6 +246,10 @@ export const replayActions: Readonly<ReplayActions> = {
                 : { lockIndex: lastIndex, atTerminal: true };
         } else if (step < 0) {
             if (atTerminal) {
+                // locks が空（設置数 0）のときは terminal より前に戻る先がない
+                if (lastIndex < 0) {
+                    return undefined;
+                }
                 next = { lockIndex: lastIndex, atTerminal: false };
             } else if (0 < lockIndex) {
                 next = { lockIndex: lockIndex - 1, atTerminal: false };
@@ -227,7 +265,9 @@ export const replayActions: Readonly<ReplayActions> = {
         };
     },
     replayFirstLock: () => (state): NextState => {
-        if (getSelfPlayerRound(state) === undefined || state.replay.phase !== 'playing') {
+        const player = getSelfPlayerRound(state);
+        // locks が空（設置数 0）のときは先頭に戻る先がない
+        if (player === undefined || state.replay.phase !== 'playing' || player.locks.length === 0) {
             return undefined;
         }
         return {
@@ -245,7 +285,7 @@ export const replayActions: Readonly<ReplayActions> = {
         return {
             replay: {
                 ...state.replay,
-                cursor: { lockIndex: player.locks.length - 1, atTerminal: true },
+                cursor: { lockIndex: Math.max(0, player.locks.length - 1), atTerminal: true },
             },
         };
     },

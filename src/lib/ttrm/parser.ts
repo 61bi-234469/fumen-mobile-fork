@@ -33,6 +33,22 @@ const unwrapReplay = (root: any): any => {
     throw new TtrmError('structure', 'replay.rounds not found in file');
 };
 
+// 有限な非負整数か。frame/frames はここが崩れると simulator の tick ループが
+// 終了条件を満たせず、Worker が解析中表示のまま無限ループする（P1 レビュー指摘）。
+const isFiniteNonNegativeInt = (value: any): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+const validateEvents = (events: any[], round: number, playerId: string): void => {
+    events.forEach((event, index) => {
+        if (!isObject(event) || typeof event.type !== 'string' || !isFiniteNonNegativeInt(event.frame)) {
+            throw new TtrmError(
+                'structure',
+                `round ${round}: player ${playerId} has an invalid event at index ${index}`,
+            );
+        }
+    });
+};
+
 const validatePlayer = (player: any, round: number, slot: number): TtrmPlayerRound => {
     if (!isObject(player) || typeof player.id !== 'string') {
         throw new TtrmError('structure', `round ${round}: player ${slot} has no id`);
@@ -42,6 +58,10 @@ const validatePlayer = (player: any, round: number, slot: number): TtrmPlayerRou
         || typeof replay.frames !== 'number' || !isObject(replay.options)) {
         throw new TtrmError('structure', `round ${round}: player ${player.id} is missing replay data`);
     }
+    if (!isFiniteNonNegativeInt(replay.frames)) {
+        throw new TtrmError('structure', `round ${round}: player ${player.id} has an invalid frames value`);
+    }
+    validateEvents(replay.events, round, player.id);
     if (!isObject(replay.results) || !isObject(replay.results.stats)) {
         throw new TtrmError('structure', `round ${round}: player ${player.id} is missing results.stats`);
     }

@@ -1,4 +1,5 @@
 import { Piece } from '../enums';
+import { gaugeAtFrame, getGarbageTimeline, tankedAtFrame } from './garbage';
 import { IRField, PlayerRoundIR } from './types';
 
 // P2 §3-2「ポイント空間」。プレイヤー 1 人あたり、盤面が確定している地点を 1 本の配列として扱う。
@@ -121,10 +122,20 @@ export interface ReplayStats {
     b2b: number;
     ren: number;
     attack: number;
+    // P3 §3-8。TETR.IO の received は再現不能と確定したため、エンジン基準で
+    // 自己整合する 2 つ（現在の保留量と被弾累計）を出す。ラベルは ☢ で区別する。
+    gauge: number;
+    tanked: number;
 }
 
-// FR-26。受信量は定義差（R7）が未解決なので含めない。
-export const statsAt = (player: PlayerRoundIR, index: number): ReplayStats => {
+// FR-26。TETR.IO の received は出さない（R7 は「再現不能」としてクローズ / §3-8）。
+//
+// ガベージの 2 値だけは frame を明示できる。ゲージはカーソルの瞬間の量であり、
+// 盤面が確定した最後の設置フレームではないため ―― 省略するとゲージバー（cursor.frame）と
+// 統計行（lock の frame）で違う数字が並ぶ。
+export const statsAt = (
+    player: PlayerRoundIR, index: number, frame?: number,
+): ReplayStats => {
     const point = pointAt(player, index);
     // terminal では最後の lock までを集計対象にする
     const placed = point.kind === 'initial' ? 0
@@ -134,10 +145,14 @@ export const statsAt = (player: PlayerRoundIR, index: number): ReplayStats => {
     const attack = counted.reduce((sum, lock) => sum + lock.attack, 0);
     const seconds = framesToSeconds(point.frame);
     const last = counted[counted.length - 1];
+    const garbage = getGarbageTimeline(player);
+    const garbageFrame = frame !== undefined ? frame : point.frame;
     return {
         placed,
         attack,
         seconds,
+        gauge: gaugeAtFrame(garbage, garbageFrame),
+        tanked: tankedAtFrame(garbage, garbageFrame),
         frame: point.frame,
         totalLocks: player.locks.length,
         // 経過 0 秒（開始地点や 1 フレーム目）でのゼロ除算を避ける

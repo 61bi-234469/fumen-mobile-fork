@@ -399,4 +399,163 @@ describe('TETR.IO Replay', () => {
         cy.get(datatest('replay-opponent-next-3')).should('not.exist');
     });
 
+    // ---- ガベージ（P3 / FR-40〜45, 54）----
+
+    // fixture（player-a）のガベージ実測。frame 1697 に 5 行受信し、
+    // frame 1808 に列 5 で全量が盤面へ入る。frame 1800 はその間。
+    const GAUGE_FRAME = 1800;
+    const GAUGE_ROWS = '5';
+    const GAUGE_HOLE_COLUMN = '5';
+    // 最後の攻撃（死因）は相手クロックの frame 2519 で生成されている
+    const KILLER_SENDER_TIME = '0:42.0';
+    // GAUGE_FRAME での切り出し。盤面と quiz は P2 と同じで、せり上がり行だけが増える。
+    // 生成手順は Jest（simulator → garbage → ir_to_page → encode）と同一。
+    const GAUGE_FUMEN = 'v115@vhAAgHpgQ4EeglBewhR4BtilBewhg0Q4AeBtywAtwh?'
+        + 'I8AeI8AeG8AeG8AeD8WkYkAFLDmClcJSAVztSAVG88AYP88?'
+        + 'A52TxCs3HgCpuHgCMdNFD';
+
+    it('shows the garbage gauge for both sides (FR-40)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        // ゲージ 0 でも枠は残す（盤面位置を動かさないため）
+        operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
+        operations.replay.gauge('opponent').should('exist');
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.gauge('self').should('have.attr', 'data-gauge', GAUGE_ROWS);
+        operations.replay.gauge('self').should('contain', GAUGE_ROWS);
+        cy.get(datatest('replay-stat-gauge')).should('contain', GAUGE_ROWS);
+    });
+
+    it('previews the row that actually rises next (FR-42/43)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        // 保留が無いあいだは予告を出さない
+        operations.replay.risePreview().should('not.exist');
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.risePreview().should('exist');
+        // 穴は 1 列だけ空き、それが実際に開いた列である
+        operations.replay.riseHole().should('have.length', 1);
+        operations.replay.riseHole().should('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
+    });
+
+    it('names the attack that ended the round and jumps to it (FR-45)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.killer().should('not.exist');
+
+        operations.replay.last();
+        cy.get(datatest('replay-lock-counter')).should('contain', 'garbagesmash');
+        operations.replay.killer().should('be.visible');
+        // 死因になった攻撃の行数と穴列が読める
+        operations.replay.killer().should('contain', '5');
+        operations.replay.killer().should('contain', KILLER_SENDER_TIME);
+
+        // 共通フレーム軸なので、相手が撃った瞬間へそのまま跳べる
+        operations.replay.killerSeek();
+        cy.get(datatest('replay-time-label')).should('contain', KILLER_SENDER_TIME);
+    });
+
+    it('remembers that the garbage display is hidden (NFR-08)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.gauge('self').should('exist');
+        operations.replay.risePreview().should('exist');
+        cy.get(datatest('replay-garbage-markers')).should('exist');
+
+        operations.replay.toggleGarbage();
+        operations.replay.gauge('self').should('not.exist');
+        operations.replay.gauge('opponent').should('not.exist');
+        operations.replay.risePreview().should('not.exist');
+        cy.get(datatest('replay-garbage-markers')).should('not.exist');
+        // P2 と同じ見た目に戻るだけで、盤面は消えない
+        operations.replay.board('self').should('exist');
+
+        // 再訪問しても消えたまま（localStorage 経由の復元）
+        startPlaying({ reload: true });
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.gauge('self').should('not.exist');
+
+        operations.replay.toggleGarbage();
+        operations.replay.gauge('self').should('exist');
+    });
+
+    it('carries the gauge into the exported page (FR-54)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+
+        cy.get(datatest('replay-screen')).should('not.exist');
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '2 / 2');
+        expectFumen(GAUGE_FUMEN);
+    });
+
+    // §7-2 の懸念 1: ゲージ 0 の地点は P1 / P2 と 1 ビットも変わってはいけない
+    it('leaves a gauge-free point exactly as P1 and P2 exported it (FR-54)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
+        operations.replay.openInEditor();
+
+        expectFumen(LOCK1_FUMEN);
+    });
+
+    // §7-4: 表示の好みと成果物の内容は別の関心事
+    it('exports the same page whether or not the garbage display is on (FR-54)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.toggleGarbage();
+        operations.replay.gauge('self').should('not.exist');
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+
+        expectFumen(GAUGE_FUMEN);
+    });
+
+    it('takes the gauge from the swapped-in side (FR-11 x FR-54)', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        // frame 1800 では自陣にゲージ 5、相手は 0
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.gauge('self').should('have.attr', 'data-gauge', GAUGE_ROWS);
+        operations.replay.gauge('opponent').should('have.attr', 'data-gauge', '0');
+
+        operations.replay.swapSides();
+        // 入れ替え後の自陣は元の相手なので、ゲージも入れ替わる
+        operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
+        operations.replay.gauge('opponent').should('have.attr', 'data-gauge', GAUGE_ROWS);
+        operations.replay.risePreview().should('not.exist');
+    });
+
+    it('keeps both gauges the same size on PC', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.gauge('self').then(($self) => {
+            operations.replay.gauge('opponent').then(($opponent) => {
+                expect($opponent.width(), 'opponent gauge width').to.equal($self.width());
+                expect($opponent.height(), 'opponent gauge height').to.equal($self.height());
+            });
+        });
+        // 盤面は P2 と同じく左右で等寸のまま
+        boardWidth('self').then((self) => {
+            boardWidth('opponent').then((opponent) => {
+                expect(opponent, 'opponent board width').to.equal(self);
+            });
+        });
+    });
+
 });

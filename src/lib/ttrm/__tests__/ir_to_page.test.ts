@@ -116,4 +116,46 @@ describe('irPointToPage', () => {
         const pages: Page[] = await decode(`v115@${encoded}`);
         expect(pages[0].comment.text).toEqual('#Q=[J](I)OSZ');
     });
+
+    // ---- FR-54: ゲージ 1 行をせり上がり行として持ち込む（P3 §3-6） ----
+
+    // Field 側の綴りは既存のまま（toSentLintPieces）
+    const sentLineOf = (page: Page): Piece[] => page.field.obj!.toSentLintPieces();
+
+    test('without a rise the page is bit-for-bit what P1 / P2 produced', () => {
+        const page = irPointToPage(sampleField(), sampleQueue());
+        expect(page.flags.rise).toBeFalsy();
+        expect(sentLineOf(page).every(cell => cell === Piece.Empty)).toBeTruthy();
+    });
+
+    test('a rise fills the sent line with gray except the hole column', () => {
+        const page = irPointToPage(sampleField(), sampleQueue(), true, true, { column: 3, size: 1 });
+        expect(page.flags.rise).toBeTruthy();
+        expect(sentLineOf(page)).toEqual([
+            Piece.Gray, Piece.Gray, Piece.Gray, Piece.Empty, Piece.Gray,
+            Piece.Gray, Piece.Gray, Piece.Gray, Piece.Gray, Piece.Gray,
+        ]);
+    });
+
+    test('a wider hole opens the matching number of columns', () => {
+        const page = irPointToPage(sampleField(), undefined, true, true, { column: 8, size: 2 });
+        expect(sentLineOf(page).filter(cell => cell === Piece.Empty)).toHaveLength(2);
+        expect(sentLineOf(page)[8]).toEqual(Piece.Empty);
+        expect(sentLineOf(page)[9]).toEqual(Piece.Empty);
+    });
+
+    test('the hole is clamped so a bad column never spills out of the row', () => {
+        const page = irPointToPage(sampleField(), undefined, true, true, { column: 9, size: 4 });
+        expect(sentLineOf(page)).toHaveLength(FieldConstants.Width);
+        expect(sentLineOf(page)[9]).toEqual(Piece.Empty);
+    });
+
+    test('the sent line and the rise flag survive an encode/decode round trip', async () => {
+        const page = irPointToPage(sampleField(), sampleQueue(), true, true, { column: 6, size: 1 });
+        const pages: Page[] = await decode(`v115@${await encode([page])}`);
+        expect(pages[0].flags.rise).toBeTruthy();
+        expect(sentLineOf(pages[0])).toEqual(sentLineOf(page));
+        // §3-6 の要: コメントは quiz のままでなければならない
+        expect(pages[0].comment.text!.startsWith('#Q=')).toBeTruthy();
+    });
 });

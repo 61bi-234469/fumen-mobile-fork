@@ -1,10 +1,17 @@
-import { Platforms } from '../../lib/enums';
+import { FieldConstants, Platforms } from '../../lib/enums';
 import {
     getReplayLayout,
     REPLAY_NARROW_MAX_WIDTH,
     REPLAY_WIDE_MAX_WIDTH,
     REPLAY_WIDE_MIN_DISPLAY_WIDTH,
 } from '../replay_layout';
+import { MINO_SLOT_WIDTH } from '../../components/replay/replay_side';
+import {
+    GAUGE_COLUMN_WIDTH_COMPACT, GAUGE_COLUMN_WIDTH_FULL,
+} from '../../components/replay/replay_gauge';
+
+// playingPhase の左右 padding。replay_layout.ts の同名定数と対応する。
+const CONTAINER_PADDING = 32;
 
 const createState = (override: {
     platform?: Platforms;
@@ -44,6 +51,21 @@ describe('getReplayLayout', () => {
             const state = createState({ platform: Platforms.Mobile, width: 300, height: 900 });
             expect(getReplayLayout(state, false).blockSize)
                 .toBeGreaterThan(getReplayLayout(state, true).blockSize);
+        });
+
+        // P3 §7-2 の懸念 3: ゲージ幅を予約しないと 375px で盤面が右へ溢れる。
+        // 予約が効いていれば、盤面 2 面 ＋ キュー列 ＋ ゲージ 2 本が表示幅に収まる。
+        test.each([300, 375])('the boards and their gauges fit within %ipx', (width) => {
+            const layout = getReplayLayout(
+                createState({ width, platform: Platforms.Mobile, height: 900 }), true);
+
+            const used = (layout.blockSize + layout.opponentBlockSize) * FieldConstants.Width
+                + (MINO_SLOT_WIDTH + 10) * 2
+                + CONTAINER_PADDING
+                + (GAUGE_COLUMN_WIDTH_FULL + 2) + (GAUGE_COLUMN_WIDTH_COMPACT + 2);
+
+            expect(layout.showOpponent).toBe(true);
+            expect(used).toBeLessThanOrEqual(width);
         });
 
         test('hides the opponent instead of drawing a board that would collapse', () => {

@@ -316,6 +316,7 @@ interface ViewSettings {
     coldClearThinkMs: number;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
+    replayShowGarbage: boolean;
 }
 
 const safer = {
@@ -436,6 +437,7 @@ export const localStorageWrapper = {
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
+            replayShowGarbage: safer.boolean(obj.replayShowGarbage),
         };
     },
 };

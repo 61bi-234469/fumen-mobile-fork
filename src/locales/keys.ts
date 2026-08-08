@@ -354,6 +354,17 @@ export const i18n = {
             Speed: () => t('Replay.Playing.Speed'),
             Basis: () => t('Replay.Playing.Basis'),
             Timeline: () => t('Replay.Playing.Timeline'),
+            ShowGarbage: () => t('Replay.Playing.ShowGarbage'),
+            HideGarbage: () => t('Replay.Playing.HideGarbage'),
+            Gauge: () => t('Replay.Playing.Gauge'),
+            RiseForecast: () => t('Replay.Playing.RiseForecast'),
+            GarbageTank: (rows: number) => t('Replay.Playing.GarbageTank', { rows }),
+            GarbageCancel: (rows: number) => t('Replay.Playing.GarbageCancel', { rows }),
+            GarbageReceive: (rows: number) => t('Replay.Playing.GarbageReceive', { rows }),
+            Killer: () => t('Replay.Playing.Killer'),
+            KillerGarbage: (time: string, rows: number, column: number) =>
+                t('Replay.Playing.KillerGarbage', { time, rows, column }),
+            KillerSeek: () => t('Replay.Playing.KillerSeek'),
         },
         Error: {
             Title: () => t('Replay.Error.Title'),

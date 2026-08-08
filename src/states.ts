@@ -168,6 +168,7 @@ export type ReplaySpeed = 0.25 | 0.5 | 1 | 2 | 4;
 export const REPLAY_SPEEDS: ReplaySpeed[] = [0.25, 0.5, 1, 2, 4];
 export const DEFAULT_REPLAY_SPEED: ReplaySpeed = 1;
 export const DEFAULT_REPLAY_SHOW_OPPONENT = true;
+export const DEFAULT_REPLAY_SHOW_GARBAGE = true;
 
 export interface ReplayState {
     phase: ReplayPhase;
@@ -194,6 +195,8 @@ export interface ReplayState {
     };
     view: {
         showOpponent: boolean;
+        // FR-40〜45 の表示可否（NFR-08）。切り出しのゲージ保持（FR-54）はこれに連動しない。
+        showGarbage: boolean;
     };
     error?: { stage: string; message: string };
 }
@@ -219,6 +222,7 @@ export const initialReplayState: ReplayState = {
     },
     view: {
         showOpponent: DEFAULT_REPLAY_SHOW_OPPONENT,
+        showGarbage: DEFAULT_REPLAY_SHOW_GARBAGE,
     },
     error: undefined,
 };

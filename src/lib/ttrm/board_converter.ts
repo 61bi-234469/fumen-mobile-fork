@@ -67,6 +67,13 @@ export const convertEngineBoard = (state: EngineBoardState): ConvertedBoard => {
     };
 };
 
-export const irFieldToField = (cells: IRField): Field => {
-    return new Field({ field: new PlayField({ pieces: cells.concat() }) });
+// sentLine は 10 セル（FieldConstants.Width）。FR-54 でゲージ 1 行を載せるときだけ渡す。
+export const irFieldToField = (cells: IRField, sentLine?: IRField): Field => {
+    const field = new Field({ field: new PlayField({ pieces: cells.concat() }) });
+    if (sentLine !== undefined) {
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            field.setToSentLine(x, sentLine[x] ?? Piece.Empty);
+        }
+    }
+    return field;
 };

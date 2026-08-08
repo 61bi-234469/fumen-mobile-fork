@@ -4,7 +4,9 @@ import { paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { renderReplayBoard } from './replay_board';
+import { gaugeColumnWidth, replayGauge, replayRisePreview } from './replay_gauge';
 import { ReplayPoint } from '../../lib/ttrm/timeline';
+import { ReplayGarbageView } from '../../lib/ttrm/garbage';
 
 // HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
 export const MINO_SLOT_WIDTH = 34;
@@ -86,12 +88,16 @@ interface ReplaySideProps {
     counterText: string;
     // PC レイアウトでのみ盤面の上に出すプレイヤー名（§3-6-2）
     heading?: string;
+    // P3。ガベージ表示がオフのときは undefined（枠ごと出さない）
+    garbage?: ReplayGarbageView;
 }
 
 // 1 プレイヤーぶんの「盤面＋HOLD/NEXT＋手番ラベル」。
 // 相手側には切り捨てチップも Editor ボタンも出さない（FR-31）。切り捨ては行数だけ添える。
 export const replaySide = (
-    { variant, size, point, blockSize, guideLineColor, label, counterText, heading }: ReplaySideProps,
+    {
+        variant, size, point, blockSize, guideLineColor, label, counterText, heading, garbage,
+    }: ReplaySideProps,
 ) => {
     const isSelf = variant === 'self';
     const boardImage = renderReplayBoard(point.field, blockSize, guideLineColor);
@@ -103,6 +109,7 @@ export const replaySide = (
     const holdKey = isSelf ? 'replay-hold' : 'replay-opponent-hold';
     const nextKey = isSelf ? 'replay-next' : 'replay-opponent-next';
     const boardWidth = blockSize * FieldConstants.Width;
+    const boardHeight = blockSize * FieldConstants.Height;
     const board = (
         <img
             key={`replay-board-${variant}`}
@@ -114,11 +121,36 @@ export const replaySide = (
                 border: '1px solid #90a4ae',
                 display: 'block',
                 // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
-                height: px(blockSize * FieldConstants.Height),
+                height: px(boardHeight),
                 width: px(boardWidth),
             })}
         />
     );
+
+    // ゲージバーは盤面の左端に密着（TETR.IO と同じ位置）、せり上がり予告はそのすぐ下。
+    // 予告行は盤面 canvas ではなく DOM の別要素として置く（§3-5 の警告）。
+    const boardBlock = (
+        <div
+            key={`replay-board-block-${variant}`}
+            style={style({
+                alignItems: 'flex-start', display: 'flex', gap: px(2), justifyContent: 'flex-start',
+            })}
+        >
+            {garbage !== undefined
+                ? replayGauge({ variant, size, garbage, boardHeight })
+                : undefined}
+            <div
+                key={`replay-board-stack-${variant}`}
+                style={style({ display: 'flex', flexDirection: 'column', width: px(boardWidth) })}
+            >
+                {board}
+                {garbage !== undefined
+                    ? replayRisePreview({ variant, size, garbage, boardWidth })
+                    : undefined}
+            </div>
+        </div>
+    );
+    const gaugeWidth = garbage !== undefined ? gaugeColumnWidth(size) + 2 : 0;
 
     const headingLine = heading !== undefined ? (
         <div
@@ -166,7 +198,7 @@ export const replaySide = (
                     })}
                 >
                     {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [point.hold], guideLineColor)}
-                    {board}
+                    {boardBlock}
                     {queueColumn(nextKey, i18n.Replay.Playing.Next(), nextPieces, guideLineColor)}
                 </div>
                 {opponentFooter}
@@ -181,7 +213,7 @@ export const replaySide = (
             datatest={`replay-side-${variant}`}
             style={style({
                 display: 'flex', flexDirection: 'column', gap: px(3),
-                textAlign: 'left', width: px(boardWidth),
+                textAlign: 'left', width: px(boardWidth + gaugeWidth),
             })}
         >
             {headingLine}
@@ -192,7 +224,7 @@ export const replaySide = (
                 {queueRow(holdKey, [point.hold], guideLineColor, slotWidth)}
                 {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
-            {board}
+            {boardBlock}
             {opponentFooter}
         </div>
     );

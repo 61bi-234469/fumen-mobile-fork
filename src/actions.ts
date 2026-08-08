@@ -487,6 +487,9 @@ const loadUserSettings = () => {
     if (viewSettings.replayShowOpponent !== undefined) {
         main.setReplayShowOpponent({ showOpponent: viewSettings.replayShowOpponent });
     }
+    if (viewSettings.replayShowGarbage !== undefined) {
+        main.setReplayShowGarbage({ showGarbage: viewSettings.replayShowGarbage });
+    }
 
     const treeViewSettings: Partial<State['tree']> = {};
     if (viewSettings.treeOperationScope !== undefined) {

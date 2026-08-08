@@ -77,8 +77,8 @@ export interface LockPoint {
     next: Piece[];
     clear: LockClear;
     attack: number;
+    // 恒等式の突き合わせ先（P3 §3-3）。表示は garbage.ts の gaugeAtFrame に一本化する。
     garbageGauge: number;
-    pendingHoles: number;
     sourceHeight: number;
     clippedRowCount: number;
 }
@@ -109,12 +109,19 @@ export interface TerminalPoint {
     alive: boolean;
 }
 
+export type GarbageEventKind = 'receive' | 'confirm' | 'tank' | 'cancel';
+
+// P3 §3-3。1 回の攻撃は iid で同定される。garbageQueue.queue の要素は iid を
+// 持たない（cid / gameid のみ）ので、parcel はこのイベント列だけから組む。
 export interface GarbageEvent {
     frame: number;
-    kind: 'receive' | 'tank' | 'cancel';
-    amount: number;
-    column?: number;
-    size?: number;
+    kind: GarbageEventKind;
+    iid: number;
+    amount: number;        // confirm は 0
+    column?: number;       // tank のみ。実際に穴が開いた列
+    size?: number;         // receive / tank / cancel
+    gameid?: number;       // confirm のみ（送信元）
+    senderFrame?: number;  // confirm のみ（送信側クロック）
 }
 
 export interface VerificationValue {

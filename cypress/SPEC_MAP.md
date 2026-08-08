@@ -39,7 +39,7 @@
 | `piece_queue_spec.js` | HOLD/NEXTキュー（PIECEモード限定表示・infinite 7bag・キューモーダル編集） | `src/lib/piece_queue.ts`, `src/views/editor/piece_queue_overlay.ts`, `src/components/modals/piece_queue.tsx` | `mode.comment/piece/tools` | 0:54 | `#Q=` 同期（AGENTS.md invariant）に関わる |
 | `put_piece_spec.js` | ピース設置操作（キー/タッチ同時操作・DAS Cut・ハードドロップ・Reset・Inference・回転系） | `src/actions/put_piece.ts`, `src/actions/move_piece.ts`, `src/lib/piece_shortcut.ts`, `src/lib/rotation_system.ts`, `src/lib/srs.ts`, `src/lib/srs_plus.ts`, `src/lib/inference.ts` | `menu.openUserSettings/selectUserSettingsTab/setRotationSystem`, `mode.block/comment/piece/tools` | 1:27 | 557行。タイミング系（DAS Cut等）はCI環境依存でflakyになりやすい |
 | `quiz_spec.js` | Quiz（`#Q=`）表示のreadonly挙動（PC・不正quiz・最終ページLockオフ） | `src/lib/fumen/quiz.ts`, `src/views/reader.ts` | なし | 1:05 | readonly |
-| `replay_spec.js` | TETR.IOリプレイ（.ttrm取り込み・ラウンド/自陣選択・手番送り/終端・切り捨てチップ・Editor切り出しと破棄確認・壊れたファイルのエラー表示） | `src/lib/ttrm/`, `src/actions/replay.ts`, `src/views/replay.tsx`, `src/components/replay/`, `src/components/modals/replay_discard_confirm.tsx` | `replay.*`, `mode.utils/block` | 0:08 | 期待fumenはfixtureに対するJest（simulator+encode）の決定論的出力。ローカル実測0:07（2026-08-08） |
+| `replay_spec.js` | TETR.IOリプレイ（.ttrm取り込み・ラウンド/自陣選択・手番送り/終端・切り捨てチップ・Editor切り出しと破棄確認・壊れたファイルのエラー表示・相手盤面とフレーム軸・ガベージのゲージ/せり上がり予告/死因/表示トグル） | `src/lib/ttrm/`, `src/actions/replay.ts`, `src/views/replay.tsx`, `src/views/replay_layout.ts`, `src/components/replay/`, `src/components/modals/replay_discard_confirm.tsx` | `replay.*`, `mode.utils/block` | 0:39 | 期待fumenはfixtureに対するJest（simulator+garbage+ir_to_page+encode）の決定論的出力。ローカル実測0:39 / 27ケース（2026-08-09） |
 | `right_click_spec.js` | 盤面の右クリック統合挙動（PAINT/SELECT/PIECE共通の消しゴム・SPAWNミノのキュー戻し/削除・選択やパーツのまるごと削除・COMP残骸の消去） | `src/actions/field_editor.ts`, `src/components/event/drawing_event_canvas.tsx`, `src/actions/rect_select.ts` | `mode.block.Completion/rightClick/rightDrag`, `mode.piece.spawn`, `menu.openUserSettings` | 0:24 | 右クリックは主ツールに依存しない単一ポリシー |
 | `sent_spec.js` | せり上がりライン（Highlight・Reverse・v110互換） | `src/lib/fumen/field.ts`（sentLine）, `src/lib/rotation_system.ts` | `menu.setRotationSystem` | 0:16 | readonly |
 | `slide_spec.js` | Slideモード（上下移動・UTILトレイを保持したままの全体ドラッグ） | `src/views/editor/context_tray.ts`（Slideトレイ）, `src/actions/convert.ts`（shiftTo系） | `mode.block/slide` | 0:03 | - |
@@ -73,7 +73,8 @@
   `piece_queue`, `box`, `history_piece`, `history_comment`（quiz）
 - `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/cold_clear_wasm/` →
   `cold_clear_spec` のみ
-- `src/lib/ttrm/`, `src/actions/replay.ts`, `src/views/replay.tsx`, `src/components/replay/` →
+- `src/lib/ttrm/`, `src/actions/replay.ts`, `src/views/replay.tsx`, `src/views/replay_layout.ts`,
+  `src/components/replay/` →
   `replay_spec` のみ（Utilsメニュー導線を触ったら `utils` も）
 - `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts` →
   `user_settings`, `put_piece`（DAS/ARR設定使用）, `editor_side_panel`（表示設定）

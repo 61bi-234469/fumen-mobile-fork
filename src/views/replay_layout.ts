@@ -1,6 +1,9 @@
 import { FieldConstants, Platforms } from '../lib/enums';
 import { State } from '../states';
 import { MINO_SLOT_WIDTH } from '../components/replay/replay_side';
+import {
+    GAUGE_COLUMN_WIDTH_COMPACT, GAUGE_COLUMN_WIDTH_FULL,
+} from '../components/replay/replay_gauge';
 
 // Replay 再生画面のレイアウト（P2 §3-6）。
 // narrow: 相手を 0.55 倍で並置し、相手のキューは盤面上に横並び（モバイル）。
@@ -24,6 +27,11 @@ const MIN_OPPONENT_BLOCK_SIZE = 4;
 
 // HOLD 列 + gap + 盤面 + gap + NEXT 列。gap は replay_side の 10px
 const SIDE_QUEUE_COLUMNS = (MINO_SLOT_WIDTH + 10) * 2;
+// P3 §7-2 の懸念 3: ゲージバーぶんの幅を予約しないと 375px で盤面が右へ溢れる。
+// 表示トグルの状態にかかわらず常に予約する ―― トグルで盤面の大きさが変わると
+// 「ゲージ 0 でも枠は残す」（レイアウトを動かさない）と矛盾するため。
+const GAUGE_COLUMN_FULL = GAUGE_COLUMN_WIDTH_FULL + 2;
+const GAUGE_COLUMN_COMPACT = GAUGE_COLUMN_WIDTH_COMPACT + 2;
 // playingPhase の左右 padding
 const CONTAINER_PADDING = 32;
 // wide で 2 面の間に置く間隔
@@ -48,7 +56,8 @@ const blockSizeByHeight = (displayHeight: number): number =>
 
 const narrowLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLayout => {
     const available = Math.min(state.display.width, REPLAY_NARROW_MAX_WIDTH)
-        - SIDE_QUEUE_COLUMNS - CONTAINER_PADDING;
+        - SIDE_QUEUE_COLUMNS - CONTAINER_PADDING
+        - GAUGE_COLUMN_FULL - (wantsOpponent ? GAUGE_COLUMN_COMPACT : 0);
     // 相手は自陣ブロックの OPPONENT_SCALE 倍。自陣 1 ブロックあたりの所要幅から逆算する。
     const widthPerBlock = wantsOpponent ? 1 + OPPONENT_SCALE : 1;
     const blockSize = Math.max(MIN_BLOCK_SIZE, Math.min(
@@ -75,7 +84,8 @@ const narrowLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLay
 const wideLayout = (state: Readonly<State>, wantsOpponent: boolean): ReplayLayout => {
     const available = Math.min(state.display.width, REPLAY_WIDE_MAX_WIDTH) - CONTAINER_PADDING
         - (wantsOpponent ? WIDE_BOARD_GAP : 0);
-    const perSide = (wantsOpponent ? Math.floor(available / 2) : available) - SIDE_QUEUE_COLUMNS;
+    const perSide = (wantsOpponent ? Math.floor(available / 2) : available)
+        - SIDE_QUEUE_COLUMNS - GAUGE_COLUMN_FULL;
     const blockSize = Math.max(MIN_BLOCK_SIZE, Math.min(
         WIDE_MAX_BLOCK_SIZE,
         blockSizeByHeight(state.display.height),

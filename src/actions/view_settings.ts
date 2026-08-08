@@ -20,6 +20,7 @@ type ViewSettingsOverrides = Partial<{
     coldClearThinkMs: number;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
+    replayShowGarbage: boolean;
 }>;
 
 // 自陣プレイヤー名は state に持たないため、全体置換の saveViewSettings で
@@ -44,6 +45,18 @@ const loadPersistedReplayShowOpponent = (): boolean => {
         return localStorageWrapper.loadViewSettings().replayShowOpponent ?? REPLAY_SHOW_OPPONENT_FALLBACK;
     } catch {
         return REPLAY_SHOW_OPPONENT_FALLBACK;
+    }
+};
+
+// ガベージ表示の可否（NFR-08）。states.ts の DEFAULT_REPLAY_SHOW_GARBAGE と同値。
+const REPLAY_SHOW_GARBAGE_FALLBACK = true;
+
+const loadPersistedReplayShowGarbage = (): boolean => {
+    if (typeof localStorage === 'undefined') return REPLAY_SHOW_GARBAGE_FALLBACK;
+    try {
+        return localStorageWrapper.loadViewSettings().replayShowGarbage ?? REPLAY_SHOW_GARBAGE_FALLBACK;
+    } catch {
+        return REPLAY_SHOW_GARBAGE_FALLBACK;
     }
 };
 
@@ -73,5 +86,7 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
             : loadPersistedReplaySelfPlayer(),
         // 相手盤面の表示可否（FR-34）
         replayShowOpponent: overrides.replayShowOpponent ?? loadPersistedReplayShowOpponent(),
+        // ガベージ表示の可否（NFR-08）
+        replayShowGarbage: overrides.replayShowGarbage ?? loadPersistedReplayShowGarbage(),
     });
 };

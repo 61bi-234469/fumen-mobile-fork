@@ -44,6 +44,7 @@ describe('view settings tree operation scope migration', () => {
             coldClearNextLimit: null,
             coldClearWeightsPreset: 0,
             coldClearThinkMs: 1000,
+            replaySelfPlayer: null,
         });
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);

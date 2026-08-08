@@ -51,8 +51,15 @@ module.exports = (_env, argv = {}) => {
                 use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
             },
             {
+                test: /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
+                use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
+            },
+            {
                 test: /\.tsx?$/,
-                exclude: /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                exclude: [
+                    /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                    /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
+                ],
                 use: [{ loader: 'ts-loader', options: { ignoreDiagnostics: [1343] } }],
             },
             {
@@ -69,6 +76,9 @@ module.exports = (_env, argv = {}) => {
     },
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.jsx'],
+        alias: {
+            chalk: path.join(__dirname, 'src/lib/ttrm/chalk_stub.js'),
+        },
     },
     plugins: [
         new webpack.DefinePlugin({

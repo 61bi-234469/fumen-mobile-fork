@@ -156,6 +156,40 @@ import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
 import { PlacementResult } from './lib/input_stats';
+import { ReplayIR } from './lib/ttrm/types';
+
+export type ReplayPhase = 'empty' | 'parsing' | 'select' | 'playing' | 'failed';
+
+export interface ReplayState {
+    phase: ReplayPhase;
+    fileName?: string;
+    // 解析結果。サイズが大きいため immutable 更新の対象にせず、差し替えは取り込み時のみ。
+    ir?: ReplayIR;
+    selection: {
+        roundIndex: number;
+        selfPlayerId: string | null;
+    };
+    cursor: {
+        lockIndex: number;
+        atTerminal: boolean;
+    };
+    error?: { stage: string; message: string };
+}
+
+export const initialReplayState: ReplayState = {
+    phase: 'empty',
+    fileName: undefined,
+    ir: undefined,
+    selection: {
+        roundIndex: 0,
+        selfPlayerId: null,
+    },
+    cursor: {
+        lockIndex: 0,
+        atTerminal: false,
+    },
+    error: undefined,
+};
 
 const VERSION = PageEnv.Version;
 
@@ -232,6 +266,7 @@ export interface State {
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
         pieceQueue: boolean;
+        replayDiscardConfirm: boolean;
     };
     temporary: {
         userSettings: {
@@ -352,6 +387,7 @@ export interface State {
     rectSelect: RectSelectState;
     parts: PartsState;
     tree: TreeState;
+    replay: ReplayState;
     coldClear: {
         isRunning: boolean;
         abortRequested: boolean;
@@ -431,6 +467,7 @@ export const initState: Readonly<State> = {
         treeDisableConfirm: false,
         coldClearMenu: false,
         pieceQueue: false,
+        replayDiscardConfirm: false,
     },
     temporary: {
         userSettings: {
@@ -541,6 +578,7 @@ export const initState: Readonly<State> = {
         spawnMinoToggle: initialSpawnMinoToggleState,
     },
     rectSelect: initialRectSelectState,
+    replay: initialReplayState,
     parts: {
         items: loadParts(),
         selectedId: null,
@@ -578,6 +616,7 @@ export const resources = {
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
         pieceQueue: undefined as any,
+        replayDiscardConfirm: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

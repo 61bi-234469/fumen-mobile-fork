@@ -22,7 +22,7 @@ import { State } from '../../states';
 const baseModal = {
     fumen: false, menu: false, append: false, clipboard: false, userSettings: false,
     listViewReplace: false, listViewMenu: false, treeDisableConfirm: false,
-    coldClearMenu: false, pieceQueue: false,
+    coldClearMenu: false, pieceQueue: false, replayDiscardConfirm: false,
 };
 
 const createState = (overrides: {

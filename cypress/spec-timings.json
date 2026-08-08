@@ -28,6 +28,7 @@
     "piece_queue_spec.js": 54,
     "put_piece_spec.js": 87,
     "quiz_spec.js": 65,
+    "replay_spec.js": 8,
     "right_click_spec.js": 24,
     "sent_spec.js": 16,
     "slide_spec.js": 3,

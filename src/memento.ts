@@ -314,6 +314,7 @@ interface ViewSettings {
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    replaySelfPlayer: string | null;
 }
 
 const safer = {
@@ -432,6 +433,7 @@ export const localStorageWrapper = {
                 : safer.number(obj.coldClearNextLimit),
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
+            replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
         };
     },
 };

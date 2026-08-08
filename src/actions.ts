@@ -39,6 +39,7 @@ import { initShortcutHandlers } from './actions/shortcuts';
 import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
+import { replayActions, ReplayActions } from './actions/replay';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
@@ -61,7 +62,8 @@ export type Actions = AnimationActions
     & TreeOperationActions
     & ColdClearActions
     & EditorInteractionActions
-    & RectSelectActions;
+    & RectSelectActions
+    & ReplayActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -81,6 +83,7 @@ export const actions: Readonly<Actions> = {
     ...coldClearActions,
     ...editorInteractionActions,
     ...rectSelectActions,
+    ...replayActions,
 };
 
 // Current state getter for shortcut handlers

@@ -13,6 +13,17 @@ a Tetris AI engine by MinusKelvin.
   - `third_party/cold-clear/patches/0001-export-move-score-to-wasm.patch`
   - `third_party/licenses/MPL-2.0.txt`
 
+## @haelp/teto (Triangle.js)
+
+This project depends on [@haelp/teto](https://www.npmjs.com/package/@haelp/teto),
+a TETR.IO client/engine library, for TETR.IO replay (.ttrm) re-simulation.
+
+- **License**: MIT
+- **Source Code**: https://github.com/halp1/triangle
+- **Usage**: npm dependency pinned to version 4.2.7 (`@haelp/teto/engine`),
+  bundled into the replay worker. `chalk` is replaced by a local stub
+  (`src/lib/ttrm/chalk_stub.js`) via webpack alias.
+
 The full text of the MPL-2.0 license can be found at:
 https://mozilla.org/MPL/2.0/
 

@@ -194,6 +194,35 @@ function makeColdClearState(overrides: {
     } as any;
 }
 
+const attachReplayIncoming = (state: any, amount: number) => {
+    state.fumen.pages[0].internal = {
+        inputReplayContext: {
+            stats: { b2bChain: 0, renChain: 0, pieces: 0, lines: 0, perfectClears: 0 },
+            garbage: {
+                snapshot: {
+                    seed: 1234, lastTankTime: 0, lastColumn: null, sent: 0,
+                    hasChangedColumn: false, lastReceivedCount: 0,
+                    queue: [{ amount, frame: 0, size: 1, cid: 1, gameid: 1, confirmed: true }],
+                },
+                frame: 0,
+                pieces: 0,
+                options: {
+                    cap: { value: 8, marginTime: 0, increase: 0, absolute: 40, max: 40 },
+                    messiness: { change: 0, within: 0, nosame: false, timeout: 0, center: false },
+                    garbage: { speed: 20, holeSize: 1 },
+                    multiplier: { value: 1, increase: 0, marginTime: 0 },
+                    bombs: false, seed: 1234, boardWidth: 10, rounding: 'down',
+                    openerPhase: 0, specialBonus: false,
+                },
+                rules: {
+                    garbageCap: 8, garbageCapIncrease: 0, garbageCapMargin: 0,
+                },
+            },
+        },
+    };
+    return state;
+};
+
 describe('coldClearActions run isolation', () => {
     test('creates independent seven-bags containing each mino exactly once', () => {
         const pieces = createRandomSevenBags(2);
@@ -2257,6 +2286,38 @@ describe('coldClearActions run isolation', () => {
         const secondWrapper = wrapperCtor.mock.results[1].value;
         const secondInit = secondWrapper.start.mock.calls[0][0];
         expect(secondInit.queue.length).toBe(2);
+    });
+
+    test('allows replay INPUT rise pages and passes their immediate incoming rows to Cold Clear', () => {
+        const state = attachReplayIncoming(makeColdClearState({
+            commentText: 'T:IOT',
+            nextLimit: 1,
+            flags: { lock: true, mirror: false, rise: true, quiz: false, colorize: true },
+        }), 3);
+        expect(canStartColdClearSequenceSearch(state)).toBe(true);
+
+        const startResult = coldClearActions.startColdClearSearch()(state) as any;
+        const runId = startResult.coldClear.runId;
+        const runningState = attachReplayIncoming(makeColdClearState({
+            runId, isRunning: true, runType: 'single', commentText: 'T:IOT',
+            nextLimit: 1, treeEnabled: true,
+            flags: { lock: true, mirror: false, rise: true, quiz: false, colorize: true },
+        }), 3);
+
+        coldClearActions.onColdClearInitDone({ runId })(runningState);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        expect(wrapperInstance.requestMove).toHaveBeenCalledWith(3);
+    });
+
+    test('keeps ordinary rise pages unsupported without replay INPUT context', () => {
+        const state = makeColdClearState({
+            commentText: 'T:IOT',
+            flags: { lock: true, mirror: false, rise: true, quiz: false, colorize: true },
+        });
+
+        expect(canStartColdClearSequenceSearch(state)).toBe(false);
     });
 
     test('nextLimit slices queue for top branch search', () => {

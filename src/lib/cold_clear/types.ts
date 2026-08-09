@@ -17,16 +17,19 @@ export interface CCInitMessage {
 
 export interface CCRequestMoveMessage {
     type: 'requestMove';
+    incoming?: number;
 }
 
 export interface CCRequestTopMovesMessage {
     type: 'requestTopMoves';
     count: number;
+    incoming?: number;
 }
 
 export interface CCRequestSequenceMessage {
     type: 'requestSequence';
     count: number;
+    incoming?: number;
 }
 
 export type WorkerMessage =

@@ -122,6 +122,20 @@ export const cloneGarbageQueueSnapshot = (snapshot: GarbageQueueSnapshot): Garba
     queue: snapshot.queue.map(item => ({ ...item })),
 });
 
+/** Keeps only the next confirmed incoming attack when detaching a replay into INPUT. */
+export const selectCurrentGarbageParcel = (
+    snapshot: GarbageQueueSnapshot,
+): GarbageQueueSnapshot => {
+    const selected = snapshot.queue
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.confirmed && item.amount > 0)
+        .sort((a, b) => a.item.frame - b.item.frame || a.index - b.index)[0]?.item;
+    return {
+        ...cloneGarbageQueueSnapshot(snapshot),
+        queue: selected === undefined ? [] : [{ ...selected }],
+    };
+};
+
 const cloneGarbageOptions = (options: GarbageQueueInitializeParams): GarbageQueueInitializeParams => ({
     ...options,
     cap: { ...options.cap },
@@ -248,7 +262,7 @@ export const createInputReplayContext = (
     const empty = new GarbageQueue(config.garbage).snapshot();
     return createInputReplayContextFromSnapshot({
         stats: inputReplayStatsAt(player, pointIndex),
-        snapshot: garbageAtFrame(player, cursorFrame)?.snapshot ?? empty,
+        snapshot: selectCurrentGarbageParcel(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
         frame: cursorFrame,
         pieces: replayPlacedCount(player, pointIndex),
         options: config.garbage,
@@ -293,7 +307,10 @@ const tankNext = (
 ): { frame?: number, rows: InputGarbageRow[] } => {
     const frame = nextTankFrame(context);
     if (frame === undefined) return { rows: [] };
-    const rows = queue.tank(frame, dynamicCap(context, frame), true)
+    const currentAmount = context.garbage.snapshot.queue
+        .filter(item => item.confirmed && item.amount > 0)
+        .sort((a, b) => a.frame - b.frame)[0]?.amount ?? 0;
+    const rows = queue.tank(frame, Math.min(dynamicCap(context, frame), currentAmount), true)
         .map(({ column, size }) => ({ column, size }));
     return { frame, rows };
 };

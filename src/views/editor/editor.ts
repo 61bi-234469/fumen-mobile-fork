@@ -330,6 +330,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             actions.commitCommentText();
             actions.setSevenBagGrayEnabled({ enable: !state.mode.sevenBagGrayEnabled });
         },
+        openReplay: () => actions.openReplayScreen(),
     }) : null;
 
     const fieldColumn = div({
@@ -412,6 +413,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 width: px(layout.buttons.size.width),
             }),
         }, [
+            queueOverlays.replayLaunchSlot,
             queueOverlays.nextPanel,
             editorRail(state, actions, layout),
         ]);

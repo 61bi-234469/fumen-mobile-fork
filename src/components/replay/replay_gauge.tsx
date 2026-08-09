@@ -130,8 +130,10 @@ export const replayRisePreview = (
     // 段数はバーの中に重ねて書く。行の高さは文字が収まる分だけ確保する。
     const fontSize = size === 'full' ? 10 : 8;
     const cellHeight = size === 'full' ? 14 : 10;
-    // 白い穴セルがせり上がり対象なので、その先頭セルに段数を表示する。
+    // 白い穴セルは次にせり上がる行を示す。表示する段数にはこの 1 行も含める。
+    // `moreRows` は予告行を除いた残りなので、そのままだと 1 行だけのときに +0 になる。
     const labelColumn = rise.column;
+    const riseRows = garbage.moreRows + 1;
 
     // 幅は盤面画像と同じ規則で決まるよう flex で等分する。個別に px を振ると
     // 盤面側の枠線ぶんとずれる。
@@ -162,8 +164,9 @@ export const replayRisePreview = (
                         key={`${previewKey}-label`}
                         datatest={`${previewKey}-label`}
                         data-column={String(labelColumn)}
+                        data-rows={String(riseRows)}
                     >
-                        {`+${garbage.moreRows}`}
+                        {`+${riseRows}`}
                     </span>
                 ) : undefined}
             </div>,

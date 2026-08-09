@@ -574,7 +574,7 @@ const playingPhase = (state: State, actions: Actions) => {
                         {i18n.Replay.Playing.Killer()}: {killer !== undefined
                             ? i18n.Replay.Playing.KillerGarbage(
                                 formatFrameTime(killer.senderFrame ?? killer.frame),
-                                killer.amount, killer.column)
+                                killer.amount, killer.column + 1)
                             : terminalReason}
                     </span>
                     {killer !== undefined ? (

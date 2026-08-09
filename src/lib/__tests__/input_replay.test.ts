@@ -11,6 +11,7 @@ import {
     createInputReplayContextFromSnapshot,
     inputGarbageView,
     inputReplayContextAt,
+    selectCurrentGarbageParcel,
 } from '../input_replay';
 
 const options = (overrides: Partial<GarbageQueueInitializeParams> = {}): GarbageQueueInitializeParams => ({
@@ -91,6 +92,34 @@ const verticalI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9,
 const quadI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9, y: 2 } };
 
 describe('INPUT replay battle context', () => {
+    test('keeps only the oldest confirmed incoming parcel when detaching a replay', () => {
+        const original = snapshot(0, {
+            queue: [
+                { amount: 4, frame: 30, size: 1, cid: 3, gameid: 9, confirmed: true },
+                { amount: 7, frame: 10, size: 1, cid: 1, gameid: 9, confirmed: false },
+                { amount: 2, frame: 20, size: 1, cid: 2, gameid: 9, confirmed: true },
+                { amount: 5, frame: 20, size: 1, cid: 4, gameid: 9, confirmed: true },
+            ],
+        });
+
+        const selected = selectCurrentGarbageParcel(original);
+
+        expect(selected.queue).toEqual([
+            { amount: 2, frame: 20, size: 1, cid: 2, gameid: 9, confirmed: true },
+        ]);
+        expect(original.queue).toHaveLength(4);
+        selected.queue[0].amount = 1;
+        expect(original.queue[2].amount).toBe(2);
+    });
+
+    test('drops incoming parcels when none have been confirmed', () => {
+        const selected = selectCurrentGarbageParcel(snapshot(0, {
+            queue: [{ amount: 3, frame: 10, size: 1, cid: 1, gameid: 9, confirmed: false }],
+        }));
+
+        expect(selected.queue).toEqual([]);
+    });
+
     test('converts replay raw B2B/REN and selects the cursor garbage snapshot', () => {
         const first = snapshot(2);
         const second = snapshot(5, { seed: 4321 });

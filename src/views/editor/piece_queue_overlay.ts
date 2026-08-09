@@ -158,6 +158,7 @@ export const pieceQueueOverlays = ({
     openSettings,
     toggleInfinitePieceQueue,
     toggleSevenBagGray,
+    openReplay,
     statsPanel,
 }: {
     queueState: ColdClearMenuQueueState | null;
@@ -172,6 +173,7 @@ export const pieceQueueOverlays = ({
     openSettings: (data: { focus: PieceQueueFocus }) => void;
     toggleInfinitePieceQueue: () => void;
     toggleSevenBagGray: () => void;
+    openReplay: () => void;
     statsPanel?: VNode<{}>;
 }) => {
     const hold = queueState?.hold ?? undefined;
@@ -181,6 +183,45 @@ export const pieceQueueOverlays = ({
     // ∞7bagと7bagグレーを2段に積むため、1段あたりの高さに合わせて小さめに取る
     const infiniteCheckboxSize = compactInfiniteToggle ? 9 : 11;
     const infiniteLabelFontSize = Math.max(7, Math.min(9, width * .17));
+    const replayLaunchSlot = div({
+        key: 'piece-queue-replay-slot',
+        style: style({
+            alignItems: 'center',
+            display: 'flex',
+            height: px(ceilingOffset),
+            justifyContent: 'center',
+            left: '0',
+            position: 'absolute',
+            top: '0',
+            width: px(width),
+        }),
+    }, [button({
+        key: 'btn-open-replay-input',
+        datatest: 'btn-open-replay-input',
+        type: 'button',
+        title: i18n.Replay.OpenMenu(),
+        'aria-label': i18n.Replay.OpenMenu(),
+        onclick: (event: MouseEvent) => {
+            openReplay();
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => event.stopPropagation(),
+        style: style({
+            alignItems: 'center', background: '#fafafa', border: '1px solid #333',
+            boxShadow: '0 2px 5px rgba(0, 0, 0, .16)', boxSizing: 'border-box', color: '#333',
+            cursor: 'pointer', display: 'flex', flexDirection: 'column', fontFamily: 'inherit',
+            fontSize: px(Math.max(8, Math.min(10, width * .15))), fontWeight: '700',
+            height: px(Math.max(24, ceilingOffset - 4)), justifyContent: 'center', lineHeight: '1',
+            margin: '0', minWidth: '0', padding: '2px 0', width: px(width),
+        }),
+    }, [
+        span({
+            key: 'btn-open-replay-input-icon', className: 'notranslate material-icons',
+            style: style({ fontSize: px(Math.max(14, Math.min(20, ceilingOffset * .42))), lineHeight: '1' }),
+        }, 'movie'),
+        span({ key: 'btn-open-replay-input-label' }, i18n.Replay.ShortLabel()),
+    ])]);
 
     const holdPanel = div({
         key: 'piece-queue-hold-column',
@@ -351,5 +392,5 @@ export const pieceQueueOverlays = ({
         ],
     }), infiniteToggle]);
 
-    return { holdPanel, nextPanel };
+    return { holdPanel, nextPanel, replayLaunchSlot };
 };

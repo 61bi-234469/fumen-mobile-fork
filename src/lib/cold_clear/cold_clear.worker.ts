@@ -44,7 +44,10 @@ const toMove = (result: any): CCMove => ({
                 postResponse({ type: 'error', message: 'Bot not initialized' });
                 return;
             }
-            const result = bot.suggest_move_sync(thinkMs);
+            const incoming = Math.max(0, Math.floor(msg.incoming ?? 0));
+            const result = incoming > 0
+                ? bot.suggest_move_sync_with_incoming(thinkMs, incoming)
+                : bot.suggest_move_sync(thinkMs);
             if (result) {
                 postResponse({
                     type: 'moveResult',
@@ -63,7 +66,10 @@ const toMove = (result: any): CCMove => ({
                 postResponse({ type: 'topMovesResult', moves: [] });
                 return;
             }
-            const results = bot.suggest_top_moves_sync(thinkMs, requestCount);
+            const incoming = Math.max(0, Math.floor(msg.incoming ?? 0));
+            const results = incoming > 0
+                ? bot.suggest_top_moves_sync_with_incoming(thinkMs, requestCount, incoming)
+                : bot.suggest_top_moves_sync(thinkMs, requestCount);
             const moves: CCMove[] = Array.isArray(results) ? results.map(toMove) : [];
 
             if (moves.length === 0) {
@@ -82,8 +88,11 @@ const toMove = (result: any): CCMove => ({
                 return;
             }
 
+            const incoming = Math.max(0, Math.floor(msg.incoming ?? 0));
             for (let i = 0; i < requestCount; i += 1) {
-                const result = bot.suggest_move_sync(thinkMs);
+                const result = i === 0 && incoming > 0
+                    ? bot.suggest_move_sync_with_incoming(thinkMs, incoming)
+                    : bot.suggest_move_sync(thinkMs);
                 if (!result) {
                     postResponse({ type: 'noMove' });
                     return;

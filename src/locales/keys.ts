@@ -317,6 +317,7 @@ export const i18n = {
     },
     Replay: {
         Title: () => t('Replay.Title'),
+        ShortLabel: () => t('Replay.ShortLabel'),
         OpenMenu: () => t('Replay.OpenMenu'),
         DefaultPlayer: (number: number) => t('Replay.DefaultPlayer', { number }),
         Import: {

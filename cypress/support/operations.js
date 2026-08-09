@@ -1017,6 +1017,7 @@ export const operations = {
         toggleGarbage: () => cy.get(datatest('btn-replay-toggle-garbage')).click(),
     },
     inputReplay: {
+        openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),
         gauge: () => cy.get(datatest('input-garbage-gauge')),
         rise: () => cy.get(datatest('input-garbage-rise')),
         damage: () => cy.get(datatest('input-garbage-damage')),

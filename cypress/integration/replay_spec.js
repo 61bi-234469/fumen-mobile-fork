@@ -465,8 +465,9 @@ describe('TETR.IO Replay', () => {
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.risePreview().should('exist');
         cy.get(datatest('replay-rise-preview-label'))
-            .should('have.text', '+4')
-            .and('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
+            .should('have.text', '+5')
+            .and('have.attr', 'data-column', GAUGE_HOLE_COLUMN)
+            .and('have.attr', 'data-rows', '5');
         // 穴は 1 列だけ空き、それが実際に開いた列である
         operations.replay.riseHole().should('have.length', 1);
         operations.replay.riseHole().should('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
@@ -545,6 +546,18 @@ describe('TETR.IO Replay', () => {
         operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
         operations.inputReplay.rise().should('have.attr', 'data-value', '');
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
+    });
+
+    it('opens Replay from the shortcut above the INPUT NEXT queue', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+        cy.get(datatest('btn-open-replay-input')).should('be.visible');
+
+        operations.inputReplay.openReplay();
+        cy.get(datatest('replay-screen')).should('exist');
     });
 
     it('cancels pending garbage with an INPUT line clear', () => {

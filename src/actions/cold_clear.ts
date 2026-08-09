@@ -43,6 +43,7 @@ import type { MementoActions } from './memento';
 import type { PageActions } from './pages';
 import { persistViewSettings } from './view_settings';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
+import { inputGarbageView } from '../lib/input_replay';
 
 declare const M: any;
 
@@ -56,6 +57,7 @@ interface SessionBase {
     thinkMs: number;
     queueSuffix?: string;
     initDone: boolean;
+    incoming: number;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -290,7 +292,13 @@ const isPageSupported = (page?: Page): page is Page => {
     if (!page) {
         return false;
     }
-    return page.flags.lock && !page.flags.mirror && !page.flags.rise;
+    return page.flags.lock && !page.flags.mirror
+        && (!page.flags.rise || page.internal?.inputReplayContext !== undefined);
+};
+
+const incomingForPage = (page: Page): number => {
+    const context = page.internal?.inputReplayContext;
+    return context === undefined ? 0 : inputGarbageView(context).nextTankRows.length;
 };
 
 type CommentResolutionError = 'invalidQuizChain' | 'emptyComment';
@@ -1408,6 +1416,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             initDone: false,
+            incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
             resultPages: [],
             hold: searchQueue.hold,
@@ -1488,6 +1497,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             initDone: false,
+            incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
             hold: searchQueue.hold,
             current: searchQueue.current,
@@ -1681,6 +1691,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             tree,
             target,
             parsed,
+            page,
             preLockField,
             placedPiece,
         } = resolved.input;
@@ -1700,6 +1711,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             queueSuffix: parsed.suffix,
             wrapper: new ColdClearWrapper(),
             initDone: false,
+            incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
             field: preLockField.copy(),
@@ -2231,14 +2243,31 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (currentSession.runType === 'single') {
             if (currentSession.nextLimit === null) {
                 const remainingMoves = Math.max(0, currentSession.totalMoves - currentSession.resultPages.length);
-                currentSession.wrapper.requestSequence(remainingMoves);
+                if (currentSession.incoming > 0) {
+                    currentSession.wrapper.requestSequence(remainingMoves, currentSession.incoming);
+                } else {
+                    currentSession.wrapper.requestSequence(remainingMoves);
+                }
             } else {
-                currentSession.wrapper.requestMove();
+                if (currentSession.incoming > 0) {
+                    currentSession.wrapper.requestMove(currentSession.incoming);
+                } else {
+                    currentSession.wrapper.requestMove();
+                }
             }
         } else if (currentSession.runType === 'top3') {
-            currentSession.wrapper.requestTopMoves(currentSession.topBranchCount);
+            if (currentSession.incoming > 0) {
+                currentSession.wrapper.requestTopMoves(currentSession.topBranchCount, currentSession.incoming);
+            } else {
+                currentSession.wrapper.requestTopMoves(currentSession.topBranchCount);
+            }
         } else {
-            currentSession.wrapper.requestTopMoves(currentSession.requestedCandidateCount);
+            if (currentSession.incoming > 0) {
+                currentSession.wrapper.requestTopMoves(
+                    currentSession.requestedCandidateCount, currentSession.incoming);
+            } else {
+                currentSession.wrapper.requestTopMoves(currentSession.requestedCandidateCount);
+            }
         }
         return undefined;
     },
@@ -2297,6 +2326,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
 
         session.resultPages.push(resultPage);
+        // Replayから引き継いだincomingは現在局面の初手評価だけに使う。
+        session.incoming = 0;
 
         session.field.put(move);
         session.field.clearLine();

@@ -269,6 +269,7 @@ export const resources = {
     },
     Replay: {
         Title: 'TETR.IO リプレイ',
+        ShortLabel: 'リプレイ',
         OpenMenu: 'TETR.IO リプレイを開く',
         DefaultPlayer: 'Player {{number}}',
         Import: {

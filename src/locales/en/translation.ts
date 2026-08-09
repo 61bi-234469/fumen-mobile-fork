@@ -298,6 +298,7 @@
     },
     Replay: {
         Title: 'TETR.IO Replay',
+        ShortLabel: 'Replay',
         OpenMenu: 'Open TETR.IO replay',
         DefaultPlayer: 'Player {{number}}',
         Import: {

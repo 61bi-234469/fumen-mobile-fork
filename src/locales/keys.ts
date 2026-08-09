@@ -317,6 +317,7 @@ export const i18n = {
     },
     Replay: {
         Title: () => t('Replay.Title'),
+        ShortLabel: () => t('Replay.ShortLabel'),
         OpenMenu: () => t('Replay.OpenMenu'),
         DefaultPlayer: (number: number) => t('Replay.DefaultPlayer', { number }),
         Import: {
@@ -452,6 +453,12 @@ export const i18n = {
     InputStats: {
         Pieces: () => t('InputStats.Pieces'), Lines: () => t('InputStats.Lines'),
         PerfectClears: () => t('InputStats.PerfectClears'),
+        GarbageGauge: () => t('InputStats.GarbageGauge'),
+        NextRise: () => t('InputStats.NextRise'),
+        Attack: () => t('InputStats.Attack'),
+        Cancelled: () => t('InputStats.Cancelled'),
+        Sent: () => t('InputStats.Sent'),
+        Risen: () => t('InputStats.Risen'),
     },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),

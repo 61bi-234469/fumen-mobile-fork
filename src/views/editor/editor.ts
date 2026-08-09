@@ -29,6 +29,7 @@ import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
 import { computeInputStats } from '../../lib/input_stats';
 import { inputStatsPanel } from './input_stats_panel';
+import { inputGarbageView } from '../../lib/input_replay';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -298,11 +299,16 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         rotationSystem: state.mode.rotationSystem,
         tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
     });
+    const inputReplayContext = state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext;
+    const replayGarbage = inputReplayContext === undefined ? undefined : {
+        ...inputGarbageView(inputReplayContext),
+        last: inputReplayContext.garbage.last,
+    };
     const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
         ? inputStatsPanel({
             ...computedInputStats,
             lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-        }, inputStatsTier)
+        }, inputStatsTier, replayGarbage)
         : undefined;
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
@@ -324,6 +330,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             actions.commitCommentText();
             actions.setSevenBagGrayEnabled({ enable: !state.mode.sevenBagGrayEnabled });
         },
+        openReplay: () => actions.openReplayScreen(),
     }) : null;
 
     const fieldColumn = div({
@@ -406,6 +413,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 width: px(layout.buttons.size.width),
             }),
         }, [
+            queueOverlays.replayLaunchSlot,
             queueOverlays.nextPanel,
             editorRail(state, actions, layout),
         ]);

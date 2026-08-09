@@ -95,4 +95,102 @@ describe('input stats', () => {
             perfectClears: 1,
         });
     });
+
+    test('resets at the latest replay context and excludes its still-active piece', () => {
+        const move = { type: Piece.O, rotation: Rotation.Spawn, coordinate: { x: 4, y: 1 } };
+        const replayStats = {
+            b2bChain: 5,
+            renChain: 3,
+            pieces: 10,
+            lines: 20,
+            perfectClears: 2,
+        };
+        const pages: any[] = [
+            { index: 0, field: { obj: new Field({}) }, comment: { text: '' }, flags: { lock: true }, piece: move },
+            {
+                index: 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { lock: true },
+                piece: move,
+                internal: { inputReplayContext: { stats: replayStats, garbage: {} } },
+            },
+        ];
+
+        expect(computeInputStats(pages, 1, 'srsPlus')).toEqual(replayStats);
+    });
+
+    test('replays only completed pages after a replay reset boundary', () => {
+        const move = { type: Piece.O, rotation: Rotation.Spawn, coordinate: { x: 4, y: 1 } };
+        const replayStats = {
+            b2bChain: 5,
+            renChain: 3,
+            pieces: 10,
+            lines: 20,
+            perfectClears: 2,
+        };
+        const pages: any[] = [
+            { index: 0, field: { obj: new Field({}) }, comment: { text: '' }, flags: { lock: true }, piece: move },
+            {
+                index: 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { lock: true },
+                piece: move,
+                internal: { inputReplayContext: { stats: replayStats, garbage: {} } },
+            },
+            { index: 2, field: { ref: 0 }, comment: { ref: 0 }, flags: { lock: true }, piece: move },
+            { index: 3, field: { ref: 0 }, comment: { ref: 0 }, flags: { lock: true }, piece: move },
+        ];
+
+        expect(computeInputStats(pages, 3, 'srsPlus')).toMatchObject({
+            b2bChain: 5,
+            renChain: 0,
+            pieces: 11,
+            lines: 20,
+            perfectClears: 2,
+        });
+    });
+
+    test('does not use a replay reset boundary from another tree branch', () => {
+        const move = { type: Piece.O, rotation: Rotation.Spawn, coordinate: { x: 4, y: 1 } };
+        const stats = (pieces: number) => ({
+            pieces,
+            b2bChain: 0,
+            renChain: 0,
+            lines: pieces,
+            perfectClears: 0,
+        });
+        const pages: any[] = [
+            {
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: '' },
+                flags: { lock: true },
+                piece: move,
+                internal: { inputReplayContext: { stats: stats(10), garbage: {} } },
+            },
+            {
+                index: 1,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { lock: true },
+                piece: move,
+                internal: { inputReplayContext: { stats: stats(99), garbage: {} } },
+            },
+            { index: 2, field: { ref: 0 }, comment: { ref: 0 }, flags: { lock: true }, piece: move },
+        ];
+        const tree: any = {
+            version: 2,
+            rootId: 'root',
+            nodes: [
+                { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['p0'] },
+                { id: 'p0', parentId: 'root', pageIndex: 0, childrenIds: ['p1', 'p2'] },
+                { id: 'p1', parentId: 'p0', pageIndex: 1, childrenIds: [] },
+                { id: 'p2', parentId: 'p0', pageIndex: 2, childrenIds: [] },
+            ],
+        };
+
+        expect(computeInputStats(pages, 2, { tree, rotationSystem: 'srsPlus' }).pieces).toBe(10);
+    });
 });

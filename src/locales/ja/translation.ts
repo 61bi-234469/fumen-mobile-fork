@@ -269,6 +269,7 @@ export const resources = {
     },
     Replay: {
         Title: 'TETR.IO リプレイ',
+        ShortLabel: 'リプレイ',
         OpenMenu: 'TETR.IO リプレイを開く',
         DefaultPlayer: 'Player {{number}}',
         Import: {
@@ -403,6 +404,8 @@ export const resources = {
     },
     InputStats: {
         Pieces: '設置', Lines: '消去', PerfectClears: 'PC',
+        GarbageGauge: 'ガベージ', NextRise: '次のせり上がり',
+        Attack: '攻撃', Cancelled: '相殺', Sent: '送信', Risen: 'せり上がり',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

@@ -298,6 +298,7 @@
     },
     Replay: {
         Title: 'TETR.IO Replay',
+        ShortLabel: 'Replay',
         OpenMenu: 'Open TETR.IO replay',
         DefaultPlayer: 'Player {{number}}',
         Import: {
@@ -432,6 +433,8 @@
     },
     InputStats: {
         Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
+        GarbageGauge: 'GARBAGE', NextRise: 'NEXT RISE',
+        Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT', Risen: 'RISEN',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

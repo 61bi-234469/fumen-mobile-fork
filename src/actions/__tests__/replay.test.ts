@@ -57,9 +57,12 @@ import {
     getReplayKiller,
     getReplayOpponentGarbage,
     getReplayOpponentPoint,
+    getReplayOpponentVisual,
     getReplaySelfGarbage,
     getReplaySelfPoint,
+    getReplaySelfVisual,
     getReplayStats,
+    REPLAY_CLOCK_INTERVAL_MS,
     replayActions,
 } from '../replay';
 import { main } from '../../actions';
@@ -208,6 +211,10 @@ const applyResult = (state: State, result: Partial<State> | undefined): State =>
 
 describe('replayActions', () => {
     describe('phase transitions', () => {
+        test('the realtime playback clock updates at about 60Hz', () => {
+            expect(REPLAY_CLOCK_INTERVAL_MS).toEqual(16);
+        });
+
         test('setReplayIR moves to select phase with the left player selected', () => {
             const result = replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 })(createState())!;
@@ -345,7 +352,7 @@ describe('replayActions', () => {
             expect(replayActions.startReplayPlayback()(state)).toBeUndefined();
         });
 
-        test('startReplayPlayback enters playing at piece 1 with both sides in sync', () => {
+        test('startReplayPlayback enters playing at frame 0 with both sides in sync', () => {
             const state = createState({
                 ir: buildIR(3),
                 phase: 'select',
@@ -353,9 +360,8 @@ describe('replayActions', () => {
             });
             const result = replayActions.startReplayPlayback()(state)!;
             expect(result.replay!.phase).toEqual('playing');
-            // 自陣の手番 1 は frame 30。相手の初手は frame 45 なのでまだ「開始」地点。
-            expect(result.replay!.cursor.selfIndex).toEqual(1);
-            expect(result.replay!.cursor.frame).toEqual(30);
+            expect(result.replay!.cursor.selfIndex).toEqual(0);
+            expect(result.replay!.cursor.frame).toEqual(0);
             expect(result.replay!.cursor.opponentIndex).toEqual(0);
         });
 
@@ -364,9 +370,7 @@ describe('replayActions', () => {
             expect(result.replay!.phase).toEqual('select');
         });
 
-        // P2 レビュー対応: piecesplaced: 0（自己突合済み）のラウンドは locks が空で
-        // lockIndex:0 の盤面が存在しないため、terminal から開始しないと描画が失敗する。
-        test('startReplayPlayback starts at terminal when the self player has zero locks', () => {
+        test('startReplayPlayback also starts at frame 0 when the self player has zero locks', () => {
             const state = createState({
                 ir: buildIR(0),
                 phase: 'select',
@@ -374,9 +378,9 @@ describe('replayActions', () => {
             });
             const result = replayActions.startReplayPlayback()(state)!;
             expect(result.replay!.phase).toEqual('playing');
-            // ポイント空間は [initial, terminal] の 2 点。手番 1 は無いので terminal に落ちる。
-            expect(result.replay!.cursor.selfIndex).toEqual(1);
-            expect(getReplaySelfPoint(applyResult(state, result))!.kind).toEqual('terminal');
+            expect(result.replay!.cursor.selfIndex).toEqual(0);
+            expect(result.replay!.cursor.frame).toEqual(0);
+            expect(getReplaySelfPoint(applyResult(state, result))!.kind).toEqual('initial');
         });
     });
 
@@ -504,6 +508,12 @@ describe('replayActions', () => {
             expect(call.pageIndex).toEqual(3);
             expect(call.pages).toHaveLength(1);
             expect(call.pages[0].comment.text).toEqual('#Q=[](O)I');
+            expect(call.pieceSpawn).toBeTruthy();
+            expect(call.pages[0].internal.inputReplayContext.stats).toMatchObject({
+                pieces: 1,
+                b2bChain: 1,
+                renChain: 1,
+            });
         });
 
         test('hands the current mino over as a spawned piece', () => {
@@ -1009,6 +1019,18 @@ describe('replayActions', () => {
     });
 
     describe('selectors', () => {
+        test('visual selectors use the common floored frame for both sides', () => {
+            const state = playingState(3, 0, { frame: 29.9 });
+            const self = getReplaySelfVisual(state)!;
+            const opponent = getReplayOpponentVisual(state)!;
+
+            expect(self.frame).toEqual(29);
+            expect(opponent.frame).toEqual(29);
+            // visualの無い既存・手作りIRは直前の確定pointへfallbackする。
+            expect(self.current).toEqual(Piece.T);
+            expect(opponent.current).toEqual(Piece.L);
+        });
+
         test('the opponent point is read at the same instant as the self point', () => {
             const state = playingState(3, 3);
             expect(getReplaySelfPoint(state)!.frame).toEqual(90);
@@ -1032,6 +1054,8 @@ describe('replayActions', () => {
             });
             expect(getReplaySelfPoint(state)).toBeUndefined();
             expect(getReplayOpponentPoint(state)).toBeUndefined();
+            expect(getReplaySelfVisual(state)).toBeUndefined();
+            expect(getReplayOpponentVisual(state)).toBeUndefined();
             expect(getReplayStats(state)).toBeUndefined();
         });
     });

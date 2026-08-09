@@ -142,26 +142,43 @@ export const computeInputStats = (
             perfectClears: sevenBagGray.perfectClears,
         };
     }
-    if (currentIndex <= 0 || pages.length === 0) return initial;
-    const seed = parseQueueStateComment(resolvePageCommentText(pages, 0));
-    let stats: InputStats = seed ? {
-        ...initial,
-        b2bChain: seed.b2b ? 1 : 0,
-        renChain: fromCommentCombo(seed.combo),
-    } : initial;
+    if (pages.length === 0) return initial;
     const tree = typeof options === 'string' ? undefined : options.tree;
     const currentNode = tree === undefined ? undefined : findNodeByPageIndex(tree, currentIndex);
-    const indices = currentNode === undefined
-        ? Array.from({ length: Math.min(currentIndex, pages.length) }, (_, index) => index)
+    const route = currentNode === undefined
+        ? Array.from({
+            length: Math.min(Math.max(0, currentIndex + 1), pages.length),
+        }, (_, index) => index)
         : getPathToNode(tree!, currentNode.id)
             .map(nodeId => tree!.nodes.find(node => node.id === nodeId))
             .filter((node): node is NonNullable<typeof node> => node !== undefined && node.pageIndex >= 0)
-            .map(node => node.pageIndex)
-            .filter(index => index !== currentIndex);
+            .map(node => node.pageIndex);
+    let boundaryPosition = -1;
+    for (let position = 0; position < route.length; position += 1) {
+        if (pages[route[position]]?.internal?.inputReplayContext !== undefined) boundaryPosition = position;
+    }
+    let stats: InputStats;
+    let indices: number[];
+    if (boundaryPosition >= 0) {
+        const boundary = pages[route[boundaryPosition]].internal!.inputReplayContext!;
+        stats = {
+            ...boundary.stats,
+            lastAction: boundary.stats.lastAction === undefined ? undefined : { ...boundary.stats.lastAction },
+        };
+        // The boundary page's piece is still active; only completed pages after it are replayed.
+        indices = route.slice(boundaryPosition + 1).filter(index => index !== currentIndex);
+    } else {
+        if (currentIndex <= 0) return initial;
+        const seed = parseQueueStateComment(resolvePageCommentText(pages, 0));
+        stats = seed ? {
+            ...initial,
+            b2bChain: seed.b2b ? 1 : 0,
+            renChain: fromCommentCombo(seed.combo),
+        } : initial;
+        indices = route.filter(index => index !== currentIndex);
+    }
     const pagesObject = new Pages(pages);
-    const replayedFields = currentNode === undefined
-        ? pagesObject.replayFields(0, Math.min(currentIndex, pages.length), PageFieldOperation.Command)
-        : pagesObject.replayFieldIndices(indices, PageFieldOperation.Command);
+    const replayedFields = pagesObject.replayFieldIndices(indices, PageFieldOperation.Command);
     const preset = resolveInputRulesPreset(rotationSystem);
     for (let position = 0; position < indices.length; position += 1) {
         const index = indices[position];

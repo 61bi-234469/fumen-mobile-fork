@@ -11,7 +11,8 @@ import {
 import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
 import { ReplayWorkerWrapper } from '../lib/ttrm/ReplayWorkerWrapper';
 import { MAX_TTRM_TEXT_LENGTH } from '../lib/ttrm/parser';
-import { PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
+import { PlayerRoundIR, ReplayIR, ReplayVisualState, RoundIR } from '../lib/ttrm/types';
+import { createInputReplayContext, inputGarbageView } from '../lib/input_replay';
 import {
     clampPointIndex,
     frameAt,
@@ -21,6 +22,7 @@ import {
     ReplayPoint,
     ReplayStats,
     statsAt,
+    visualAtFrame,
 } from '../lib/ttrm/timeline';
 import {
     garbageViewAt,
@@ -36,11 +38,11 @@ const worker = new ReplayWorkerWrapper();
 // 衝突しないよう、state とは独立したカウンタで発行する（P1: 複数ファイル連続選択対策）。
 let nextReplayRequestId = 1;
 
-// 自動再生のクロック（FR-23）。盤面は lock 粒度でしか変わらないので 20Hz で足りる。
-// 針だけがこの間隔で動く。
-export const REPLAY_CLOCK_INTERVAL_MS = 50;
+// 操作中ミノと自由落下を60fps相当で見せる。進行量は下の実時間差から出すため、
+// intervalが遅延してもリプレイの時刻そのものはずれない。
+export const REPLAY_CLOCK_INTERVAL_MS = 16;
 
-// 進行量は interval の呼び出し回数ではなく実時間差から出す。20Hz で state を汚さないよう、
+// 進行量は interval の呼び出し回数ではなく実時間差から出す。
 // nextReplayRequestId と同じ流儀でモジュールスコープに置く。
 let replayClockLastTickAt = 0;
 
@@ -330,9 +332,9 @@ export const replayActions: Readonly<ReplayActions> = {
         if (round === undefined || round.status !== 'ok' || player === undefined) {
             return undefined;
         }
-        // 開始位置は P1 と同じく「手番 1」。設置数 0（piecesplaced: 0 で自己突合済み）の
-        // ラウンドは lock が無いので、clampPointIndex で terminal に落ちる。
-        const selfIndex = clampPointIndex(player, 1);
+        // 確定盤面の手番送りは従来のpoint空間を保つ一方、自動再生は初手の操作と
+        // 自由落下を含めるためframe 0（initial point）から始める。
+        const selfIndex = 0;
         return {
             replay: {
                 ...state.replay,
@@ -559,7 +561,8 @@ export const replayActions: Readonly<ReplayActions> = {
     // 上書きが起きないので破棄確認は不要で、挿入自体も undo できる。
     openReplayInEditor: () => (state): NextState => {
         const field = getCurrentReplayField(state);
-        if (field === undefined) {
+        const player = getSelfPlayerRound(state);
+        if (field === undefined || player === undefined) {
             return undefined;
         }
         // 画面を離れるのでクロックを止める（§3-5 の明示停止経路）。
@@ -567,17 +570,24 @@ export const replayActions: Readonly<ReplayActions> = {
         main.pauseReplayPlayback();
         // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる。
         // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す
+        const inputReplayContext = createInputReplayContext(
+            player, state.replay.cursor.selfIndex, state.replay.cursor.frame,
+        );
         const page = irPointToPage(
             field,
             getCurrentReplayQueue(state),
             state.fumen.guideLineColor,
             state.mode.rotationSystem !== 'classic',
-            getReplayExportRise(state),
+            inputGarbageView(inputReplayContext).nextRise ?? getReplayExportRise(state),
         );
+        page.internal = {
+            ...page.internal,
+            inputReplayContext,
+        };
         const pageIndex = state.fumen.currentIndex + 1;
 
         // appendPages は履歴登録と挿入ページへの移動まで行う（クリップボード貼り付けと同じ経路）
-        main.appendPages({ pageIndex, pages: [page] });
+        main.appendPages({ pageIndex, pages: [page], pieceSpawn: true });
         main.changeToDrawerScreen({});
         // 取り込んだ地点からそのまま操作できるよう INPUT レイアウトで開く
         main.selectPieceLayout({ layout: 'play' });
@@ -601,20 +611,38 @@ export const getReplayOpponentPoint = (state: State): ReplayPoint | undefined =>
     return pointAt(player, state.replay.cursor.opponentIndex);
 };
 
-export const getCurrentReplayField = (state: State) => getReplaySelfPoint(state)?.field;
+// 確定ReplayPointは手番・統計用に残し、盤面・操作中ミノ・HOLD/NEXTだけを
+// 共通フレーム軸のvisual timelineから引く。fractional cursorは次frameを先取りしない。
+export const getReplaySelfVisual = (state: State): ReplayVisualState | undefined => {
+    const player = getSelfPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return visualAtFrame(player, Math.floor(state.replay.cursor.frame));
+};
+
+export const getReplayOpponentVisual = (state: State): ReplayVisualState | undefined => {
+    const player = getOpponentPlayerRound(state);
+    if (player === undefined || state.replay.phase !== 'playing') {
+        return undefined;
+    }
+    return visualAtFrame(player, Math.floor(state.replay.cursor.frame));
+};
+
+export const getCurrentReplayField = (state: State) => getReplaySelfVisual(state)?.field;
 
 // 現在地点の HOLD / カレント / NEXT。Editor へ引き渡す quiz コメントと
 // 再生画面の表示の両方がここを参照する。
 export const getCurrentReplayQueue = (state: State): IRQueue | undefined => {
-    const point = getReplaySelfPoint(state);
-    if (point === undefined) {
+    const visual = getReplaySelfVisual(state);
+    if (visual === undefined) {
         return undefined;
     }
-    return { hold: point.hold, current: point.current, next: point.next };
+    return { hold: visual.hold, current: visual.current, next: visual.next };
 };
 
 export const getCurrentReplayClippedRowCount = (state: State): number =>
-    getReplaySelfPoint(state)?.clippedRowCount ?? 0;
+    getReplaySelfVisual(state)?.clippedRowCount ?? 0;
 
 // FR-26。TETR.IO の received は出さない（R7 / §3-8）。
 export const getReplayStats = (state: State): ReplayStats | undefined => {

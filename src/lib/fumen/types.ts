@@ -1,5 +1,6 @@
 import { Piece, Rotation } from '../enums';
 import { Field } from './field';
+import type { InputReplayContext } from '../input_replay';
 
 export interface Action {
     piece: {
@@ -63,6 +64,8 @@ export interface Page {
         };
         /** A detached INPUT workspace created to protect later pages/branches. */
         sevenBagGrayWorkspace?: boolean;
+        /** Replay-only battle state used as an INPUT simulation reset boundary. */
+        inputReplayContext?: InputReplayContext;
     };
 }
 

@@ -1,3 +1,4 @@
+import { GarbageQueueSnapshot } from '@haelp/teto/engine';
 import { Piece } from '../enums';
 
 // ---- .ttrm raw data (only the parts this feature consumes) ----
@@ -49,6 +50,56 @@ export interface TtrmFile {
 // 10x23 play field cells, row-major with y=0 at the bottom (same layout as
 // Field#toPlayFieldPieces). Kept as a plain array so it survives postMessage.
 export type IRField = Piece[];
+
+// Worker で Engine を再生した結果から作る、表示用の軽量な変化点。
+// raw key event は UI で再解釈せず、Engine が確定した姿勢だけを渡す。
+export interface ReplayActiveFrame {
+    frame: number;
+    piece: Piece;
+    rotation: number;
+    x: number;
+    y: number;
+    cells: [number, number][];
+}
+
+export interface ReplayBoardFrame {
+    frame: number;
+    field: IRField;
+    sourceHeight: number;
+    clippedRowCount: number;
+}
+
+export interface ReplayQueueFrame {
+    frame: number;
+    hold: Piece | null;
+    current: Piece | null;
+    next: Piece[];
+}
+
+export interface ReplayGarbageFrame {
+    frame: number;
+    snapshot: GarbageQueueSnapshot;
+}
+
+export interface ReplayVisualTimeline {
+    active: ReplayActiveFrame[];
+    boards: ReplayBoardFrame[];
+    queues: ReplayQueueFrame[];
+    garbage: ReplayGarbageFrame[];
+}
+
+// 任意フレームを描画・INPUT 切り出しへ渡すときの合成済み表現。
+export interface ReplayVisualState {
+    frame: number;
+    field: IRField;
+    sourceHeight: number;
+    clippedRowCount: number;
+    active?: ReplayActiveFrame;
+    hold: Piece | null;
+    current: Piece | null;
+    next: Piece[];
+    garbage?: ReplayGarbageFrame;
+}
 
 export type TtrmSpinType = 'none' | 'mini' | 'normal';
 
@@ -145,6 +196,9 @@ export interface PlayerRoundIR {
     locks: LockPoint[];
     terminal: TerminalPoint;
     garbageEvents: GarbageEvent[];
+    // Production の Worker IR は常に持つ。optional は既存の手作り test IR と
+    // 後方互換のためで、timeline.ts は確定 ReplayPoint へフォールバックする。
+    visual?: ReplayVisualTimeline;
     verification: PlayerVerification;
 }
 

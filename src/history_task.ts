@@ -4,6 +4,7 @@ import { generateKey } from './lib/random';
 import { Move, Page, PreCommand } from './lib/fumen/types';
 import { decode } from './lib/fumen/fumen';
 import { Field, PlayField } from './lib/fumen/field';
+import { cloneInputReplayContext } from './lib/input_replay';
 
 export type HistoryTask = OperationTask | FixedTask;
 
@@ -321,6 +322,8 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
                 rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
             },
             sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
+            inputReplayContext: page.internal.inputReplayContext === undefined
+                ? undefined : cloneInputReplayContext(page.internal.inputReplayContext),
         },
     };
 };
@@ -362,6 +365,8 @@ export const toPage = (page: PrimitivePage): Page => {
                 rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
             },
             sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
+            inputReplayContext: page.internal.inputReplayContext === undefined
+                ? undefined : cloneInputReplayContext(page.internal.inputReplayContext),
         },
     };
 };

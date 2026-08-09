@@ -20,21 +20,21 @@ export class ColdClearWrapper {
         this.worker.postMessage(initMsg);
     }
 
-    requestMove(): void {
+    requestMove(incoming?: number): void {
         if (this.worker) {
-            this.worker.postMessage({ type: 'requestMove' } as WorkerMessage);
+            this.worker.postMessage({ incoming, type: 'requestMove' } as WorkerMessage);
         }
     }
 
-    requestTopMoves(count: number): void {
+    requestTopMoves(count: number, incoming?: number): void {
         if (this.worker) {
-            this.worker.postMessage({ count, type: 'requestTopMoves' } as WorkerMessage);
+            this.worker.postMessage({ count, incoming, type: 'requestTopMoves' } as WorkerMessage);
         }
     }
 
-    requestSequence(count: number): void {
+    requestSequence(count: number, incoming?: number): void {
         if (this.worker) {
-            this.worker.postMessage({ count, type: 'requestSequence' } as WorkerMessage);
+            this.worker.postMessage({ count, incoming, type: 'requestSequence' } as WorkerMessage);
         }
     }
 

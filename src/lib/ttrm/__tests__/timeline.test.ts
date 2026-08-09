@@ -1,13 +1,19 @@
 import { FieldConstants, Piece } from '../../enums';
 import {
+    activeAtFrame,
+    boardAtFrame,
+    changePointAtFrame,
     clampPointIndex,
     formatFrameTime,
     frameAt,
+    garbageAtFrame,
     indexAtFrame,
     lastPointIndex,
     pointAt,
     pointCount,
+    queueAtFrame,
     statsAt,
+    visualAtFrame,
 } from '../timeline';
 import { IRField, LockPoint, PlayerRoundIR } from '../types';
 
@@ -243,6 +249,94 @@ describe('timeline point space', () => {
             // 手番由来の値は動かない
             expect(statsAt(withGarbage, 2, 170).frame).toEqual(120);
             expect(statsAt(withGarbage, 2, 170).placed).toEqual(2);
+        });
+    });
+
+    describe('visual change-point timeline', () => {
+        test('changePointAtFrame returns the last point on or before the target', () => {
+            const points = [{ frame: 10, value: 'a' }, { frame: 20, value: 'b' }];
+            expect(changePointAtFrame(points, 9)).toBeUndefined();
+            expect(changePointAtFrame(points, 10)).toBe(points[0]);
+            expect(changePointAtFrame(points, 19)).toBe(points[0]);
+            expect(changePointAtFrame(points, 20)).toBe(points[1]);
+            expect(changePointAtFrame(points, 999)).toBe(points[1]);
+        });
+
+        test('visualAtFrame floors fractional frames and composes independent timelines', () => {
+            const before = emptyField();
+            const after = emptyField();
+            after[0] = Piece.Gray;
+            const player = playerWith([lockAt(100, { fieldAfter: after })], 200);
+            player.visual = {
+                active: [
+                    { frame: 0, piece: Piece.T, rotation: 0, x: 4, y: 20, cells: [[4, 20]] },
+                    { frame: 140, piece: Piece.I, rotation: 1, x: 5, y: 18, cells: [[5, 18]] },
+                ],
+                boards: [
+                    { frame: 0, field: before, sourceHeight: 0, clippedRowCount: 0 },
+                    { frame: 100, field: after, sourceHeight: 1, clippedRowCount: 0 },
+                ],
+                queues: [
+                    { frame: 0, hold: null, current: Piece.T, next: [Piece.I] },
+                    { frame: 120, hold: Piece.T, current: Piece.I, next: [Piece.O] },
+                ],
+                garbage: [
+                    { frame: 0, snapshot: {} as any },
+                    { frame: 149, snapshot: { size: 4 } as any },
+                    { frame: 150, snapshot: { size: 5 } as any },
+                ],
+            };
+
+            const state = visualAtFrame(player, 149.9);
+            expect(state.frame).toEqual(149);
+            expect(state.field).toBe(after);
+            expect(state.active!.piece).toEqual(Piece.I);
+            expect(state.hold).toEqual(Piece.T);
+            expect(state.next).toEqual([Piece.O]);
+            expect(state.garbage!.frame).toEqual(149);
+            expect(boardAtFrame(player, 99.9).field).toBe(before);
+            expect(queueAtFrame(player, 119.9).hold).toBeNull();
+            expect(garbageAtFrame(player, 149.9)!.frame).toEqual(149);
+        });
+
+        test('a lock boundary never leaves the previous active piece over the locked board', () => {
+            const player = playerWith([lockAt(100)], 200);
+            player.visual = {
+                active: [
+                    { frame: 0, piece: Piece.T, rotation: 0, x: 4, y: 20, cells: [[4, 20]] },
+                ],
+                boards: [],
+                queues: [],
+                garbage: [],
+            };
+
+            expect(activeAtFrame(player, 99)!.piece).toEqual(Piece.T);
+            expect(activeAtFrame(player, 100)).toBeUndefined();
+            expect(activeAtFrame(player, 150)).toBeUndefined();
+
+            player.visual.active.push({
+                frame: 100, piece: Piece.I, rotation: 0, x: 4, y: 20, cells: [[4, 20]],
+            });
+            expect(activeAtFrame(player, 100)!.piece).toEqual(Piece.I);
+            expect(activeAtFrame(player, 200)).toBeUndefined();
+            expect(activeAtFrame(player, 999)).toBeUndefined();
+        });
+
+        test('old hand-made IR without visual data falls back to ReplayPoints', () => {
+            const after = emptyField();
+            after[0] = Piece.Gray;
+            const player = playerWith([lockAt(100, {
+                fieldAfter: after,
+                hold: Piece.T,
+                current: Piece.I,
+                next: [Piece.O],
+            })], 200);
+
+            expect(boardAtFrame(player, 100).field).toBe(after);
+            expect(queueAtFrame(player, 100)).toMatchObject({
+                frame: 100, hold: Piece.T, current: Piece.I, next: [Piece.O],
+            });
+            expect(garbageAtFrame(player, 100)).toBeUndefined();
         });
     });
 

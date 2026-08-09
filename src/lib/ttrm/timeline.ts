@@ -1,6 +1,14 @@
-import { Piece } from '../enums';
+import { FieldConstants, Piece } from '../enums';
 import { gaugeAtFrame, getGarbageTimeline, tankedAtFrame } from './garbage';
-import { IRField, PlayerRoundIR } from './types';
+import {
+    IRField,
+    PlayerRoundIR,
+    ReplayActiveFrame,
+    ReplayBoardFrame,
+    ReplayGarbageFrame,
+    ReplayQueueFrame,
+    ReplayVisualState,
+} from './types';
 
 // P2 §3-2「ポイント空間」。プレイヤー 1 人あたり、盤面が確定している地点を 1 本の配列として扱う。
 //
@@ -99,6 +107,129 @@ export const indexAtFrame = (player: PlayerRoundIR, frame: number): number => {
         }
     }
     return lo + 1;
+};
+
+const visualFrame = (player: PlayerRoundIR, frame: number): number => {
+    const finite = Number.isFinite(frame) ? frame : 0;
+    return Math.min(player.terminal.frame, Math.max(0, Math.floor(finite)));
+};
+
+// frame <= target を満たす最後の変化点。UI と INPUT 切り出しの双方が同じ境界規則を使う。
+export const changePointAtFrame = <T extends { frame: number }>(
+    points: T[], frame: number,
+): T | undefined => {
+    if (points.length === 0 || frame < points[0].frame) {
+        return undefined;
+    }
+    let lo = 0;
+    let hi = points.length;
+    while (lo + 1 < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (points[mid].frame <= frame) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    return points[lo];
+};
+
+const sourceHeightOf = (field: IRField): number => {
+    for (let y = FieldConstants.Height - 1; 0 <= y; y -= 1) {
+        const start = y * FieldConstants.Width;
+        if (field.slice(start, start + FieldConstants.Width).some(cell => cell !== Piece.Empty)) {
+            return y + 1;
+        }
+    }
+    return 0;
+};
+
+const fallbackBoardAtFrame = (player: PlayerRoundIR, frame: number): ReplayBoardFrame => {
+    const index = indexAtFrame(player, frame);
+    if (index === 0) {
+        return {
+            frame: player.initial.frame,
+            field: player.initial.field,
+            sourceHeight: sourceHeightOf(player.initial.field),
+            clippedRowCount: 0,
+        };
+    }
+    if (index === lastPointIndex(player)) {
+        return {
+            frame: player.terminal.frame,
+            field: player.terminal.field,
+            sourceHeight: player.terminal.sourceHeight,
+            clippedRowCount: player.terminal.clippedRowCount,
+        };
+    }
+    const lock = player.locks[index - 1];
+    return {
+        frame: lock.frame,
+        field: lock.fieldAfter,
+        sourceHeight: lock.sourceHeight,
+        clippedRowCount: lock.clippedRowCount,
+    };
+};
+
+export const boardAtFrame = (player: PlayerRoundIR, frame: number): ReplayBoardFrame => {
+    const target = visualFrame(player, frame);
+    return changePointAtFrame(player.visual?.boards ?? [], target)
+        ?? fallbackBoardAtFrame(player, target);
+};
+
+export const queueAtFrame = (player: PlayerRoundIR, frame: number): ReplayQueueFrame => {
+    const target = visualFrame(player, frame);
+    const point = changePointAtFrame(player.visual?.queues ?? [], target);
+    if (point !== undefined) {
+        return point;
+    }
+    const fallback = pointAt(player, indexAtFrame(player, target));
+    return {
+        frame: fallback.frame,
+        hold: fallback.hold,
+        current: fallback.current,
+        next: fallback.next,
+    };
+};
+
+export const activeAtFrame = (
+    player: PlayerRoundIR, frame: number,
+): ReplayActiveFrame | undefined => {
+    const target = visualFrame(player, frame);
+    if (player.terminal.frame <= target) {
+        return undefined;
+    }
+    const active = changePointAtFrame(player.visual?.active ?? [], target);
+    const point = pointAt(player, indexAtFrame(player, target));
+    // 最新 lock 以降に新 active が無ければ、次の spawn まで直前ミノを再表示しない。
+    if (point.kind === 'lock' && (active === undefined || active.frame < point.frame)) {
+        return undefined;
+    }
+    return active;
+};
+
+export const garbageAtFrame = (
+    player: PlayerRoundIR, frame: number,
+): ReplayGarbageFrame | undefined => {
+    const target = visualFrame(player, frame);
+    return changePointAtFrame(player.visual?.garbage ?? [], target);
+};
+
+export const visualAtFrame = (player: PlayerRoundIR, frame: number): ReplayVisualState => {
+    const target = visualFrame(player, frame);
+    const board = boardAtFrame(player, target);
+    const queue = queueAtFrame(player, target);
+    return {
+        frame: target,
+        field: board.field,
+        sourceHeight: board.sourceHeight,
+        clippedRowCount: board.clippedRowCount,
+        active: activeAtFrame(player, target),
+        hold: queue.hold,
+        current: queue.current,
+        next: queue.next,
+        garbage: garbageAtFrame(player, target),
+    };
 };
 
 export const framesToSeconds = (frames: number): number => frames / FRAMES_PER_SECOND;

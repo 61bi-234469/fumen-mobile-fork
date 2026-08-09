@@ -5,16 +5,17 @@ import { i18n } from '../locales/keys';
 import { Piece } from '../lib/enums';
 import { px, style } from '../lib/types';
 import {
-    getCurrentReplayClippedRowCount,
     getOpponentPlayerRound,
     getReplayEndFrame,
     getReplayKiller,
     getReplayOpponentGarbage,
     getReplayOpponentPoint,
     getReplayOpponentStats,
+    getReplayOpponentVisual,
     getReplaySelfGarbage,
     getReplaySelfPoint,
     getReplayStats,
+    getReplaySelfVisual,
     getSelectedRound,
     getSelfPlayerRound,
 } from '../actions/replay';
@@ -334,9 +335,11 @@ const playingPhase = (state: State, actions: Actions) => {
     const opponent = getOpponentPlayerRound(state);
     const selfPoint = getReplaySelfPoint(state)!;
     const opponentPoint = getReplayOpponentPoint(state);
+    const selfVisual = getReplaySelfVisual(state)!;
+    const opponentVisual = getReplayOpponentVisual(state);
     const stats = getReplayStats(state)!;
     const opponentStats = getReplayOpponentStats(state);
-    const clipped = getCurrentReplayClippedRowCount(state);
+    const clipped = selfVisual.clippedRowCount;
     const lock = selfPoint.kind === 'lock' ? player.locks[selfPoint.index - 1] : undefined;
     const opponentLock = opponent !== undefined && opponentPoint !== undefined
         && opponentPoint.kind === 'lock'
@@ -467,6 +470,7 @@ const playingPhase = (state: State, actions: Actions) => {
                     variant: 'self',
                     size: 'full',
                     point: selfPoint,
+                    visual: selfVisual,
                     blockSize: layout.blockSize,
                     label: i18n.Replay.Playing.Self(),
                     counterText: pointCounterText(player, selfPoint),
@@ -477,21 +481,23 @@ const playingPhase = (state: State, actions: Actions) => {
                     clearText: lock !== undefined && clearLabel(lock) !== ''
                         ? clearLabel(lock) : undefined,
                 })}
-                {showOpponent && opponentPoint !== undefined && opponentStats !== undefined ? replaySide({
-                    guideLineColor,
-                    variant: 'opponent',
-                    size: isWide ? 'full' : 'compact',
-                    point: opponentPoint,
-                    blockSize: layout.opponentBlockSize,
-                    label: i18n.Replay.Playing.Opponent(),
-                    counterText: pointCounterText(opponent!, opponentPoint),
-                    heading: isWide ? displayName(ir, opponent!.id) : undefined,
-                    garbage: opponentGarbage,
-                    queueWidth: layout.queueWidth,
-                    stats: opponentStats,
-                    clearText: opponentLock !== undefined && clearLabel(opponentLock) !== ''
-                        ? clearLabel(opponentLock) : undefined,
-                }) : undefined}
+                {showOpponent && opponentPoint !== undefined && opponentVisual !== undefined
+                    && opponentStats !== undefined ? replaySide({
+                        guideLineColor,
+                        variant: 'opponent',
+                        size: isWide ? 'full' : 'compact',
+                        point: opponentPoint,
+                        visual: opponentVisual,
+                        blockSize: layout.opponentBlockSize,
+                        label: i18n.Replay.Playing.Opponent(),
+                        counterText: pointCounterText(opponent!, opponentPoint),
+                        heading: isWide ? displayName(ir, opponent!.id) : undefined,
+                        garbage: opponentGarbage,
+                        queueWidth: layout.queueWidth,
+                        stats: opponentStats,
+                        clearText: opponentLock !== undefined && clearLabel(opponentLock) !== ''
+                            ? clearLabel(opponentLock) : undefined,
+                    }) : undefined}
             </div>
 
             {clipped > 0 ? (

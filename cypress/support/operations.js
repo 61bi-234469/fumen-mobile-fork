@@ -988,6 +988,7 @@ export const operations = {
         reset: () => cy.get(datatest('btn-replay-reset')).click(),
         // P2: 自陣盤面は replay-board-self に改名。相手側は replay-board-opponent。
         board: (side = 'self') => cy.get(datatest(`replay-board-${side}`)),
+        active: (side = 'self') => cy.get(datatest(`replay-active-${side}`)),
         // 再生／一時停止（FR-23）
         playPause: () => cy.get(datatest('btn-replay-play-pause')).click(),
         setSpeed: (speed) => cy.get(datatest('replay-speed-select')).select(String(speed)),
@@ -1014,5 +1015,12 @@ export const operations = {
         killer: () => cy.get(datatest('replay-killer')),
         killerSeek: () => cy.get(datatest('btn-replay-killer-seek')).click(),
         toggleGarbage: () => cy.get(datatest('btn-replay-toggle-garbage')).click(),
+    },
+    inputReplay: {
+        gauge: () => cy.get(datatest('input-garbage-gauge')),
+        rise: () => cy.get(datatest('input-garbage-rise')),
+        damage: () => cy.get(datatest('input-garbage-damage')),
+        b2b: () => cy.get(datatest('input-stats-b2b')),
+        ren: () => cy.get(datatest('input-stats-ren')),
     },
 };

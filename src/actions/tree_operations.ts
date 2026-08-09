@@ -63,6 +63,7 @@ import {
 import { Quiz } from '../lib/fumen/quiz';
 import { persistViewSettings } from './view_settings';
 import { Screens } from '../lib/enums';
+import { cloneInputReplayContext } from '../lib/input_replay';
 
 // ============================================================================
 // Helpers for root reparenting
@@ -744,6 +745,8 @@ const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
             rowMap: sourceInternal.sevenBagGrayDisplay.rowMap.slice(),
         },
         sevenBagGrayWorkspace: true,
+        inputReplayContext: sourceInternal?.inputReplayContext === undefined
+            ? undefined : cloneInputReplayContext(sourceInternal.inputReplayContext),
     };
     return {
         internal,

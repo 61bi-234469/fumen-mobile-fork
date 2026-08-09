@@ -48,7 +48,7 @@ export interface UtilsActions {
         screenParam?: Screens,
         initialLoad?: boolean,
     }) => action;
-    appendPages: (data: { pages: Page[], pageIndex: number }) => action;
+    appendPages: (data: { pages: Page[], pageIndex: number, pieceSpawn?: boolean }) => action;
     executeNewFumen: () => action;
     forceReload: () => action;
     refresh: () => action;
@@ -324,9 +324,14 @@ export const utilsActions: Readonly<UtilsActions> = {
             return undefined;
         }
     },
-    appendPages: ({ pages, pageIndex }) => (state): NextState => {
+    appendPages: ({ pages, pageIndex, pieceSpawn = false }) => (state): NextState => {
         return sequence(state, [
-            appendPages({ pageIndex, appendedPages: pages, indexAfterReverting: state.fumen.currentIndex }),
+            appendPages({
+                pageIndex,
+                pieceSpawn,
+                appendedPages: pages,
+                indexAfterReverting: state.fumen.currentIndex,
+            }),
             actions.applyPageRotation(),
         ]);
     },
@@ -346,10 +351,11 @@ export const utilsActions: Readonly<UtilsActions> = {
 };
 
 const appendPages = (
-    { pageIndex, appendedPages, indexAfterReverting }: {
+    { pageIndex, appendedPages, indexAfterReverting, pieceSpawn }: {
         pageIndex: number,
         appendedPages: Page[],
         indexAfterReverting: number,
+        pieceSpawn: boolean,
     },
 ) => (state: Readonly<State>): NextState => {
     const fumen = state.fumen;
@@ -417,7 +423,7 @@ const appendPages = (
         : {};
 
     return sequence(state, [
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, indexAfterReverting) }),
+        actions.registerHistoryTask({ pieceSpawn, task: toPageTaskStack(tasks, indexAfterReverting) }),
         () => ({
             fumen: {
                 ...state.fumen,

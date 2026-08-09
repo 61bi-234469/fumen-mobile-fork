@@ -9,7 +9,12 @@ import {
     InitialPoint,
     LockPoint,
     PlayerRoundIR,
+    ReplayActiveFrame,
+    ReplayBoardFrame,
+    ReplayGarbageFrame,
     ReplayIR,
+    ReplayQueueFrame,
+    ReplayVisualTimeline,
     RoundIR,
     TtrmFile,
     TtrmPlayerRound,
@@ -37,6 +42,109 @@ const readFalling = (engine: Engine): Piece | null => {
     }
     const piece = minoToPiece(symbol);
     return isMinoPiece(piece) ? piece : null;
+};
+
+const readActiveFrame = (engine: Engine, frame: number): ReplayActiveFrame | undefined => {
+    if (engine.falling === undefined) {
+        return undefined;
+    }
+    const piece = minoToPiece(engine.falling.symbol);
+    if (!isMinoPiece(piece)) {
+        return undefined;
+    }
+    return {
+        frame,
+        piece,
+        rotation: engine.falling.rotation,
+        x: engine.falling.x,
+        y: engine.falling.y,
+        cells: engine.falling.absoluteBlocks.map(([x, y]) => [x, y] as [number, number]),
+    };
+};
+
+const readQueueFrame = (engine: Engine, frame: number): ReplayQueueFrame => ({
+    frame,
+    hold: engine.held !== null && engine.held !== undefined ? minoToPiece(engine.held) : null,
+    current: readFalling(engine),
+    next: readQueue(engine),
+});
+
+const readBoardFrame = (engine: Engine, frame: number): ReplayBoardFrame => {
+    const board = convertEngineBoard(engine.board.state as EngineBoardState);
+    return { frame, ...board };
+};
+
+const readGarbageFrame = (engine: Engine, frame: number): ReplayGarbageFrame => ({
+    frame,
+    snapshot: engine.garbageQueue.snapshot(),
+});
+
+const sameNumbers = (a: number[], b: number[]): boolean =>
+    a.length === b.length && a.every((value, index) => value === b[index]);
+
+const sameCells = (a: [number, number][], b: [number, number][]): boolean =>
+    a.length === b.length
+    && a.every((cell, index) => cell[0] === b[index][0] && cell[1] === b[index][1]);
+
+const sameActive = (a: ReplayActiveFrame, b: ReplayActiveFrame): boolean =>
+    a.piece === b.piece && a.rotation === b.rotation && a.x === b.x && a.y === b.y
+    && sameCells(a.cells, b.cells);
+
+const sameBoard = (a: ReplayBoardFrame, b: ReplayBoardFrame): boolean =>
+    a.sourceHeight === b.sourceHeight && a.clippedRowCount === b.clippedRowCount
+    && sameNumbers(a.field, b.field);
+
+const sameQueue = (a: ReplayQueueFrame, b: ReplayQueueFrame): boolean =>
+    a.hold === b.hold && a.current === b.current && sameNumbers(a.next, b.next);
+
+const sameGarbage = (a: ReplayGarbageFrame, b: ReplayGarbageFrame): boolean =>
+    JSON.stringify(a.snapshot) === JSON.stringify(b.snapshot);
+
+// 同一 frame で hold → hard drop のように複数回変わる場合、UI が表示するのは
+// その frame の最終状態だけ。同じ frame の末尾を置き換えて昇順を保つ。
+const recordChange = <T extends { frame: number }>(
+    points: T[], next: T, equal: (a: T, b: T) => boolean,
+): void => {
+    const last = points[points.length - 1];
+    if (last !== undefined && last.frame === next.frame) {
+        if (!equal(last, next)) {
+            points[points.length - 1] = next;
+        }
+        return;
+    }
+    if (last === undefined || !equal(last, next)) {
+        points.push(next);
+    }
+};
+
+const rawConfirmSenderFrames = (playerRound: TtrmPlayerRound): Map<string, number[]> => {
+    const frames = new Map<string, number[]>();
+    for (const event of playerRound.replay.events) {
+        const ige = event.type === 'ige' ? event.data : undefined;
+        const envelope = ige !== undefined && ige.type === 'interaction_confirm'
+            ? ige.data
+            : undefined;
+        const payload = envelope !== undefined && typeof envelope.data === 'object'
+            ? envelope.data
+            : undefined;
+        const iid = envelope?.iid ?? payload?.iid;
+        const gameid = envelope?.gameid ?? payload?.gameid;
+        // Depending on the replay version the garbage payload is either the confirm envelope
+        // itself or one level below it. Only this payload frame is the sender-side clock;
+        // event.frame and the IGE envelope frame belong to the receiving player.
+        const senderFrame = payload?.frame ?? envelope?.frame;
+        const type = payload?.type ?? envelope?.type;
+        if (envelope === undefined || type !== 'garbage'
+            || typeof iid !== 'number' || typeof gameid !== 'number'
+            || typeof senderFrame !== 'number' || !Number.isFinite(senderFrame)) {
+            continue;
+        }
+        const key = `${gameid}:${iid}`;
+        const values = frames.get(key) ?? [];
+        values.push(senderFrame);
+        frames.set(key, values);
+    }
+    return frames;
 };
 
 // ラウンド開始地点（P2 §3-3）。Engine#falling / Engine#queue は型定義上 optional では
@@ -94,8 +202,37 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
 
     const locks: LockPoint[] = [];
     const garbageEvents: GarbageEvent[] = [];
+    const visual: ReplayVisualTimeline = { active: [], boards: [], queues: [], garbage: [] };
+    const confirmSenderFrames = rawConfirmSenderFrames(playerRound);
     let totalLines = 0;
     let prevAttack = 0;
+
+    const recordActive = (frame: number): void => {
+        const active = readActiveFrame(engine, frame);
+        if (active !== undefined) {
+            recordChange(visual.active, active, sameActive);
+        }
+    };
+    const recordBoard = (frame: number, board?: ReturnType<typeof convertEngineBoard>): void => {
+        const point = board !== undefined ? { frame, ...board } : readBoardFrame(engine, frame);
+        recordChange(visual.boards, point, sameBoard);
+    };
+    const recordQueue = (frame: number, queue?: ReplayQueueFrame): void => {
+        recordChange(visual.queues, queue ?? readQueueFrame(engine, frame), sameQueue);
+    };
+    const recordGarbage = (frame: number): void => {
+        recordChange(visual.garbage, readGarbageFrame(engine, frame), sameGarbage);
+    };
+
+    recordActive(0);
+    recordBoard(0);
+    recordQueue(0, {
+        frame: 0,
+        hold: initial.hold,
+        current: initial.current,
+        next: initial.next,
+    });
+    recordGarbage(0);
 
     // falling.lock fires after the piece merges, so the pre-lock board and
     // piece pose are snapshotted on falling.lock.pre.
@@ -117,11 +254,22 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         };
     });
 
+    // HOLD と lock 後の spawn は tick 終了を待たず、この raw frame で切り替わる。
+    // 1 frame 内に複数回 spawn した場合は recordChange が最後の状態だけを残す。
+    engine.events.on('falling.new', () => {
+        recordActive(engine.frame);
+        recordQueue(engine.frame);
+    });
+    engine.events.on('queue.add', () => {
+        recordQueue(engine.frame);
+    });
+
     engine.events.on('falling.lock', (res) => {
         const after = convertEngineBoard(engine.board.state as EngineBoardState);
         totalLines += res.lines || 0;
         const attack = Math.max(0, (res.stats.garbage.attack ?? 0) - prevAttack);
         prevAttack = res.stats.garbage.attack ?? prevAttack;
+        const queue = readQueueFrame(engine, engine.frame);
         locks.push({
             attack,
             pieceIndex: locks.length,
@@ -132,9 +280,9 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             rotation: preLock ? preLock.rotation : 0,
             x: preLock ? preLock.x : 0,
             y: preLock ? preLock.y : 0,
-            hold: engine.held !== null ? minoToPiece(engine.held) : null,
-            current: readFalling(engine),
-            next: readQueue(engine),
+            hold: queue.hold,
+            current: queue.current,
+            next: queue.next,
             clear: {
                 lines: res.lines || 0,
                 spin: res.spin || 'none',
@@ -146,6 +294,10 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             sourceHeight: after.sourceHeight,
             clippedRowCount: after.clippedRowCount,
         });
+        recordBoard(engine.frame, after);
+        recordActive(engine.frame);
+        recordQueue(engine.frame, queue);
+        recordGarbage(engine.frame);
         preLock = null;
     });
 
@@ -155,25 +307,34 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         garbageEvents.push({
             frame: engine.frame, kind: 'receive', iid: ev.iid, amount: ev.amount ?? 0,
         });
+        recordGarbage(engine.frame);
     });
     // 送信元（gameid）と送信側クロックのフレーム。FR-45 の攻撃元表示に使う。
     engine.events.on('garbage.confirm', (ev) => {
+        const senderFrames = confirmSenderFrames.get(`${ev.gameid}:${ev.iid}`);
+        const senderFrame = senderFrames !== undefined && senderFrames.length > 0
+            ? senderFrames.shift()
+            : undefined;
         garbageEvents.push({
             frame: engine.frame, kind: 'confirm', iid: ev.iid, amount: 0,
-            gameid: ev.gameid, senderFrame: ev.frame,
+            gameid: ev.gameid, senderFrame: senderFrame ?? ev.frame,
         });
+        recordGarbage(engine.frame);
     });
     engine.events.on('garbage.tank', (ev) => {
         garbageEvents.push({
             frame: engine.frame, kind: 'tank', iid: ev.iid,
             amount: ev.amount ?? 0, column: ev.column, size: ev.size,
         });
+        recordBoard(engine.frame);
+        recordGarbage(engine.frame);
     });
     engine.events.on('garbage.cancel', (ev) => {
         garbageEvents.push({
             frame: engine.frame, kind: 'cancel', iid: ev.iid,
             amount: ev.amount ?? 0, size: ev.size,
         });
+        recordGarbage(engine.frame);
     });
 
     // Tick loop ported unchanged from the verified P0 harness. 'end' events
@@ -182,6 +343,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
     while (events.length > 0) {
         while (engine.frame < events[0].frame) {
             engine.tick([]);
+            recordActive(engine.frame);
         }
         while (events.length && events[0].frame < engine.frame) {
             events.shift();
@@ -195,12 +357,18 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             toTick.push(event);
         }
         engine.tick(toTick as any);
+        recordActive(engine.frame);
     }
     while (engine.frame < playerRound.replay.frames) {
         engine.tick([]);
+        recordActive(engine.frame);
     }
 
     const terminalBoard = convertEngineBoard(engine.board.state as EngineBoardState);
+    const terminalQueue = readQueueFrame(engine, engine.frame);
+    recordBoard(engine.frame, terminalBoard);
+    recordQueue(engine.frame, terminalQueue);
+    recordGarbage(engine.frame);
     const stats = playerRound.replay.results.stats;
     const actualSent = engine.stats.garbage.sent ?? 0;
     const verification = {
@@ -217,6 +385,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         locks,
         garbageEvents,
         verification,
+        visual,
         id: playerRound.id,
         username: playerRound.username,
         resolvedOptions: options,
@@ -227,9 +396,9 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             sourceHeight: terminalBoard.sourceHeight,
             clippedRowCount: terminalBoard.clippedRowCount,
             garbageGauge: (engine.garbageQueue as any).size ?? 0,
-            hold: engine.held !== null ? minoToPiece(engine.held) : null,
-            current: readFalling(engine),
-            next: readQueue(engine),
+            hold: terminalQueue.hold,
+            current: terminalQueue.current,
+            next: terminalQueue.next,
             reason: playerRound.replay.results.gameoverreason,
             alive: playerRound.alive,
         },

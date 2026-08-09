@@ -1,12 +1,15 @@
 import { h, VNode } from 'hyperapp';
 import { FieldConstants, parsePieceName, Piece } from '../../lib/enums';
+import { decidePieceColor } from '../../lib/colors';
 import { paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
+import { HighlightType } from '../../state_types';
 import { renderReplayBoard } from './replay_board';
 import { gaugeColumnWidth, replayGauge, replayRisePreview } from './replay_gauge';
 import { ReplayPoint, ReplayStats } from '../../lib/ttrm/timeline';
 import { ReplayGarbageView } from '../../lib/ttrm/garbage';
+import { ReplayActiveFrame, ReplayVisualState } from '../../lib/ttrm/types';
 
 // HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
 // 列幅は Editor の INPUT レイアウトと同じ「盤面 3.4 マス」基準（responsive_layout.ts の
@@ -125,6 +128,7 @@ interface ReplaySideProps {
     variant: ReplaySideVariant;
     size: ReplaySideSize;
     point: ReplayPoint;
+    visual: ReplayVisualState;
     blockSize: number;
     guideLineColor: boolean;
     label: string;
@@ -141,19 +145,75 @@ interface ReplaySideProps {
     clearText?: string;
 }
 
+export const visibleReplayActiveCells = (
+    active: ReplayActiveFrame | undefined,
+): [number, number][] => active === undefined ? [] : active.cells.filter(
+    ([x, y]) => 0 <= x && x < FieldConstants.Width && 0 <= y && y < FieldConstants.Height,
+);
+
+const replayActiveOverlay = (
+    variant: ReplaySideVariant,
+    active: ReplayActiveFrame | undefined,
+    blockSize: number,
+    guideLineColor: boolean,
+) => {
+    if (active === undefined) {
+        return undefined;
+    }
+    const cells = visibleReplayActiveCells(active);
+    return (
+        <div
+            key={`replay-active-${variant}`}
+            datatest={`replay-active-${variant}`}
+            data-active-piece={parsePieceName(active.piece)}
+            data-active-cells={JSON.stringify(active.cells)}
+            style={style({
+                height: px(blockSize * FieldConstants.Height),
+                left: px(1),
+                pointerEvents: 'none',
+                position: 'absolute',
+                top: px(1),
+                width: px(blockSize * FieldConstants.Width),
+                zIndex: 1,
+            })}
+        >
+            {cells.map(([x, y], index) => (
+                <span
+                    key={`replay-active-${variant}-${index}`}
+                    datatest={`replay-active-${variant}-cell`}
+                    data-cell={`${x},${y}`}
+                    style={style({
+                        backgroundColor: decidePieceColor(
+                            active.piece, HighlightType.Normal, guideLineColor),
+                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.28)',
+                        height: px(blockSize),
+                        left: px(x * blockSize),
+                        position: 'absolute',
+                        top: px((FieldConstants.Height - 1 - y) * blockSize),
+                        width: px(blockSize),
+                    })}
+                />
+            ))}
+        </div>
+    );
+};
+
 // 1 プレイヤーぶんの「盤面＋HOLD/NEXT＋手番ラベル」。
 // 相手側には切り捨てチップも Editor ボタンも出さない（FR-31）。切り捨ては行数だけ添える。
 export const replaySide = (
     {
-        variant, size, point, blockSize, guideLineColor, label, counterText, heading, garbage,
+        variant, size, point, visual, blockSize, guideLineColor, label, counterText, heading, garbage,
         queueWidth, stats, clearText,
     }: ReplaySideProps,
 ) => {
     const isSelf = variant === 'self';
-    const boardImage = renderReplayBoard(point.field, blockSize, guideLineColor);
-    // 設置直後に操作対象となっているミノは NEXT の先頭に並べる。
-    // Editor へ引き渡す quiz でもこのミノがカレントになる。
-    const nextPieces: (Piece | null)[] = [point.current, ...point.next]
+    const boardImage = renderReplayBoard(visual.field, blockSize, guideLineColor);
+    // visual timelineではactiveが操作中ミノなのでNEXTへ重ねない。visualを持たない
+    // 既存IRではactiveが無く、従来どおりcurrentをNEXT先頭として表示する。
+    const nextPieces: (Piece | null)[] = [
+        ...(visual.active === undefined && visual.current !== null ? [visual.current] : []),
+        ...visual.next,
+    ]
         .slice(0, size === 'full' ? FULL_NEXT_COUNT : COMPACT_NEXT_COUNT);
     // datatest は variant だけで決まる。size を変えても名前は変わらない。
     const holdKey = isSelf ? 'replay-hold' : 'replay-opponent-hold';
@@ -161,20 +221,27 @@ export const replaySide = (
     const boardWidth = blockSize * FieldConstants.Width;
     const boardHeight = blockSize * FieldConstants.Height;
     const board = (
-        <img
-            key={`replay-board-${variant}`}
-            datatest={`replay-board-${variant}`}
-            src={boardImage}
-            alt="board"
-            data-point-index={String(point.index)}
-            style={style({
-                border: '1px solid #90a4ae',
-                display: 'block',
-                // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
-                height: px(boardHeight),
-                width: px(boardWidth),
-            })}
-        />
+        <div
+            key={`replay-board-layer-${variant}`}
+            style={style({ position: 'relative', width: px(boardWidth) })}
+        >
+            <img
+                key={`replay-board-${variant}`}
+                datatest={`replay-board-${variant}`}
+                src={boardImage}
+                alt="board"
+                data-point-index={String(point.index)}
+                data-visual-frame={String(visual.frame)}
+                style={style({
+                    border: '1px solid #90a4ae',
+                    display: 'block',
+                    // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
+                    height: px(boardHeight),
+                    width: px(boardWidth),
+                })}
+            />
+            {replayActiveOverlay(variant, visual.active, blockSize, guideLineColor)}
+        </div>
     );
 
     // ゲージバーは盤面の左端に密着（TETR.IO と同じ位置）、せり上がり予告はそのすぐ下。
@@ -220,13 +287,13 @@ export const replaySide = (
         >
             {label} {counterText}
         </div>,
-        point.clippedRowCount > 0 ? (
+        visual.clippedRowCount > 0 ? (
             <div
                 key="replay-opponent-clip"
                 datatest="replay-opponent-clip"
                 style={style({ color: '#e65100', fontSize: px(10) })}
             >
-                {i18n.Replay.Playing.ClipNotice(point.clippedRowCount)}
+                {i18n.Replay.Playing.ClipNotice(visual.clippedRowCount)}
             </div>
         ) : undefined,
     ] : undefined;
@@ -270,7 +337,7 @@ export const replaySide = (
                         justifyContent: 'center',
                     })}
                 >
-                    {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [point.hold], guideLineColor,
+                    {queueColumn(holdKey, i18n.Replay.Playing.Hold(), [visual.hold], guideLineColor,
                                  queueWidth, holdFooter)}
                     {boardBlock}
                     {queueColumn(nextKey, i18n.Replay.Playing.Next(), nextPieces, guideLineColor,
@@ -296,7 +363,7 @@ export const replaySide = (
                 key="replay-opponent-queues"
                 style={style({ display: 'flex', gap: px(6), justifyContent: 'space-between' })}
             >
-                {queueRow(holdKey, [point.hold], guideLineColor, slotWidth)}
+                {queueRow(holdKey, [visual.hold], guideLineColor, slotWidth)}
                 {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
             {boardBlock}

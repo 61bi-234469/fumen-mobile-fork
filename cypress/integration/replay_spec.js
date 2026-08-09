@@ -57,19 +57,19 @@ describe('TETR.IO Replay', () => {
         operations.replay.selectSelfPlayer('player-a-id');
         operations.replay.selectRound(0);
 
-        // 3. 再生フェーズへ。手番カーソルは1始まり
+        // 3. 再生フェーズへ。初手の操作・自由落下を見せるためframe 0から始まる
         operations.replay.start();
-        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
         operations.replay.board('self').should('exist');
 
         // 4. 手番送りと終端（FR-21/28）。最終 lock の次は終端状態になる
         operations.replay.next();
-        cy.get(datatest('replay-lock-counter')).should('contain', `2 / ${PLAYER_A_LOCKS}`);
-        operations.replay.prev();
         cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
-        // P2 §7-2 の意図的変更: 先頭ボタンは「手番 1」ではなく「開始（設置 0）」へ戻る
-        operations.replay.first();
+        operations.replay.prev();
         cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+        // P2 §7-2 の意図的変更: 先頭ボタンは「手番 1」ではなく「開始（設置 0）」へ戻る。
+        // すでに開始地点なのでボタンは無効になる。
+        cy.get(datatest('btn-replay-first')).should('have.class', 'disabled');
         operations.replay.next();
         cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
 
@@ -105,9 +105,9 @@ describe('TETR.IO Replay', () => {
         cy.get(datatest('replay-screen')).should('not.exist');
         cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
 
-        // カレント（手番1では I）が spawn 位置の操作対象ミノとして載っている
-        for (const x of [3, 4, 5, 6]) {
-            cy.get(block(x, 20)).should('have.attr', 'color', Color.I.Highlight2);
+        // frame 0 のカレントOミノが、従来どおりspawn位置の操作対象として載っている
+        for (const [x, y] of [[4, 20], [5, 20], [4, 21], [5, 21]]) {
+            cy.get(block(x, y)).should('have.attr', 'color', Color.O.Highlight2);
         }
 
         // 描いたブロックは 1 ページ目に残り、取り込んだ地点が 2 ページ目になる
@@ -171,7 +171,7 @@ describe('TETR.IO Replay', () => {
             for (let i = 0; i < 5; i += 1) {
                 operations.replay.next();
             }
-            cy.get(datatest('replay-lock-counter')).should('contain', `6 / ${PLAYER_A_LOCKS}`);
+            cy.get(datatest('replay-lock-counter')).should('contain', `5 / ${PLAYER_A_LOCKS}`);
 
             // 相手側も同一時刻の地点まで進む（進んだかどうかは時刻依存なので、
             // 後退しないことと盤面が出続けることを見る）
@@ -210,7 +210,7 @@ describe('TETR.IO Replay', () => {
         for (let i = 0; i < 9; i += 1) {
             operations.replay.next();
         }
-        cy.get(datatest('replay-lock-counter')).should('contain', `10 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-lock-counter')).should('contain', `9 / ${PLAYER_A_LOCKS}`);
 
         cy.get(datatest('replay-time-label')).invoke('text').then((timeBefore) => {
             cy.get(datatest('replay-opponent-counter')).invoke('text').then((opponentBefore) => {
@@ -265,9 +265,31 @@ describe('TETR.IO Replay', () => {
             operations.replay.setSpeed(2);
             operations.replay.playPause();
             cy.tick(1000);
-            cy.get(datatest('replay-timeline')).should('have.value', String(start + 240));
+            // 16ms interval の最後の tick は 992ms 地点なので、range が整数表示へ
+            // 切り捨てるぶんだけ1フレーム未満の差を許容する。
+            cy.get(datatest('replay-timeline')).invoke('val').should((value) => {
+                expect(Number(value)).to.be.within(start + 239, start + 240);
+            });
             operations.replay.playPause();
         });
+    });
+
+    it('replays the first mino movement and free-fall on the frame axis', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.active('self')
+            .should('have.attr', 'data-active-piece', 'O')
+            .invoke('attr', 'data-active-cells')
+            .then((initialCells) => {
+                operations.replay.seek(20);
+                operations.replay.active('self')
+                    .should('have.attr', 'data-active-cells')
+                    .and('not.equal', initialCells);
+            });
+
+        operations.replay.next();
+        operations.replay.active('self').should('have.attr', 'data-active-piece', 'I');
     });
 
     it('seeks to an arbitrary time on the timeline (FR-25)', () => {
@@ -352,11 +374,11 @@ describe('TETR.IO Replay', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();
 
-        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
         cy.get(datatest('replay-opponent-counter')).should('exist');
 
         operations.replay.next();
-        cy.get(datatest('replay-lock-counter')).should('contain', `2 / ${PLAYER_A_LOCKS}`);
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
     });
 
     it('swaps which player is yours on PC (FR-11/12)', () => {
@@ -406,12 +428,17 @@ describe('TETR.IO Replay', () => {
     const GAUGE_FRAME = 1800;
     const GAUGE_ROWS = '5';
     const GAUGE_HOLE_COLUMN = '5';
-    // 最後の攻撃（死因）は相手クロックの frame 2519 で生成されている
-    const KILLER_SENDER_TIME = '0:42.0';
+    // frame 262 のT-spin double直前。2行の保留を5 attackで相殺する。
+    const CANCEL_FRAME = 261;
+    // 最後の攻撃（死因）は受信側confirm時刻2519ではなく、raw IGEに記録された
+    // 送信側クロックのframe 2483で生成されている。
+    const KILLER_SENDER_TIME = '0:41.4';
     // GAUGE_FRAME での切り出し。盤面と quiz は P2 と同じで、せり上がり行だけが増える。
     // 生成手順は Jest（simulator → garbage → ir_to_page → encode）と同一。
+    // frame 1728 のHOLDも再現するため、この中間frameでは旧lock地点の(T)ではなく
+    // 実際の操作中(J)がspawn位置のcurrentになり、HOLDは[T]になる。
     const GAUGE_FUMEN = 'v115@vhAAgHpgQ4EeglBewhR4BtilBewhg0Q4AeBtywAtwh?'
-        + 'I8AeI8AeG8AeG8AeD8WkYkAFLDmClcJSAVztSAVG88AYP88?'
+        + 'I8AeI8AeG8AeG8AeD8VkYkAFLDmClcJSAVTXSAVG88AYe88?'
         + 'A52TxCs3HgCpuHgCMdNFD';
 
     it('shows the garbage gauge for both sides (FR-40)', () => {
@@ -501,11 +528,52 @@ describe('TETR.IO Replay', () => {
         expectFumen(GAUGE_FUMEN);
     });
 
+    it('continues the replay gauge, B2B/REN and multi-row tank in INPUT', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+
+        operations.inputReplay.gauge().should('have.attr', 'data-value', GAUGE_ROWS);
+        operations.inputReplay.rise().should('have.attr', 'data-value', `${GAUGE_HOLE_COLUMN}:1`);
+        operations.inputReplay.b2b().should('exist');
+        operations.inputReplay.ren().should('exist');
+
+        // 元リプレイと同じく次lockはライン消去なし。cap内の5行が1手で同時に上がる。
+        operations.mode.piece.harddrop();
+        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
+        operations.inputReplay.rise().should('have.attr', 'data-value', '');
+        operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
+    });
+
+    it('cancels pending garbage with an INPUT line clear', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+
+        operations.replay.seek(CANCEL_FRAME);
+        operations.replay.openInEditor();
+        operations.inputReplay.gauge().should('have.attr', 'data-value', '2');
+
+        // 元リプレイ同様、Spawnで床へ下ろし、Rightでさらに下ろしてから
+        // Reverseへ回してT-spin doubleへ入れる。
+        operations.mode.piece.softdrop();
+        operations.mode.piece.rotateToRight();
+        operations.mode.piece.softdrop();
+        operations.mode.piece.rotateToRight();
+        operations.mode.piece.harddrop();
+
+        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
+        operations.inputReplay.rise().should('have.attr', 'data-value', '');
+        operations.inputReplay.damage().should('have.attr', 'data-value', '5:2:3:0');
+    });
+
     // §7-2 の懸念 1: ゲージ 0 の地点は P1 / P2 と 1 ビットも変わってはいけない
     it('leaves a gauge-free point exactly as P1 and P2 exported it (FR-54)', () => {
         cy.clearLocalStorage();
         startPlaying();
 
+        operations.replay.next();
         cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
         operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
         operations.replay.openInEditor();

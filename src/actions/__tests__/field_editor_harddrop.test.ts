@@ -1,6 +1,7 @@
 import { actions } from '../../actions';
 import { Piece, Rotation } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
+import { createInputReplayContext } from '../../lib/input_replay';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -62,5 +63,44 @@ describe('harddrop', () => {
 
         expect((actions.setCommentText as jest.Mock).mock.calls[0][0].text)
             .toContain('inputRotation=cw:0');
+    });
+
+    test('routes Replay INPUT locks through cancel or multi-row tank state', () => {
+        (actions.insertPage as jest.Mock).mockClear();
+        (actions.spawnNextPieceFromColdClearQueue as jest.Mock).mockClear();
+        const context = createInputReplayContext({
+            resolvedOptions: {}, locks: [], terminal: { frame: 0 },
+        } as any, 0, 0);
+        const state: any = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: new Field({}) },
+                    comment: { text: '#Q=[](T)IOLJSZ' },
+                    flags: { lock: true, mirror: false, colorize: true, rise: true, quiz: true },
+                    piece: { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 5 } },
+                    internal: { inputReplayContext: context },
+                }],
+            },
+            editorUi: { primaryTool: 'piece', pieceLayout: 'play', infinitePieceQueue: false },
+            events: { inferences: [], lastPieceManipulation: undefined },
+            coldClear: { queuePreview: null },
+            mode: { sevenBagGrayEnabled: false },
+            tree: { grayAfterLineClear: true },
+        };
+
+        fieldEditorActions.harddrop()(state);
+
+        expect(actions.insertPage).toHaveBeenCalledWith({ index: 1, skipGrayAfterLineClear: true });
+        expect(actions.spawnNextPieceFromColdClearQueue).toHaveBeenCalledWith(expect.objectContaining({
+            placedPiece: Piece.T,
+            stats: expect.objectContaining({ pieces: 1 }),
+        }));
+        expect(state.fumen.pages[0].flags.rise).toBeFalsy();
+        expect(state.fumen.pages[0].internal.inputReplayContext.garbage.last).toMatchObject({
+            attack: 0,
+            cancelled: 0,
+        });
     });
 });

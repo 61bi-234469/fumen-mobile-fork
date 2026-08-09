@@ -1,6 +1,7 @@
 import { FieldConstants, Piece } from '../../enums';
 import { minoToPiece } from '../board_converter';
 import { buildReplayIR, simulatePlayerRound } from '../simulator';
+import { activeAtFrame, boardAtFrame } from '../timeline';
 import { IRField, TtrmFile } from '../types';
 
 const leagueWin = require('./fixtures/league_win.json') as TtrmFile;
@@ -221,6 +222,36 @@ describe('simulator', () => {
         }
     });
 
+    test('confirm senderFrame is read from the nested raw garbage payload', () => {
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const raw = loser.replay.events.find((event: any) =>
+            event.type === 'ige' && event.data?.type === 'interaction_confirm')!;
+        expect(raw).toBeDefined();
+
+        const envelope = raw.data.data;
+        const payload = envelope.data ?? envelope;
+        const iid = envelope.iid ?? payload.iid;
+        const gameid = envelope.gameid ?? payload.gameid;
+        const confirm = simulatePlayerRound(loser).garbageEvents.find(event =>
+            event.kind === 'confirm' && event.iid === iid && event.gameid === gameid);
+
+        expect(payload.frame).toEqual(220);
+        expect(confirm).toBeDefined();
+        expect(confirm!.senderFrame).toEqual(220);
+        expect(confirm!.senderFrame).not.toEqual(raw.frame);
+        expect(confirm!.senderFrame).not.toEqual(raw.data.frame);
+
+        const nestedFile = clone(leagueLoss);
+        const nestedLoser = nestedFile.replay.rounds[0]
+            .find(player => player.id === 'player-a-id')!;
+        const nestedRaw = nestedLoser.replay.events.find((event: any) =>
+            event.type === 'ige' && event.data?.type === 'interaction_confirm')!;
+        nestedRaw.data.data.data = { frame: 427 };
+        const nestedConfirm = simulatePlayerRound(nestedLoser).garbageEvents.find(event =>
+            event.kind === 'confirm' && event.iid === iid && event.gameid === gameid);
+        expect(nestedConfirm!.senderFrame).toEqual(427);
+    });
+
     test('tank events carry the column the hole actually opened in (FR-42)', () => {
         const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const tanks = simulatePlayerRound(loser).garbageEvents
@@ -261,5 +292,66 @@ describe('simulator', () => {
         }
         const totalLines = result.locks.reduce((sum, lock) => sum + lock.clear.lines, 0);
         expect(totalLines).toEqual(result.verification.lines.expected);
+    });
+
+    test('production IR contains sorted visual change points for realtime playback', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+        const visual = result.visual!;
+
+        expect(visual).toBeDefined();
+        for (const points of [visual.active, visual.boards, visual.queues, visual.garbage]) {
+            expect(points.length).toBeGreaterThan(0);
+            expect(points[0].frame).toEqual(0);
+            for (let index = 1; index < points.length; index += 1) {
+                expect(points[index].frame).toBeGreaterThan(points[index - 1].frame);
+            }
+        }
+
+        expect(visual.active.length).toBeGreaterThan(result.locks.length);
+        expect(visual.active.some((point, index) => index > 0
+            && point.x !== visual.active[index - 1].x)).toBeTruthy();
+        expect(visual.active.some((point, index) => index > 0
+            && point.rotation !== visual.active[index - 1].rotation)).toBeTruthy();
+        expect(visual.active.some((point, index) => index > 0
+            && point.y !== visual.active[index - 1].y)).toBeTruthy();
+        expect(visual.queues.some(point => point.hold !== null)).toBeTruthy();
+        for (const point of visual.active) {
+            expect(point.cells).toHaveLength(4);
+        }
+    });
+
+    test('captures the first falling pose at frame zero', () => {
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(loser);
+        expect(result.visual!.active[0]).toEqual({
+            frame: 0,
+            piece: Piece.O,
+            rotation: 0,
+            x: 4,
+            y: 22,
+            cells: [[4, 22], [5, 22], [4, 21], [5, 21]],
+        });
+    });
+
+    test('visual board boundaries agree with lock and terminal points', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        for (const lock of result.locks) {
+            expect(boardAtFrame(result, lock.frame).field).toEqual(lock.fieldAfter);
+        }
+        expect(boardAtFrame(result, result.terminal.frame).field).toEqual(result.terminal.field);
+        expect(activeAtFrame(result, result.terminal.frame)).toBeUndefined();
+
+        const loser = leagueLoss.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const losingResult = simulatePlayerRound(loser);
+        const tankFrames = losingResult.garbageEvents
+            .filter(event => event.kind === 'tank')
+            .map(event => event.frame);
+        expect(tankFrames.length).toBeGreaterThan(0);
+        for (const frame of tankFrames) {
+            expect(losingResult.visual!.boards.some(point => point.frame === frame)).toBeTruthy();
+        }
     });
 });

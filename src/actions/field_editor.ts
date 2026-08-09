@@ -36,6 +36,12 @@ import {
     toCommentCombo,
 } from '../lib/input_stats';
 import { advanceSevenBagGrayDisplay } from '../lib/seven_bag_gray';
+import {
+    InputReplayTransition,
+    advanceInputReplayContext,
+    applyInputGarbageRows,
+    inputGarbageView,
+} from '../lib/input_replay';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -248,6 +254,44 @@ const replaceCurrentPageField = (
     page.commands = undefined;
     page.piece = undefined;
     page.internal = internal === undefined ? undefined : { ...page.internal, ...internal };
+    return sequence(state, [
+        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page) }),
+        actions.reopenCurrentPage(),
+    ]);
+};
+
+const disableCurrentReplayRise = () => (state: State): NextState => {
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined || !page.flags.rise) return undefined;
+    const previousPage = toPrimitivePage(page);
+    page.flags.rise = false;
+    return sequence(state, [
+        actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page) }),
+        actions.reopenCurrentPage(),
+    ]);
+};
+
+const continueReplayInput = (
+    transition: InputReplayTransition,
+) => (state: State): NextState => {
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page === undefined) return undefined;
+    const previousPage = toPrimitivePage(page);
+    const field = page.field.obj?.copy()
+        ?? new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+    const view = inputGarbageView(transition.context);
+    page.field = {
+        obj: applyInputGarbageRows(field, transition.tankRows, view.nextRise),
+    };
+    page.commands = undefined;
+    page.piece = undefined;
+    page.flags.rise = view.nextRise !== undefined;
+    page.internal = {
+        ...page.internal,
+        inputReplayContext: transition.context,
+    };
     return sequence(state, [
         actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page) }),
         actions.reopenCurrentPage(),
@@ -1185,7 +1229,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return sequence(state, [
             fieldEditorActions.softdrop(),
             (nextState) => {
-                if (isSevenBagGrayInputMode(nextState) && !isSevenBagGrayInput(nextState)) {
+                const currentPage = nextState.fumen.pages[nextState.fumen.currentIndex];
+                const isReplayInput = currentPage?.internal?.inputReplayContext !== undefined;
+                if (!isReplayInput && isSevenBagGrayInputMode(nextState) && !isSevenBagGrayInput(nextState)) {
                     return sequence(nextState, [
                         actions.forkSevenBagGrayInputPage(),
                         afterFork => ({
@@ -1218,6 +1264,32 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 const commentWithEvidence = isInput
                     ? withInputRotationEvidence(currentComment, rotationEvidence)
                     : currentComment;
+                const inputReplayContext = page.internal?.inputReplayContext;
+                if (isInput && inputReplayContext !== undefined) {
+                    const transition = advanceInputReplayContext(
+                        inputReplayContext, field, piece, rotationEvidence,
+                    );
+                    return sequence(nextState, [
+                        ...(commentWithEvidence === currentComment ? [] : [
+                            actions.setCommentText({ pageIndex, text: commentWithEvidence }),
+                        ]),
+                        disableCurrentReplayRise(),
+                        actions.insertPage({ index: nextPageIndex, skipGrayAfterLineClear: true }),
+                        afterState => actions.openPage({ index: afterState.fumen.currentIndex + 1 })(afterState),
+                        continueReplayInput(transition),
+                        actions.spawnNextPieceFromColdClearQueue({
+                            stats: transition.context.stats,
+                            placedPiece: piece.type,
+                        }),
+                        nextStateAfterSpawn => ({
+                            events: {
+                                ...nextStateAfterSpawn.events,
+                                lastInputPlacement: transition.placement,
+                            },
+                        }),
+                        clearLastPieceManipulation,
+                    ]);
+                }
                 if (isSevenBagGrayInput(nextState)) {
                     const parsed = parseQueueStateComment(currentComment);
                     const progress = page.internal?.sevenBagGrayProgress

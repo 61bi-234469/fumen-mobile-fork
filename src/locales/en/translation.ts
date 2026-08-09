@@ -432,6 +432,8 @@
     },
     InputStats: {
         Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
+        GarbageGauge: 'GARBAGE', NextRise: 'NEXT RISE',
+        Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT', Risen: 'RISEN',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

@@ -115,7 +115,7 @@ type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
-    & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
+    & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToDrawingToolMode'>
     & Pick<CommentActions, 'setCommentText'>
     & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>
     & Pick<EditorInteractionActions, 'changePieceAction'>
@@ -1136,10 +1136,10 @@ const emitFinish = (runId: number) => {
     }
 };
 
-const moveToEditorPieceMenu = () => {
+const moveToEditorPaintMenu = () => {
     if (appActions) {
         appActions.changeToDrawerScreen({});
-        appActions.changeToMovePieceMode();
+        appActions.changeToDrawingToolMode();
     }
 };
 
@@ -1199,7 +1199,7 @@ function finishPlacedSpawnEvaluation(
 
     emitFinish(runId);
     if (moveToPieceMenu) {
-        moveToEditorPieceMenu();
+        moveToEditorPaintMenu();
     }
 }
 
@@ -2372,7 +2372,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                         return undefined;
                     },
                     () => {
-                        runtimeActions.changeToMovePieceMode();
+                        runtimeActions.changeToDrawingToolMode();
                         return undefined;
                     },
                 ]);
@@ -2415,7 +2415,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     return undefined;
                 },
                 () => {
-                    runtimeActions.changeToMovePieceMode();
+                    runtimeActions.changeToDrawingToolMode();
                     return undefined;
                 },
             ]);

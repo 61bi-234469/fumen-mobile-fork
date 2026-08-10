@@ -6,6 +6,10 @@ import { IRField, PlayerRoundIR } from '../ttrm/types';
 import { fieldToCC } from './fieldConverter';
 import { toCellKey } from './move_match';
 import { CCAnalyzePositionMessage, CC_HOLD_NONE, PIECE_TO_CC } from './types';
+import {
+    COLD_CLEAR_THINK_MS_PRESETS,
+    REPLAY_ANALYSIS_THINK_MS_DEFAULT,
+} from './think_time';
 
 // リプレイ 1 ラウンドを Cold Clear で解析するための純粋モジュール。
 // IR から Worker 入力を組み立て、返ってきたスコアを損失・順位・集計へ変換する。
@@ -15,8 +19,8 @@ import { CCAnalyzePositionMessage, CC_HOLD_NONE, PIECE_TO_CC } from './types';
 export const ANALYSIS_NEXT_COUNT = 5;
 // 実質「ルート直下の候補を全件」の意味。既存の 1 手スコア評価と同じ値。
 export const ANALYSIS_CANDIDATE_COUNT = 5000;
-export const ANALYSIS_THINK_MS_PRESETS = [50, 100, 200, 500];
-export const ANALYSIS_THINK_MS_DEFAULT = 100;
+export const ANALYSIS_THINK_MS_PRESETS = COLD_CLEAR_THINK_MS_PRESETS;
+export const ANALYSIS_THINK_MS_DEFAULT = REPLAY_ANALYSIS_THINK_MS_DEFAULT;
 
 export const normalizeAnalysisThinkMs = (thinkMs: number): number =>
     ANALYSIS_THINK_MS_PRESETS.includes(thinkMs) ? thinkMs : ANALYSIS_THINK_MS_DEFAULT;

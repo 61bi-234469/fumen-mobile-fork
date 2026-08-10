@@ -158,8 +158,9 @@ describe('replay_analysis: 局面の組み立て', () => {
     });
 
     test('思考時間はプリセット以外を既定へ丸める', () => {
-        expect(normalizeAnalysisThinkMs(50)).toEqual(50);
-        expect(normalizeAnalysisThinkMs(500)).toEqual(500);
+        expect(normalizeAnalysisThinkMs(100)).toEqual(100);
+        expect(normalizeAnalysisThinkMs(2000)).toEqual(2000);
+        expect(normalizeAnalysisThinkMs(50)).toEqual(ANALYSIS_THINK_MS_DEFAULT);
         expect(normalizeAnalysisThinkMs(123)).toEqual(ANALYSIS_THINK_MS_DEFAULT);
     });
 });

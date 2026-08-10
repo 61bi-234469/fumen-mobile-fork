@@ -25,6 +25,10 @@ import {
 } from '../lib/cold_clear/types';
 import { ccMoveToMove, findExactPlacedResult } from '../lib/cold_clear/move_match';
 import { ColdClearWrapper } from '../lib/cold_clear/ColdClearWrapper';
+import {
+    COLD_CLEAR_THINK_MS_DEFAULT,
+    COLD_CLEAR_THINK_MS_PRESETS as SHARED_COLD_CLEAR_THINK_MS_PRESETS,
+} from '../lib/cold_clear/think_time';
 import { i18n } from '../locales/keys';
 import {
     createTreeFromPages,
@@ -131,7 +135,7 @@ export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
 export const COLD_CLEAR_NEXT_LIMIT_MIN = 0;
 export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
 export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
-export const COLD_CLEAR_THINK_MS_PRESETS = [200, 500, 1000, 2000, 5000];
+export const COLD_CLEAR_THINK_MS_PRESETS = SHARED_COLD_CLEAR_THINK_MS_PRESETS;
 const PLACED_SCORE_MAX_THINK_MS_MULTIPLIER = 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
 const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
@@ -1617,7 +1621,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const validMs = COLD_CLEAR_THINK_MS_PRESETS.includes(thinkMs)
             ? thinkMs
-            : COLD_CLEAR_THINK_MS_PRESETS[1]; // default 1000
+            // 廃止した 5s を選んでいた既存ユーザーは、近い実用値の 500ms へ移す。
+            : thinkMs === 5000 ? 500 : COLD_CLEAR_THINK_MS_DEFAULT;
         if (state.coldClear.thinkMs === validMs) {
             return undefined;
         }

@@ -309,14 +309,23 @@ const selectPhase = (state: State, actions: Actions) => {
 };
 
 // ポイントの表示ラベル。「開始」→「手番 1..L」→「終了 (reason)」（§7-4）。
-const pointCounterText = (player: PlayerRoundIR, point: ReplayPoint): string => {
-    if (point.kind === 'initial') {
-        return i18n.Replay.Playing.Start();
-    }
+// 手番は「これから確定する手番」を指す。手番送りで止めた側は停止 index をそのまま、
+// フリーカーソル側は確定済み + 1（＝いま落ちているミノ）を出すので、停止と再生で数字が連続する。
+const pointCounterText = (
+    player: PlayerRoundIR, point: ReplayPoint, parked: boolean, frame: number,
+): string => {
+    const total = player.locks.length;
     if (point.kind === 'terminal') {
         return `${i18n.Replay.Playing.Terminal()} (${player.terminal.reason})`;
     }
-    return `${point.index} / ${player.locks.length}`;
+    // 開始地点そのもの（手番送りで止めた、または先頭へシークした）は「開始」のまま
+    if (point.kind === 'initial' && (parked || total === 0 || frame <= 0)) {
+        return i18n.Replay.Playing.Start();
+    }
+    const turn = point.kind === 'initial' ? 1
+        : parked ? point.index
+        : Math.min(total, point.index + 1);
+    return `${turn} / ${total}`;
 };
 
 // FR-41 の直近イベント。受信は必ず被弾か相殺に解決されるが、直近 1 件の表示では
@@ -366,10 +375,13 @@ const playingPhase = (state: State, actions: Actions) => {
     const showOpponent = layout.showOpponent && opponentPoint !== undefined;
     const isWide = layout.mode === 'wide';
 
-    const basisPlayer = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined
-        ? opponent : player;
-    const basisPointIndex = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined
+    const opponentBasis = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined;
+    const basisPlayer = opponentBasis ? opponent! : player;
+    const basisPointIndex = opponentBasis
         ? state.replay.cursor.opponentIndex : state.replay.cursor.selfIndex;
+    // 手番停止（接地直前）が効くのは基準側だけ。もう一方はフリーカーソルのまま。
+    const selfParked = state.replay.cursor.turnStop && !opponentBasis;
+    const opponentParked = state.replay.cursor.turnStop && opponentBasis;
 
     return (
         <div
@@ -476,7 +488,7 @@ const playingPhase = (state: State, actions: Actions) => {
                     visual: selfVisual,
                     blockSize: layout.blockSize,
                     label: i18n.Replay.Playing.Self(),
-                    counterText: pointCounterText(player, selfPoint),
+                    counterText: pointCounterText(player, selfPoint, selfParked, state.replay.cursor.frame),
                     // PC は 2 盤面が対等なので、どちらの側かはプレイヤー名で示す（§3-6-2）
                     heading: isWide ? displayName(ir, player.id) : undefined,
                     garbage: selfGarbage,
@@ -493,7 +505,8 @@ const playingPhase = (state: State, actions: Actions) => {
                         visual: opponentVisual,
                         blockSize: layout.opponentBlockSize,
                         label: i18n.Replay.Playing.Opponent(),
-                        counterText: pointCounterText(opponent!, opponentPoint),
+                        counterText: pointCounterText(
+                            opponent!, opponentPoint, opponentParked, state.replay.cursor.frame),
                         heading: isWide ? displayName(ir, opponent!.id) : undefined,
                         garbage: opponentGarbage,
                         queueWidth: layout.queueWidth,
@@ -526,7 +539,8 @@ const playingPhase = (state: State, actions: Actions) => {
                 style={style({ color: '#555', fontSize: px(13), margin: '6px 0' })}
             >
                 <span key="replay-lock-counter" datatest="replay-lock-counter">
-                    {i18n.Replay.Playing.LockLabel()} {pointCounterText(player, selfPoint)}
+                    {i18n.Replay.Playing.LockLabel()}{' '}
+                    {pointCounterText(player, selfPoint, selfParked, state.replay.cursor.frame)}
                 </span>
                 {/* ライン消去の内訳は HOLD の下へ移した。ここは手番と時刻だけ残す */}
                 {lock !== undefined ? (

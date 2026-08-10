@@ -189,7 +189,9 @@ export const replayRisePreview = (
             <div
                 key={`${previewKey}-row`}
                 style={style({
-                    border: '1px solid #90a4ae',
+                    // 盤面画像と同じく outline で描く。border だと内容幅が 2px 縮み、
+                    // 予告の穴列が真上の盤面の列とずれる。
+                    outline: '1px solid #90a4ae',
                     display: 'flex',
                     width: px(boardWidth),
                 })}

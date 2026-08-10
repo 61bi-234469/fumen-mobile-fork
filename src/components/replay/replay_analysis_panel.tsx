@@ -195,7 +195,9 @@ export const replayAnalysisPanel = (
                         const move = moveAtGraphX(
                             moves, e.clientX - rect.left, rect.width || width, endFrame);
                         if (move !== undefined) {
-                            actions.seekReplayFrame({ frame: move.frame });
+                            // その手の設置直前で止める。lock frame へシークすると
+                            // 評価対象の着手が済んだ後の盤面になり、何を評価したのか見えない
+                            actions.showReplayMove({ index: move.index });
                         }
                     }}
                 >
@@ -302,7 +304,7 @@ export const replayAnalysisPanel = (
                             })}
                             onclick={(e: MouseEvent) => {
                                 e.preventDefault();
-                                actions.seekReplayFrame({ frame: move.frame });
+                                actions.showReplayMove({ index: move.index });
                             }}
                         >
                             {i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}

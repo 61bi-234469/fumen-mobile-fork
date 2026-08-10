@@ -229,6 +229,9 @@ export interface ReplayState {
         selfIndex: number;
         opponentIndex: number;
         stepBasis: ReplayStepBasis;
+        // 手番送りで止めた状態か。true の間だけ、基準プレイヤーの盤面を
+        // 「接地直前（設置済み・未確定）」で描く。永続化しない。
+        turnStop: boolean;
     };
     playback: {
         status: AnimationState;
@@ -257,6 +260,7 @@ export const initialReplayState: ReplayState = {
         selfIndex: 0,
         opponentIndex: 0,
         stepBasis: 'self',
+        turnStop: false,
     },
     playback: {
         status: AnimationState.Pause,

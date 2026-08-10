@@ -18,7 +18,15 @@ const TERMINAL_FUMEN = 'v115@vhAAgHEeAtBeAtxhilBtAeBtwhQ4AeAtywglQ4g0wh?'
     + 'g0Q4AeBtywAtwhI8AeI8AeG8AeG8AeI8AeI8AeI8AeI8AeL?'
     + '8AeI8AeI8AeI8AeI8AeC8AeM8AeI8AeI8AeI8AeI8AeC8Je?'
     + 'TnWgAFLDmClcJSAVDVSAVG88A4W88AZyTxCKeHgCzXWWC';
-const LOCK1_FUMEN = 'v115@vhAAgHRhRpHeRpReRsWgAFLDmClcJSAVDEHBEooRBJ?oAVBsuLuCq3/wCPd9VC';
+// 手番送りは「その手が接地して確定する直前」で止まるので、手番 1 の切り出しは
+// 1 手目を置いた後ではなく置く前の局面になる。旧期待値は
+// 'v115@vhAAgHRhRpHeRpReRsWgAFLDmClcJSAVDEHBEooRBJ?oAVBsuLuCq3/wCPd9VC' で、
+// 盤面に O が固定済み・カレントが次の I・quiz が '#Q=[](I)LTZSJZJTOSIL' だった。
+// 新期待値は空盤面・カレントが 1 手目の O・quiz が '#Q=[](O)ILTZSJZJTOSIL'。
+// 双方をデコードして差分が「1 手ぶんの前倒し」であることを確認済み（意図した仕様変更）。
+const LOCK1_FUMEN = 'v115@vhBAgHTnWhAFLDmClcJSAVDEHBEooRBPoAVBpCmFDz?fzPCU3LMCsAAAA';
+// 手番 1 で接地している 1 手目の O（盤面左下）。停止位置が接地直前であることの目印。
+const LOCK1_CELLS = '[[0,1],[1,1],[0,0],[1,0]]';
 
 const importLeagueLoss = () => {
     operations.replay.importFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
@@ -288,8 +296,11 @@ describe('TETR.IO Replay', () => {
                     .and('not.equal', initialCells);
             });
 
+        // 手番送りは接地直前で止まる。1 手目の O が、確定前の姿勢で盤面に載る
         operations.replay.next();
-        operations.replay.active('self').should('have.attr', 'data-active-piece', 'I');
+        operations.replay.active('self')
+            .should('have.attr', 'data-active-piece', 'O')
+            .and('have.attr', 'data-active-cells', LOCK1_CELLS);
     });
 
     it('seeks to an arbitrary time on the timeline (FR-25)', () => {
@@ -581,8 +592,8 @@ describe('TETR.IO Replay', () => {
         operations.inputReplay.damage().should('have.attr', 'data-value', '5:2:3:0');
     });
 
-    // §7-2 の懸念 1: ゲージ 0 の地点は P1 / P2 と 1 ビットも変わってはいけない
-    it('leaves a gauge-free point exactly as P1 and P2 exported it (FR-54)', () => {
+    // §7-2 の懸念 1: ゲージ 0 の地点にせり上がり行を混ぜない（盤面と quiz は接地直前のもの）
+    it('exports a gauge-free turn stop without any sent line (FR-54)', () => {
         cy.clearLocalStorage();
         startPlaying();
 
@@ -664,6 +675,8 @@ describe('TETR.IO Replay', () => {
                 cy.wrap($button).click();
                 cy.get(datatest('replay-lock-counter')).should('contain', `${index} / ${PLAYER_A_LOCKS}`);
                 operations.replay.analysis.current().should('have.attr', 'data-index', String(index));
+                // 評価した手そのものが見えている（設置直前で止まる）
+                operations.replay.active('self').should('exist');
             });
         });
 

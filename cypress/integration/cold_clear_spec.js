@@ -76,11 +76,14 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('btn-tree-ai-menu'), { timeout: 15000 })
             .should('have.attr', 'data-cold-clear-running', '1');
         cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
-        // A placed-score run returns to the editor PIECE tray when it finishes,
-        // so the tree-only control is intentionally no longer rendered.
-        cy.get(datatest('btn-piece-mode'), { timeout: 15000 })
+        // A placed-score run returns to the editor PAINT tray so the score comment
+        // remains visible after the evaluation finishes.
+        cy.get(datatest('btn-paint-mode'), { timeout: 15000 })
             .should('have.attr', 'aria-pressed', 'true');
-        cy.get(datatest('tray-piece-harddrop'), { timeout: 15000 }).should('exist');
+        cy.get(datatest('tray-paint-pen'), { timeout: 15000 }).should('exist');
+        cy.get(datatest('text-comment'), { timeout: 15000 })
+            .invoke('val')
+            .should('match', /^score=/);
     });
 
     it('allows editing top branch count and disables it while search runs', () => {

@@ -114,12 +114,20 @@ export interface LockClear {
 export interface LockPoint {
     pieceIndex: number;
     frame: number;
+    // 名前に反して設置前の盤面ではない。falling.lock.pre の時点でエンジンは既にミノを
+    // 盤面へ結合しており、実測では全 lock で fieldAfter と一致する（2026-08-10 実測）。
+    // 設置前の盤面が必要なら visual timeline の boardAtFrame(player, frame - 1) を使う。
     fieldBefore: IRField;
     fieldAfter: IRField;
     piece: Piece;
     rotation: number;
     x: number;
     y: number;
+    // 設置したミノが埋めた絶対セル座標（y は下始まり = アプリ Field と同じ向き）。
+    // エンジン座標と fumen の回転中心座標は原点規約が違うため、AI 解析の実手同定は
+    // piece/rotation/x/y ではなくこのセル集合だけを真実として使う。
+    // optional なのは visual と同じ理由（手書きテスト IR との後方互換）。
+    cells?: [number, number][];
     hold: Piece | null;
     // 設置直後に操作対象となっているミノ。falling.lock 時点で次のミノは
     // すでに spawn されているため、next[] とは別に保持する。

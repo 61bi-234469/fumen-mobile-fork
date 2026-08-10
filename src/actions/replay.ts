@@ -31,6 +31,11 @@ import {
     ReplayGarbageView,
 } from '../lib/ttrm/garbage';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_settings';
+import {
+    clearedReplayAnalysisState,
+    haltedReplayAnalysisState,
+    stopReplayAnalysisSession,
+} from './replay_analysis';
 
 const worker = new ReplayWorkerWrapper();
 
@@ -202,12 +207,16 @@ export const replayActions: Readonly<ReplayActions> = {
         const requestId = nextReplayRequestId;
         nextReplayRequestId += 1;
 
+        // 取り込み直しは解析対象そのものが変わる。実行中なら Worker ごと捨てる。
+        stopReplayAnalysisSession();
+
         if (file.size > MAX_TTRM_TEXT_LENGTH) {
             return {
                 replay: {
                     ...initialReplayState,
                     requestId,
                     view: state.replay.view,
+                    analysis: clearedReplayAnalysisState(state),
                     phase: 'failed',
                     fileName: file.name,
                     error: {
@@ -238,6 +247,7 @@ export const replayActions: Readonly<ReplayActions> = {
                 ...initialReplayState,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'parsing',
                 fileName: file.name,
             },
@@ -263,6 +273,7 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.requestId !== requestId) {
             return undefined;
         }
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...initialReplayState,
@@ -270,6 +281,7 @@ export const replayActions: Readonly<ReplayActions> = {
                 fileName,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'select',
                 selection: {
                     roundIndex: 0,
@@ -282,11 +294,13 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.requestId !== requestId) {
             return undefined;
         }
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...initialReplayState,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'failed',
                 fileName: state.replay.fileName,
                 error: { stage, message },
@@ -298,9 +312,12 @@ export const replayActions: Readonly<ReplayActions> = {
         if (roundIndex < 0 || rounds.length <= roundIndex) {
             return undefined;
         }
+        // 解析はラウンド単位。別ラウンドへ移ったら結果も実行中の Worker も捨てる。
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     roundIndex,
@@ -315,9 +332,12 @@ export const replayActions: Readonly<ReplayActions> = {
             return undefined;
         }
         persistViewSettings(state, { replaySelfPlayer: user.username });
+        // 解析対象はプレイヤー単位。自陣が変われば結果は無効になる。
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     selfPlayerId: playerId,
@@ -348,10 +368,13 @@ export const replayActions: Readonly<ReplayActions> = {
             return undefined;
         }
         const stopped = stopReplayClock(state);
+        // 結果は残すが、画面を離れる以上は探索を続けさせない
+        stopReplayAnalysisSession();
         return {
             ...stopped,
             replay: {
                 ...(stopped?.replay ?? state.replay),
+                analysis: haltedReplayAnalysisState(state),
                 phase: 'select',
                 cursor: { ...initialReplayState.cursor, stepBasis: state.replay.cursor.stepBasis },
             },
@@ -359,10 +382,15 @@ export const replayActions: Readonly<ReplayActions> = {
     },
     resetReplayImport: () => (state): NextState => {
         worker.terminate();
+        stopReplayAnalysisSession();
         const stopped = stopReplayClock(state);
         return {
             ...stopped,
-            replay: { ...initialReplayState, view: state.replay.view },
+            replay: {
+                ...initialReplayState,
+                view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
+            },
         };
     },
     // 基準プレイヤー（FR-22）のポイント空間を 1 つ進む／戻る。
@@ -414,9 +442,12 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.phase !== 'playing' || opponent === undefined) {
             return undefined;
         }
+        // 自陣が入れ替わるので解析対象も変わる
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     selfPlayerId: opponent.id,
@@ -553,6 +584,8 @@ export const replayActions: Readonly<ReplayActions> = {
     // pauseAnimation を通して handlers を書き換えるため、ここで handlers の patch を
     // 返すと更新前の値で上書きしてしまう。
     closeReplayScreen: () => (): NextState => {
+        // 解析が動いていれば止める（結果は残す）。実行中でなければ何も起きない
+        main.abortReplayAnalysis();
         main.pauseReplayPlayback();
         main.changeToDrawerScreen({});
         return undefined;
@@ -565,8 +598,9 @@ export const replayActions: Readonly<ReplayActions> = {
         if (field === undefined || player === undefined) {
             return undefined;
         }
-        // 画面を離れるのでクロックを止める（§3-5 の明示停止経路）。
+        // 画面を離れるのでクロックと解析を止める（§3-5 の明示停止経路）。
         // closeReplayScreen と同じ理由で、入れ子のアクションとして投げる。
+        main.abortReplayAnalysis();
         main.pauseReplayPlayback();
         // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる。
         // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す

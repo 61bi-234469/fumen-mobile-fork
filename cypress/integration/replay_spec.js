@@ -623,6 +623,75 @@ describe('TETR.IO Replay', () => {
         operations.replay.risePreview().should('not.exist');
     });
 
+    // Cold Clear による手評価解析。探索は時間打ち切りで非決定的なので、
+    // スコアの具体値ではなく「解析が最後まで進み、グラフと集計が出て、
+    // そこからシークできる」ことだけを検証する。
+    describe('AI analysis', () => {
+        it('analyzes every lock and lets the graph seek to a move', () => {
+            cy.clearLocalStorage();
+            startPlaying();
+
+            // 未解析ではグラフも集計も出ない
+            operations.replay.analysis.panel().should('exist');
+            operations.replay.analysis.graph().should('not.exist');
+            operations.replay.analysis.summary().should('not.exist');
+
+            // 実 WASM 探索を 78 手ぶん走らせるので最短プリセットにする
+            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.start();
+            operations.replay.analysis.progress().should('have.attr', 'data-status', 'running');
+            operations.replay.analysis.waitDone();
+
+            operations.replay.analysis.progress()
+                .should('have.attr', 'data-total', String(PLAYER_A_LOCKS))
+                .should('have.attr', 'data-current', String(PLAYER_A_LOCKS));
+            operations.replay.analysis.graph().should('be.visible');
+
+            operations.replay.analysis.summary().then(($summary) => {
+                const rate = Number($summary.attr('data-match-rate'));
+                const analyzed = Number($summary.attr('data-analyzed'));
+                expect(rate, 'match rate').to.be.within(0, 100);
+                expect(analyzed, 'analyzed moves').to.be.greaterThan(0);
+                expect(analyzed + Number($summary.attr('data-unmatched'))
+                    + Number($summary.attr('data-skipped')), 'moves accounted for')
+                    .to.equal(PLAYER_A_LOCKS);
+            });
+
+            // 解析はカーソルを動かさない。ワースト手を押すとその手番へ飛ぶ
+            cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+            operations.replay.analysis.worst(0).then(($button) => {
+                const index = Number($button.text().replace(/^#(\d+).*$/, '$1'));
+                cy.wrap($button).click();
+                cy.get(datatest('replay-lock-counter')).should('contain', `${index} / ${PLAYER_A_LOCKS}`);
+                operations.replay.analysis.current().should('have.attr', 'data-index', String(index));
+            });
+        });
+
+        it('keeps partial results when stopped and drops them when the side changes', () => {
+            cy.clearLocalStorage();
+            startPlaying();
+
+            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.start();
+            // 数手ぶん進んでから止める（部分結果が残ることを見たい）
+            operations.replay.analysis.progress({ timeout: 60000 })
+                .should('not.have.attr', 'data-current', '0');
+            operations.replay.analysis.abort();
+
+            operations.replay.analysis.progress().should('have.attr', 'data-status', 'aborted');
+            operations.replay.analysis.progress().then(($progress) => {
+                expect(Number($progress.attr('data-current')), 'partial progress')
+                    .to.be.within(1, PLAYER_A_LOCKS - 1);
+            });
+            operations.replay.analysis.graph().should('exist');
+
+            // 自陣が変われば解析結果は無効になる
+            operations.replay.swapSides();
+            operations.replay.analysis.graph().should('not.exist');
+            operations.replay.analysis.summary().should('not.exist');
+        });
+    });
+
     it('keeps both gauges the same size on PC', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();

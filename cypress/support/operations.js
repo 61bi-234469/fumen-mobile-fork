@@ -1015,6 +1015,23 @@ export const operations = {
         killer: () => cy.get(datatest('replay-killer')),
         killerSeek: () => cy.get(datatest('btn-replay-killer-seek')).click(),
         toggleGarbage: () => cy.get(datatest('btn-replay-toggle-garbage')).click(),
+        // Cold Clear による手評価解析
+        analysis: {
+            panel: () => cy.get(datatest('replay-analysis-panel')),
+            setThinkMs: (ms) => cy.get(datatest('replay-analysis-think-select')).select(String(ms)),
+            start: () => cy.get(datatest('btn-replay-analysis-start')).click(),
+            abort: () => cy.get(datatest('btn-replay-analysis-abort')).click(),
+            progress: (options = {}) => cy.get(datatest('replay-analysis-progress'), options),
+            graph: () => cy.get(datatest('replay-analysis-graph')),
+            summary: () => cy.get(datatest('replay-analysis-summary')),
+            current: () => cy.get(datatest('replay-analysis-current')),
+            worst: (order = 0) => cy.get(datatest(`replay-analysis-worst-${order}`)),
+            // 実 WASM 探索が全手ぶん走るため、既定より長い timeout で完了を待つ
+            waitDone: (timeout = 180000) => {
+                cy.get(datatest('replay-analysis-progress'), { timeout })
+                    .should('have.attr', 'data-status', 'done');
+            },
+        },
     },
     inputReplay: {
         openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),

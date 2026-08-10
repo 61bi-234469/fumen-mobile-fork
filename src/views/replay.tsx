@@ -19,6 +19,9 @@ import {
     getSelectedRound,
     getSelfPlayerRound,
 } from '../actions/replay';
+import { canStartReplayAnalysis, getReplayAnalysis } from '../actions/replay_analysis';
+import { analysisMoveCount } from '../lib/cold_clear/replay_analysis';
+import { replayAnalysisPanel } from '../components/replay/replay_analysis_panel';
 import { replaySide } from '../components/replay/replay_side';
 import { replayTransport } from '../components/replay/replay_transport';
 import { getReplayLayout } from './replay_layout';
@@ -550,6 +553,18 @@ const playingPhase = (state: State, actions: Actions) => {
                 hasOpponent: opponent !== undefined,
                 garbagePlayer: showGarbage ? player : undefined,
                 markerWidth: layout.containerMaxWidth - 32,
+            })}
+
+            {/* 手評価グラフはタイムラインと同じ幅・同じフレーム軸で敷く */}
+            {replayAnalysisPanel({
+                state,
+                actions,
+                analysis: getReplayAnalysis(state),
+                thinkMs: state.replay.analysis.thinkMs,
+                totalMoves: analysisMoveCount(player),
+                endFrame: getReplayEndFrame(state),
+                width: layout.containerMaxWidth - 32,
+                canStart: canStartReplayAnalysis(state),
             })}
 
             {/* FR-45。自陣の終端でだけ出す。相手側に出すと画面が死因だらけになる（§7-4） */}

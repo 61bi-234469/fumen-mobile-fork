@@ -21,6 +21,7 @@ type ViewSettingsOverrides = Partial<{
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayShowGarbage: boolean;
+    replayAnalysisThinkMs: number;
 }>;
 
 // 自陣プレイヤー名は state に持たないため、全体置換の saveViewSettings で
@@ -60,6 +61,20 @@ const loadPersistedReplayShowGarbage = (): boolean => {
     }
 };
 
+// AI 解析の思考時間。他画面からの保存で消さないよう、他の replay 設定と同じく読み戻す。
+// states.ts の DEFAULT_REPLAY_ANALYSIS_THINK_MS と同値。
+const REPLAY_ANALYSIS_THINK_MS_FALLBACK = 100;
+
+const loadPersistedReplayAnalysisThinkMs = (): number => {
+    if (typeof localStorage === 'undefined') return REPLAY_ANALYSIS_THINK_MS_FALLBACK;
+    try {
+        return localStorageWrapper.loadViewSettings().replayAnalysisThinkMs
+            ?? REPLAY_ANALYSIS_THINK_MS_FALLBACK;
+    } catch {
+        return REPLAY_ANALYSIS_THINK_MS_FALLBACK;
+    }
+};
+
 export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
     if (typeof localStorage === 'undefined') return;
     localStorageWrapper.saveViewSettings({
@@ -88,5 +103,7 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         replayShowOpponent: overrides.replayShowOpponent ?? loadPersistedReplayShowOpponent(),
         // ガベージ表示の可否（NFR-08）
         replayShowGarbage: overrides.replayShowGarbage ?? loadPersistedReplayShowGarbage(),
+        // AI 解析の思考時間。解析結果そのものは永続化しない
+        replayAnalysisThinkMs: overrides.replayAnalysisThinkMs ?? loadPersistedReplayAnalysisThinkMs(),
     });
 };

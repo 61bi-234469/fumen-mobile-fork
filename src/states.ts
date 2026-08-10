@@ -170,6 +170,47 @@ export const DEFAULT_REPLAY_SPEED: ReplaySpeed = 1;
 export const DEFAULT_REPLAY_SHOW_OPPONENT = true;
 export const DEFAULT_REPLAY_SHOW_GARBAGE = true;
 
+// Cold Clear によるリプレイ解析（手評価グラフ）。結果は永続化しない。
+export type ReplayAnalysisStatus = 'idle' | 'running' | 'done' | 'aborted' | 'failed';
+export type ReplayMoveEvalStatus = 'pending' | 'ok' | 'unmatched' | 'skipped' | 'failed';
+
+export interface ReplayMoveEval {
+    index: number;   // 手番（1..L）
+    frame: number;   // lock frame。グラフの x はこれだけで決まる
+    status: ReplayMoveEvalStatus;
+    bestScore?: number;
+    playedScore?: number;
+    loss?: number;
+    rank?: number;
+    candidateCount?: number;
+}
+
+export interface ReplayAnalysisState {
+    // roundIndex / selfPlayerId / requestId / 探索設定 を連結した無効化キー。
+    // 現在のキーと一致しない結果は捨てる（IR 差し替え・ラウンド変更・自陣入れ替え対策）。
+    key: string | null;
+    status: ReplayAnalysisStatus;
+    runId: number;
+    thinkMs: number;
+    progress: { current: number, total: number };
+    moves: ReplayMoveEval[];
+    error?: string;
+}
+
+// lib/cold_clear/replay_analysis.ts の ANALYSIS_THINK_MS_DEFAULT と同値。
+// states.ts は広く import されるため、Engine を引き込む解析モジュールへは依存しない。
+export const DEFAULT_REPLAY_ANALYSIS_THINK_MS = 100;
+
+export const initialReplayAnalysisState: ReplayAnalysisState = {
+    key: null,
+    status: 'idle',
+    runId: 0,
+    thinkMs: DEFAULT_REPLAY_ANALYSIS_THINK_MS,
+    progress: { current: 0, total: 0 },
+    moves: [],
+    error: undefined,
+};
+
 export interface ReplayState {
     phase: ReplayPhase;
     fileName?: string;
@@ -198,6 +239,7 @@ export interface ReplayState {
         // FR-40〜45 の表示可否（NFR-08）。切り出しのゲージ保持（FR-54）はこれに連動しない。
         showGarbage: boolean;
     };
+    analysis: ReplayAnalysisState;
     error?: { stage: string; message: string };
 }
 
@@ -224,6 +266,7 @@ export const initialReplayState: ReplayState = {
         showOpponent: DEFAULT_REPLAY_SHOW_OPPONENT,
         showGarbage: DEFAULT_REPLAY_SHOW_GARBAGE,
     },
+    analysis: initialReplayAnalysisState,
     error: undefined,
 };
 

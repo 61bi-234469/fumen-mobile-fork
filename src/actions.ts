@@ -40,6 +40,7 @@ import { normalizeGifFrameDelayMs } from './lib/gif_export';
 import { editorInteractionActions, EditorInteractionActions } from './actions/editor_interaction';
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 import { replayActions, ReplayActions } from './actions/replay';
+import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_analysis';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 
 export type action = (state: Readonly<State>) => NextState;
@@ -63,7 +64,8 @@ export type Actions = AnimationActions
     & ColdClearActions
     & EditorInteractionActions
     & RectSelectActions
-    & ReplayActions;
+    & ReplayActions
+    & ReplayAnalysisActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -84,6 +86,7 @@ export const actions: Readonly<Actions> = {
     ...editorInteractionActions,
     ...rectSelectActions,
     ...replayActions,
+    ...replayAnalysisActions,
 };
 
 // Current state getter for shortcut handlers
@@ -489,6 +492,9 @@ const loadUserSettings = () => {
     }
     if (viewSettings.replayShowGarbage !== undefined) {
         main.setReplayShowGarbage({ showGarbage: viewSettings.replayShowGarbage });
+    }
+    if (viewSettings.replayAnalysisThinkMs !== undefined) {
+        main.setReplayAnalysisThinkMs({ thinkMs: viewSettings.replayAnalysisThinkMs });
     }
 
     const treeViewSettings: Partial<State['tree']> = {};

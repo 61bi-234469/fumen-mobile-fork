@@ -17,11 +17,21 @@ jest.mock('../../actions', () => ({
         setReplayError: jest.fn(),
         tickReplayClock: jest.fn(),
         pauseReplayPlayback: jest.fn(),
+        abortReplayAnalysis: jest.fn(),
     },
 }));
 jest.mock('../view_settings', () => ({
     loadPersistedReplaySelfPlayer: jest.fn(() => null),
     persistViewSettings: jest.fn(),
+}));
+// Worker を生成させない（AI 解析セッションはこのテストの対象外）
+jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
+    ColdClearWrapper: jest.fn().mockImplementation(() => ({
+        open: jest.fn(),
+        start: jest.fn(),
+        analyzePosition: jest.fn(),
+        terminate: jest.fn(),
+    })),
 }));
 jest.mock('../../states', () => ({
     initialReplayState: {
@@ -33,6 +43,24 @@ jest.mock('../../states', () => ({
         cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, stepBasis: 'self' },
         playback: { status: 'pause', speed: 1 },
         view: { showOpponent: true, showGarbage: true },
+        analysis: {
+            key: null,
+            status: 'idle',
+            runId: 0,
+            thinkMs: 100,
+            progress: { current: 0, total: 0 },
+            moves: [],
+            error: undefined,
+        },
+        error: undefined,
+    },
+    initialReplayAnalysisState: {
+        key: null,
+        status: 'idle',
+        runId: 0,
+        thinkMs: 100,
+        progress: { current: 0, total: 0 },
+        moves: [],
         error: undefined,
     },
     REPLAY_SPEEDS: [0.25, 0.5, 1, 2, 4],

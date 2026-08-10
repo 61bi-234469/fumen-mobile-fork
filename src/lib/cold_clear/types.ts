@@ -32,11 +32,31 @@ export interface CCRequestSequenceMessage {
     incoming?: number;
 }
 
+// リプレイ AI 解析（1 局面 1 往復）。init を挟まず、この 1 通で完結する。
+// 候補列は数千件になるため、実手の同定まで Worker 内で済ませて集計値だけを返す。
+export interface CCAnalyzePositionMessage {
+    type: 'analyzePosition';
+    index: number;          // 手番（1..L）。応答の突き合わせに使う
+    field: Uint8Array;      // 400 bytes (40x10)
+    hold: number;           // CC piece value (0-6) or 255 for none
+    queue: number[];        // [current, ...next] の CC piece values
+    b2b: boolean;
+    combo: number;
+    holdAllowed: boolean;
+    speculate: boolean;
+    weightsPreset: number;
+    thinkMs: number;
+    incoming: number;
+    candidateCount: number;
+    placedCellKey: string;  // move_match.toCellKey で正規化した実手の占有セル
+}
+
 export type WorkerMessage =
     | CCInitMessage
     | CCRequestMoveMessage
     | CCRequestTopMovesMessage
-    | CCRequestSequenceMessage;
+    | CCRequestSequenceMessage
+    | CCAnalyzePositionMessage;
 
 // === Worker Response Types (Worker → Main) ===
 
@@ -77,13 +97,24 @@ export interface CCSequenceDone {
     type: 'sequenceDone';
 }
 
+export interface CCAnalysisResult {
+    type: 'analysisResult';
+    index: number;
+    bestScore: number;
+    // 圏外（実手が候補列に無い）の場合は null
+    playedScore: number | null;
+    rank: number | null;
+    candidateCount: number;
+}
+
 export type WorkerResponse =
     | CCMoveResult
     | CCTopMovesResult
     | CCInitDone
     | CCError
     | CCNoMove
-    | CCSequenceDone;
+    | CCSequenceDone
+    | CCAnalysisResult;
 
 // === Piece Mapping Tables ===
 // CC C-API order: I=0, O=1, T=2, L=3, J=4, S=5, Z=6

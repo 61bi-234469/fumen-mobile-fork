@@ -7,7 +7,7 @@ import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Quiz } from '../lib/fumen/quiz';
 import { isQuizCommentResult, PageFieldOperation, Pages } from '../lib/pages';
-import { createSpawnMove, getBlockPositions } from '../lib/piece';
+import { createSpawnMove } from '../lib/piece';
 import {
     parseQueueStateComment,
     buildQueueComment,
@@ -19,12 +19,11 @@ import {
     CCInitMessage,
     CCMove,
     CCMoveResult,
-    CC_TO_PIECE,
-    CC_ROTATION_TO_APP,
     CC_HOLD_NONE,
     PIECE_TO_CC,
     WorkerResponse,
 } from '../lib/cold_clear/types';
+import { ccMoveToMove, findExactPlacedResult } from '../lib/cold_clear/move_match';
 import { ColdClearWrapper } from '../lib/cold_clear/ColdClearWrapper';
 import { i18n } from '../locales/keys';
 import {
@@ -895,23 +894,7 @@ export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolea
     return parsed.current !== null || parsed.queue.length > 0;
 };
 
-const toMove = (result: CCMove): Move | null => {
-    const piece = CC_TO_PIECE[result.piece];
-    const rotation = CC_ROTATION_TO_APP[result.rotation];
-
-    if (piece === undefined || rotation === undefined) {
-        return null;
-    }
-
-    return {
-        rotation,
-        type: piece,
-        coordinate: {
-            x: result.x,
-            y: result.y,
-        },
-    };
-};
+const toMove = (result: CCMove): Move | null => ccMoveToMove(result);
 
 interface MoveQueueTransition {
     placement: { hold: Piece | null; current: Piece; queue: Piece[] };
@@ -970,44 +953,10 @@ const resolveMoveQueueTransition = (
     };
 };
 
-const isSameMove = (left: Move, right: Move): boolean => {
-    return left.type === right.type
-        && left.rotation === right.rotation
-        && left.coordinate.x === right.coordinate.x
-        && left.coordinate.y === right.coordinate.y;
-};
-
-const toOccupiedCellKey = (move: Move): string => {
-    return getBlockPositions(move.type, move.rotation, move.coordinate.x, move.coordinate.y)
-        .map(([x, y]) => `${x},${y}`)
-        .sort()
-        .join(';');
-};
-
 const findExactPlacedSpawnResult = (
     results: CCMove[],
     expectedMove: Move,
-): CCMove | null => {
-    const expectedCellKey = toOccupiedCellKey(expectedMove);
-    let sameCellsResult: CCMove | null = null;
-
-    for (const result of results) {
-        const move = toMove(result);
-        if (!move) {
-            continue;
-        }
-
-        if (isSameMove(move, expectedMove)) {
-            return result;
-        }
-
-        if (!sameCellsResult && toOccupiedCellKey(move) === expectedCellKey) {
-            sameCellsResult = result;
-        }
-    }
-
-    return sameCellsResult;
-};
+): CCMove | null => findExactPlacedResult(results, expectedMove);
 
 const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
     let message = i18n.ColdClear.CannotEvaluatePlacedSpawn();
@@ -1379,9 +1328,18 @@ function startWorkerSession(
     });
 }
 
+// リプレイ AI 解析も同じ WASM を回す。2 つの探索を同時に走らせない。
+const isBlockedByReplayAnalysis = (state: Readonly<State>): boolean => {
+    if (state.replay.analysis.status !== 'running') {
+        return false;
+    }
+    M.toast({ html: i18n.ColdClear.ReplayAnalysisRunning(), classes: 'top-toast', displayLength: 1500 });
+    return true;
+};
+
 export const coldClearActions: Readonly<ColdClearActions> = {
     startColdClearSearch: () => (state): NextState => {
-        if (state.coldClear.isRunning) {
+        if (state.coldClear.isRunning || isBlockedByReplayAnalysis(state)) {
             return undefined;
         }
 
@@ -1460,7 +1418,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
     },
 
     startColdClearTopThreeSearch: () => (state): NextState => {
-        if (state.coldClear.isRunning) {
+        if (state.coldClear.isRunning || isBlockedByReplayAnalysis(state)) {
             return undefined;
         }
 
@@ -1675,7 +1633,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
     },
 
     evaluatePlacedSpawnMinoScore: () => (state): NextState => {
-        if (state.coldClear.isRunning) {
+        if (state.coldClear.isRunning || isBlockedByReplayAnalysis(state)) {
             return undefined;
         }
 

@@ -11,8 +11,10 @@ import {
     lastPointIndex,
     pointAt,
     pointCount,
+    preLockPointAt,
     queueAtFrame,
     statsAt,
+    stopFrameAt,
     visualAtFrame,
 } from '../timeline';
 import { IRField, LockPoint, PlayerRoundIR } from '../types';
@@ -337,6 +339,90 @@ describe('timeline point space', () => {
                 frame: 100, hold: Piece.T, current: Piece.I, next: [Piece.O],
             });
             expect(garbageAtFrame(player, 100)).toBeUndefined();
+        });
+    });
+
+    // 手番停止は「接地直前（設置済み・未確定）」。確定地点を返す pointAt とは別物。
+    describe('preLockPointAt / stopFrameAt', () => {
+        const CELLS: [number, number][] = [[3, 0], [4, 0], [5, 0], [4, 1]];
+
+        const withCells = (frame: number, overrides: Partial<LockPoint> = {}): LockPoint =>
+            lockAt(frame, { cells: CELLS.map(([x, y]) => [x, y] as [number, number]), ...overrides });
+
+        test('the point sits one frame before the lock and carries the placed pose', () => {
+            const risen = emptyField();
+            risen[0] = Piece.Gray;
+            const player = playerWith([withCells(100), withCells(200)], 300);
+            player.visual = {
+                active: [],
+                boards: [
+                    { frame: 0, field: emptyField(), sourceHeight: 0, clippedRowCount: 0 },
+                    { frame: 150, field: risen, sourceHeight: 1, clippedRowCount: 0 },
+                ],
+                queues: [],
+                garbage: [],
+            };
+
+            const point = preLockPointAt(player, 2)!;
+            expect(point.index).toEqual(2);
+            expect(point.frame).toEqual(199);
+            expect(point.confirmedIndex).toEqual(1);
+            // 盤面は「その lock の直前の変化点」。前の設置とその後のせり上がりを含む
+            expect(point.visual.field).toBe(risen);
+            expect(point.visual.active!.cells).toEqual(CELLS);
+            expect(point.visual.active!.piece).toEqual(Piece.T);
+            expect(point.visual.active!.frame).toEqual(199);
+        });
+
+        test('the queue is the one facing the player, not the post-lock one', () => {
+            const player = playerWith([withCells(100, {
+                hold: Piece.L, piece: Piece.S, current: Piece.I, next: [Piece.O, Piece.Z],
+            })], 300);
+
+            const point = preLockPointAt(player, 1)!;
+            expect(point.visual.hold).toEqual(Piece.L);
+            expect(point.visual.current).toEqual(Piece.S);
+            expect(point.visual.next).toEqual([Piece.I, Piece.O, Piece.Z]);
+        });
+
+        test('the start and terminal points have no pre-lock state', () => {
+            const player = playerWith([withCells(100)], 300);
+            expect(preLockPointAt(player, 0)).toBeUndefined();
+            expect(preLockPointAt(player, 2)).toBeUndefined();
+            expect(preLockPointAt(player, 99)).toBeUndefined();
+        });
+
+        test('IR without placed cells falls back', () => {
+            const player = playerWith([lockAt(100)], 300);
+            expect(preLockPointAt(player, 1)).toBeUndefined();
+        });
+
+        test('a lock sharing its frame with the previous one falls back', () => {
+            const player = playerWith([withCells(100), withCells(100)], 300);
+            expect(preLockPointAt(player, 1)).toBeDefined();
+            expect(preLockPointAt(player, 2)).toBeUndefined();
+        });
+
+        test('cells already filled on the pre-lock board fall back', () => {
+            const occupied = emptyField();
+            occupied[4] = Piece.Gray;   // (4, 0) は設置セルのひとつ
+            const player = playerWith([withCells(100), withCells(200)], 300);
+            player.visual = {
+                active: [],
+                boards: [{ frame: 0, field: occupied, sourceHeight: 1, clippedRowCount: 0 }],
+                queues: [],
+                garbage: [],
+            };
+            expect(preLockPointAt(player, 2)).toBeUndefined();
+        });
+
+        test('stopFrameAt is the pre-lock frame where available and frameAt otherwise', () => {
+            const player = playerWith([withCells(100), lockAt(200)], 300);
+            expect(stopFrameAt(player, 0)).toEqual(0);
+            expect(stopFrameAt(player, 1)).toEqual(99);
+            // cells の無い手番は従来どおり lock フレームへ止まる
+            expect(stopFrameAt(player, 2)).toEqual(200);
+            expect(stopFrameAt(player, 3)).toEqual(300);
         });
     });
 

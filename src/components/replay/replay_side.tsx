@@ -5,7 +5,7 @@ import { paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { HighlightType } from '../../state_types';
-import { renderReplayBoard } from './replay_board';
+import { GRID_GAP, renderReplayBoard } from './replay_board';
 import { gaugeColumnWidth, replayGauge, replayRisePreview } from './replay_gauge';
 import { ReplayPoint, ReplayStats } from '../../lib/ttrm/timeline';
 import { ReplayGarbageView } from '../../lib/ttrm/garbage';
@@ -169,10 +169,10 @@ const replayActiveOverlay = (
             data-active-cells={JSON.stringify(active.cells)}
             style={style({
                 height: px(blockSize * FieldConstants.Height),
-                left: px(1),
+                left: px(0),
                 pointerEvents: 'none',
                 position: 'absolute',
-                top: px(1),
+                top: px(0),
                 width: px(blockSize * FieldConstants.Width),
                 zIndex: 1,
             })}
@@ -183,14 +183,16 @@ const replayActiveOverlay = (
                     datatest={`replay-active-${variant}-cell`}
                     data-cell={`${x},${y}`}
                     style={style({
+                        // 操作中ミノは Editor / サムネイル / GIF と同じ Highlight2。
+                        // 寸法は盤面 canvas と同じ GRID_GAP で描いて格子に乗せる
+                        // ―― 枠や大きさで差を付けると、盤面から浮いて見える。
                         backgroundColor: decidePieceColor(
-                            active.piece, HighlightType.Normal, guideLineColor),
-                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.28)',
-                        height: px(blockSize),
+                            active.piece, HighlightType.Highlight2, guideLineColor),
+                        height: px(blockSize - GRID_GAP),
                         left: px(x * blockSize),
                         position: 'absolute',
                         top: px((FieldConstants.Height - 1 - y) * blockSize),
-                        width: px(blockSize),
+                        width: px(blockSize - GRID_GAP),
                     })}
                 />
             ))}
@@ -233,7 +235,9 @@ export const replaySide = (
                 data-point-index={String(point.index)}
                 data-visual-frame={String(visual.frame)}
                 style={style({
-                    border: '1px solid #90a4ae',
+                    // 枠は outline で描く。border だと materialize の box-sizing: border-box が
+                    // canvas を 2px 縮めて描画し、絶対配置の操作中ミノと格子がずれる。
+                    outline: '1px solid #90a4ae',
                     display: 'block',
                     // canvas は 2 倍解像度で描くので、表示サイズは明示して等倍に戻す
                     height: px(boardHeight),

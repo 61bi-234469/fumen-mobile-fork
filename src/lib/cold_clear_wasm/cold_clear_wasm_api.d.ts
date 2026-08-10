@@ -19,11 +19,12 @@ export class ColdClearBot {
     free(): void;
     [Symbol.dispose](): void;
     add_next_piece(piece: number): void;
-    load_book(book_data: Uint8Array): boolean;
     constructor(field: Uint8Array, hold: number, b2b: boolean, combo: number, queue: Uint8Array, hold_allowed: boolean, speculate: boolean);
-    static new_with_options(field: Uint8Array, hold: number, b2b: boolean, combo: number, queue: Uint8Array, hold_allowed: boolean, speculate: boolean, movement_mode: number, spawn_rule: number, min_nodes: number, max_nodes: number): ColdClearBot;
-    reset(field: Uint8Array, b2b: boolean, combo: number): void;
-    set_weights_json(json: string): boolean;
+    /**
+     * Switches the evaluation weight table. `preset` 0 selects
+     * `Standard::default()`, 1 selects `Standard::fast_config()`.
+     * Returns false (no-op) for any other value.
+     */
     set_weights_preset(preset: number): boolean;
     suggest_move_sync(think_ms: number): CCMove | undefined;
     suggest_move_sync_with_incoming(think_ms: number, incoming: number): CCMove | undefined;
@@ -58,11 +59,7 @@ export interface InitOutput {
     readonly __wbg_set_ccmove_x: (a: number, b: number) => void;
     readonly __wbg_set_ccmove_y: (a: number, b: number) => void;
     readonly coldclearbot_add_next_piece: (a: number, b: number) => void;
-    readonly coldclearbot_load_book: (a: number, b: number, c: number) => number;
     readonly coldclearbot_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
-    readonly coldclearbot_new_with_options: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
-    readonly coldclearbot_reset: (a: number, b: number, c: number, d: number, e: number) => void;
-    readonly coldclearbot_set_weights_json: (a: number, b: number, c: number) => number;
     readonly coldclearbot_set_weights_preset: (a: number, b: number) => number;
     readonly coldclearbot_suggest_move_sync: (a: number, b: number) => number;
     readonly coldclearbot_suggest_move_sync_with_incoming: (a: number, b: number, c: number) => number;
@@ -70,14 +67,14 @@ export interface InitOutput {
     readonly coldclearbot_suggest_top_moves_sync_with_incoming: (a: number, b: number, c: number, d: number) => [number, number];
     readonly init_panic_hook: () => void;
     readonly _web_worker_entry_point: (a: any) => void;
-    readonly wasm_bindgen__closure__destroy__h29b29866006a5fde: (a: number, b: number) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__hbc8449b88765385b: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h7cd80c00c37dd24a: (a: number, b: number, c: any) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_destroy_closure: (a: number, b: number) => void;
     readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }

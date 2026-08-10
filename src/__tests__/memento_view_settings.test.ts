@@ -47,6 +47,7 @@ describe('view settings tree operation scope migration', () => {
             replaySelfPlayer: null,
             replayShowOpponent: true,
             replayShowGarbage: true,
+            replayAnalysisThinkMs: 100,
         });
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);

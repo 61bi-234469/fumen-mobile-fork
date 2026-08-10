@@ -5,6 +5,12 @@ import { IRField } from '../../lib/ttrm/types';
 
 const RENDER_SCALE = 2;
 
+// ブロック間の区切り。0.5 だと canvas 上では 1 ドットしか空かず、表示サイズへ
+// 縮小される段階で隣のブロック色と混ざる（黒線ではなく「半分の明るさの同色」になる）。
+// ディスプレイ倍率が整数でない環境ではどの境界が残るかも変わるため、必ず 1 CSS px 空ける。
+// 操作中ミノのオーバーレイ（replay_side.tsx）も同じ値で描く。
+export const GRID_GAP = 1;
+
 // P2 §4-5: 自動再生のクロックは 20Hz で state を更新するため、素直に書くと
 // 1 秒あたり 40 回（2 盤面）の PNG 生成になる。IR のフィールド配列は取り込み以降
 // 参照が不変なので、WeakMap をキーにして「ポイントが変わった瞬間だけ」描き直す。
@@ -67,8 +73,8 @@ const drawReplayBoard = (
             ctx.fillRect(
                 x * blockSize,
                 (FieldConstants.Height - 1 - y) * blockSize,
-                blockSize - 0.5,
-                blockSize - 0.5,
+                blockSize - GRID_GAP,
+                blockSize - GRID_GAP,
             );
         }
     }

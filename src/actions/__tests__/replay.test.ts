@@ -17,11 +17,21 @@ jest.mock('../../actions', () => ({
         setReplayError: jest.fn(),
         tickReplayClock: jest.fn(),
         pauseReplayPlayback: jest.fn(),
+        abortReplayAnalysis: jest.fn(),
     },
 }));
 jest.mock('../view_settings', () => ({
     loadPersistedReplaySelfPlayer: jest.fn(() => null),
     persistViewSettings: jest.fn(),
+}));
+// Worker を生成させない（AI 解析セッションはこのテストの対象外）
+jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
+    ColdClearWrapper: jest.fn().mockImplementation(() => ({
+        open: jest.fn(),
+        start: jest.fn(),
+        analyzePosition: jest.fn(),
+        terminate: jest.fn(),
+    })),
 }));
 jest.mock('../../states', () => ({
     initialReplayState: {
@@ -30,9 +40,27 @@ jest.mock('../../states', () => ({
         ir: undefined,
         requestId: 0,
         selection: { roundIndex: 0, selfPlayerId: null },
-        cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, stepBasis: 'self' },
+        cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, stepBasis: 'self', turnStop: false },
         playback: { status: 'pause', speed: 1 },
         view: { showOpponent: true, showGarbage: true },
+        analysis: {
+            key: null,
+            status: 'idle',
+            runId: 0,
+            thinkMs: 100,
+            progress: { current: 0, total: 0 },
+            moves: [],
+            error: undefined,
+        },
+        error: undefined,
+    },
+    initialReplayAnalysisState: {
+        key: null,
+        status: 'idle',
+        runId: 0,
+        thinkMs: 100,
+        progress: { current: 0, total: 0 },
+        moves: [],
         error: undefined,
     },
     REPLAY_SPEEDS: [0.25, 0.5, 1, 2, 4],
@@ -185,6 +213,7 @@ const cursorFor = (
         selfIndex: clampPointIndex(self, selfIndex),
         opponentIndex: indexAtFrame(opponent, frame),
         stepBasis: 'self',
+        turnStop: false,
         ...overrides,
     };
 };
@@ -628,13 +657,144 @@ describe('replayActions', () => {
                 ir,
                 phase: 'playing',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
-                cursor: { frame: 30, selfIndex: 1, opponentIndex: 0, stepBasis: 'self' },
+                cursor: {
+                    frame: 30, selfIndex: 1, opponentIndex: 0, stepBasis: 'self', turnStop: false,
+                },
             });
 
             const result = replayActions.stepReplayLock({ step: 1 })(state)!;
             // frame は変わらないが、送った手番は確実に 2 へ進む
             expect(result.replay!.cursor.frame).toEqual(30);
             expect(result.replay!.cursor.selfIndex).toEqual(2);
+        });
+    });
+
+    // ---- 手番停止は「接地直前（設置済み・未確定）」 ----
+
+    describe('turn stop at the pre-lock point', () => {
+        // 設置セルを持つ IR。cells が無い IR は接地直前を復元できないので従来表示へ落ちる。
+        const CELLS: [number, number][] = [[3, 0], [4, 0], [5, 0], [4, 1]];
+
+        const withCells = (
+            selfIndex: number = 1,
+            cursorOverrides: Partial<State['replay']['cursor']> = {},
+        ): State => {
+            const ir = buildIR(3);
+            for (const player of ir.rounds[0].players) {
+                for (const lock of player.locks) {
+                    lock.cells = CELLS.map(([x, y]) => [x, y] as [number, number]);
+                }
+            }
+            return createState({
+                ir,
+                phase: 'playing',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+                cursor: cursorFor(ir, selfIndex, cursorOverrides),
+            });
+        };
+
+        test('stepping stops one frame before the lock and marks the turn stop', () => {
+            const result = replayActions.stepReplayLock({ step: 1 })(withCells(1))!;
+            expect(result.replay!.cursor.selfIndex).toEqual(2);
+            // 手番 2 の lock は frame 60。停止はその 1 つ前
+            expect(result.replay!.cursor.frame).toEqual(59);
+            expect(result.replay!.cursor.turnStop).toBeTruthy();
+        });
+
+        test('the stopped board carries the placed but unconfirmed piece', () => {
+            const stopped = applyResult(
+                withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+            const visual = getReplaySelfVisual(stopped)!;
+
+            expect(visual.frame).toEqual(59);
+            expect(visual.active!.cells).toEqual(CELLS);
+            expect(visual.active!.piece).toEqual(Piece.T);
+            // カレントはこれから置くミノ。NEXT は lock 後に spawn したミノを先頭へ戻した並び
+            expect(visual.current).toEqual(Piece.T);
+            expect(visual.hold).toBeNull();
+            expect(visual.next).toEqual([Piece.O, Piece.I]);
+        });
+
+        test('the statistics stay on the turn being played', () => {
+            const stopped = applyResult(
+                withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+            expect(getReplayStats(stopped)!.placed).toEqual(2);
+        });
+
+        test('seeking drops the turn stop and returns to the frame-based board', () => {
+            const stopped = applyResult(
+                withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+            const seeked = applyResult(
+                stopped, replayActions.seekReplayFrame({ frame: 59 })(stopped));
+
+            expect(seeked.replay.cursor.turnStop).toBeFalsy();
+            expect(getReplaySelfVisual(seeked)!.active).toBeUndefined();
+        });
+
+        test('playback clears the turn stop', () => {
+            const stopped = applyResult(
+                withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+            jest.useFakeTimers();
+            const played = applyResult(
+                stopped, replayActions.toggleReplayPlayback()(stopped));
+            jest.advanceTimersByTime(100);
+            const ticked = replayActions.tickReplayClock()(played)!;
+            jest.clearAllTimers();
+            jest.useRealTimers();
+
+            expect(ticked.replay!.cursor.turnStop).toBeFalsy();
+        });
+
+        test('only the step basis side shows the pre-lock board', () => {
+            const state = withCells(1, { stepBasis: 'opponent' });
+            const stopped = applyResult(state, replayActions.stepReplayLock({ step: 1 })(state));
+
+            expect(getReplayOpponentVisual(stopped)!.active).toBeDefined();
+            expect(getReplaySelfVisual(stopped)!.active).toBeUndefined();
+        });
+
+        test('a turn whose pre-lock board cannot be restored keeps the old landing', () => {
+            const state = withCells(1);
+            // 手番 1 と 2 が同一フレーム。この場合は設置直前の盤面が残っていない
+            state.replay.ir!.rounds[0].players[0].locks[1].frame =
+                state.replay.ir!.rounds[0].players[0].locks[0].frame;
+
+            const result = replayActions.stepReplayLock({ step: 1 })(state)!;
+            expect(result.replay!.cursor.frame).toEqual(30);
+            const stopped = applyResult(state, result);
+            expect(getReplaySelfVisual(stopped)!.active).toBeUndefined();
+        });
+
+        // 切り出す盤面は i-1 手ぶんの結果なので、INPUT の統計もそこへそろえる
+        test('exporting a turn stop counts only the confirmed placements', () => {
+            (main.appendPages as jest.Mock).mockClear();
+            const stopped = applyResult(
+                withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+
+            replayActions.openReplayInEditor()(stopped);
+            const call = (main.appendPages as jest.Mock).mock.calls[0][0];
+            expect(call.pages[0].comment.text).toEqual('#Q=[](T)OI');
+            expect(call.pages[0].internal.inputReplayContext.stats.pieces).toEqual(1);
+        });
+
+        test('showReplayMove parks on the move with the self side as the basis', () => {
+            const state = withCells(1, { stepBasis: 'opponent' });
+            const result = replayActions.showReplayMove({ index: 3 })(state)!;
+
+            expect(result.replay!.cursor.stepBasis).toEqual('self');
+            expect(result.replay!.cursor.selfIndex).toEqual(3);
+            // 手番 3 の lock は frame 90
+            expect(result.replay!.cursor.frame).toEqual(89);
+            expect(result.replay!.cursor.turnStop).toBeTruthy();
+        });
+
+        test('showReplayMove is inert outside the playing phase', () => {
+            const state = createState({
+                ir: buildIR(3),
+                phase: 'select',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+            });
+            expect(replayActions.showReplayMove({ index: 2 })(state)).toBeUndefined();
         });
     });
 
@@ -864,6 +1024,7 @@ describe('replayActions', () => {
                     selfIndex: clampPointIndex(players[0], selfIndex),
                     opponentIndex: indexAtFrame(players[1], frame),
                     stepBasis: 'self',
+                    turnStop: false,
                 },
             });
         };

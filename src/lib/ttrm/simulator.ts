@@ -242,6 +242,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         rotation: number;
         x: number;
         y: number;
+        cells: [number, number][];
     } | null = null;
 
     engine.events.on('falling.lock.pre', () => {
@@ -251,6 +252,9 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             rotation: engine.falling.rotation,
             x: engine.falling.x,
             y: engine.falling.y,
+            // AI 解析の実手同定に使う。エンジンの盤面は board.state[0] が最下段で
+            // アプリ Field と同じ向きなので、この座標はそのまま流用できる。
+            cells: engine.falling.absoluteBlocks.map(([x, y]) => [x, y] as [number, number]),
         };
     });
 
@@ -280,6 +284,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             rotation: preLock ? preLock.rotation : 0,
             x: preLock ? preLock.x : 0,
             y: preLock ? preLock.y : 0,
+            cells: preLock ? preLock.cells : undefined,
             hold: queue.hold,
             current: queue.current,
             next: queue.next,

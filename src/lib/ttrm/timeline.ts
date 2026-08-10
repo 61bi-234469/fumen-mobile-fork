@@ -2,6 +2,7 @@ import { FieldConstants, Piece } from '../enums';
 import { gaugeAtFrame, getGarbageTimeline, tankedAtFrame } from './garbage';
 import {
     IRField,
+    LockPoint,
     PlayerRoundIR,
     ReplayActiveFrame,
     ReplayBoardFrame,
@@ -231,6 +232,86 @@ export const visualAtFrame = (player: PlayerRoundIR, frame: number): ReplayVisua
         garbage: garbageAtFrame(player, target),
     };
 };
+
+// 手番 index（1..L）の「接地直前」地点。設置は済んでいるが確定していない瞬間を指す。
+// 確定地点を返す pointAt とは別の概念なので、ポイント空間そのものには触れない。
+export interface ReplayPreLockPoint {
+    index: number;           // 手番番号。停止地点の index と同じ
+    frame: number;           // locks[index - 1].frame - 1
+    confirmedIndex: number;  // この時点で確定している設置数（= ポイント空間の index）
+    visual: ReplayVisualState;
+}
+
+// falling.lock.pre で採った設置姿勢。visual timeline の active は「その frame の最終状態」なので、
+// ハードドロップした手番では 1 フレーム前がまだ空中にある。接地位置は lock 側からしか取れない。
+const preLockActiveOf = (lock: LockPoint, frame: number): ReplayActiveFrame | undefined => {
+    if (lock.cells === undefined || lock.cells.length === 0) {
+        return undefined;
+    }
+    return {
+        frame,
+        piece: lock.piece,
+        rotation: lock.rotation,
+        x: lock.x,
+        y: lock.y,
+        cells: lock.cells.map(([x, y]) => [x, y] as [number, number]),
+    };
+};
+
+// 設置直前の盤面へ、その手のセルがまだ入っていないこと。1 フレーム内の連続設置で
+// 直前の変化点にひとつ前の設置が含まれないことがあり、そのまま出すと別の局面になる。
+const fitsOnBoard = (field: IRField, cells: [number, number][]): boolean => cells.every(([x, y]) => {
+    if (x < 0 || FieldConstants.Width <= x || y < 0 || FieldConstants.Height <= y) {
+        return true;
+    }
+    return field[y * FieldConstants.Width + x] === Piece.Empty;
+});
+
+// 復元できない手番では undefined を返し、呼び出し側は従来の確定地点表示へ落とす。
+export const preLockPointAt = (
+    player: PlayerRoundIR, index: number,
+): ReplayPreLockPoint | undefined => {
+    const lock = player.locks[index - 1];
+    if (index < 1 || lock === undefined || lock.frame <= 0) {
+        return undefined;
+    }
+    // 直前の lock が同一フレームなら、この手の設置直前盤面は残っていない
+    const previous = player.locks[index - 2];
+    if (previous !== undefined && lock.frame <= previous.frame) {
+        return undefined;
+    }
+    const frame = lock.frame - 1;
+    const active = preLockActiveOf(lock, frame);
+    if (active === undefined) {
+        return undefined;
+    }
+    const board = boardAtFrame(player, frame);
+    if (!fitsOnBoard(board.field, active.cells)) {
+        return undefined;
+    }
+    return {
+        index,
+        frame,
+        confirmedIndex: index - 1,
+        visual: {
+            frame,
+            active,
+            field: board.field,
+            sourceHeight: board.sourceHeight,
+            clippedRowCount: board.clippedRowCount,
+            // HOLD は設置と spawn では動かないので lock の値がそのまま接地直前の値になる。
+            // NEXT は lock 後に spawn したミノを先頭へ戻すと接地直前の並びになる。
+            hold: lock.hold,
+            current: lock.piece,
+            next: lock.current !== null ? [lock.current, ...lock.next] : lock.next,
+            garbage: garbageAtFrame(player, frame),
+        },
+    };
+};
+
+// 手番送りの着地フレーム。接地直前が復元できない地点では従来どおり確定地点のフレーム。
+export const stopFrameAt = (player: PlayerRoundIR, index: number): number =>
+    preLockPointAt(player, index)?.frame ?? frameAt(player, index);
 
 export const framesToSeconds = (frames: number): number => frames / FRAMES_PER_SECOND;
 

@@ -19,9 +19,12 @@ import {
     indexAtFrame,
     lastPointIndex,
     pointAt,
+    preLockPointAt,
     ReplayPoint,
+    ReplayPreLockPoint,
     ReplayStats,
     statsAt,
+    stopFrameAt,
     visualAtFrame,
 } from '../lib/ttrm/timeline';
 import {
@@ -31,6 +34,11 @@ import {
     ReplayGarbageView,
 } from '../lib/ttrm/garbage';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_settings';
+import {
+    clearedReplayAnalysisState,
+    haltedReplayAnalysisState,
+    stopReplayAnalysisSession,
+} from './replay_analysis';
 
 const worker = new ReplayWorkerWrapper();
 
@@ -96,6 +104,7 @@ export const getReplayEndFrame = (state: State): number => {
 };
 
 // P2 §3-2: frame を書いたら、両者の index を必ずここで整合させる。
+// 手番停止は明示的に立てるものなので、ここでは必ず倒す（手番送りだけが立て直す）。
 const cursorAtFrame = (
     state: State, frame: number, keepIndex?: { self?: number, opponent?: number },
 ): ReplayState['cursor'] => {
@@ -104,6 +113,7 @@ const cursorAtFrame = (
     const clamped = Math.min(getReplayEndFrame(state), Math.max(0, frame));
     return {
         ...state.replay.cursor,
+        turnStop: false,
         frame: clamped,
         selfIndex: keepIndex?.self !== undefined ? keepIndex.self
             : self !== undefined ? indexAtFrame(self, clamped) : 0,
@@ -130,6 +140,8 @@ const basisIndex = (state: State): number =>
 
 // 明示的に送った側の index は再計算しない。同一 frame に複数 lock が並ぶとき、
 // 送った手番が飛ぶのを防ぐため（P2 §3-2 / §7-2 の懸念 6）。
+// 着地は lock フレームではなくその 1 つ前（接地直前）。復元できない手番では stopFrameAt が
+// 従来どおり lock フレームへ落ちる。
 const moveToPointIndex = (state: State, index: number): NextState => {
     const player = stepBasisPlayer(state);
     if (player === undefined) {
@@ -142,9 +154,38 @@ const moveToPointIndex = (state: State, index: number): NextState => {
     return {
         replay: {
             ...state.replay,
-            cursor: cursorAtFrame(state, frameAt(player, target), keep),
+            cursor: {
+                ...cursorAtFrame(state, stopFrameAt(player, target), keep),
+                turnStop: true,
+            },
         },
     };
+};
+
+// 手番送りで止まっている側だけ、接地直前の地点を返す。基準でない側と自動再生中は undefined。
+const preLockPointOf = (
+    state: State, variant: 'self' | 'opponent',
+): ReplayPreLockPoint | undefined => {
+    if (state.replay.phase !== 'playing' || !state.replay.cursor.turnStop) {
+        return undefined;
+    }
+    if (effectiveStepBasis(state) !== variant) {
+        return undefined;
+    }
+    const player = variant === 'self' ? getSelfPlayerRound(state) : getOpponentPlayerRound(state);
+    if (player === undefined) {
+        return undefined;
+    }
+    const index = variant === 'self'
+        ? state.replay.cursor.selfIndex
+        : state.replay.cursor.opponentIndex;
+    return preLockPointAt(player, index);
+};
+
+// 手番停止中は未確定の設置を数えない。切り出す盤面と INPUT の統計をそろえるために使う。
+export const getReplayConfirmedIndex = (state: State): number => {
+    const preLock = preLockPointOf(state, 'self');
+    return preLock !== undefined ? preLock.confirmedIndex : state.replay.cursor.selfIndex;
 };
 
 const stopReplayClock = (state: State): NextState => {
@@ -176,6 +217,7 @@ export interface ReplayActions {
     stepReplayLock: (data: { step: number }) => action;
     replayFirstLock: () => action;
     replayLastLock: () => action;
+    showReplayMove: (data: { index: number }) => action;
     seekReplayFrame: (data: { frame: number }) => action;
     swapReplaySides: () => action;
     setReplayStepBasis: (data: { basis: ReplayStepBasis }) => action;
@@ -202,12 +244,16 @@ export const replayActions: Readonly<ReplayActions> = {
         const requestId = nextReplayRequestId;
         nextReplayRequestId += 1;
 
+        // 取り込み直しは解析対象そのものが変わる。実行中なら Worker ごと捨てる。
+        stopReplayAnalysisSession();
+
         if (file.size > MAX_TTRM_TEXT_LENGTH) {
             return {
                 replay: {
                     ...initialReplayState,
                     requestId,
                     view: state.replay.view,
+                    analysis: clearedReplayAnalysisState(state),
                     phase: 'failed',
                     fileName: file.name,
                     error: {
@@ -238,6 +284,7 @@ export const replayActions: Readonly<ReplayActions> = {
                 ...initialReplayState,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'parsing',
                 fileName: file.name,
             },
@@ -263,6 +310,7 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.requestId !== requestId) {
             return undefined;
         }
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...initialReplayState,
@@ -270,6 +318,7 @@ export const replayActions: Readonly<ReplayActions> = {
                 fileName,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'select',
                 selection: {
                     roundIndex: 0,
@@ -282,11 +331,13 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.requestId !== requestId) {
             return undefined;
         }
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...initialReplayState,
                 requestId,
                 view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
                 phase: 'failed',
                 fileName: state.replay.fileName,
                 error: { stage, message },
@@ -298,9 +349,12 @@ export const replayActions: Readonly<ReplayActions> = {
         if (roundIndex < 0 || rounds.length <= roundIndex) {
             return undefined;
         }
+        // 解析はラウンド単位。別ラウンドへ移ったら結果も実行中の Worker も捨てる。
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     roundIndex,
@@ -315,9 +369,12 @@ export const replayActions: Readonly<ReplayActions> = {
             return undefined;
         }
         persistViewSettings(state, { replaySelfPlayer: user.username });
+        // 解析対象はプレイヤー単位。自陣が変われば結果は無効になる。
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     selfPlayerId: playerId,
@@ -348,10 +405,13 @@ export const replayActions: Readonly<ReplayActions> = {
             return undefined;
         }
         const stopped = stopReplayClock(state);
+        // 結果は残すが、画面を離れる以上は探索を続けさせない
+        stopReplayAnalysisSession();
         return {
             ...stopped,
             replay: {
                 ...(stopped?.replay ?? state.replay),
+                analysis: haltedReplayAnalysisState(state),
                 phase: 'select',
                 cursor: { ...initialReplayState.cursor, stepBasis: state.replay.cursor.stepBasis },
             },
@@ -359,10 +419,15 @@ export const replayActions: Readonly<ReplayActions> = {
     },
     resetReplayImport: () => (state): NextState => {
         worker.terminate();
+        stopReplayAnalysisSession();
         const stopped = stopReplayClock(state);
         return {
             ...stopped,
-            replay: { ...initialReplayState, view: state.replay.view },
+            replay: {
+                ...initialReplayState,
+                view: state.replay.view,
+                analysis: clearedReplayAnalysisState(state),
+            },
         };
     },
     // 基準プレイヤー（FR-22）のポイント空間を 1 つ進む／戻る。
@@ -395,6 +460,25 @@ export const replayActions: Readonly<ReplayActions> = {
         }
         return moveToPointIndex(state, lastPointIndex(player));
     },
+    // 手評価グラフからの移動。解析対象は常に自陣なので、基準を自陣へ寄せてから
+    // その手番の停止地点（接地直前）へ止める。
+    showReplayMove: ({ index }) => (state): NextState => {
+        const player = getSelfPlayerRound(state);
+        if (state.replay.phase !== 'playing' || player === undefined || !Number.isFinite(index)) {
+            return undefined;
+        }
+        const target = clampPointIndex(player, Math.round(index));
+        return {
+            replay: {
+                ...state.replay,
+                cursor: {
+                    ...cursorAtFrame(state, stopFrameAt(player, target), { self: target }),
+                    stepBasis: 'self',
+                    turnStop: true,
+                },
+            },
+        };
+    },
     // FR-25: 任意時刻へのジャンプ。再生中でも一時停止しない。
     seekReplayFrame: ({ frame }) => (state): NextState => {
         if (state.replay.phase !== 'playing' || !Number.isFinite(frame)) {
@@ -414,15 +498,20 @@ export const replayActions: Readonly<ReplayActions> = {
         if (state.replay.phase !== 'playing' || opponent === undefined) {
             return undefined;
         }
+        // 自陣が入れ替わるので解析対象も変わる
+        stopReplayAnalysisSession();
         return {
             replay: {
                 ...state.replay,
+                analysis: clearedReplayAnalysisState(state),
                 selection: {
                     ...state.replay.selection,
                     selfPlayerId: opponent.id,
                 },
                 cursor: {
                     ...state.replay.cursor,
+                    // 基準と停止 index の対応が崩れるので、手番停止は解いてフリーカーソルへ戻す
+                    turnStop: false,
                     selfIndex: state.replay.cursor.opponentIndex,
                     opponentIndex: state.replay.cursor.selfIndex,
                 },
@@ -553,6 +642,8 @@ export const replayActions: Readonly<ReplayActions> = {
     // pauseAnimation を通して handlers を書き換えるため、ここで handlers の patch を
     // 返すと更新前の値で上書きしてしまう。
     closeReplayScreen: () => (): NextState => {
+        // 解析が動いていれば止める（結果は残す）。実行中でなければ何も起きない
+        main.abortReplayAnalysis();
         main.pauseReplayPlayback();
         main.changeToDrawerScreen({});
         return undefined;
@@ -565,13 +656,15 @@ export const replayActions: Readonly<ReplayActions> = {
         if (field === undefined || player === undefined) {
             return undefined;
         }
-        // 画面を離れるのでクロックを止める（§3-5 の明示停止経路）。
+        // 画面を離れるのでクロックと解析を止める（§3-5 の明示停止経路）。
         // closeReplayScreen と同じ理由で、入れ子のアクションとして投げる。
+        main.abortReplayAnalysis();
         main.pauseReplayPlayback();
         // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる。
-        // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す
+        // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す。
+        // 統計は切り出す盤面に合わせる ―― 手番停止中の未確定な設置は数えない。
         const inputReplayContext = createInputReplayContext(
-            player, state.replay.cursor.selfIndex, state.replay.cursor.frame,
+            player, getReplayConfirmedIndex(state), state.replay.cursor.frame,
         );
         const page = irPointToPage(
             field,
@@ -613,10 +706,15 @@ export const getReplayOpponentPoint = (state: State): ReplayPoint | undefined =>
 
 // 確定ReplayPointは手番・統計用に残し、盤面・操作中ミノ・HOLD/NEXTだけを
 // 共通フレーム軸のvisual timelineから引く。fractional cursorは次frameを先取りしない。
+// 手番送りで止めた側だけは、設置済み・未確定の接地直前地点を出す。
 export const getReplaySelfVisual = (state: State): ReplayVisualState | undefined => {
     const player = getSelfPlayerRound(state);
     if (player === undefined || state.replay.phase !== 'playing') {
         return undefined;
+    }
+    const preLock = preLockPointOf(state, 'self');
+    if (preLock !== undefined) {
+        return preLock.visual;
     }
     return visualAtFrame(player, Math.floor(state.replay.cursor.frame));
 };
@@ -625,6 +723,10 @@ export const getReplayOpponentVisual = (state: State): ReplayVisualState | undef
     const player = getOpponentPlayerRound(state);
     if (player === undefined || state.replay.phase !== 'playing') {
         return undefined;
+    }
+    const preLock = preLockPointOf(state, 'opponent');
+    if (preLock !== undefined) {
+        return preLock.visual;
     }
     return visualAtFrame(player, Math.floor(state.replay.cursor.frame));
 };

@@ -165,6 +165,10 @@ function makeColdClearState(overrides: {
             guideLineColor: true,
         },
         comment: { text: overrides.commentText !== undefined ? overrides.commentText : 'IOTLJSZ', changeKey: 0 },
+        // 探索の開始条件はリプレイ AI 解析の実行状態も見る
+        replay: {
+            analysis: { status: 'idle' },
+        },
         cache: {
             currentInitField: new Field({}),
         },

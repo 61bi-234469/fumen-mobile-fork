@@ -1,9 +1,20 @@
 // tslint:disable-next-line:import-name
 import initWasm, { ColdClearBot } from '../cold_clear_wasm/cold_clear_wasm_api';
+import { findPlacedIndexByKey } from './move_match';
 import { CCMove, WorkerMessage, WorkerResponse } from './types';
 
 let bot: ColdClearBot | null = null;
 let thinkMs = 1000;
+// 解析は局面ごとに一時 bot を作り直すため、WASM 初期化だけ 1 回に抑える。
+let wasmReady = false;
+
+const ensureWasm = async (): Promise<void> => {
+    if (wasmReady) {
+        return;
+    }
+    await initWasm();
+    wasmReady = true;
+};
 
 const postResponse = (msg: WorkerResponse) => {
     (self as any).postMessage(msg);
@@ -24,7 +35,7 @@ const toMove = (result: any): CCMove => ({
     const msg = event.data;
     try {
         if (msg.type === 'init') {
-            await initWasm();
+            await ensureWasm();
             bot = new ColdClearBot(
                 msg.field,
                 msg.hold,
@@ -103,6 +114,49 @@ const toMove = (result: any): CCMove => ({
                 });
             }
             postResponse({ type: 'sequenceDone' });
+        } else if (msg.type === 'analyzePosition') {
+            await ensureWasm();
+
+            // 局面ごとに盤面・キュー・B2B・REN が変わるため bot は使い回せない。
+            // 探索用の init セッション（bot）とは独立させ、必ず解放する。
+            const analysisBot = new ColdClearBot(
+                msg.field,
+                msg.hold,
+                msg.b2b,
+                msg.combo,
+                new Uint8Array(msg.queue),
+                msg.holdAllowed,
+                msg.speculate,
+            );
+            try {
+                if (msg.weightsPreset !== 0) {
+                    analysisBot.set_weights_preset(msg.weightsPreset);
+                }
+
+                const count = Math.max(1, Math.floor(msg.candidateCount));
+                const incoming = Math.max(0, Math.floor(msg.incoming));
+                const results = incoming > 0
+                    ? analysisBot.suggest_top_moves_sync_with_incoming(msg.thinkMs, count, incoming)
+                    : analysisBot.suggest_top_moves_sync(msg.thinkMs, count);
+                const moves: CCMove[] = Array.isArray(results) ? results.map(toMove) : [];
+
+                if (moves.length === 0) {
+                    postResponse({ type: 'noMove' });
+                } else {
+                    const placedIndex = findPlacedIndexByKey(moves, msg.placedCellKey);
+                    const played = placedIndex < 0 ? undefined : moves[placedIndex];
+                    postResponse({
+                        type: 'analysisResult',
+                        index: msg.index,
+                        bestScore: moves[0].score ?? 0,
+                        playedScore: played !== undefined ? played.score ?? 0 : null,
+                        rank: placedIndex < 0 ? null : placedIndex + 1,
+                        candidateCount: moves.length,
+                    });
+                }
+            } finally {
+                analysisBot.free();
+            }
         }
     } catch (e) {
         postResponse({ type: 'error', message: String(e) });

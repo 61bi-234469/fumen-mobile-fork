@@ -10,6 +10,10 @@ const privateSwapped = require('./fixtures/private_swapped.json') as TtrmFile;
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
+// fumen は 23 行しか持たない。それより上へ積んだ設置は fieldAfter に現れない。
+const y23 = (cells: [number, number][]): boolean =>
+    cells.every(([, y]) => y < FieldConstants.Height);
+
 // Raw .ttrm boards are top-down (board[39] is the bottom row) with string
 // cells; convert the bottom 23 rows to the IR layout for comparison.
 const rawBoardToIRField = (board: any[][]): IRField => {
@@ -332,6 +336,43 @@ describe('simulator', () => {
             y: 22,
             cells: [[4, 22], [5, 22], [4, 21], [5, 21]],
         });
+    });
+
+    // AI 解析はエンジン座標の piece/rotation/x/y ではなく、この cells を実手の真実にする
+    test('locks carry the cells the piece actually filled', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+
+        for (const lock of result.locks) {
+            expect(lock.cells).toHaveLength(4);
+            for (const [x, y] of lock.cells!) {
+                expect(x).toBeGreaterThanOrEqual(0);
+                expect(x).toBeLessThan(FieldConstants.Width);
+                expect(y).toBeGreaterThanOrEqual(0);
+            }
+            // 直前のフレームの盤面では、そのセルはまだ空いている
+            const prior = boardAtFrame(result, lock.frame - 1).field;
+            for (const [x, y] of lock.cells!.filter(([, y]) => y < FieldConstants.Height)) {
+                expect(prior[y * FieldConstants.Width + x]).toEqual(Piece.Empty);
+            }
+            // 消去の無い手なら、設置後の盤面では埋まっている
+            if (lock.clear.lines === 0 && y23(lock.cells!)) {
+                for (const [x, y] of lock.cells!) {
+                    expect(lock.fieldAfter[y * FieldConstants.Width + x]).not.toEqual(Piece.Empty);
+                }
+            }
+        }
+    });
+
+    // P1 の命名に反して falling.lock.pre の時点で盤面は既にミノを含む。
+    // 設置前の盤面が要るときは visual timeline を使う、という前提を固定する。
+    test('fieldBefore is not a pre-lock board: it matches fieldAfter', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+        expect(result.locks.length).toBeGreaterThan(0);
+        for (const lock of result.locks) {
+            expect(lock.fieldBefore).toEqual(lock.fieldAfter);
+        }
     });
 
     test('visual board boundaries agree with lock and terminal points', () => {

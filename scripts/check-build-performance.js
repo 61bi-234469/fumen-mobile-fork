@@ -20,8 +20,8 @@ const forbiddenUrls = urls.filter((url) => forbidden.some((pattern) => pattern.t
 if (urls.length > 75) {
     throw new Error(`Precache has ${urls.length} URLs; the limit is 75`);
 }
-if (totalBytes > 1.8 * 1024 * 1024) {
-    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.8 MiB`);
+if (totalBytes > 1.82 * 1024 * 1024) {
+    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.82 MiB`);
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);

@@ -181,6 +181,10 @@ const ALLOWLIST: ReadonlyArray<string> = [
     'replay-opponent-next-2',
     'replay-opponent-next-3',
     'replay-opponent-next-4',
+    // intentionally absent: Replay の手番送りを自陣固定へ統一したため、基準切替の
+    // 2 ボタンを撤去した。replay_spec.js は復活しないことを恒久的に検証する。
+    'btn-replay-basis-self',
+    'btn-replay-basis-opponent',
 ];
 
 const existsAsStatic = (name: string): boolean => {

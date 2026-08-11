@@ -989,6 +989,11 @@ export const operations = {
         // P2: 自陣盤面は replay-board-self に改名。相手側は replay-board-opponent。
         board: (side = 'self') => cy.get(datatest(`replay-board-${side}`)),
         active: (side = 'self') => cy.get(datatest(`replay-active-${side}`)),
+        // 左側の PPS / APM / APP と、盤面右下の VS / AREA。
+        stats: (side = 'self') => cy.get(datatest(
+            side === 'self' ? 'replay-side-stats' : 'replay-opponent-side-stats')),
+        fieldStats: (side = 'self') => cy.get(datatest(
+            side === 'self' ? 'replay-field-stats' : 'replay-opponent-field-stats')),
         // 再生／一時停止（FR-23）
         playPause: () => cy.get(datatest('btn-replay-play-pause')).click(),
         setSpeed: (speed) => cy.get(datatest('replay-speed-select')).select(String(speed)),

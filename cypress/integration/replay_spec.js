@@ -371,6 +371,41 @@ describe('TETR.IO Replay', () => {
         });
     });
 
+    it('anchors replay rates to the bottom of the field', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+        operations.replay.next();
+
+        ['self', 'opponent'].forEach((side) => {
+            const prefix = side === 'self' ? 'replay-side-stats' : 'replay-opponent-side-stats';
+            const fieldPrefix = side === 'self' ? 'replay-field-stats' : 'replay-opponent-field-stats';
+            ['pps', 'apm', 'app'].forEach((metric) => {
+                cy.get(datatest(`${prefix}-${metric}`)).invoke('text')
+                    .should('match', new RegExp(`^-?\\d+\\.\\d{2} ${metric}$`));
+            });
+            ['vs', 'area'].forEach((metric) => {
+                cy.get(datatest(`${fieldPrefix}-${metric}`)).invoke('text')
+                    .should('match', new RegExp(`^-?\\d+\\.\\d{2} ${metric}$`));
+            });
+            operations.replay.stats(side).then(($stats) => {
+                operations.replay.board(side).then(($board) => {
+                    const statsRect = $stats[0].getBoundingClientRect();
+                    const boardRect = $board[0].getBoundingClientRect();
+                    expect(Math.abs(statsRect.bottom - boardRect.bottom)).to.be.lessThan(2);
+                    expect(statsRect.right).to.be.lessThan(boardRect.left);
+                });
+            });
+            operations.replay.fieldStats(side).then(($stats) => {
+                operations.replay.board(side).then(($board) => {
+                    const statsRect = $stats[0].getBoundingClientRect();
+                    const boardRect = $board[0].getBoundingClientRect();
+                    expect(Math.abs(statsRect.bottom - boardRect.bottom)).to.be.lessThan(2);
+                    expect(statsRect.left).to.be.greaterThan(boardRect.right);
+                });
+            });
+        });
+    });
+
     it('gives the opponent the same NEXT queue as your own on PC', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();

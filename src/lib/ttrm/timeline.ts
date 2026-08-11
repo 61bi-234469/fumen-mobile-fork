@@ -331,9 +331,13 @@ export interface ReplayStats {
     seconds: number;
     pps: number;
     apm: number;
+    app: number;
+    vs: number;
+    area: number;
     b2b: number;
     ren: number;
     attack: number;
+    garbageCleared: number;
     // P3 §3-8。TETR.IO の received は再現不能と確定したため、エンジン基準で
     // 自己整合する 2 つ（現在の保留量と被弾累計）を出す。ラベルは ☢ で区別する。
     gauge: number;
@@ -354,22 +358,41 @@ export const statsAt = (
         : point.kind === 'terminal' ? player.locks.length
         : point.index;
     const counted = player.locks.slice(0, placed);
-    const attack = counted.reduce((sum, lock) => sum + lock.attack, 0);
+    const totals = counted.reduce((sum, lock) => ({
+        attack: sum.attack + lock.attack,
+        garbageCleared: sum.garbageCleared + (lock.garbageCleared ?? 0),
+    }), { attack: 0, garbageCleared: 0 });
     const seconds = framesToSeconds(point.frame);
     const last = counted[counted.length - 1];
     const garbage = getGarbageTimeline(player);
     const garbageFrame = frame !== undefined ? frame : point.frame;
+    const pps = seconds > 0 ? placed / seconds : 0;
+    const apm = seconds > 0 ? totals.attack * 60 / seconds : 0;
+    // APP / AREA は TetraStats 由来の式（tetrio_report_app を参照）。VS は
+    // @haelp/teto Engine#dynamicStats と同じ attack + cleared の途中値で再現する。
+    const app = pps > 0 ? apm / (pps * 60) : 0;
+    const vs = seconds > 0 ? (totals.attack + totals.garbageCleared) * 100 / seconds : 0;
+    const dsSecond = vs / 100 - apm / 60;
+    const dsPiece = pps > 0 ? dsSecond / pps : 0;
+    const garbageEfficiency = pps > 0 ? ((app * dsSecond) / pps) * 2 : 0;
+    const area = pps > 0
+        ? apm + pps * 45 + vs * 0.444 + app * 185 + dsSecond * 175
+            + dsPiece * 450 + garbageEfficiency * 315
+        : 0;
     return {
         placed,
-        attack,
         seconds,
+        pps,
+        apm,
+        app,
+        vs,
+        area,
+        attack: totals.attack,
+        garbageCleared: totals.garbageCleared,
         gauge: gaugeAtFrame(garbage, garbageFrame),
         tanked: tankedAtFrame(garbage, garbageFrame),
         frame: point.frame,
         totalLocks: player.locks.length,
-        // 経過 0 秒（開始地点や 1 フレーム目）でのゼロ除算を避ける
-        pps: seconds > 0 ? placed / seconds : 0,
-        apm: seconds > 0 ? attack * 60 / seconds : 0,
         b2b: last !== undefined ? Math.max(0, last.clear.b2b) : 0,
         // エンジンの combo はコンボが途切れている間 -1 になる。表示上は 0 に丸める。
         ren: last !== undefined ? Math.max(0, last.clear.ren) : 0,

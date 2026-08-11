@@ -1,7 +1,7 @@
 import { FieldConstants, Piece } from '../../enums';
 import { minoToPiece } from '../board_converter';
 import { buildReplayIR, simulatePlayerRound } from '../simulator';
-import { activeAtFrame, boardAtFrame } from '../timeline';
+import { activeAtFrame, boardAtFrame, statsAt } from '../timeline';
 import { IRField, TtrmFile } from '../types';
 
 const leagueWin = require('./fixtures/league_win.json') as TtrmFile;
@@ -43,6 +43,20 @@ describe('simulator', () => {
             expect(player.verification.matched).toBeTruthy();
             expect(player.locks.length).toEqual(player.verification.piecesplaced.expected);
         }
+    });
+
+    test('lock downstack totals and terminal VS match the TETR.IO aggregate stats', () => {
+        const raw = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(raw);
+        const cleared = result.locks.reduce((sum, lock) => sum + (lock.garbageCleared ?? 0), 0);
+        const aggregate = raw.replay.results.aggregatestats;
+
+        expect(cleared).toEqual(raw.replay.results.stats.garbage.cleared);
+        // raw aggregate VS is sampled one engine frame earlier in this fixture, while Replay の
+        // terminal は replay.frames まで tick して終端ガベージを取り込む。式は同じなので
+        // 1 frame 相当の差（0.1 未満）に収まることを固定する。
+        expect(Math.abs(statsAt(result, result.locks.length + 1).vs - aggregate.vsscore))
+            .toBeLessThan(0.1);
     });
 
     test('losing side terminal contains the killing garbage (RV-01)', () => {

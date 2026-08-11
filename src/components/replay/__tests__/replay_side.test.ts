@@ -28,9 +28,13 @@ const stats: ReplayStats = {
     seconds: 0,
     pps: 0,
     apm: 0,
+    app: 0,
+    vs: 0,
+    area: 0,
     b2b: 0,
     ren: 0,
     attack: 0,
+    garbageCleared: 0,
     gauge: 0,
     tanked: 0,
 };
@@ -113,6 +117,50 @@ describe('replaySide realtime visual', () => {
 
     test('labels the replay chain counter as Combo', () => {
         expect(textContents(render(visual(undefined)))).toContain('Combo 0');
+    });
+
+    test('shows replay rates with two decimals and keeps VS above AREA at the field edge', () => {
+        const vnode = replaySide({
+            ...{
+                variant: 'self' as const,
+                size: 'full' as const,
+                point: point(),
+                visual: visual(undefined),
+                blockSize: 10,
+                guideLineColor: true,
+                label: 'self',
+                counterText: 'start',
+                queueWidth: 40,
+            },
+            stats: { ...stats, pps: 1.2, apm: 72.345, app: 0.6, vs: 90.5, area: 432.1 },
+        });
+
+        expect(textContents(findAllByDatatest(vnode, 'replay-side-stats')[0]))
+            .toEqual(['1.20 pps', '72.34 apm', '0.60 app']);
+        expect(textContents(findAllByDatatest(vnode, 'replay-field-stats')[0]))
+            .toEqual(['90.50 vs', '432.10 area']);
+        expect(findAllByDatatest(vnode, 'replay-side-stats')[0].attributes.style)
+            .toMatchObject({ bottom: '0px', position: 'absolute' });
+        expect(findAllByDatatest(vnode, 'replay-field-stats')[0].attributes.style)
+            .toMatchObject({ bottom: '0px', position: 'absolute' });
+    });
+
+    test('keeps both stat groups in the compact layout', () => {
+        const vnode = replaySide({
+            stats,
+            variant: 'opponent',
+            size: 'compact',
+            point: point(),
+            visual: visual(undefined),
+            blockSize: 10,
+            guideLineColor: true,
+            label: 'opponent',
+            counterText: 'start',
+            queueWidth: 40,
+        });
+
+        expect(findAllByDatatest(vnode, 'replay-opponent-side-stats')).toHaveLength(1);
+        expect(findAllByDatatest(vnode, 'replay-opponent-field-stats')).toHaveLength(1);
     });
 
     test('does not draw cells outside the 10x23 replay board', () => {

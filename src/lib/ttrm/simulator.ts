@@ -206,6 +206,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
     const confirmSenderFrames = rawConfirmSenderFrames(playerRound);
     let totalLines = 0;
     let prevAttack = 0;
+    let prevGarbageCleared = 0;
 
     const recordActive = (frame: number): void => {
         const active = readActiveFrame(engine, frame);
@@ -273,9 +274,13 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         totalLines += res.lines || 0;
         const attack = Math.max(0, (res.stats.garbage.attack ?? 0) - prevAttack);
         prevAttack = res.stats.garbage.attack ?? prevAttack;
+        const garbageCleared = Math.max(0,
+            (res.stats.garbage.cleared ?? 0) - prevGarbageCleared);
+        prevGarbageCleared = res.stats.garbage.cleared ?? prevGarbageCleared;
         const queue = readQueueFrame(engine, engine.frame);
         locks.push({
             attack,
+            garbageCleared,
             pieceIndex: locks.length,
             frame: engine.frame,
             fieldBefore: preLock ? preLock.fieldBefore.field : after.field,

@@ -17,7 +17,7 @@ export interface TtrmPlayerReplay {
         stats: {
             piecesplaced: number;
             lines: number;
-            garbage: { sent: number; received: number; attack: number };
+            garbage: { sent: number; received: number; attack: number; cleared?: number };
             [key: string]: any;
         };
         gameoverreason: string;
@@ -136,6 +136,9 @@ export interface LockPoint {
     next: Piece[];
     clear: LockClear;
     attack: number;
+    // この設置で相殺した（掘った）ガベージ行数。Engine の累積 cleared 差分。
+    // optional は既存の手作り test IR との後方互換のため。Worker が生成する IR は常に持つ。
+    garbageCleared?: number;
     // 恒等式の突き合わせ先（P3 §3-3）。表示は garbage.ts の gaugeAtFrame に一本化する。
     garbageGauge: number;
     sourceHeight: number;

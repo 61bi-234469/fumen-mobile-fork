@@ -879,6 +879,32 @@ const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null 
     };
 };
 
+// HOLD only changes which of the already-known pieces is active. Keep a completed
+// recommendation stable for the current placement instead of starting another
+// time-limited search that may choose an equally-valued alternative.
+const carryReadyInputGuideAcrossHold = (state: Readonly<State>): NextState => {
+    const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+    if (!guide.enabled || guide.status !== 'ready' || guide.move === null) {
+        return undefined;
+    }
+
+    const input = resolveInputGuideInput(state);
+    if (input === null) {
+        return undefined;
+    }
+
+    return {
+        coldClear: {
+            ...state.coldClear,
+            inputGuide: {
+                ...guide,
+                positionKey: input.positionKey,
+                usedHold: !guide.usedHold,
+            },
+        },
+    };
+};
+
 const buildInputGuideInitMessage = (
     state: Readonly<State>, input: InputGuideInput,
 ): CCInitMessage => ({
@@ -2303,6 +2329,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece, historyBoundary: false });
                 return undefined;
             },
+            carryReadyInputGuideAcrossHold,
         ]);
     },
 

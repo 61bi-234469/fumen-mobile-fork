@@ -60,6 +60,9 @@ const drawReplayBoard = (
 
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
+    // Editorと同じく、フィールド上部3行は格子のない1枚の灰色帯として描く。
+    ctx.fillStyle = decideBackgroundColor(20);
+    ctx.fillRect(0, 0, width, blockSize * 3);
 
     for (let y = 0; y < FieldConstants.Height; y += 1) {
         for (let x = 0; x < FieldConstants.Width; x += 1) {

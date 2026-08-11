@@ -637,9 +637,10 @@ export const replayActions: Readonly<ReplayActions> = {
         main.pauseReplayPlayback();
         // colorize は fumen 全体の設定なので、挿入先の fumen に合わせる。
         // カレントは spawn 位置の操作対象ミノとして載せるので、回転法則の設定も渡す。
-        // 統計は切り出す盤面に合わせる ―― 手番停止中の未確定な設置は数えない。
+        // 累計は切り出す盤面に合わせ、手番停止中の未確定な設置は数えない。
+        // B2B/ComboだけはReplay表示と同じカーソルの値を使う。
         const inputReplayContext = createInputReplayContext(
-            player, getReplayConfirmedIndex(state), state.replay.cursor.frame,
+            player, getReplayConfirmedIndex(state), state.replay.cursor.frame, state.replay.cursor.selfIndex,
         );
         const page = irPointToPage(
             field,

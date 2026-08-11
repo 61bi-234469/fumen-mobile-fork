@@ -122,7 +122,7 @@ describe('INPUT replay battle context', () => {
         expect(selected.queue).toEqual([]);
     });
 
-    test('converts replay raw B2B/REN and selects the cursor garbage snapshot', () => {
+    test('uses pre-CURRENT replay totals without treating the prior lock as this INPUT result', () => {
         const first = snapshot(2);
         const second = snapshot(5, { seed: 4321 });
         const player: any = {
@@ -139,8 +139,31 @@ describe('INPUT replay battle context', () => {
         const created = createInputReplayContext(player, 1, 45);
 
         expect(created.stats).toMatchObject({ b2bChain: 3, renChain: 4, pieces: 1, lines: 2 });
+        expect(created.stats.lastAction).toBeUndefined();
+        expect(created.garbage.last).toBeUndefined();
         expect(inputGarbageView(created).gauge).toBe(5);
         expect(created.garbage.snapshot).not.toBe(second);
+    });
+
+    test('uses the Replay-visible B2B/Combo at a stopped cursor without counting its lock in totals', () => {
+        const player: any = {
+            resolvedOptions: {},
+            locks: [
+                { frame: 30, piece: Piece.O, clear: { lines: 1, spin: 'none', b2b: 0, ren: 0, perfectClear: false } },
+                { frame: 60, piece: Piece.I, clear: { lines: 4, spin: 'none', b2b: 1, ren: 2, perfectClear: false } },
+            ],
+            terminal: { frame: 100 },
+        };
+
+        const created = createInputReplayContext(player, 1, 59, 2);
+
+        expect(created.stats).toMatchObject({
+            b2bChain: 2,
+            renChain: 3,
+            pieces: 1,
+            lines: 1,
+            lastAction: undefined,
+        });
     });
 
     test('previews from a cloned queue without consuming RNG state', () => {

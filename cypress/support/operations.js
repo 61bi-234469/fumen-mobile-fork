@@ -1035,13 +1035,11 @@ export const operations = {
     },
     inputReplay: {
         openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),
-        gauge: () => cy.get(datatest('input-garbage-gauge')),
         fieldGauge: () => cy.get(datatest('replay-gauge-input')),
         fieldGaugeBar: () => cy.get(datatest('replay-gauge-input-bar')),
         fieldGaugeSegments: () => cy.get(datatest('replay-gauge-input-segment')),
-        rise: () => cy.get(datatest('input-garbage-rise')),
         damage: () => cy.get(datatest('input-garbage-damage')),
         b2b: () => cy.get(datatest('input-stats-b2b')),
-        ren: () => cy.get(datatest('input-stats-ren')),
+        combo: () => cy.get(datatest('input-stats-combo')),
     },
 };

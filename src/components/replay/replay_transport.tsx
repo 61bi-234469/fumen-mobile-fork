@@ -66,7 +66,7 @@ export const replayTransport = (
                     margin: '6px 0',
                 })}
             >
-                {/* pps / apm / B2B / REN は盤面の左（HOLD 列）へ移した */}
+                {/* pps / apm / B2B / Combo は盤面の左（HOLD 列）へ移した */}
                 <span key="stat-attack">↑ {stats.attack}</span>
                 {/* ☢ は TETR.IO の集計ではなくエンジン基準であることを示す印（§3-8） */}
                 {garbagePlayer !== undefined ? (

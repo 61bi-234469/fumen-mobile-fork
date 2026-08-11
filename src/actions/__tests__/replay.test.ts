@@ -765,16 +765,27 @@ describe('replayActions', () => {
             expect(getReplaySelfVisual(stopped)!.active).toBeUndefined();
         });
 
-        // 切り出す盤面は i-1 手ぶんの結果なので、INPUT の統計もそこへそろえる
-        test('exporting a turn stop counts only the confirmed placements', () => {
+        // 切り出す盤面は i-1 手ぶんの結果なので累計はそこへそろえる。
+        // ただしB2B/ComboはReplay画面と同じ、カーソルiの値を引き継ぐ。
+        test('exporting a turn stop keeps confirmed totals and Replay chain counters', () => {
             (main.appendPages as jest.Mock).mockClear();
             const stopped = applyResult(
                 withCells(1), replayActions.stepReplayLock({ step: 1 })(withCells(1)));
+            stopped.replay.ir!.rounds[0].players[0].locks[1].clear = {
+                ...stopped.replay.ir!.rounds[0].players[0].locks[1].clear,
+                b2b: 1,
+                ren: 2,
+            };
 
             replayActions.openReplayInEditor()(stopped);
             const call = (main.appendPages as jest.Mock).mock.calls[0][0];
             expect(call.pages[0].comment.text).toEqual('#Q=[](T)OI');
             expect(call.pages[0].internal.inputReplayContext.stats.pieces).toEqual(1);
+            expect(call.pages[0].internal.inputReplayContext.stats).toMatchObject({
+                b2bChain: 2,
+                renChain: 3,
+                lastAction: undefined,
+            });
         });
 
         test('showReplayMove parks on the move with the self side as the basis', () => {

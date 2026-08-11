@@ -554,14 +554,13 @@ describe('TETR.IO Replay', () => {
         expectFumen(GAUGE_FUMEN);
     });
 
-    it('continues the replay gauge, B2B/REN and multi-row tank in INPUT', () => {
+    it('continues the replay gauge, B2B/Combo and multi-row tank in INPUT', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();
 
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.openInEditor();
 
-        operations.inputReplay.gauge().should('have.attr', 'data-value', GAUGE_ROWS);
         operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
         operations.inputReplay.fieldGaugeSegments()
             .should('have.length', 1)
@@ -577,16 +576,14 @@ describe('TETR.IO Replay', () => {
                 });
             });
         });
-        operations.inputReplay.rise().should('have.attr', 'data-value', `${GAUGE_HOLE_COLUMN}:1`);
         operations.inputReplay.b2b().should('exist');
-        operations.inputReplay.ren().should('exist');
+        operations.inputReplay.combo().should('contain', 'Combo');
+        cy.get(datatest('input-stats-action')).should('have.text', '—');
 
         // 元リプレイと同じく次lockはライン消去なし。cap内の5行が1手で同時に上がる。
         operations.mode.piece.harddrop();
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
         operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
         operations.inputReplay.fieldGaugeSegments().should('not.exist');
-        operations.inputReplay.rise().should('have.attr', 'data-value', '');
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
     });
 
@@ -608,7 +605,7 @@ describe('TETR.IO Replay', () => {
 
         operations.replay.seek(CANCEL_FRAME);
         operations.replay.openInEditor();
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '2');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '2');
 
         // 元リプレイ同様、Spawnで床へ下ろし、Rightでさらに下ろしてから
         // Reverseへ回してT-spin doubleへ入れる。
@@ -618,8 +615,7 @@ describe('TETR.IO Replay', () => {
         operations.mode.piece.rotateToRight();
         operations.mode.piece.harddrop();
 
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
-        operations.inputReplay.rise().should('have.attr', 'data-value', '');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
         operations.inputReplay.damage().should('have.attr', 'data-value', '5:2:3:0');
     });
 

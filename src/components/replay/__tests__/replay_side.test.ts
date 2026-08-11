@@ -57,6 +57,13 @@ const findAllByDatatest = (node: any, value: string): any[] => {
     return self.concat(findAllByDatatest(node.children, value));
 };
 
+const textContents = (node: any): string[] => {
+    if (typeof node === 'string') return [node];
+    if (node === undefined || node === null || typeof node !== 'object') return [];
+    if (Array.isArray(node)) return node.reduce((texts, child) => texts.concat(textContents(child)), [] as string[]);
+    return textContents(node.children);
+};
+
 const render = (value: ReplayVisualState) => replaySide({
     stats,
     variant: 'self',
@@ -102,6 +109,10 @@ describe('replaySide realtime visual', () => {
 
         expect(findAllByDatatest(vnode, 'replay-active-self')).toHaveLength(0);
         expect(findAllByDatatest(vnode, 'replay-next-0')[0].attributes['data-piece']).toEqual('O');
+    });
+
+    test('labels the replay chain counter as Combo', () => {
+        expect(textContents(render(visual(undefined)))).toContain('Combo 0');
     });
 
     test('does not draw cells outside the 10x23 replay board', () => {

@@ -18,7 +18,7 @@ import {
 } from './input_stats';
 import { buildEngineConfig } from './ttrm/engine_config';
 import { garbageAtFrame } from './ttrm/timeline';
-import { PlayerRoundIR, TtrmSpinType } from './ttrm/types';
+import { PlayerRoundIR } from './ttrm/types';
 
 export type InputReplayComboTable = 'none' | 'classic guideline' | 'modern guideline' | 'multiplier';
 
@@ -198,27 +198,25 @@ const replayPlacedCount = (player: PlayerRoundIR, pointIndex: number): number =>
     Math.min(player.locks.length, Math.max(0, Math.floor(pointIndex)))
 );
 
-const toInputSpin = (spin: TtrmSpinType): PlacementResult['spin'] => (
-    spin === 'normal' ? 'full' : spin
-);
-
-/** Exact replay totals used to reset INPUT statistics at the imported page. */
-export const inputReplayStatsAt = (player: PlayerRoundIR, pointIndex: number): InputStats => {
+/**
+ * Exact replay totals immediately before the respawned INPUT CURRENT piece.
+ * Replay's B2B/Combo display is sourced from the selected replay point, which
+ * can be one lock ahead while a turn is stopped just before that lock. Keep the
+ * cumulative totals at the confirmed boundary, but take those chain counters
+ * from the same point the Replay view displays.
+ */
+export const inputReplayStatsAt = (
+    player: PlayerRoundIR, pointIndex: number, replayStatsIndex: number = pointIndex,
+): InputStats => {
     const placed = replayPlacedCount(player, pointIndex);
     const locks = player.locks.slice(0, placed);
-    const last = locks[locks.length - 1];
+    const replayStatsLock = player.locks[replayPlacedCount(player, replayStatsIndex) - 1];
     return {
-        b2bChain: last === undefined ? 0 : Math.max(0, last.clear.b2b + 1),
-        renChain: last === undefined ? 0 : Math.max(0, last.clear.ren + 1),
+        b2bChain: replayStatsLock === undefined ? 0 : Math.max(0, replayStatsLock.clear.b2b + 1),
+        renChain: replayStatsLock === undefined ? 0 : Math.max(0, replayStatsLock.clear.ren + 1),
         pieces: placed,
         lines: locks.reduce((sum, lock) => sum + lock.clear.lines, 0),
         perfectClears: locks.filter(lock => lock.clear.perfectClear).length,
-        lastAction: last === undefined ? undefined : {
-            clearedLines: last.clear.lines,
-            spin: toInputSpin(last.clear.spin),
-            perfectClear: last.clear.perfectClear,
-            piece: last.piece,
-        },
     };
 };
 
@@ -261,11 +259,12 @@ export const createInputReplayContext = (
     player: PlayerRoundIR,
     pointIndex: number,
     cursorFrame: number,
+    replayStatsIndex: number = pointIndex,
 ): InputReplayContext => {
     const config = buildEngineConfig(player.resolvedOptions, []);
     const empty = new GarbageQueue(config.garbage).snapshot();
     return createInputReplayContextFromSnapshot({
-        stats: inputReplayStatsAt(player, pointIndex),
+        stats: inputReplayStatsAt(player, pointIndex, replayStatsIndex),
         snapshot: selectCurrentGarbageParcels(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
         frame: cursorFrame,
         pieces: replayPlacedCount(player, pointIndex),

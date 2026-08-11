@@ -308,11 +308,14 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ...inputGarbageView(inputReplayContext),
         last: inputReplayContext.garbage.last,
     };
+    const inputStatsGarbage = inputReplayContext === undefined ? undefined : {
+        last: inputReplayContext.garbage.last,
+    };
     const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
         ? inputStatsPanel({
             ...computedInputStats,
             lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-        }, inputStatsTier, replayGarbage)
+        }, inputStatsTier, inputStatsGarbage)
         : undefined;
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,

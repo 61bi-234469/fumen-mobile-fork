@@ -86,7 +86,7 @@ const queueColumn = (
     </div>
 );
 
-// HOLD 列に添える行。B2B / REN / ライン消去と pps / apm を同じ幅で縦に積む。
+// HOLD 列に添える行。B2B / Combo / ライン消去と pps / apm を同じ幅で縦に積む。
 const infoLine = (keyName: string, text: string, color: string, fontSize: number) => (
     <div
         key={keyName}
@@ -102,7 +102,7 @@ const clearLines = (
     keyPrefix: string, stats: ReplayStats, clearText: string | undefined, font: number,
 ) => [
     infoLine(`${keyPrefix}-b2b`, `B2B ${stats.b2b}`, 0 < stats.b2b ? '#00796b' : '#9e9e9e', font),
-    infoLine(`${keyPrefix}-ren`, `REN ${stats.ren}`, 0 < stats.ren ? '#00796b' : '#9e9e9e', font),
+    infoLine(`${keyPrefix}-combo`, `Combo ${stats.ren}`, 0 < stats.ren ? '#00796b' : '#9e9e9e', font),
     infoLine(`${keyPrefix}-clear`, clearText !== undefined ? clearText : '', '#e65100', font),
 ];
 
@@ -139,7 +139,7 @@ interface ReplaySideProps {
     garbage?: ReplayGarbageView;
     // HOLD / NEXT の列幅（盤面 3.4 マス基準）。レイアウトが盤面と一緒に決める
     queueWidth: number;
-    // HOLD の下に出す B2B / REN / pps / apm。自陣と相手で同じ並びにする
+    // HOLD の下に出す B2B / Combo / pps / apm。自陣と相手で同じ並びにする
     stats: ReplayStats;
     // 直近の設置で消えたライン（Quad / TSD など）。消していないときは undefined
     clearText?: string;

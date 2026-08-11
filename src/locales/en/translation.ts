@@ -424,6 +424,10 @@
             Title: 'Short URL',
             Description: 'Use the TinyURL creation page when opening share, external, and tetgram URLs',
         },
+        ImageOptions: {
+            PageNumbers: 'Show page numbers',
+            Comments: 'Show comments',
+        },
         Buttons: {
             Insert: 'Insert from clipboard',
             InsertHint: 'Add to the end of the current fumen',
@@ -537,5 +541,10 @@
         WeightsPresetFast: 'Fast',
         ThinkTimeLabel: 'Think time',
         ThinkTimeDescription: 'Time for AI to search per move',
+        InputGuideLabel: 'AI Guide',
+        InputGuideOff: 'Enable AI best-move guide',
+        InputGuideThinking: 'AI guide is thinking',
+        InputGuideReady: 'AI best-move guide is ready',
+        InputGuideUnavailable: 'AI guide is unavailable for this position',
     },
 };

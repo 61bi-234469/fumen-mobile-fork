@@ -142,6 +142,8 @@ export const view: View<State, Actions> = (state, actions) => {
             menuTab: state.listView.menuTab,
             gifFrameDelayMs: state.mode.gifFrameDelayMs,
             shortenUrls: state.listView.shortenUrls,
+            exportShowPageNumbers: state.listView.exportShowPageNumbers,
+            exportShowComments: state.listView.exportShowComments,
         }) : undefined as any,
 
         state.modal.treeDisableConfirm ? TreeDisableConfirmModal({

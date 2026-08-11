@@ -5,6 +5,8 @@ import { TreeOperationScope } from '../lib/fumen/tree_types';
 type ViewSettingsOverrides = Partial<{
     trimTopBlank: boolean;
     shortenUrls: boolean;
+    exportShowPageNumbers: boolean;
+    exportShowComments: boolean;
     listViewMenuTab: 'export' | 'import';
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
@@ -18,6 +20,7 @@ type ViewSettingsOverrides = Partial<{
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    coldClearInputGuideEnabled: boolean;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayShowGarbage: boolean;
@@ -80,6 +83,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
     localStorageWrapper.saveViewSettings({
         trimTopBlank: overrides.trimTopBlank ?? state.listView.trimTopBlank,
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
+        exportShowPageNumbers: overrides.exportShowPageNumbers ?? state.listView.exportShowPageNumbers ?? true,
+        exportShowComments: overrides.exportShowComments ?? state.listView.exportShowComments ?? true,
         listViewMenuTab: overrides.listViewMenuTab ?? state.listView.menuTab,
         treeOperationScope: overrides.treeOperationScope ?? state.tree.operationScope ?? 'node',
         grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,
@@ -95,6 +100,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
             ? overrides.coldClearNextLimit : state.coldClear.nextLimit,
         coldClearWeightsPreset: overrides.coldClearWeightsPreset ?? state.coldClear.weightsPreset,
         coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
+        coldClearInputGuideEnabled: overrides.coldClearInputGuideEnabled
+            ?? state.coldClear.inputGuide?.enabled ?? false,
         // 自陣プレイヤー名の記憶（FR-13）。ユーザ名で保存し、次回取り込み時に一致すれば復元する。
         replaySelfPlayer: overrides.replaySelfPlayer !== undefined
             ? overrides.replaySelfPlayer

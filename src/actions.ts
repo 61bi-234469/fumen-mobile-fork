@@ -42,6 +42,7 @@ import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 import { replayActions, ReplayActions } from './actions/replay';
 import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_analysis';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
+import { restoreViewSettings } from './actions/restore_view_settings';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -447,66 +448,7 @@ const loadUserSettings = () => {
         updated = true;
     }
 
-    const viewSettings = localStorageWrapper.loadViewSettings();
-    if (viewSettings.trimTopBlank !== undefined) {
-        main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });
-    }
-    if (viewSettings.shortenUrls !== undefined) {
-        main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
-    }
-    if (viewSettings.listViewMenuTab !== undefined) {
-        main.setListViewMenuTab({ tab: viewSettings.listViewMenuTab });
-    }
-    if (viewSettings.editorSidePanel !== undefined) {
-        main.setEditorSidePanelEnabled({ enabled: viewSettings.editorSidePanel });
-    }
-    if (viewSettings.editorSidePanelTab !== undefined) {
-        main.setEditorSidePanelTab({ tab: viewSettings.editorSidePanelTab });
-    }
-    if (viewSettings.editorSidePanelWidth !== undefined) {
-        main.setEditorSidePanelWidth({ width: viewSettings.editorSidePanelWidth, persist: false });
-    }
-    if (viewSettings.pieceLayout !== undefined) {
-        main.changePieceLayout({ layout: viewSettings.pieceLayout, persist: false });
-    }
-    if (viewSettings.coldClearTopBranchCount !== undefined) {
-        main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });
-    }
-    if (viewSettings.coldClearHoldAllowed !== undefined) {
-        main.setColdClearHoldAllowed({ holdAllowed: viewSettings.coldClearHoldAllowed });
-    }
-    if (viewSettings.coldClearSpeculate !== undefined) {
-        main.setColdClearSpeculate({ speculate: viewSettings.coldClearSpeculate });
-    }
-    if (viewSettings.coldClearNextLimit !== undefined) {
-        main.setColdClearNextLimit({ nextLimit: viewSettings.coldClearNextLimit });
-    }
-    if (viewSettings.coldClearWeightsPreset !== undefined) {
-        main.setColdClearWeightsPreset({ weightsPreset: viewSettings.coldClearWeightsPreset });
-    }
-    if (viewSettings.coldClearThinkMs !== undefined) {
-        main.setColdClearThinkMs({ thinkMs: viewSettings.coldClearThinkMs });
-    }
-    if (viewSettings.replayShowOpponent !== undefined) {
-        main.setReplayShowOpponent({ showOpponent: viewSettings.replayShowOpponent });
-    }
-    if (viewSettings.replayShowGarbage !== undefined) {
-        main.setReplayShowGarbage({ showGarbage: viewSettings.replayShowGarbage });
-    }
-    if (viewSettings.replayAnalysisThinkMs !== undefined) {
-        main.setReplayAnalysisThinkMs({ thinkMs: viewSettings.replayAnalysisThinkMs });
-    }
-
-    const treeViewSettings: Partial<State['tree']> = {};
-    if (viewSettings.treeOperationScope !== undefined) {
-        treeViewSettings.operationScope = viewSettings.treeOperationScope;
-    }
-    if (viewSettings.grayAfterLineClear !== undefined) {
-        treeViewSettings.grayAfterLineClear = viewSettings.grayAfterLineClear;
-    }
-    if (Object.keys(treeViewSettings).length > 0) {
-        main.setTreeState(treeViewSettings);
-    }
+    restoreViewSettings(main, localStorageWrapper.loadViewSettings());
 
     if (updated) {
         main.reopenCurrentPage();

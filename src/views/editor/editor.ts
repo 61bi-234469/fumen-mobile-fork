@@ -31,6 +31,7 @@ import { computeInputStats } from '../../lib/input_stats';
 import { inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
 import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
+import { InputAiGuideOverlay } from '../../components/input_ai_guide_overlay';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -338,6 +339,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             actions.setSevenBagGrayEnabled({ enable: !state.mode.sevenBagGrayEnabled });
         },
         openReplay: () => actions.openReplayScreen(),
+        inputAiGuide: state.coldClear.inputGuide,
+        toggleInputAiGuide: actions.toggleInputAiGuide,
     }) : null;
 
     const fieldColumn = div({
@@ -394,6 +397,18 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             blockSize: layout.field.blockSize,
             field: composeSelectionField(state),
             sentLine: state.sentLine,
+            guideLineColor: state.fumen.guideLineColor,
+        }),
+
+        InputAiGuideOverlay({
+            rects: resources.konva.inputAiGuideBlocks,
+            move: state.coldClear.inputGuide.move,
+            visible: state.coldClear.inputGuide.enabled
+                && state.coldClear.inputGuide.status === 'ready'
+                && state.editorUi.primaryTool === 'piece'
+                && state.editorUi.pieceLayout === 'play',
+            topLeft: layout.field.topLeft,
+            blockSize: layout.field.blockSize,
             guideLineColor: state.fumen.guideLineColor,
         }),
 
@@ -615,11 +630,15 @@ export const view: View<State, Actions> = (state, actions) => {
         topLeftY: navigatorHeight,
     });
     const palette = Palette(Screens.Editor);
-    const batchDraw = () => resources.konva.stage.batchDraw();
+    const refreshEditor = () => {
+        resources.konva.stage.batchDraw();
+        actions.syncInputAiGuide();
+    };
 
     return div({
-        oncreate: batchDraw,
-        onupdate: batchDraw,
+        oncreate: refreshEditor,
+        onupdate: refreshEditor,
+        ondestroy: () => actions.cancelInputAiGuide(),
         key: 'view',
     }, [ // Hyperappでは最上位のノードが最後に実行される
         resources.konva.stage.isReady ? Events(state, actions) : undefined as any,

@@ -5,19 +5,21 @@ import { persistViewSettings } from './view_settings';
 import { Screens } from '../lib/enums';
 
 export interface EditorPanelActions {
-    setEditorSidePanelEnabled: (data: { enabled: boolean }) => action;
+    setEditorSidePanelEnabled: (data: { enabled: boolean; persist?: boolean }) => action;
     toggleEditorSidePanel: () => action;
-    setEditorSidePanelTab: (data: { tab: EditorSidePanelTab }) => action;
+    setEditorSidePanelTab: (data: { tab: EditorSidePanelTab; persist?: boolean }) => action;
     setEditorSidePanelWidth: (data: { width: number | null; persist?: boolean }) => action;
 }
 
 export const editorPanelActions: Readonly<EditorPanelActions> = {
-    setEditorSidePanelEnabled: ({ enabled }) => (state): NextState => {
+    setEditorSidePanelEnabled: ({ enabled, persist = true }) => (state): NextState => {
         if (state.editorPanel.enabled === enabled) {
             return undefined;
         }
 
-        persistViewSettings(state, { editorSidePanel: enabled });
+        if (persist) {
+            persistViewSettings(state, { editorSidePanel: enabled });
+        }
         return {
             editorPanel: {
                 ...state.editorPanel,
@@ -34,12 +36,14 @@ export const editorPanelActions: Readonly<EditorPanelActions> = {
             fromReader ? actions.changeToDrawerScreen({}) : undefined,
         ]);
     },
-    setEditorSidePanelTab: ({ tab }) => (state): NextState => {
+    setEditorSidePanelTab: ({ tab, persist = true }) => (state): NextState => {
         if (state.editorPanel.tab === tab) {
             return undefined;
         }
 
-        persistViewSettings(state, { editorSidePanelTab: tab });
+        if (persist) {
+            persistViewSettings(state, { editorSidePanelTab: tab });
+        }
         return {
             editorPanel: {
                 ...state.editorPanel,

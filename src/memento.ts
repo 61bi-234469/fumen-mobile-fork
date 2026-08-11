@@ -298,9 +298,11 @@ interface UserSettings {
     pageRotationLimit: number;
 }
 
-interface ViewSettings {
+export interface ViewSettings {
     trimTopBlank: boolean;
     shortenUrls: boolean;
+    exportShowPageNumbers: boolean;
+    exportShowComments: boolean;
     listViewMenuTab: 'export' | 'import';
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
@@ -314,6 +316,7 @@ interface ViewSettings {
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    coldClearInputGuideEnabled: boolean;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayShowGarbage: boolean;
@@ -418,6 +421,8 @@ export const localStorageWrapper = {
         return {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
             shortenUrls: safer.boolean(obj.shortenUrls),
+            exportShowPageNumbers: safer.boolean(obj.exportShowPageNumbers),
+            exportShowComments: safer.boolean(obj.exportShowComments),
             listViewMenuTab: safer.listViewMenuTab(obj.listViewMenuTab),
             treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
                 ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),
@@ -436,6 +441,7 @@ export const localStorageWrapper = {
                 : safer.number(obj.coldClearNextLimit),
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
+            coldClearInputGuideEnabled: safer.boolean(obj.coldClearInputGuideEnabled),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
             replayShowGarbage: safer.boolean(obj.replayShowGarbage),

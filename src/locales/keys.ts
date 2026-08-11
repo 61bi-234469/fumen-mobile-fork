@@ -448,6 +448,10 @@ export const i18n = {
             Title: () => t('ListViewMenu.ShortUrl.Title'),
             Description: () => t('ListViewMenu.ShortUrl.Description'),
         },
+        ImageOptions: {
+            PageNumbers: () => t('ListViewMenu.ImageOptions.PageNumbers'),
+            Comments: () => t('ListViewMenu.ImageOptions.Comments'),
+        },
         Buttons: {
             Insert: () => t('ListViewMenu.Buttons.Insert'),
             InsertHint: () => t('ListViewMenu.Buttons.InsertHint'),
@@ -566,5 +570,10 @@ export const i18n = {
         WeightsPresetFast: () => t('ColdClear.WeightsPresetFast'),
         ThinkTimeLabel: () => t('ColdClear.ThinkTimeLabel'),
         ThinkTimeDescription: () => t('ColdClear.ThinkTimeDescription'),
+        InputGuideLabel: () => t('ColdClear.InputGuideLabel'),
+        InputGuideOff: () => t('ColdClear.InputGuideOff'),
+        InputGuideThinking: () => t('ColdClear.InputGuideThinking'),
+        InputGuideReady: () => t('ColdClear.InputGuideReady'),
+        InputGuideUnavailable: () => t('ColdClear.InputGuideUnavailable'),
     },
 };

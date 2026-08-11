@@ -397,6 +397,10 @@ export const resources = {
             Title: '短縮URL',
             Description: '共有URL・外部サイト・tetgramを開くときにTinyURL作成ページを使用',
         },
+        ImageOptions: {
+            PageNumbers: 'ページ番号を表示',
+            Comments: 'コメントを表示',
+        },
         Buttons: {
             Insert: 'クリップボードから挿入',
             InsertHint: '現在のテト譜の末尾へ追加',
@@ -509,5 +513,10 @@ export const resources = {
         WeightsPresetFast: 'Fast',
         ThinkTimeLabel: '思考時間',
         ThinkTimeDescription: '1手あたりのAI探索時間',
+        InputGuideLabel: 'AIガイド',
+        InputGuideOff: 'AI最善手ガイドを有効にする',
+        InputGuideThinking: 'AIガイドを計算中',
+        InputGuideReady: 'AI最善手ガイドを表示中',
+        InputGuideUnavailable: 'この局面ではAIガイドを利用できません',
     },
 };

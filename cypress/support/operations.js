@@ -494,6 +494,14 @@ export const operations = {
                 cy.get(datatest('piece-queue-seven-bag-gray-checkbox')).click();
                 cy.wait(100);
             },
+            toggleAiGuide: () => {
+                ensurePieceLayout('play');
+                cy.get(datatest('btn-input-ai-guide')).click();
+            },
+            waitAiGuideReady: () => {
+                cy.get(datatest('btn-input-ai-guide'), { timeout: 15000 })
+                    .should('have.attr', 'data-status', 'ready');
+            },
             resetBoard: () => {
                 // 盤面RESETはPlayレイアウトの右下だけに表示する。
                 ensurePieceLayout('play');
@@ -931,6 +939,12 @@ export const operations = {
         },
         openExport: () => {
             cy.get(datatest('btn-list-view-export')).click();
+        },
+        setExportMetadata: ({ pageNumbers, comments }) => {
+            const pageNumbersToggle = cy.get(datatest('toggle-export-page-numbers'));
+            const commentsToggle = cy.get(datatest('toggle-export-comments'));
+            pageNumbers ? pageNumbersToggle.check({ force: true }) : pageNumbersToggle.uncheck({ force: true });
+            comments ? commentsToggle.check({ force: true }) : commentsToggle.uncheck({ force: true });
         },
     },
     tree: {

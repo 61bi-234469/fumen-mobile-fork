@@ -30,6 +30,7 @@ const createState = (override: any = {}) => ({
     listView: {
         trimTopBlank: false,
         shortenUrls: false,
+        menuTab: 'export',
     },
     tree: {
         operationScope: 'node',
@@ -42,6 +43,7 @@ const createState = (override: any = {}) => ({
         nextLimit: null,
         weightsPreset: 0,
         thinkMs: 1000,
+        inputGuide: { enabled: false },
     },
     editorPanel: {
         enabled: false,
@@ -69,6 +71,7 @@ describe('editorPanelActions', () => {
             expect(saveViewSettingsMock).toHaveBeenCalledWith({
                 trimTopBlank: false,
                 shortenUrls: false,
+                listViewMenuTab: 'export',
                 treeOperationScope: 'node',
                 grayAfterLineClear: false,
                 editorSidePanel: true,
@@ -81,6 +84,7 @@ describe('editorPanelActions', () => {
                 coldClearNextLimit: null,
                 coldClearWeightsPreset: 0,
                 coldClearThinkMs: 1000,
+                coldClearInputGuideEnabled: false,
                 replaySelfPlayer: null,
                 replayShowOpponent: true,
                 replayShowGarbage: true,

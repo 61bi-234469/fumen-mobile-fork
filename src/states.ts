@@ -148,7 +148,7 @@ import { Block } from './state_types';
 import { PrimitivePage } from './history_task';
 import { generateKey } from './lib/random';
 import konva from 'konva';
-import { Page } from './lib/fumen/types';
+import { Move, Page } from './lib/fumen/types';
 import { Field } from './lib/fumen/field';
 import { getURLQuery } from './params';
 import { loadBlackTransparentPaste, loadParts } from './lib/parts';
@@ -486,6 +486,14 @@ export interface State {
         weightsPreset: number;
         thinkMs: number;
         queuePreview: { pageIndex: number; text: string; historyKey?: string } | null;
+        inputGuide: {
+            enabled: boolean;
+            status: 'idle' | 'thinking' | 'ready' | 'unavailable';
+            runId: number;
+            positionKey: string | null;
+            move: Move | null;
+            usedHold: boolean;
+        };
     };
     version: string;
     platform: Platforms;
@@ -683,6 +691,14 @@ export const initState: Readonly<State> = {
         weightsPreset: 0,
         thinkMs: 1000,
         queuePreview: null,
+        inputGuide: {
+            enabled: false,
+            status: 'idle',
+            runId: 0,
+            positionKey: null,
+            move: null,
+            usedHold: false,
+        },
     },
     version: VERSION,
     platform: getPlatform(),
@@ -720,6 +736,7 @@ function createKonvaObjects() {
         background: {} as konva.Rect,
         fieldMarginLine: {} as konva.Line,
         selectionFrame: {} as konva.Rect,
+        inputAiGuideBlocks: [] as konva.Rect[],
         fieldBlocks: [] as konva.Rect[],
         sentBlocks: [] as konva.Rect[],
         hold: {} as Box,
@@ -851,6 +868,17 @@ function createKonvaObjects() {
         });
         obj.selectionFrame = selectionFrame;
         layers.overlay.add(selectionFrame);
+
+        const inputAiGuideBlocks = Array.from({ length: 4 }).map(() => new konva.Rect({
+            dash: [4, 3],
+            listening: false,
+            opacity: .48,
+            stroke: '#ffffff',
+            strokeWidth: 2,
+            visible: false,
+        }));
+        obj.inputAiGuideBlocks = inputAiGuideBlocks;
+        inputAiGuideBlocks.forEach(block => layers.overlay.add(block));
 
         const rect = new konva.Rect({
             fill: '#333',

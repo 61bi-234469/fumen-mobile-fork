@@ -1,4 +1,4 @@
-import { FieldConstants, Piece, isMinoPiece } from '../lib/enums';
+import { FieldConstants, Piece, Screens, isMinoPiece } from '../lib/enums';
 import type { action } from '../actions';
 import type { TreeOperationActions } from './tree_operations';
 import { NextState, sequence } from './commons';
@@ -117,6 +117,14 @@ interface PlacedRunSession extends SessionBase {
 
 type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
+interface InputGuideSession {
+    runId: number;
+    positionKey: string;
+    wrapper: ColdClearWrapper;
+    incoming: number;
+    initTimeoutId: ReturnType<typeof setTimeout>;
+}
+
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToDrawingToolMode'>
@@ -127,6 +135,7 @@ type ColdClearRuntimeActions = ColdClearActions
     & Pick<PageActions, 'reopenCurrentPage'>;
 
 let currentSession: RunSession | null = null;
+let inputGuideSession: InputGuideSession | null = null;
 
 const INIT_TIMEOUT_MS = 10000;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT = 5;
@@ -187,9 +196,17 @@ export interface ColdClearActions {
     onColdClearNoMove: (data: { runId: number }) => action;
     onColdClearSequenceDone: (data: { runId: number }) => action;
     coldClearFinishSearch: (runId: number) => action;
+    toggleInputAiGuide: () => action;
+    setInputAiGuideEnabled: (data: { enabled: boolean; persist?: boolean }) => action;
+    syncInputAiGuide: () => action;
+    cancelInputAiGuide: () => action;
+    onInputAiGuideInitDone: (data: { runId: number }) => action;
+    onInputAiGuideMoveResult: (data: { runId: number; result: CCMoveResult }) => action;
+    onInputAiGuideUnavailable: (data: { runId: number }) => action;
 }
 
 let nextRunId = 1;
+let nextInputGuideRunId = 1;
 
 const normalizeTopBranchCount = (count: number): number => {
     if (!Number.isFinite(count)) {
@@ -239,6 +256,32 @@ const saveColdClearViewSettings = (
         coldClearWeightsPreset: overrides?.weightsPreset,
         coldClearThinkMs: overrides?.thinkMs,
     });
+};
+
+const idleInputGuide = (state: Readonly<State>): State['coldClear']['inputGuide'] => ({
+    ...(state.coldClear.inputGuide ?? {
+        enabled: false,
+        runId: 0,
+    }),
+    status: 'idle',
+    positionKey: null,
+    move: null,
+    usedHold: false,
+});
+
+const isInputGuideMode = (state: Readonly<State>): boolean => (
+    state.mode.screen === Screens.Editor
+    && state.editorUi.primaryTool === 'piece'
+    && state.editorUi.pieceLayout === 'play'
+);
+
+const terminateInputGuideSession = () => {
+    if (inputGuideSession === null) {
+        return;
+    }
+    clearTimeout(inputGuideSession.initTimeoutId);
+    inputGuideSession.wrapper.terminate();
+    inputGuideSession = null;
 };
 
 const clearQueuePreviewIfNeeded = (state: Readonly<State>): NextState => {
@@ -761,6 +804,95 @@ const resolveSingleSearchInput = (
 const resolveTopBranchSearchInput = (
     state: Readonly<State>,
 ) => resolveSingleSearchInput(state);
+
+interface InputGuideInput {
+    field: Field;
+    searchQueue: SearchQueueState;
+    b2b: boolean;
+    combo: number;
+    incoming: number;
+    initQueue: Piece[];
+    positionKey: string;
+}
+
+const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null => {
+    if (!isInputGuideMode(state) || state.coldClear.queuePreview !== null) {
+        return null;
+    }
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (!isPageSupported(page)) {
+        return null;
+    }
+    const parsedResult = parseQueueCommentResultFromPage(state.fumen.pages, pageIndex, null);
+    if (!parsedResult.parsed) {
+        return null;
+    }
+    const searchQueue = resolveSearchQueueState(parsedResult.parsed);
+    if (!searchQueue) {
+        return null;
+    }
+    if (page.piece !== undefined
+        && isMinoPiece(page.piece.type)
+        && page.piece.type !== searchQueue.current) {
+        return null;
+    }
+    if (state.coldClear.holdAllowed && state.coldClear.nextLimit === 0
+        && searchQueue.hold === null) {
+        return null;
+    }
+
+    const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+    if (fieldContainsCompleteLine(field)) {
+        return null;
+    }
+    const fullQueue = [searchQueue.current, ...searchQueue.queue];
+    const initQueue = state.coldClear.nextLimit === null
+        ? fullQueue
+        : fullQueue.slice(0, state.coldClear.nextLimit + 1);
+    if (initQueue.length === 0) {
+        return null;
+    }
+    const incoming = incomingForPage(page);
+    const fieldKey = Array.from(fieldToCC(field)).join('');
+    const positionKey = [
+        fieldKey,
+        searchQueue.hold ?? 0,
+        initQueue.join(','),
+        parsedResult.parsed.b2b ? 1 : 0,
+        normalizeCombo(parsedResult.parsed.combo),
+        incoming,
+        state.coldClear.holdAllowed ? 1 : 0,
+        state.coldClear.speculate ? 1 : 0,
+        state.coldClear.nextLimit === null ? 'all' : state.coldClear.nextLimit,
+        state.coldClear.weightsPreset,
+        state.coldClear.thinkMs,
+    ].join('|');
+    return {
+        field,
+        searchQueue,
+        incoming,
+        initQueue,
+        positionKey,
+        b2b: parsedResult.parsed.b2b,
+        combo: normalizeCombo(parsedResult.parsed.combo),
+    };
+};
+
+const buildInputGuideInitMessage = (
+    state: Readonly<State>, input: InputGuideInput,
+): CCInitMessage => ({
+    type: 'init',
+    field: fieldToCC(input.field),
+    hold: input.searchQueue.hold === null ? CC_HOLD_NONE : PIECE_TO_CC[input.searchQueue.hold],
+    b2b: input.b2b,
+    combo: input.combo,
+    queue: input.initQueue.map(piece => PIECE_TO_CC[piece]),
+    holdAllowed: state.coldClear.holdAllowed,
+    speculate: state.coldClear.speculate,
+    weightsPreset: state.coldClear.weightsPreset,
+    thinkMs: state.coldClear.thinkMs,
+});
 
 type PlacedSpawnInputError =
     | 'targetNotFound'
@@ -1304,6 +1436,26 @@ function handleWorkerMessage(runId: number, msg: WorkerResponse) {
     }
 }
 
+function handleInputGuideWorkerMessage(runId: number, msg: WorkerResponse) {
+    if (!appActions) {
+        return;
+    }
+    switch (msg.type) {
+    case 'initDone':
+        appActions.onInputAiGuideInitDone({ runId });
+        break;
+    case 'moveResult':
+        appActions.onInputAiGuideMoveResult({ runId, result: msg });
+        break;
+    case 'noMove':
+    case 'error':
+        appActions.onInputAiGuideUnavailable({ runId });
+        break;
+    default:
+        break;
+    }
+}
+
 function startWorkerSession(
     session: RunSession,
     initMsg: CCInitMessage,
@@ -1342,6 +1494,191 @@ const isBlockedByReplayAnalysis = (state: Readonly<State>): boolean => {
 };
 
 export const coldClearActions: Readonly<ColdClearActions> = {
+    toggleInputAiGuide: () => (state): NextState => (
+        coldClearActions.setInputAiGuideEnabled({
+            enabled: !(state.coldClear.inputGuide?.enabled ?? false),
+        })(state)
+    ),
+    setInputAiGuideEnabled: ({ enabled, persist = true }) => (state): NextState => {
+        const current = state.coldClear.inputGuide ?? idleInputGuide(state);
+        if (current.enabled === enabled) {
+            return undefined;
+        }
+        if (persist) {
+            persistViewSettings(state, { coldClearInputGuideEnabled: enabled });
+        }
+        terminateInputGuideSession();
+        return {
+            coldClear: {
+                ...state.coldClear,
+                inputGuide: {
+                    ...idleInputGuide(state),
+                    enabled,
+                },
+            },
+        };
+    },
+    syncInputAiGuide: () => (state): NextState => {
+        const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+        const runnable = guide.enabled
+            && isInputGuideMode(state)
+            && !state.coldClear.isRunning
+            && state.replay.analysis.status !== 'running';
+        if (!runnable) {
+            terminateInputGuideSession();
+            if (guide.status === 'idle' && guide.positionKey === null && guide.move === null) {
+                return undefined;
+            }
+            return {
+                coldClear: {
+                    ...state.coldClear,
+                    inputGuide: idleInputGuide(state),
+                },
+            };
+        }
+
+        const input = resolveInputGuideInput(state);
+        if (!input) {
+            terminateInputGuideSession();
+            if (guide.status === 'unavailable' && guide.positionKey === null && guide.move === null) {
+                return undefined;
+            }
+            return {
+                coldClear: {
+                    ...state.coldClear,
+                    inputGuide: {
+                        ...guide,
+                        status: 'unavailable',
+                        positionKey: null,
+                        move: null,
+                        usedHold: false,
+                    },
+                },
+            };
+        }
+        if (guide.positionKey === input.positionKey
+            && (guide.status === 'thinking' || guide.status === 'ready' || guide.status === 'unavailable')) {
+            return undefined;
+        }
+
+        terminateInputGuideSession();
+        const runId = nextInputGuideRunId;
+        nextInputGuideRunId += 1;
+        const wrapper = new ColdClearWrapper();
+        const initTimeoutId = setTimeout(() => {
+            if (appActions) {
+                appActions.onInputAiGuideUnavailable({ runId });
+            }
+        }, INIT_TIMEOUT_MS);
+        inputGuideSession = {
+            runId,
+            wrapper,
+            initTimeoutId,
+            positionKey: input.positionKey,
+            incoming: input.incoming,
+        };
+        wrapper.start(buildInputGuideInitMessage(state, input), (msg) => {
+            handleInputGuideWorkerMessage(runId, msg);
+        });
+        return {
+            coldClear: {
+                ...state.coldClear,
+                inputGuide: {
+                    ...guide,
+                    runId,
+                    status: 'thinking',
+                    positionKey: input.positionKey,
+                    move: null,
+                    usedHold: false,
+                },
+            },
+        };
+    },
+    cancelInputAiGuide: () => (state): NextState => {
+        terminateInputGuideSession();
+        const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+        if (guide.status === 'idle' && guide.positionKey === null && guide.move === null) {
+            return undefined;
+        }
+        return {
+            coldClear: {
+                ...state.coldClear,
+                inputGuide: idleInputGuide(state),
+            },
+        };
+    },
+    onInputAiGuideInitDone: ({ runId }) => (state): NextState => {
+        const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+        const session = inputGuideSession;
+        if (!guide.enabled || guide.status !== 'thinking' || guide.runId !== runId
+            || session === null || session.runId !== runId) {
+            return undefined;
+        }
+        clearTimeout(session.initTimeoutId);
+        if (session.incoming > 0) {
+            session.wrapper.requestMove(session.incoming);
+        } else {
+            session.wrapper.requestMove();
+        }
+        return undefined;
+    },
+    onInputAiGuideMoveResult: ({ runId, result }) => (state): NextState => {
+        const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+        const session = inputGuideSession;
+        if (!guide.enabled || guide.status !== 'thinking' || guide.runId !== runId
+            || session === null || session.runId !== runId) {
+            return undefined;
+        }
+        const input = resolveInputGuideInput(state);
+        const move = toMove(result);
+        if (!input || input.positionKey !== session.positionKey || guide.positionKey !== session.positionKey
+            || move === null
+            || !input.field.canPut(move.type, move.rotation, move.coordinate.x, move.coordinate.y)
+            || !input.field.isOnGround(move.type, move.rotation, move.coordinate.x, move.coordinate.y)) {
+            terminateInputGuideSession();
+            return {
+                coldClear: {
+                    ...state.coldClear,
+                    inputGuide: {
+                        ...guide,
+                        status: 'unavailable',
+                        move: null,
+                        usedHold: false,
+                    },
+                },
+            };
+        }
+        terminateInputGuideSession();
+        return {
+            coldClear: {
+                ...state.coldClear,
+                inputGuide: {
+                    ...guide,
+                    move,
+                    status: 'ready',
+                    usedHold: result.hold,
+                },
+            },
+        };
+    },
+    onInputAiGuideUnavailable: ({ runId }) => (state): NextState => {
+        const guide = state.coldClear.inputGuide ?? idleInputGuide(state);
+        if (guide.runId !== runId || inputGuideSession?.runId !== runId) {
+            return undefined;
+        }
+        terminateInputGuideSession();
+        return {
+            coldClear: {
+                ...state.coldClear,
+                inputGuide: {
+                    ...guide,
+                    status: 'unavailable',
+                    move: null,
+                    usedHold: false,
+                },
+            },
+        };
+    },
     startColdClearSearch: () => (state): NextState => {
         if (state.coldClear.isRunning || isBlockedByReplayAnalysis(state)) {
             return undefined;
@@ -1362,6 +1699,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const { field, page, parsed, searchQueue, target, tree } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
+        terminateInputGuideSession();
         if (currentSession) {
             terminateSession(currentSession);
             currentSession = null;
@@ -1417,6 +1755,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 abortRequested: false,
                 progress: { current: 0, total: session.totalMoves },
                 queuePreview: null,
+                inputGuide: idleInputGuide(state),
             },
         };
     },
@@ -1441,6 +1780,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const { field, page, parsed, searchQueue, tree, target } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
+        terminateInputGuideSession();
         if (currentSession) {
             terminateSession(currentSession);
             currentSession = null;
@@ -1514,6 +1854,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 abortRequested: false,
                 progress: { current: 0, total: 1 },
                 queuePreview: null,
+                inputGuide: idleInputGuide(state),
             },
         };
     },
@@ -1659,6 +2000,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             placedPiece,
         } = resolved.input;
 
+        terminateInputGuideSession();
         if (currentSession) {
             terminateSession(currentSession);
             currentSession = null;
@@ -1719,6 +2061,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 abortRequested: false,
                 progress: { current: 0, total: 1 },
                 queuePreview: null,
+                inputGuide: idleInputGuide(state),
             },
         };
     },
@@ -2647,6 +2990,8 @@ export function resetForTesting() {
         currentSession.wrapper.terminate();
     }
     currentSession = null;
+    terminateInputGuideSession();
     nextRunId = 1;
+    nextInputGuideRunId = 1;
     appActions = null;
 }

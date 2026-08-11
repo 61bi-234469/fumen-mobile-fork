@@ -314,6 +314,7 @@ interface ViewSettings {
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    coldClearInputGuideEnabled: boolean;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayShowGarbage: boolean;
@@ -436,6 +437,7 @@ export const localStorageWrapper = {
                 : safer.number(obj.coldClearNextLimit),
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
+            coldClearInputGuideEnabled: safer.boolean(obj.coldClearInputGuideEnabled),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
             replayShowGarbage: safer.boolean(obj.replayShowGarbage),

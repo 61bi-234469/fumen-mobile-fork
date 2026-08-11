@@ -10,7 +10,7 @@ import {
     resolveCurrentColdClearMenuQueueState,
     resetForTesting,
 } from '../../../actions/cold_clear';
-import { Piece, Rotation } from '../../enums';
+import { Piece, Rotation, Screens } from '../../enums';
 import { Field } from '../../fumen/field';
 import { Pages, PageFieldOperation } from '../../pages';
 import { ColdClearWrapper } from '../ColdClearWrapper';
@@ -150,7 +150,17 @@ function makeColdClearState(overrides: {
             holdAllowed: overrides.holdAllowed !== undefined ? overrides.holdAllowed : true,
             speculate: overrides.speculate !== undefined ? overrides.speculate : true,
             nextLimit: overrides.nextLimit !== undefined ? overrides.nextLimit : null,
+            weightsPreset: 0,
+            thinkMs: 1000,
             queuePreview: overrides.queuePreview !== undefined ? overrides.queuePreview : null,
+            inputGuide: {
+                enabled: false,
+                status: 'idle',
+                runId: 0,
+                positionKey: null,
+                move: null,
+                usedHold: false,
+            },
         },
         fumen: {
             currentIndex: 0,
@@ -190,10 +200,13 @@ function makeColdClearState(overrides: {
         },
         mode: {
             rotationSystem: 'srs',
+            screen: Screens.Editor,
         },
         editorUi: {
             infinitePieceQueue: false,
             paletteSelection: 'comp',
+            primaryTool: 'piece',
+            pieceLayout: 'play',
         },
     } as any;
 }
@@ -268,6 +281,74 @@ describe('coldClearActions run isolation', () => {
         resetForTesting();
         jest.runOnlyPendingTimers();
         jest.useRealTimers();
+    });
+
+    test('INPUT AI guide searches the uncommitted current piece without locking it', () => {
+        const state = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        state.coldClear.inputGuide.enabled = true;
+
+        const result = coldClearActions.syncInputAiGuide()(state) as any;
+        expect(result.coldClear.inputGuide.status).toBe('thinking');
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapper = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapper.start.mock.calls[0][0];
+        expect(Array.from(initMsg.field as Uint8Array).reduce((sum, cell) => sum + cell, 0)).toBe(0);
+        expect(initMsg.queue[0]).toBe(2);
+
+        const running = { ...state, coldClear: result.coldClear };
+        coldClearActions.onInputAiGuideInitDone({ runId: result.coldClear.inputGuide.runId })(running);
+        expect(wrapper.requestMove).toHaveBeenCalledTimes(1);
+    });
+
+    test('INPUT AI guide stores only the latest legal move as a ready ghost', () => {
+        const state = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        state.coldClear.inputGuide.enabled = true;
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        const running = { ...state, coldClear: started.coldClear };
+        const runId = started.coldClear.inputGuide.runId;
+
+        const stale = coldClearActions.onInputAiGuideMoveResult({
+            runId: runId + 1,
+            result: { type: 'moveResult', hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(running);
+        expect(stale).toBeUndefined();
+
+        const result = coldClearActions.onInputAiGuideMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(running) as any;
+        expect(result.coldClear.inputGuide.status).toBe('ready');
+        expect(result.coldClear.inputGuide.move).toEqual({
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        });
+    });
+
+    test('INPUT AI guide does not restart for current-piece movement only', () => {
+        const state = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 20 },
+        };
+        state.coldClear.inputGuide.enabled = true;
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        const running = { ...state, coldClear: started.coldClear };
+
+        running.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Right,
+            coordinate: { x: 2, y: 10 },
+        };
+        expect(coldClearActions.syncInputAiGuide()(running)).toBeUndefined();
+        expect(ColdClearWrapper).toHaveBeenCalledTimes(1);
     });
 
     test('startColdClearSearch returns new runId', () => {

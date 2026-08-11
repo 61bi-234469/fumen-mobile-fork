@@ -18,6 +18,7 @@ type ViewSettingsOverrides = Partial<{
     coldClearNextLimit: number | null;
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
+    coldClearInputGuideEnabled: boolean;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayShowGarbage: boolean;
@@ -95,6 +96,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
             ? overrides.coldClearNextLimit : state.coldClear.nextLimit,
         coldClearWeightsPreset: overrides.coldClearWeightsPreset ?? state.coldClear.weightsPreset,
         coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
+        coldClearInputGuideEnabled: overrides.coldClearInputGuideEnabled
+            ?? state.coldClear.inputGuide?.enabled ?? false,
         // 自陣プレイヤー名の記憶（FR-13）。ユーザ名で保存し、次回取り込み時に一致すれば復元する。
         replaySelfPlayer: overrides.replaySelfPlayer !== undefined
             ? overrides.replaySelfPlayer

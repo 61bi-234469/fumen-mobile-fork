@@ -15,6 +15,49 @@ const ensureTreeGraphView = () => {
 };
 
 describe('Cold Clear menu', () => {
+    it('shows the latest INPUT best move only after AI guide calculation completes', () => {
+        visit({ mode: 'edit', lng: 'en' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('btn-input-ai-guide'))
+            .should('have.attr', 'aria-pressed', 'false')
+            .and('have.attr', 'data-status', 'idle');
+        operations.mode.piece.toggleAiGuide();
+        cy.get(datatest('btn-input-ai-guide')).should('have.attr', 'aria-pressed', 'true');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.coldClearInputGuideEnabled).to.equal(true);
+        });
+        cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
+            .each(block => expect(block.attr('visible')).not.to.equal('true'));
+
+        operations.mode.piece.waitAiGuideReady();
+        cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
+            .each(block => expect(block.attr('visible')).to.equal('true'));
+
+        operations.mode.piece.harddrop();
+        cy.get('[datatest^="input-ai-guide-block-"]')
+            .each(block => expect(block.attr('visible')).not.to.equal('true'));
+        operations.mode.piece.waitAiGuideReady();
+        cy.get('[datatest^="input-ai-guide-block-"]')
+            .each(block => expect(block.attr('visible')).to.equal('true'));
+
+        operations.mode.piece.toggleAiGuide();
+        cy.get(datatest('btn-input-ai-guide'))
+            .should('have.attr', 'aria-pressed', 'false')
+            .and('have.attr', 'data-status', 'idle');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.coldClearInputGuideEnabled).to.equal(false);
+        });
+        cy.get('[datatest^="input-ai-guide-block-"]')
+            .each(block => expect(block.attr('visible')).not.to.equal('true'));
+    });
+
     it('adds a top-level node from ghost add button in tree view', () => {
         visit({ mode: 'edit', lng: 'en' });
         ensureTreeGraphView();

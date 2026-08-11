@@ -487,6 +487,9 @@ const loadUserSettings = () => {
     if (viewSettings.coldClearThinkMs !== undefined) {
         main.setColdClearThinkMs({ thinkMs: viewSettings.coldClearThinkMs });
     }
+    if (viewSettings.coldClearInputGuideEnabled !== undefined) {
+        main.setInputAiGuideEnabled({ enabled: viewSettings.coldClearInputGuideEnabled, persist: false });
+    }
     if (viewSettings.replayShowOpponent !== undefined) {
         main.setReplayShowOpponent({ showOpponent: viewSettings.replayShowOpponent });
     }

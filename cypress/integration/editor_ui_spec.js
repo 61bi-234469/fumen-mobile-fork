@@ -336,15 +336,22 @@ describe('Editor UI final concept', () => {
             datatest('editor-field-frame'),
             datatest('piece-queue-hold'),
             datatest('piece-queue-next'),
+            datatest('btn-input-ai-guide'),
+            datatest('btn-open-replay-input'),
         ].join(',')).then(elements => {
             const rect = selector => elements.filter(datatest(selector))[0].getBoundingClientRect();
             const field = rect('editor-field-frame');
             const hold = rect('piece-queue-hold');
             const next = rect('piece-queue-next');
+            const aiGuide = rect('btn-input-ai-guide');
+            const replay = rect('btn-open-replay-input');
             const ceiling = field.top + ((field.height - 4.4) / 23.5) * 2.5 + 1;
             expect(hold.top).to.be.closeTo(ceiling, 2);
             expect(next.top).to.be.closeTo(ceiling, 2);
             expect(hold.top).to.be.closeTo(next.top, 1);
+            expect(aiGuide.bottom).to.be.at.most(hold.top + 1);
+            expect(replay.bottom).to.be.at.most(next.top + 1);
+            expect(aiGuide.top).to.be.closeTo(replay.top, 1);
         });
     });
 

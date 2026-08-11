@@ -566,5 +566,10 @@ export const i18n = {
         WeightsPresetFast: () => t('ColdClear.WeightsPresetFast'),
         ThinkTimeLabel: () => t('ColdClear.ThinkTimeLabel'),
         ThinkTimeDescription: () => t('ColdClear.ThinkTimeDescription'),
+        InputGuideLabel: () => t('ColdClear.InputGuideLabel'),
+        InputGuideOff: () => t('ColdClear.InputGuideOff'),
+        InputGuideThinking: () => t('ColdClear.InputGuideThinking'),
+        InputGuideReady: () => t('ColdClear.InputGuideReady'),
+        InputGuideUnavailable: () => t('ColdClear.InputGuideUnavailable'),
     },
 };

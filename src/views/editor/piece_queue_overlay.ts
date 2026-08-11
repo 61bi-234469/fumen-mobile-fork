@@ -159,6 +159,8 @@ export const pieceQueueOverlays = ({
     toggleInfinitePieceQueue,
     toggleSevenBagGray,
     openReplay,
+    inputAiGuide,
+    toggleInputAiGuide,
     statsPanel,
 }: {
     queueState: ColdClearMenuQueueState | null;
@@ -174,6 +176,11 @@ export const pieceQueueOverlays = ({
     toggleInfinitePieceQueue: () => void;
     toggleSevenBagGray: () => void;
     openReplay: () => void;
+    inputAiGuide: {
+        enabled: boolean;
+        status: 'idle' | 'thinking' | 'ready' | 'unavailable';
+    };
+    toggleInputAiGuide: () => void;
     statsPanel?: VNode<{}>;
 }) => {
     const hold = queueState?.hold ?? undefined;
@@ -223,6 +230,57 @@ export const pieceQueueOverlays = ({
         span({ key: 'btn-open-replay-input-label' }, i18n.Replay.ShortLabel()),
     ])]);
 
+    const inputGuideTitle = !inputAiGuide.enabled
+        ? i18n.ColdClear.InputGuideOff()
+        : inputAiGuide.status === 'thinking'
+            ? i18n.ColdClear.InputGuideThinking()
+            : inputAiGuide.status === 'ready'
+                ? i18n.ColdClear.InputGuideReady()
+                : inputAiGuide.status === 'unavailable'
+                    ? i18n.ColdClear.InputGuideUnavailable()
+                    : i18n.ColdClear.InputGuideLabel();
+    const inputGuideIcon = inputAiGuide.status === 'thinking'
+        ? 'hourglass_top'
+        : inputAiGuide.status === 'unavailable' ? 'error_outline' : 'auto_fix_high';
+    const inputGuideSlot = div({
+        key: 'input-ai-guide-slot',
+        datatest: 'input-ai-guide-slot',
+        style: style({
+            alignItems: 'center', display: 'flex', flexShrink: 0, height: px(ceilingOffset),
+            justifyContent: 'center', width: px(width),
+        }),
+    }, [button({
+        key: 'btn-input-ai-guide',
+        datatest: 'btn-input-ai-guide',
+        type: 'button',
+        title: inputGuideTitle,
+        'aria-label': inputGuideTitle,
+        'aria-pressed': inputAiGuide.enabled ? 'true' : 'false',
+        'aria-busy': inputAiGuide.status === 'thinking' ? 'true' : 'false',
+        'data-status': inputAiGuide.status,
+        onclick: (event: MouseEvent) => {
+            toggleInputAiGuide();
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => event.stopPropagation(),
+        style: style({
+            alignItems: 'center', background: inputAiGuide.enabled ? '#e3f2fd' : '#fafafa',
+            border: '1px solid #333', boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
+            boxSizing: 'border-box', color: inputAiGuide.status === 'unavailable' ? '#b71c1c' : '#333',
+            cursor: 'pointer', display: 'flex', flexDirection: 'column', fontFamily: 'inherit',
+            fontSize: px(Math.max(8, Math.min(10, width * .15))), fontWeight: '700',
+            height: px(Math.max(24, ceilingOffset - 4)), justifyContent: 'center', lineHeight: '1',
+            margin: '0', minWidth: '0', padding: '2px 0', width: px(width),
+        }),
+    }, [
+        span({
+            key: 'btn-input-ai-guide-icon', className: 'notranslate material-icons',
+            style: style({ fontSize: px(Math.max(14, Math.min(20, ceilingOffset * .42))), lineHeight: '1' }),
+        }, inputGuideIcon),
+        span({ key: 'btn-input-ai-guide-label' }, i18n.ColdClear.InputGuideLabel()),
+    ])]);
+
     const holdPanel = div({
         key: 'piece-queue-hold-column',
         style: style({
@@ -233,9 +291,8 @@ export const pieceQueueOverlays = ({
             boxSizing: 'border-box',
             height: px(fieldHeight),
             marginRight: px(gap),
-            paddingTop: px(ceilingOffset),
         }),
-    }, [queueButton({
+    }, [inputGuideSlot, queueButton({
         width,
         key: 'piece-queue-hold',
         datatest: 'piece-queue-hold',

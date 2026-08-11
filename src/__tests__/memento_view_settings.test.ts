@@ -44,6 +44,7 @@ describe('view settings tree operation scope migration', () => {
             coldClearNextLimit: null,
             coldClearWeightsPreset: 0,
             coldClearThinkMs: 1000,
+            coldClearInputGuideEnabled: true,
             replaySelfPlayer: null,
             replayShowOpponent: true,
             replayShowGarbage: true,
@@ -54,6 +55,7 @@ describe('view settings tree operation scope migration', () => {
         expect(saved.treeOperationScope).toBe('descendants');
         expect(saved.listViewMenuTab).toBe('import');
         expect(saved.pieceLayout).toBe('play');
+        expect(saved.coldClearInputGuideEnabled).toBe(true);
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
         expect(localStorageWrapper.loadViewSettings().pieceLayout).toBe('play');
     });
@@ -109,5 +111,13 @@ describe('view settings tree operation scope migration', () => {
 
         localStorage.setItem('view-settings@1', JSON.stringify({ listViewMenuTab: 'invalid' }));
         expect(localStorageWrapper.loadViewSettings().listViewMenuTab).toBeUndefined();
+    });
+
+    test('loads a boolean INPUT AI guide preference and rejects other values', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({ coldClearInputGuideEnabled: true }));
+        expect(localStorageWrapper.loadViewSettings().coldClearInputGuideEnabled).toBe(true);
+
+        localStorage.setItem('view-settings@1', JSON.stringify({ coldClearInputGuideEnabled: 'yes' }));
+        expect(localStorageWrapper.loadViewSettings().coldClearInputGuideEnabled).toBeUndefined();
     });
 });

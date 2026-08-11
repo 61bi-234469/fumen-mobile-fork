@@ -34,6 +34,7 @@ export type ReplaySideSize = 'full' | 'compact';
 
 const FULL_NEXT_COUNT = 5;
 const COMPACT_NEXT_COUNT = 3;
+const REPLAY_STAT_SIDE_GAP = 6;
 
 const pieceSlot = (
     piece: Piece | null, keyName: string, guideLineColor: boolean, slotWidth: number,
@@ -86,10 +87,11 @@ const queueColumn = (
     </div>
 );
 
-// HOLD 列に添える行。B2B / REN / ライン消去と pps / apm を同じ幅で縦に積む。
+// HOLD 列に添える行。B2B / Combo / ライン消去とレート系を同じ幅で縦に積む。
 const infoLine = (keyName: string, text: string, color: string, fontSize: number) => (
     <div
         key={keyName}
+        datatest={keyName}
         style={style({
             color, fontSize: px(fontSize), lineHeight: px(fontSize + 4), whiteSpace: 'nowrap',
         })}
@@ -102,13 +104,19 @@ const clearLines = (
     keyPrefix: string, stats: ReplayStats, clearText: string | undefined, font: number,
 ) => [
     infoLine(`${keyPrefix}-b2b`, `B2B ${stats.b2b}`, 0 < stats.b2b ? '#00796b' : '#9e9e9e', font),
-    infoLine(`${keyPrefix}-ren`, `REN ${stats.ren}`, 0 < stats.ren ? '#00796b' : '#9e9e9e', font),
+    infoLine(`${keyPrefix}-combo`, `Combo ${stats.ren}`, 0 < stats.ren ? '#00796b' : '#9e9e9e', font),
     infoLine(`${keyPrefix}-clear`, clearText !== undefined ? clearText : '', '#e65100', font),
 ];
 
 const statsLines = (keyPrefix: string, stats: ReplayStats, font: number) => [
-    infoLine(`${keyPrefix}-pps`, `${stats.pps.toFixed(1)} pps`, '#555', font),
-    infoLine(`${keyPrefix}-apm`, `${Math.round(stats.apm)} apm`, '#555', font),
+    infoLine(`${keyPrefix}-pps`, `${stats.pps.toFixed(2)} pps`, '#555', font),
+    infoLine(`${keyPrefix}-apm`, `${stats.apm.toFixed(2)} apm`, '#555', font),
+    infoLine(`${keyPrefix}-app`, `${stats.app.toFixed(2)} app`, '#555', font),
+];
+
+const fieldStatsLines = (keyPrefix: string, stats: ReplayStats, font: number) => [
+    infoLine(`${keyPrefix}-vs`, `${stats.vs.toFixed(2)} vs`, '#555', font),
+    infoLine(`${keyPrefix}-area`, `${stats.area.toFixed(2)} area`, '#555', font),
 ];
 
 // 相手側の HOLD / NEXT。盤面幅に収めるため 1 行に並べる。
@@ -139,7 +147,7 @@ interface ReplaySideProps {
     garbage?: ReplayGarbageView;
     // HOLD / NEXT の列幅（盤面 3.4 マス基準）。レイアウトが盤面と一緒に決める
     queueWidth: number;
-    // HOLD の下に出す B2B / REN / pps / apm。自陣と相手で同じ並びにする
+    // HOLD の下に出す B2B / Combo / pps / apm。自陣と相手で同じ並びにする
     stats: ReplayStats;
     // 直近の設置で消えたライン（Quad / TSD など）。消していないときは undefined
     clearText?: string;
@@ -222,6 +230,9 @@ export const replaySide = (
     const nextKey = isSelf ? 'replay-next' : 'replay-opponent-next';
     const boardWidth = blockSize * FieldConstants.Width;
     const boardHeight = blockSize * FieldConstants.Height;
+    const infoKey = isSelf ? 'replay-info' : 'replay-opponent-info';
+    const statsKey = isSelf ? 'replay-side-stats' : 'replay-opponent-side-stats';
+    const fieldStatsKey = isSelf ? 'replay-field-stats' : 'replay-opponent-field-stats';
     const board = (
         <div
             key={`replay-board-layer-${variant}`}
@@ -250,28 +261,62 @@ export const replaySide = (
 
     // ゲージバーは盤面の左端に密着（TETR.IO と同じ位置）、せり上がり予告はそのすぐ下。
     // 予告行は盤面 canvas ではなく DOM の別要素として置く（§3-5 の警告）。
+    const gaugeWidth = garbage !== undefined ? gaugeColumnWidth(size) + 2 : 0;
+    const boardFrameWidth = boardWidth + gaugeWidth;
+    const statFont = size === 'full' ? 12 : 10;
     const boardBlock = (
         <div
             key={`replay-board-block-${variant}`}
             style={style({
-                alignItems: 'flex-start', display: 'flex', gap: px(2), justifyContent: 'flex-start',
+                alignItems: 'flex-start', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
             })}
         >
-            {garbage !== undefined
-                ? replayGauge({ variant, size, garbage, boardHeight })
-                : undefined}
             <div
-                key={`replay-board-stack-${variant}`}
-                style={style({ display: 'flex', flexDirection: 'column', width: px(boardWidth) })}
+                key={`replay-board-frame-${variant}`}
+                style={style({ height: px(boardHeight), position: 'relative', width: px(boardFrameWidth) })}
             >
-                {board}
-                {garbage !== undefined
-                    ? replayRisePreview({ variant, size, garbage, boardWidth })
-                    : undefined}
+                <div
+                    key={`replay-board-row-${variant}`}
+                    style={style({ alignItems: 'flex-start', display: 'flex', gap: px(2) })}
+                >
+                    {garbage !== undefined
+                        ? replayGauge({ variant, size, garbage, boardHeight, rowHeight: blockSize })
+                        : undefined}
+                    {board}
+                </div>
+                <div
+                    key={`${statsKey}-block`}
+                    datatest={statsKey}
+                    style={style({
+                        alignItems: 'flex-end', bottom: px(0), display: 'flex', flexDirection: 'column',
+                        position: 'absolute', right: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP),
+                    })}
+                >
+                    {statsLines(statsKey, stats, statFont)}
+                </div>
+                <div
+                    key={`${fieldStatsKey}-block`}
+                    datatest={fieldStatsKey}
+                    style={style({
+                        alignItems: 'flex-start', bottom: px(0), display: 'flex', flexDirection: 'column',
+                        left: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP), position: 'absolute',
+                    })}
+                >
+                    {fieldStatsLines(fieldStatsKey, stats, statFont)}
+                </div>
             </div>
+            {garbage !== undefined
+                ? (
+                    <div
+                        key={`replay-rise-preview-offset-${variant}`}
+                        style={style({ marginLeft: px(gaugeWidth), width: px(boardWidth) })}
+                    >
+                        {replayRisePreview({ variant, size, garbage, boardWidth })}
+                    </div>
+                )
+                : undefined}
         </div>
     );
-    const gaugeWidth = garbage !== undefined ? gaugeColumnWidth(size) + 2 : 0;
 
     const headingLine = heading !== undefined ? (
         <div
@@ -302,10 +347,8 @@ export const replaySide = (
         ) : undefined,
     ] : undefined;
 
-    // ライン消去と pps / apm は盤面の左（HOLD 列）に置く。HOLD の直下がライン消去、
-    // 列の一番下が pps / apm。Editor の INPUT レイアウトと同じ並びにする。
-    const infoKey = isSelf ? 'replay-info' : 'replay-opponent-info';
-    const statsKey = isSelf ? 'replay-side-stats' : 'replay-opponent-side-stats';
+    // ライン消去と pps / apm / app は盤面の左（HOLD 列）に置く。HOLD の直下が
+    // ライン消去、列の一番下がレート系。VS / AREA は盤面右下へ置く。
 
     if (size === 'full') {
         const holdFooter = [
@@ -315,13 +358,6 @@ export const replaySide = (
                 style={style({ marginTop: px(2) })}
             >
                 {clearLines(infoKey, stats, clearText, 11)}
-            </div>,
-            <div
-                key={`${statsKey}-block`}
-                datatest={statsKey}
-                style={style({ marginTop: 'auto', paddingBottom: px(2) })}
-            >
-                {statsLines(statsKey, stats, 12)}
             </div>,
         ];
 
@@ -371,24 +407,15 @@ export const replaySide = (
                 {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
             {boardBlock}
-            {/* compact には縦列が無いので、同じ内容を盤面の下に 1 行で置く */}
+            {/* compact には HOLD 縦列が無いので、左側のレート系を盤面下に置く */}
             <div
                 key={`${infoKey}-row`}
                 datatest={infoKey}
                 style={style({
-                    display: 'flex', flexWrap: 'wrap', gap: px(6), justifyContent: 'flex-start',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
                 })}
             >
                 {clearLines(infoKey, stats, clearText, 10)}
-            </div>
-            <div
-                key={`${statsKey}-row`}
-                datatest={statsKey}
-                style={style({
-                    display: 'flex', flexWrap: 'wrap', gap: px(6), justifyContent: 'flex-start',
-                })}
-            >
-                {statsLines(statsKey, stats, 10)}
             </div>
             {opponentFooter}
         </div>

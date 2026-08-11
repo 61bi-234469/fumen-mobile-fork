@@ -6,7 +6,7 @@ import { ReplayGarbageView } from '../../lib/ttrm/garbage';
 
 // replay_side.tsx の ReplaySideVariant / ReplaySideSize と同じ意味。
 // replay_side がこのファイルを取り込むため、逆向きの import は張らない。
-export type ReplayGaugeVariant = 'self' | 'opponent';
+export type ReplayGaugeVariant = 'self' | 'opponent' | 'input';
 export type ReplayGaugeSize = 'full' | 'compact';
 
 // P3 §3-5。ガベージのゲージバー（縦）とせり上がり予告行。
@@ -28,25 +28,69 @@ const RISE_HOLE_COLOR = '#fbfcfd';
 export const gaugeColumnWidth = (size: ReplayGaugeSize): number =>
     size === 'full' ? GAUGE_COLUMN_WIDTH_FULL : GAUGE_COLUMN_WIDTH_COMPACT;
 
+interface GarbageGaugeView {
+    gauge: number;
+    cap: number;
+    maxGauge: number;
+    rises?: { rows: number }[];
+    reservedTanks?: unknown[][];
+}
+
 interface ReplayGaugeProps {
     variant: ReplayGaugeVariant;
     size: ReplayGaugeSize;
-    garbage: ReplayGarbageView;
+    garbage: GarbageGaugeView;
     // 盤面の高さ。バーは盤面に密着させるので同じ寸法にする。
     boardHeight: number;
+    // 1 段を盤面の 1 マスと同じ高さで描く。
+    rowHeight: number;
 }
 
 // FR-40。満尺は max(garbagecap, その時点までの最大ゲージ)。固定 8 だと稀に振り切れ、
 // 固定 18 だと普段が細すぎるため 2 段構えにする（§3-5）。
 // ゲージ 0 でも枠は残す ―― 出たり消えたりすると盤面位置が横にずれる。
-export const replayGauge = ({ variant, size, garbage, boardHeight }: ReplayGaugeProps) => {
+export const replayGauge = ({ variant, size, garbage, boardHeight, rowHeight }: ReplayGaugeProps) => {
     const columnWidth = gaugeColumnWidth(size);
     const barWidth = size === 'full' ? 7 : 5;
-    const scale = Math.max(garbage.cap, garbage.maxGauge, 1);
-    const filled = Math.min(garbage.gauge, scale);
-    const normalRows = Math.min(filled, garbage.cap);
-    const overRows = Math.max(0, filled - garbage.cap);
-    const rowHeight = boardHeight / scale;
+    const filled = Math.max(0, garbage.gauge);
+    const requestedSegments = garbage.rises !== undefined
+        ? garbage.rises.map(rise => rise.rows)
+        : (garbage.reservedTanks ?? []).map(rows => rows.length);
+    const segments: number[] = [];
+    let remaining = filled;
+    for (const requested of requestedSegments) {
+        if (remaining <= 0) break;
+        const amount = Math.min(remaining, Math.max(0, requested));
+        if (0 < amount) segments.push(amount);
+        remaining -= amount;
+    }
+    if (0 < remaining) segments.push(remaining);
+    let segmentBottom = 0;
+    const segmentNodes = segments.map((amount, index) => {
+        const normalAmount = Math.max(0, Math.min(amount, garbage.cap - segmentBottom));
+        const normalPercent = amount === 0 ? 0 : normalAmount / amount * 100;
+        segmentBottom += amount;
+        const background = normalAmount === amount
+            ? NORMAL_COLOR
+            : normalAmount === 0
+                ? OVER_CAP_COLOR
+                : `linear-gradient(to top, ${NORMAL_COLOR} 0%, ${NORMAL_COLOR} ${normalPercent}%, `
+                    + `${OVER_CAP_COLOR} ${normalPercent}%, ${OVER_CAP_COLOR} 100%)`;
+        return (
+            <div
+                key={`replay-gauge-${variant}-segment-${index}`}
+                datatest={`replay-gauge-${variant}-segment`}
+                data-rows={String(amount)}
+                style={style({
+                    background,
+                    boxShadow: index === 0 ? 'none' : 'inset 0 -1px rgba(255, 255, 255, .9)',
+                    flex: '0 0 auto',
+                    height: px(amount * rowHeight),
+                    width: '100%',
+                })}
+            />
+        );
+    });
 
     return (
         <div
@@ -63,36 +107,18 @@ export const replayGauge = ({ variant, size, garbage, boardHeight }: ReplayGauge
         >
             <div
                 key={`replay-gauge-${variant}-bar`}
+                datatest={`replay-gauge-${variant}-bar`}
                 style={style({
                     backgroundColor: '#eceff1',
                     border: '1px solid #b0bec5',
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: 'column-reverse',
                     height: px(boardHeight),
-                    justifyContent: 'flex-end',
+                    justifyContent: 'flex-start',
                     width: px(barWidth),
                 })}
             >
-                {0 < overRows ? (
-                    <div
-                        key={`replay-gauge-${variant}-over`}
-                        style={style({
-                            backgroundColor: OVER_CAP_COLOR,
-                            height: px(overRows * rowHeight),
-                            width: '100%',
-                        })}
-                    />
-                ) : undefined}
-                {0 < normalRows ? (
-                    <div
-                        key={`replay-gauge-${variant}-fill`}
-                        style={style({
-                            backgroundColor: NORMAL_COLOR,
-                            height: px(normalRows * rowHeight),
-                            width: '100%',
-                        })}
-                    />
-                ) : undefined}
+                {segmentNodes}
             </div>
             <div
                 key={`replay-gauge-${variant}-value`}

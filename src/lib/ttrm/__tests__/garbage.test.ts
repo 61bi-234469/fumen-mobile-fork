@@ -306,8 +306,24 @@ describe('garbageViewAt', () => {
         const view = garbageViewAt(player, 150);
         expect(view.gauge).toEqual(4);
         expect(view.rise).toEqual({ frame: 200, column: 6, size: 1, rows: 4 });
+        expect(view.rises).toEqual([{ frame: 200, column: 6, size: 1, rows: 4 }]);
         expect(view.moreRows).toEqual(3);
         expect(view.recent!.kind).toEqual('receive');
+    });
+
+    test('carries every reserved rise for segmented gauge rendering', () => {
+        const multiple = playerWith([
+            receive(100, 1, 3),
+            receive(110, 2, 2),
+            tank(200, 1, 3, 1),
+            tank(220, 2, 2, 7),
+        ]);
+
+        const view = garbageViewAt(multiple, 150);
+        expect(view.gauge).toEqual(5);
+        expect(view.rises.map(rise => rise.rows)).toEqual([3, 2]);
+        expect(view.rise!.column).toEqual(1);
+        expect(view.moreRows).toEqual(4);
     });
 
     // FR-54 の切り出し条件と同じ判定。ゲージ 0 の地点では予告を出さない。

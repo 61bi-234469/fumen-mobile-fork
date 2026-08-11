@@ -5,8 +5,6 @@ import { i18n } from '../../locales/keys';
 import { InputStatsPanelTier } from './responsive_layout';
 
 export interface InputGarbagePanelState {
-    gauge: number;
-    nextRise?: { column: number; size: number };
     last?: { attack: number; cancelled: number; sent: number; risen: number };
 }
 
@@ -38,7 +36,6 @@ export const inputStatsPanel = (
     garbage?: InputGarbagePanelState,
 ) => {
     const action = stats.lastAction;
-    const nextRise = garbage?.nextRise;
     const lastGarbage = garbage?.last;
     return div({
         key: 'input-stats', datatest: 'input-stats',
@@ -51,17 +48,7 @@ export const inputStatsPanel = (
                 fontWeight: '800', lineHeight: px(13), padding: '4px 2px', textAlign: 'center' }) },
         formatActionLabel(action)),
         value('input-stats-b2b', 'B2B', displayB2b(stats.b2bChain)),
-        value('input-stats-ren', 'REN', displayRen(stats.renChain)),
-        ...(garbage === undefined ? [] : [
-            textValue(
-                'input-garbage-gauge', i18n.InputStats.GarbageGauge(), String(garbage.gauge), String(garbage.gauge),
-            ),
-            textValue(
-                'input-garbage-rise', i18n.InputStats.NextRise(),
-                nextRise === undefined ? '—' : `C${nextRise.column + 1} ×${nextRise.size}`,
-                nextRise === undefined ? '' : `${nextRise.column}:${nextRise.size}`,
-            ),
-        ]),
+        value('input-stats-combo', 'Combo', displayRen(stats.renChain)),
         ...(garbage !== undefined && tier !== 'compact' ? [
             textValue(
                 'input-garbage-damage', i18n.InputStats.Attack(),

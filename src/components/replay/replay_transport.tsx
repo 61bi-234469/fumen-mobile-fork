@@ -3,12 +3,10 @@ import { Actions } from '../../actions';
 import { AnimationState } from '../../lib/enums';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
-import { ReplaySpeed, ReplayStepBasis, REPLAY_SPEEDS, State } from '../../states';
+import { ReplaySpeed, REPLAY_SPEEDS, State } from '../../states';
 import { formatFrameTime, ReplayStats } from '../../lib/ttrm/timeline';
 import { PlayerRoundIR } from '../../lib/ttrm/types';
 import { MARKER_BAND_HEIGHT, renderReplayTimelineMarkers } from './replay_timeline_markers';
-
-const ACCENT = '#00796b';
 
 const transportButton = (
     keyName: string, icon: string, disabled: boolean, onclick: () => void,
@@ -30,35 +28,6 @@ const transportButton = (
     </a>
 );
 
-const basisButton = (
-    keyName: string, label: string, active: boolean, disabled: boolean, onclick: () => void,
-) => (
-    <a
-        href="#"
-        key={keyName}
-        datatest={keyName}
-        className={`btn-flat ${disabled ? 'disabled' : ''}`}
-        style={style({
-            border: active ? `2px solid ${ACCENT}` : '1px solid #ccc',
-            borderRadius: px(4),
-            color: active ? ACCENT : '#555',
-            fontSize: px(12),
-            fontWeight: active ? 'bold' : 'normal',
-            lineHeight: px(24),
-            padding: '0 10px',
-            textTransform: 'none',
-        })}
-        onclick={(e: MouseEvent) => {
-            e.preventDefault();
-            if (!disabled) {
-                onclick();
-            }
-        }}
-    >
-        {label}
-    </a>
-);
-
 interface ReplayTransportProps {
     state: State;
     actions: Actions;
@@ -66,23 +35,21 @@ interface ReplayTransportProps {
     endFrame: number;
     canStepBack: boolean;
     canStepForward: boolean;
-    hasOpponent: boolean;
     // ガベージ表示がオンのときだけ渡す。☢ の統計とマーカー帯の両方がこれで決まる
     garbagePlayer?: PlayerRoundIR;
     // タイムラインの実幅は取れないので、レイアウトが決めた最大幅を使う
     markerWidth: number;
 }
 
-// タイムライン、再生／一時停止、速度、基準切り替え、手番送りをまとめて持つ（FR-22/23/25/26/27）。
+// タイムライン、再生／一時停止、速度、手番送りをまとめて持つ（FR-23/25/26/27）。
 export const replayTransport = (
     {
-        state, actions, stats, endFrame, canStepBack, canStepForward, hasOpponent,
+        state, actions, stats, endFrame, canStepBack, canStepForward,
         garbagePlayer, markerWidth,
     }: ReplayTransportProps,
 ) => {
     const { cursor, playback } = state.replay;
     const playing = playback.status === AnimationState.Play;
-    const basis: ReplayStepBasis = hasOpponent ? cursor.stepBasis : 'self';
 
     return (
         <div key="replay-transport" datatest="replay-transport">
@@ -99,7 +66,7 @@ export const replayTransport = (
                     margin: '6px 0',
                 })}
             >
-                {/* pps / apm / B2B / REN は盤面の左（HOLD 列）へ移した */}
+                {/* pps / apm / B2B / Combo は盤面の左（HOLD 列）へ移した */}
                 <span key="stat-attack">↑ {stats.attack}</span>
                 {/* ☢ は TETR.IO の集計ではなくエンジン基準であることを示す印（§3-8） */}
                 {garbagePlayer !== undefined ? (
@@ -196,25 +163,6 @@ export const replayTransport = (
                 </select>
             </div>
 
-            {hasOpponent ? (
-                <div
-                    key="replay-basis"
-                    style={style({
-                        alignItems: 'center', display: 'flex', fontSize: px(12),
-                        gap: px(6), justifyContent: 'center', marginBottom: px(8),
-                    })}
-                >
-                    <span key="basis-label" style={style({ color: '#777' })}>
-                        {i18n.Replay.Playing.Basis()}
-                    </span>
-                    {basisButton('btn-replay-basis-self', i18n.Replay.Playing.Self(),
-                                 basis === 'self', false,
-                                 () => actions.setReplayStepBasis({ basis: 'self' }))}
-                    {basisButton('btn-replay-basis-opponent', i18n.Replay.Playing.Opponent(),
-                                 basis === 'opponent', false,
-                                 () => actions.setReplayStepBasis({ basis: 'opponent' }))}
-                </div>
-            ) : undefined}
         </div>
     );
 };

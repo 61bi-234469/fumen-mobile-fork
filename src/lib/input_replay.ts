@@ -18,7 +18,7 @@ import {
 } from './input_stats';
 import { buildEngineConfig } from './ttrm/engine_config';
 import { garbageAtFrame } from './ttrm/timeline';
-import { PlayerRoundIR, TtrmSpinType } from './ttrm/types';
+import { PlayerRoundIR } from './ttrm/types';
 
 export type InputReplayComboTable = 'none' | 'classic guideline' | 'modern guideline' | 'multiplier';
 
@@ -78,8 +78,11 @@ export interface InputGarbageRow {
 
 export interface InputGarbageView {
     gauge: number;
+    cap: number;
+    maxGauge: number;
     nextRise?: InputGarbageRow;
     nextTankRows: InputGarbageRow[];
+    reservedTanks: InputGarbageRow[][];
     nextTankFrame?: number;
 }
 
@@ -122,17 +125,18 @@ export const cloneGarbageQueueSnapshot = (snapshot: GarbageQueueSnapshot): Garba
     queue: snapshot.queue.map(item => ({ ...item })),
 });
 
-/** Keeps only the next confirmed incoming attack when detaching a replay into INPUT. */
-export const selectCurrentGarbageParcel = (
+/** Keeps every confirmed incoming attack when detaching a replay into INPUT. */
+export const selectCurrentGarbageParcels = (
     snapshot: GarbageQueueSnapshot,
 ): GarbageQueueSnapshot => {
     const selected = snapshot.queue
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => item.confirmed && item.amount > 0)
-        .sort((a, b) => a.item.frame - b.item.frame || a.index - b.index)[0]?.item;
+        .sort((a, b) => a.item.frame - b.item.frame || a.index - b.index)
+        .map(({ item }) => ({ ...item }));
     return {
         ...cloneGarbageQueueSnapshot(snapshot),
-        queue: selected === undefined ? [] : [{ ...selected }],
+        queue: selected,
     };
 };
 
@@ -194,27 +198,25 @@ const replayPlacedCount = (player: PlayerRoundIR, pointIndex: number): number =>
     Math.min(player.locks.length, Math.max(0, Math.floor(pointIndex)))
 );
 
-const toInputSpin = (spin: TtrmSpinType): PlacementResult['spin'] => (
-    spin === 'normal' ? 'full' : spin
-);
-
-/** Exact replay totals used to reset INPUT statistics at the imported page. */
-export const inputReplayStatsAt = (player: PlayerRoundIR, pointIndex: number): InputStats => {
+/**
+ * Exact replay totals immediately before the respawned INPUT CURRENT piece.
+ * Replay's B2B/Combo display is sourced from the selected replay point, which
+ * can be one lock ahead while a turn is stopped just before that lock. Keep the
+ * cumulative totals at the confirmed boundary, but take those chain counters
+ * from the same point the Replay view displays.
+ */
+export const inputReplayStatsAt = (
+    player: PlayerRoundIR, pointIndex: number, replayStatsIndex: number = pointIndex,
+): InputStats => {
     const placed = replayPlacedCount(player, pointIndex);
     const locks = player.locks.slice(0, placed);
-    const last = locks[locks.length - 1];
+    const replayStatsLock = player.locks[replayPlacedCount(player, replayStatsIndex) - 1];
     return {
-        b2bChain: last === undefined ? 0 : Math.max(0, last.clear.b2b + 1),
-        renChain: last === undefined ? 0 : Math.max(0, last.clear.ren + 1),
+        b2bChain: replayStatsLock === undefined ? 0 : Math.max(0, replayStatsLock.clear.b2b + 1),
+        renChain: replayStatsLock === undefined ? 0 : Math.max(0, replayStatsLock.clear.ren + 1),
         pieces: placed,
         lines: locks.reduce((sum, lock) => sum + lock.clear.lines, 0),
         perfectClears: locks.filter(lock => lock.clear.perfectClear).length,
-        lastAction: last === undefined ? undefined : {
-            clearedLines: last.clear.lines,
-            spin: toInputSpin(last.clear.spin),
-            perfectClear: last.clear.perfectClear,
-            piece: last.piece,
-        },
     };
 };
 
@@ -257,12 +259,13 @@ export const createInputReplayContext = (
     player: PlayerRoundIR,
     pointIndex: number,
     cursorFrame: number,
+    replayStatsIndex: number = pointIndex,
 ): InputReplayContext => {
     const config = buildEngineConfig(player.resolvedOptions, []);
     const empty = new GarbageQueue(config.garbage).snapshot();
     return createInputReplayContextFromSnapshot({
-        stats: inputReplayStatsAt(player, pointIndex),
-        snapshot: selectCurrentGarbageParcel(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
+        stats: inputReplayStatsAt(player, pointIndex, replayStatsIndex),
+        snapshot: selectCurrentGarbageParcels(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
         frame: cursorFrame,
         pieces: replayPlacedCount(player, pointIndex),
         options: config.garbage,
@@ -315,12 +318,42 @@ const tankNext = (
     return { frame, rows };
 };
 
+const previewReservedTanks = (context: InputReplayContext): InputGarbageRow[][] => {
+    const queue = restoreQueue(context);
+    let working = cloneInputReplayContext(context);
+    const tanks: InputGarbageRow[][] = [];
+    const reserved = working.garbage.snapshot.queue
+        .reduce((sum, item) => sum + (item.confirmed ? Math.max(0, item.amount) : 0), 0);
+    let previewed = 0;
+
+    // Each pass consumes confirmed rows; the second condition protects malformed legacy snapshots.
+    while (previewed < reserved && tanks.length <= reserved) {
+        const next = tankNext(working, queue);
+        if (next.rows.length === 0) break;
+        tanks.push(next.rows);
+        previewed += next.rows.length;
+        working = {
+            ...working,
+            garbage: {
+                ...working.garbage,
+                frame: next.frame ?? working.garbage.frame,
+                snapshot: cloneGarbageQueueSnapshot(queue.snapshot()),
+            },
+        };
+    }
+    return tanks;
+};
+
 export const inputGarbageView = (context: InputReplayContext): InputGarbageView => {
     const queue = restoreQueue(context);
     const { frame, rows } = tankNext(context, queue);
     const gauge = context.garbage.snapshot.queue.reduce((sum, item) => sum + Math.max(0, item.amount), 0);
+    const reservedTanks = previewReservedTanks(context);
     return {
         gauge,
+        reservedTanks,
+        cap: Math.max(1, context.garbage.rules.garbageCap),
+        maxGauge: Math.max(gauge, context.garbage.rules.garbageCap),
         nextRise: rows[0],
         nextTankRows: rows,
         nextTankFrame: frame,

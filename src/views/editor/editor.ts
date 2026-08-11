@@ -30,6 +30,7 @@ import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear'
 import { computeInputStats } from '../../lib/input_stats';
 import { inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
+import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -121,6 +122,7 @@ interface LayoutParams {
     pieceLayout?: PieceLayoutMode;
     commentVisible?: boolean;
     reserveCommentHeight?: boolean;
+    inputGarbageGaugeVisible?: boolean;
 }
 
 export const getLayout = (
@@ -135,6 +137,7 @@ export const getLayout = (
         pieceLayout = 'select',
         commentVisible = true,
         reserveCommentHeight = commentVisible,
+        inputGarbageGaugeVisible = false,
     }: LayoutParams,
 ): EditorLayout => {
     const pieceQueueVisible = pieceModeVisible && pieceLayout === 'play';
@@ -155,6 +158,7 @@ export const getLayout = (
     const rail = getEditorRailConfig(canvasSize.height);
     const pieceQueueGap = pieceQueueVisible
         ? Math.min(6, Math.max(2, canvasSize.width * .012))
+            + (inputGarbageGaugeVisible ? gaugeColumnWidth('full') + 2 : 0)
         : 0;
     const heightBoundUnit = (canvasSize.height - borderWidthBottomField - 2) / 24;
 
@@ -304,11 +308,14 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ...inputGarbageView(inputReplayContext),
         last: inputReplayContext.garbage.last,
     };
+    const inputStatsGarbage = inputReplayContext === undefined ? undefined : {
+        last: inputReplayContext.garbage.last,
+    };
     const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
         ? inputStatsPanel({
             ...computedInputStats,
             lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-        }, inputStatsTier, replayGarbage)
+        }, inputStatsTier, inputStatsGarbage)
         : undefined;
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
@@ -343,6 +350,23 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             width: px(layout.field.size.width),
         }),
     }, [
+        ...(replayGarbage === undefined ? [] : [div({
+            key: 'input-garbage-field-gauge',
+            datatest: 'input-garbage-field-gauge',
+            style: style({
+                left: px(-(gaugeColumnWidth('full') + 2)),
+                position: 'absolute',
+                top: px(layout.field.topLeft.y),
+                zIndex: 6,
+            }),
+        }, [replayGauge({
+            variant: 'input',
+            size: 'full',
+            garbage: replayGarbage,
+            boardHeight: (layout.field.blockSize + 1) * 22.5 + 1,
+            rowHeight: layout.field.blockSize + 1,
+        })])]),
+
         KonvaCanvas({  // canvas空間のみ
             actions,
             canvas: layout.canvas.size,
@@ -584,6 +608,9 @@ export const view: View<State, Actions> = (state, actions) => {
         reserveCommentHeight,
         pieceModeVisible: state.editorUi.primaryTool === 'piece',
         pieceLayout: state.editorUi.pieceLayout,
+        inputGarbageGaugeVisible: state.editorUi.primaryTool === 'piece'
+            && state.editorUi.pieceLayout === 'play'
+            && state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext !== undefined,
         ...state.display,
         topLeftY: navigatorHeight,
     });

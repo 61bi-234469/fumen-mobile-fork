@@ -11,7 +11,7 @@ import {
     createInputReplayContextFromSnapshot,
     inputGarbageView,
     inputReplayContextAt,
-    selectCurrentGarbageParcel,
+    selectCurrentGarbageParcels,
 } from '../input_replay';
 
 const options = (overrides: Partial<GarbageQueueInitializeParams> = {}): GarbageQueueInitializeParams => ({
@@ -92,7 +92,7 @@ const verticalI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9,
 const quadI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9, y: 2 } };
 
 describe('INPUT replay battle context', () => {
-    test('keeps only the oldest confirmed incoming parcel when detaching a replay', () => {
+    test('keeps every confirmed incoming parcel in application order when detaching a replay', () => {
         const original = snapshot(0, {
             queue: [
                 { amount: 4, frame: 30, size: 1, cid: 3, gameid: 9, confirmed: true },
@@ -102,10 +102,12 @@ describe('INPUT replay battle context', () => {
             ],
         });
 
-        const selected = selectCurrentGarbageParcel(original);
+        const selected = selectCurrentGarbageParcels(original);
 
         expect(selected.queue).toEqual([
             { amount: 2, frame: 20, size: 1, cid: 2, gameid: 9, confirmed: true },
+            { amount: 5, frame: 20, size: 1, cid: 4, gameid: 9, confirmed: true },
+            { amount: 4, frame: 30, size: 1, cid: 3, gameid: 9, confirmed: true },
         ]);
         expect(original.queue).toHaveLength(4);
         selected.queue[0].amount = 1;
@@ -113,14 +115,14 @@ describe('INPUT replay battle context', () => {
     });
 
     test('drops incoming parcels when none have been confirmed', () => {
-        const selected = selectCurrentGarbageParcel(snapshot(0, {
+        const selected = selectCurrentGarbageParcels(snapshot(0, {
             queue: [{ amount: 3, frame: 10, size: 1, cid: 1, gameid: 9, confirmed: false }],
         }));
 
         expect(selected.queue).toEqual([]);
     });
 
-    test('converts replay raw B2B/REN and selects the cursor garbage snapshot', () => {
+    test('uses pre-CURRENT replay totals without treating the prior lock as this INPUT result', () => {
         const first = snapshot(2);
         const second = snapshot(5, { seed: 4321 });
         const player: any = {
@@ -137,8 +139,31 @@ describe('INPUT replay battle context', () => {
         const created = createInputReplayContext(player, 1, 45);
 
         expect(created.stats).toMatchObject({ b2bChain: 3, renChain: 4, pieces: 1, lines: 2 });
+        expect(created.stats.lastAction).toBeUndefined();
+        expect(created.garbage.last).toBeUndefined();
         expect(inputGarbageView(created).gauge).toBe(5);
         expect(created.garbage.snapshot).not.toBe(second);
+    });
+
+    test('uses the Replay-visible B2B/Combo at a stopped cursor without counting its lock in totals', () => {
+        const player: any = {
+            resolvedOptions: {},
+            locks: [
+                { frame: 30, piece: Piece.O, clear: { lines: 1, spin: 'none', b2b: 0, ren: 0, perfectClear: false } },
+                { frame: 60, piece: Piece.I, clear: { lines: 4, spin: 'none', b2b: 1, ren: 2, perfectClear: false } },
+            ],
+            terminal: { frame: 100 },
+        };
+
+        const created = createInputReplayContext(player, 1, 59, 2);
+
+        expect(created.stats).toMatchObject({
+            b2bChain: 2,
+            renChain: 3,
+            pieces: 1,
+            lines: 1,
+            lastAction: undefined,
+        });
     });
 
     test('previews from a cloned queue without consuming RNG state', () => {
@@ -151,6 +176,7 @@ describe('INPUT replay battle context', () => {
         expect(first).toEqual(second);
         expect(first.gauge).toBe(5);
         expect(first.nextTankRows).toHaveLength(3);
+        expect(first.reservedTanks.map(rows => rows.length)).toEqual([3, 2]);
         expect(first.nextTankFrame).toBe(20);
         expect(original).toEqual(before);
     });

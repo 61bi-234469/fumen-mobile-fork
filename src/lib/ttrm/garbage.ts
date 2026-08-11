@@ -293,6 +293,8 @@ export interface ReplayGarbageView {
     gauge: number;
     cap: number;
     maxGauge: number;
+    // Reserved rises in application order. The gauge uses these amounts as boundaries.
+    rises: RiseRow[];
     // 次にせり上がる 1 行（実測）。ゲージが 0 の地点では出さない。
     rise?: RiseRow;
     // 予告 1 行を除いた残りの保留行数（FR-43）
@@ -305,10 +307,12 @@ export const garbageViewAt = (player: PlayerRoundIR, frame: number): ReplayGarba
     const gauge = gaugeAtFrame(timeline, frame);
     // 予告は「その後に実際にせり上がった行」なので、いま保留が無い地点では出さない。
     // FR-54 の切り出し条件（ゲージ 0 なら従来どおり）と同じ判定に揃えている。
-    const rise = 0 < gauge ? riseForecastAt(timeline, frame, 1)[0] : undefined;
+    const rises = 0 < gauge ? riseForecastAt(timeline, frame, gauge) : [];
+    const rise = rises[0];
     return {
         gauge,
         rise,
+        rises,
         cap: garbageCapOf(player),
         maxGauge: timeline.maxGauge,
         moreRows: Math.max(0, gauge - 1),

@@ -36,6 +36,7 @@ const lockAt = (frame: number, overrides: Partial<LockPoint> = {}): LockPoint =>
     next: [Piece.O],
     clear: { lines: 0, spin: 'none', b2b: 0, ren: 0, perfectClear: false },
     attack: 0,
+    garbageCleared: 0,
     garbageGauge: 0,
     sourceHeight: 1,
     clippedRowCount: 0,
@@ -173,6 +174,9 @@ describe('timeline point space', () => {
             expect(stats.seconds).toEqual(0);
             expect(stats.pps).toEqual(0);
             expect(stats.apm).toEqual(0);
+            expect(stats.app).toEqual(0);
+            expect(stats.vs).toEqual(0);
+            expect(stats.area).toEqual(0);
             expect(stats.attack).toEqual(0);
         });
 
@@ -185,6 +189,7 @@ describe('timeline point space', () => {
             // 4 attack in 2 seconds = 120 per minute
             expect(stats.apm).toBeCloseTo(120);
             expect(stats.attack).toEqual(4);
+            expect(stats.garbageCleared).toEqual(0);
             expect(stats.b2b).toEqual(1);
             expect(stats.ren).toEqual(2);
         });
@@ -204,6 +209,22 @@ describe('timeline point space', () => {
             expect(stats.attack).toEqual(6);
             expect(stats.seconds).toBeCloseTo(10);
             expect(stats.pps).toBeCloseTo(0.3);
+        });
+
+        test('APP, VS and AREA follow the TetraStats-derived formulas', () => {
+            const withDownstack = playerWith([
+                lockAt(60, { attack: 4, garbageCleared: 2 }),
+                lockAt(120, { attack: 2, garbageCleared: 0 }),
+            ], 180);
+            const stats = statsAt(withDownstack, 2);
+
+            // 2 pieces / 2 seconds, 6 attack and 2 downstack lines
+            expect(stats.pps).toBeCloseTo(1);
+            expect(stats.apm).toBeCloseTo(180);
+            expect(stats.app).toBeCloseTo(3);
+            expect(stats.vs).toBeCloseTo(400);
+            // DS/s=1, DS/p=1, garbage efficiency=6
+            expect(stats.area).toBeCloseTo(180 + 45 + 400 * 0.444 + 3 * 185 + 175 + 450 + 6 * 315);
         });
 
         // P3 §3-8。TETR.IO の received は出さず、エンジン基準の 2 値を添える。

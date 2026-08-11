@@ -319,18 +319,18 @@ describe('TETR.IO Replay', () => {
         });
     });
 
-    it('steps by the opponent placements when the basis is switched (FR-22)', () => {
+    it('always steps by your placements and has no basis selector', () => {
         cy.clearLocalStorage();
         startPlaying();
 
-        operations.replay.setBasis('opponent');
-        cy.get(datatest('replay-opponent-counter')).then(($before) => {
+        cy.get(datatest('btn-replay-basis-self')).should('not.exist');
+        cy.get(datatest('btn-replay-basis-opponent')).should('not.exist');
+        cy.get(datatest('replay-lock-counter')).then(($before) => {
             const before = pieceNumberOf($before);
-            expect(before, 'opponent point index before stepping').to.not.equal(null);
+            expect(before, 'self point index before stepping').to.not.equal(null);
 
             operations.replay.next();
-            cy.get(datatest('replay-opponent-counter')).then(($after) => {
-                // 相手基準では相手の設置が 1 つずつ進む
+            cy.get(datatest('replay-lock-counter')).then(($after) => {
                 expect(pieceNumberOf($after)).to.equal(before + 1);
             });
         });
@@ -367,6 +367,41 @@ describe('TETR.IO Replay', () => {
         boardWidth('self').then((self) => {
             boardWidth('opponent').then((opponent) => {
                 expect(opponent, 'opponent board width').to.equal(self);
+            });
+        });
+    });
+
+    it('anchors replay rates to the bottom of the field', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+        operations.replay.next();
+
+        ['self', 'opponent'].forEach((side) => {
+            const prefix = side === 'self' ? 'replay-side-stats' : 'replay-opponent-side-stats';
+            const fieldPrefix = side === 'self' ? 'replay-field-stats' : 'replay-opponent-field-stats';
+            ['pps', 'apm', 'app'].forEach((metric) => {
+                cy.get(datatest(`${prefix}-${metric}`)).invoke('text')
+                    .should('match', new RegExp(`^-?\\d+\\.\\d{2} ${metric}$`));
+            });
+            ['vs', 'area'].forEach((metric) => {
+                cy.get(datatest(`${fieldPrefix}-${metric}`)).invoke('text')
+                    .should('match', new RegExp(`^-?\\d+\\.\\d{2} ${metric}$`));
+            });
+            operations.replay.stats(side).then(($stats) => {
+                operations.replay.board(side).then(($board) => {
+                    const statsRect = $stats[0].getBoundingClientRect();
+                    const boardRect = $board[0].getBoundingClientRect();
+                    expect(Math.abs(statsRect.bottom - boardRect.bottom)).to.be.lessThan(2);
+                    expect(statsRect.right).to.be.lessThan(boardRect.left);
+                });
+            });
+            operations.replay.fieldStats(side).then(($stats) => {
+                operations.replay.board(side).then(($board) => {
+                    const statsRect = $stats[0].getBoundingClientRect();
+                    const boardRect = $board[0].getBoundingClientRect();
+                    expect(Math.abs(statsRect.bottom - boardRect.bottom)).to.be.lessThan(2);
+                    expect(statsRect.left).to.be.greaterThan(boardRect.right);
+                });
             });
         });
     });
@@ -463,6 +498,20 @@ describe('TETR.IO Replay', () => {
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.gauge('self').should('have.attr', 'data-gauge', GAUGE_ROWS);
         operations.replay.gauge('self').should('contain', GAUGE_ROWS);
+        operations.replay.gaugeSegments('self')
+            .should('have.length', 1)
+            .and('have.attr', 'data-rows', GAUGE_ROWS);
+        operations.replay.gaugeBar('self').then(($bar) => {
+            operations.replay.gaugeSegments('self').then(($segments) => {
+                const bar = $bar[0].getBoundingClientRect();
+                const segment = $segments[0].getBoundingClientRect();
+                expect(segment.bottom).to.be.closeTo(bar.bottom - 1, 0.5);
+                operations.replay.board('self').then(($board) => {
+                    const cellHeight = $board[0].getBoundingClientRect().width / 10;
+                    expect(segment.height).to.be.closeTo(cellHeight * Number(GAUGE_ROWS), 0.5);
+                });
+            });
+        });
         cy.get(datatest('replay-stat-gauge')).should('contain', GAUGE_ROWS);
     });
 
@@ -540,22 +589,36 @@ describe('TETR.IO Replay', () => {
         expectFumen(GAUGE_FUMEN);
     });
 
-    it('continues the replay gauge, B2B/REN and multi-row tank in INPUT', () => {
+    it('continues the replay gauge, B2B/Combo and multi-row tank in INPUT', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();
 
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.openInEditor();
 
-        operations.inputReplay.gauge().should('have.attr', 'data-value', GAUGE_ROWS);
-        operations.inputReplay.rise().should('have.attr', 'data-value', `${GAUGE_HOLE_COLUMN}:1`);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        operations.inputReplay.fieldGaugeSegments()
+            .should('have.length', 1)
+            .and('have.attr', 'data-rows', GAUGE_ROWS);
+        operations.inputReplay.fieldGaugeBar().then(($bar) => {
+            operations.inputReplay.fieldGaugeSegments().then(($segments) => {
+                const bar = $bar[0].getBoundingClientRect();
+                const segment = $segments[0].getBoundingClientRect();
+                expect(segment.bottom).to.be.closeTo(bar.bottom - 1, 0.5);
+                cy.get(datatest('editor-field-frame')).then(($field) => {
+                    const cellHeight = ($field[0].getBoundingClientRect().width - 1) / 10;
+                    expect(segment.height).to.be.closeTo(cellHeight * Number(GAUGE_ROWS), 0.5);
+                });
+            });
+        });
         operations.inputReplay.b2b().should('exist');
-        operations.inputReplay.ren().should('exist');
+        operations.inputReplay.combo().should('contain', 'Combo');
+        cy.get(datatest('input-stats-action')).should('have.text', '—');
 
         // 元リプレイと同じく次lockはライン消去なし。cap内の5行が1手で同時に上がる。
         operations.mode.piece.harddrop();
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
-        operations.inputReplay.rise().should('have.attr', 'data-value', '');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
+        operations.inputReplay.fieldGaugeSegments().should('not.exist');
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
     });
 
@@ -577,7 +640,7 @@ describe('TETR.IO Replay', () => {
 
         operations.replay.seek(CANCEL_FRAME);
         operations.replay.openInEditor();
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '2');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '2');
 
         // 元リプレイ同様、Spawnで床へ下ろし、Rightでさらに下ろしてから
         // Reverseへ回してT-spin doubleへ入れる。
@@ -587,8 +650,7 @@ describe('TETR.IO Replay', () => {
         operations.mode.piece.rotateToRight();
         operations.mode.piece.harddrop();
 
-        operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
-        operations.inputReplay.rise().should('have.attr', 'data-value', '');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
         operations.inputReplay.damage().should('have.attr', 'data-value', '5:2:3:0');
     });
 
@@ -648,7 +710,7 @@ describe('TETR.IO Replay', () => {
             operations.replay.analysis.summary().should('not.exist');
 
             // 実 WASM 探索を 78 手ぶん走らせるので最短プリセットにする
-            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.setThinkMs(100);
             operations.replay.analysis.start();
             operations.replay.analysis.progress().should('have.attr', 'data-status', 'running');
             operations.replay.analysis.waitDone();
@@ -684,7 +746,7 @@ describe('TETR.IO Replay', () => {
             cy.clearLocalStorage();
             startPlaying();
 
-            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.setThinkMs(100);
             operations.replay.analysis.start();
             // 数手ぶん進んでから止める（部分結果が残ることを見たい）
             operations.replay.analysis.progress({ timeout: 60000 })

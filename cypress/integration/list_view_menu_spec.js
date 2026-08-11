@@ -261,7 +261,7 @@ describe('Unified import/export menu', () => {
 
         cy.reload();
         cy.get(datatest('btn-list-view')).click();
-        cy.get('[title="ツリーモードを有効にする"]').click();
+        cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
         cy.get('[title="ページをツリービューで表示"]').click();
         operations.listView.openExport();
 

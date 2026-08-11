@@ -262,7 +262,7 @@ describe('Unified import/export menu', () => {
         cy.reload();
         cy.get(datatest('btn-list-view')).click();
         cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
-        cy.get('[title="ページをツリービューで表示"]').click();
+        cy.get('[title="Show pages in tree view"], [title="ページをツリービューで表示"]').click();
         operations.listView.openExport();
 
         cy.get(datatest('toggle-export-page-numbers')).should('not.be.checked');
@@ -273,7 +273,7 @@ describe('Unified import/export menu', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
         cy.get(datatest('btn-list-view')).click();
         cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
-        cy.get('[title="ページをツリービューで表示"]').click();
+        cy.get('[title="Show pages in tree view"], [title="ページをツリービューで表示"]').click();
 
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });
         cy.get('[datatest^="tree-node-"]').should('have.length', 2);

@@ -186,7 +186,7 @@ export interface ReplayAnalysisActions {
     startReplayAnalysis: () => action;
     abortReplayAnalysis: () => action;
     resetReplayAnalysis: () => action;
-    setReplayAnalysisThinkMs: (data: { thinkMs: number }) => action;
+    setReplayAnalysisThinkMs: (data: { thinkMs: number; persist?: boolean }) => action;
     onReplayAnalysisResult: (data: { runId: number, result: CCAnalysisResult }) => action;
     onReplayAnalysisNoMove: (data: { runId: number }) => action;
     onReplayAnalysisError: (data: { runId: number, message: string }) => action;
@@ -250,14 +250,16 @@ export const replayAnalysisActions: Readonly<ReplayAnalysisActions> = {
         return { replay: { ...state.replay, analysis: clearedReplayAnalysisState(state) } };
     },
 
-    setReplayAnalysisThinkMs: ({ thinkMs }) => (state): NextState => {
+    setReplayAnalysisThinkMs: ({ thinkMs, persist = true }) => (state): NextState => {
         const validMs = normalizeAnalysisThinkMs(thinkMs);
         if (state.replay.analysis.thinkMs === validMs) {
             return undefined;
         }
         // 思考時間が変わるとスコアの前提が変わるため、既存の結果は破棄する
         terminateSession();
-        persistViewSettings(state, { replayAnalysisThinkMs: validMs });
+        if (persist) {
+            persistViewSettings(state, { replayAnalysisThinkMs: validMs });
+        }
         return {
             replay: {
                 ...state.replay,

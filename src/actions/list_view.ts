@@ -235,12 +235,12 @@ export interface ListViewActions {
     changeToEditorFromListView: () => action;
     setListViewDragState: (data: { draggingIndex: number | null; dropTargetIndex: number | null }) => action;
     setListViewScale: (data: { scale: number }) => action;
-    setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
+    setListViewTrimTopBlank: (data: { enabled: boolean; persist?: boolean }) => action;
     setListViewSettingsOpened: (data: { opened: boolean }) => action;
-    setListViewShortenUrls: (data: { enabled: boolean }) => action;
-    setExportShowPageNumbers: (data: { enabled: boolean }) => action;
-    setExportShowComments: (data: { enabled: boolean }) => action;
-    setListViewMenuTab: (data: { tab: 'export' | 'import' }) => action;
+    setListViewShortenUrls: (data: { enabled: boolean; persist?: boolean }) => action;
+    setExportShowPageNumbers: (data: { enabled: boolean; persist?: boolean }) => action;
+    setExportShowComments: (data: { enabled: boolean; persist?: boolean }) => action;
+    setListViewMenuTab: (data: { tab: 'export' | 'import'; persist?: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     activatePageInListView: (data: { pageIndex: number }) => action;
@@ -613,12 +613,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setListViewTrimTopBlank: ({ enabled }) => (state): NextState => {
+    setListViewTrimTopBlank: ({ enabled, persist = true }) => (state): NextState => {
         if (state.listView.trimTopBlank === enabled) {
             return undefined;
         }
 
-        persistViewSettings(state, { trimTopBlank: enabled });
+        if (persist) {
+            persistViewSettings(state, { trimTopBlank: enabled });
+        }
         return {
             listView: {
                 ...state.listView,
@@ -969,12 +971,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setListViewShortenUrls: ({ enabled }) => (state): NextState => {
+    setListViewShortenUrls: ({ enabled, persist = true }) => (state): NextState => {
         if (state.listView.shortenUrls === enabled) {
             return undefined;
         }
 
-        persistViewSettings(state, { shortenUrls: enabled });
+        if (persist) {
+            persistViewSettings(state, { shortenUrls: enabled });
+        }
         return {
             listView: {
                 ...state.listView,
@@ -982,12 +986,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setExportShowPageNumbers: ({ enabled }) => (state): NextState => {
+    setExportShowPageNumbers: ({ enabled, persist = true }) => (state): NextState => {
         if (state.listView.exportShowPageNumbers === enabled) {
             return undefined;
         }
 
-        persistViewSettings(state, { exportShowPageNumbers: enabled });
+        if (persist) {
+            persistViewSettings(state, { exportShowPageNumbers: enabled });
+        }
         return {
             listView: {
                 ...state.listView,
@@ -995,12 +1001,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setExportShowComments: ({ enabled }) => (state): NextState => {
+    setExportShowComments: ({ enabled, persist = true }) => (state): NextState => {
         if (state.listView.exportShowComments === enabled) {
             return undefined;
         }
 
-        persistViewSettings(state, { exportShowComments: enabled });
+        if (persist) {
+            persistViewSettings(state, { exportShowComments: enabled });
+        }
         return {
             listView: {
                 ...state.listView,
@@ -1008,12 +1016,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setListViewMenuTab: ({ tab }) => (state): NextState => {
+    setListViewMenuTab: ({ tab, persist = true }) => (state): NextState => {
         if (state.listView.menuTab === tab) {
             return undefined;
         }
 
-        persistViewSettings(state, { listViewMenuTab: tab });
+        if (persist) {
+            persistViewSettings(state, { listViewMenuTab: tab });
+        }
         return {
             listView: {
                 ...state.listView,

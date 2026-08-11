@@ -164,12 +164,12 @@ export const initColdClearActions = (actions: ColdClearRuntimeActions) => {
 export interface ColdClearActions {
     startColdClearSearch: () => action;
     startColdClearTopThreeSearch: () => action;
-    setColdClearTopBranchCount: (data: { count: number }) => action;
-    setColdClearHoldAllowed: (data: { holdAllowed: boolean }) => action;
-    setColdClearSpeculate: (data: { speculate: boolean }) => action;
-    setColdClearNextLimit: (data: { nextLimit: number | null }) => action;
-    setColdClearWeightsPreset: (data: { weightsPreset: number }) => action;
-    setColdClearThinkMs: (data: { thinkMs: number }) => action;
+    setColdClearTopBranchCount: (data: { count: number; persist?: boolean }) => action;
+    setColdClearHoldAllowed: (data: { holdAllowed: boolean; persist?: boolean }) => action;
+    setColdClearSpeculate: (data: { speculate: boolean; persist?: boolean }) => action;
+    setColdClearNextLimit: (data: { nextLimit: number | null; persist?: boolean }) => action;
+    setColdClearWeightsPreset: (data: { weightsPreset: number; persist?: boolean }) => action;
+    setColdClearThinkMs: (data: { thinkMs: number; persist?: boolean }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     toggleInfinitePieceQueue: () => action;
@@ -1859,7 +1859,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearTopBranchCount: ({ count }) => (state): NextState => {
+    setColdClearTopBranchCount: ({ count, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1869,7 +1869,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { topBranchCount: normalizedCount });
+        if (persist) {
+            saveColdClearViewSettings(state, { topBranchCount: normalizedCount });
+        }
 
         return {
             coldClear: {
@@ -1879,7 +1881,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearHoldAllowed: ({ holdAllowed }) => (state): NextState => {
+    setColdClearHoldAllowed: ({ holdAllowed, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1887,7 +1889,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { holdAllowed });
+        if (persist) {
+            saveColdClearViewSettings(state, { holdAllowed });
+        }
 
         return {
             coldClear: {
@@ -1897,7 +1901,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearSpeculate: ({ speculate }) => (state): NextState => {
+    setColdClearSpeculate: ({ speculate, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1905,7 +1909,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { speculate });
+        if (persist) {
+            saveColdClearViewSettings(state, { speculate });
+        }
 
         return {
             coldClear: {
@@ -1915,7 +1921,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearNextLimit: ({ nextLimit }) => (state): NextState => {
+    setColdClearNextLimit: ({ nextLimit, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1925,7 +1931,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { nextLimit: normalizedNextLimit });
+        if (persist) {
+            saveColdClearViewSettings(state, { nextLimit: normalizedNextLimit });
+        }
 
         return {
             coldClear: {
@@ -1935,7 +1943,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearWeightsPreset: ({ weightsPreset }) => (state): NextState => {
+    setColdClearWeightsPreset: ({ weightsPreset, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1945,7 +1953,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { weightsPreset: preset });
+        if (persist) {
+            saveColdClearViewSettings(state, { weightsPreset: preset });
+        }
 
         return {
             coldClear: {
@@ -1955,7 +1965,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
-    setColdClearThinkMs: ({ thinkMs }) => (state): NextState => {
+    setColdClearThinkMs: ({ thinkMs, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
         }
@@ -1968,7 +1978,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        saveColdClearViewSettings(state, { thinkMs: validMs });
+        if (persist) {
+            saveColdClearViewSettings(state, { thinkMs: validMs });
+        }
 
         return {
             coldClear: {

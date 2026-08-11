@@ -298,7 +298,7 @@ interface UserSettings {
     pageRotationLimit: number;
 }
 
-interface ViewSettings {
+export interface ViewSettings {
     trimTopBlank: boolean;
     shortenUrls: boolean;
     exportShowPageNumbers: boolean;

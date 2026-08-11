@@ -219,6 +219,24 @@ describe('image export visibility settings', () => {
             expect.objectContaining({ exportShowPageNumbers: true, exportShowComments: false }),
         );
     });
+
+    test('restores visibility without overwriting other saved settings', () => {
+        const state = createState({ exportShowPageNumbers: true, exportShowComments: true });
+        const { localStorageWrapper } = require('../../memento');
+
+        const pageNumbers = listViewActions.setExportShowPageNumbers({
+            enabled: false,
+            persist: false,
+        })(state) as any;
+        const comments = listViewActions.setExportShowComments({
+            enabled: false,
+            persist: false,
+        })(state) as any;
+
+        expect(pageNumbers.listView.exportShowPageNumbers).toBe(false);
+        expect(comments.listView.exportShowComments).toBe(false);
+        expect(localStorageWrapper.saveViewSettings).not.toHaveBeenCalled();
+    });
 });
 
 describe('setListViewMenuTab', () => {

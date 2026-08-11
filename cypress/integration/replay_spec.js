@@ -710,7 +710,7 @@ describe('TETR.IO Replay', () => {
             operations.replay.analysis.summary().should('not.exist');
 
             // 実 WASM 探索を 78 手ぶん走らせるので最短プリセットにする
-            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.setThinkMs(100);
             operations.replay.analysis.start();
             operations.replay.analysis.progress().should('have.attr', 'data-status', 'running');
             operations.replay.analysis.waitDone();
@@ -746,7 +746,7 @@ describe('TETR.IO Replay', () => {
             cy.clearLocalStorage();
             startPlaying();
 
-            operations.replay.analysis.setThinkMs(50);
+            operations.replay.analysis.setThinkMs(100);
             operations.replay.analysis.start();
             // 数手ぶん進んでから止める（部分結果が残ることを見たい）
             operations.replay.analysis.progress({ timeout: 60000 })

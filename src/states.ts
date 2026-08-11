@@ -445,6 +445,8 @@ export interface State {
         scale: number;
         trimTopBlank: boolean;
         shortenUrls: boolean;
+        exportShowPageNumbers: boolean;
+        exportShowComments: boolean;
         exportScope: 'all' | 'left';
         menuTab: 'export' | 'import';
         settingsOpened: boolean;
@@ -646,6 +648,8 @@ export const initState: Readonly<State> = {
         scale: 1.0,
         trimTopBlank: false,
         shortenUrls: false,
+        exportShowPageNumbers: true,
+        exportShowComments: true,
         exportScope: 'all',
         menuTab: 'export',
         settingsOpened: false,

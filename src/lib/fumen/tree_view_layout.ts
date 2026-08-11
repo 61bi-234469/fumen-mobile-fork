@@ -140,6 +140,7 @@ export const calculateTreeViewLayout = (
     tree: SerializedTree,
     pages: Page[],
     trimTopBlank: boolean,
+    nodeExtraHeight: number = TREE_NODE_EXTRA_HEIGHT,
 ): TreeViewLayout => {
     const layout = calculateTreeLayout(tree);
     const nodeLayouts = new Map<TreeNodeId, TreeNodeLayout>();
@@ -157,7 +158,7 @@ export const calculateTreeViewLayout = (
             if (!pos) return;
 
             const thumbnailHeight = getThumbnailHeight(pages, node.pageIndex, trimTopBlank);
-            const nodeHeight = thumbnailHeight + TREE_NODE_EXTRA_HEIGHT;
+            const nodeHeight = thumbnailHeight + nodeExtraHeight;
             const occupiedHeight = getNodeOccupiedHeight(nodeHeight);
 
             nodeHeights.set(node.id, { thumbnailHeight, occupiedHeight, height: nodeHeight });

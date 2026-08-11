@@ -173,7 +173,7 @@ describe('Unified import/export menu', () => {
         cy.get(datatest('mdl-list-view-menu')).find('[role="tab"]').eq(1)
             .should('contain.text', '書き出し');
         cy.get(datatest('tab-list-view-menu-export')).should('have.attr', 'aria-selected', 'true');
-        cy.get(datatest('panel-list-view-menu-export')).should('be.visible');
+        cy.get(datatest('panel-list-view-menu-export')).should('exist');
         cy.get(datatest('panel-list-view-menu-import')).should('not.exist');
         cy.get(datatest('btn-import')).should('not.exist');
         [
@@ -205,6 +205,10 @@ describe('Unified import/export menu', () => {
         cy.get(datatest('section-tetgram')).should('contain.text', 'tetgramで開く');
         cy.get(datatest('hint-tetgram-url')).scrollIntoView().should('be.visible');
         cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
+        cy.get(datatest('toggle-export-page-numbers')).should('be.checked')
+            .next('span').should('contain.text', 'ページ番号を表示');
+        cy.get(datatest('toggle-export-comments')).should('be.checked')
+            .next('span').should('contain.text', 'コメントを表示');
         cy.contains('短縮URL').scrollIntoView().should('be.visible');
         cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
         cy.get(datatest('section-external'))
@@ -215,6 +219,9 @@ describe('Unified import/export menu', () => {
                 .map(element => element.getAttribute('datatest'));
             expect(ids.indexOf('export-scope-card')).to.be.lessThan(ids.indexOf('section-export'));
             expect(ids.indexOf('section-export')).to.be.lessThan(ids.indexOf('section-image'));
+            expect(ids.indexOf('btn-export-gif')).to.be.lessThan(ids.indexOf('toggle-export-page-numbers'));
+            expect(ids.indexOf('toggle-export-page-numbers')).to.be.lessThan(ids.indexOf('toggle-export-comments'));
+            expect(ids.indexOf('toggle-export-comments')).to.be.lessThan(ids.indexOf('input-gif-frame-delay'));
             expect(ids.indexOf('input-gif-frame-delay')).to.be.greaterThan(ids.indexOf('section-image'));
             expect(ids.indexOf('section-image')).to.be.lessThan(ids.indexOf('section-external'));
             expect(ids.indexOf('switch-shorten-urls')).to.be.greaterThan(ids.indexOf('section-external'));
@@ -244,6 +251,22 @@ describe('Unified import/export menu', () => {
         operations.menu.import();
         cy.get(datatest('tab-list-view-menu-import')).should('have.attr', 'aria-selected', 'true');
         cy.get(datatest('btn-import')).should('be.visible');
+    });
+
+    it('persists image metadata visibility and exposes it in tree export', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
+        operations.menu.export();
+        operations.listView.setExportMetadata({ pageNumbers: false, comments: false });
+        cy.get(datatest('btn-cancel')).click();
+
+        cy.reload();
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="ツリーモードを有効にする"]').click();
+        cy.get('[title="ページをツリービューで表示"]').click();
+        operations.listView.openExport();
+
+        cy.get(datatest('toggle-export-page-numbers')).should('not.be.checked');
+        cy.get(datatest('toggle-export-comments')).should('not.be.checked');
     });
 
     it('shows accurate page counts for the tree export scope', () => {

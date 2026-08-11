@@ -15,6 +15,8 @@ interface ListViewMenuModalProps {
     selectedPathPageCount: number;
     gifFrameDelayMs: number;
     shortenUrls: boolean;
+    exportShowPageNumbers: boolean;
+    exportShowComments: boolean;
     actions: {
         closeListViewMenuModal: () => void;
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
@@ -30,6 +32,8 @@ interface ListViewMenuModalProps {
         copyTetgramRawToClipboard: () => void;
         setExportScope: (data: { scope: 'all' | 'left' }) => void;
         setListViewShortenUrls: (data: { enabled: boolean }) => void;
+        setExportShowPageNumbers: (data: { enabled: boolean }) => void;
+        setExportShowComments: (data: { enabled: boolean }) => void;
         setListViewMenuTab: (data: { tab: 'export' | 'import' }) => void;
         setGifFrameDelay: (data: { delayMs: number }) => void;
         openListViewInFumenZui: () => void;
@@ -40,7 +44,18 @@ interface ListViewMenuModalProps {
 }
 
 export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
-    { treeEnabled, exportScope, menuTab, pageCount, selectedPathPageCount, gifFrameDelayMs, shortenUrls, actions },
+    {
+        treeEnabled,
+        exportScope,
+        menuTab,
+        pageCount,
+        selectedPathPageCount,
+        gifFrameDelayMs,
+        shortenUrls,
+        exportShowPageNumbers,
+        exportShowComments,
+        actions,
+    },
 ) => {
     const close = () => {
         const modal = resources.modals.listViewMenu;
@@ -270,6 +285,14 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         actions.setListViewShortenUrls({ enabled: target.checked });
     };
 
+    const onchangePageNumbers = (event: Event) => {
+        actions.setExportShowPageNumbers({ enabled: (event.target as HTMLInputElement).checked });
+    };
+
+    const onchangeComments = (event: Event) => {
+        actions.setExportShowComments({ enabled: (event.target as HTMLInputElement).checked });
+    };
+
     return (
         <div key="list-view-menu-modal-top">
             <div key="mdl-list-view-menu" datatest="mdl-list-view-menu"
@@ -401,6 +424,21 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                         <Icon key="btn-export-gif-icon" classNames={['left']} iconSize={18}>gif</Icon>
                                         {i18n.ListViewMenu.Buttons.Gif()}
                                     </a>
+                                </div>
+                                <div key="image-display-options" datatest="image-display-options"
+                                     style={settingStyle}>
+                                    <label style={style({ display: 'block', marginBottom: px(6) })}>
+                                        <input key="toggle-export-page-numbers" datatest="toggle-export-page-numbers"
+                                               type="checkbox" checked={exportShowPageNumbers}
+                                               onchange={onchangePageNumbers}/>
+                                        <span>{i18n.ListViewMenu.ImageOptions.PageNumbers()}</span>
+                                    </label>
+                                    <label style={style({ display: 'block' })}>
+                                        <input key="toggle-export-comments" datatest="toggle-export-comments"
+                                               type="checkbox" checked={exportShowComments}
+                                               onchange={onchangeComments}/>
+                                        <span>{i18n.ListViewMenu.ImageOptions.Comments()}</span>
+                                    </label>
                                 </div>
                                 <div key="gif-frame-delay" style={settingStyle}>
                                     <div style={settingNameStyle}>{i18n.UserSettings.GifFrameDelayMs.Title()}</div>

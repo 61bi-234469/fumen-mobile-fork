@@ -30,6 +30,8 @@ const createState = (override: any = {}) => ({
     listView: {
         trimTopBlank: false,
         shortenUrls: false,
+        exportShowPageNumbers: true,
+        exportShowComments: true,
         menuTab: 'export',
     },
     tree: {
@@ -71,6 +73,8 @@ describe('editorPanelActions', () => {
             expect(saveViewSettingsMock).toHaveBeenCalledWith({
                 trimTopBlank: false,
                 shortenUrls: false,
+                exportShowPageNumbers: true,
+                exportShowComments: true,
                 listViewMenuTab: 'export',
                 treeOperationScope: 'node',
                 grayAfterLineClear: false,

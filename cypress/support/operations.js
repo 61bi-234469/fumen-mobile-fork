@@ -940,6 +940,12 @@ export const operations = {
         openExport: () => {
             cy.get(datatest('btn-list-view-export')).click();
         },
+        setExportMetadata: ({ pageNumbers, comments }) => {
+            const pageNumbersToggle = cy.get(datatest('toggle-export-page-numbers'));
+            const commentsToggle = cy.get(datatest('toggle-export-comments'));
+            pageNumbers ? pageNumbersToggle.check({ force: true }) : pageNumbersToggle.uncheck({ force: true });
+            comments ? commentsToggle.check({ force: true }) : commentsToggle.uncheck({ force: true });
+        },
     },
     tree: {
         setScope: (scope) => {

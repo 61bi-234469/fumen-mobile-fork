@@ -26,7 +26,7 @@ const createField = (filledY?: number): Field => {
 };
 
 describe('GIF export layout', () => {
-    test('omits comment area when every page has no comment', () => {
+    test('keeps a compact page-number area when every page has no comment', () => {
         const pages = [
             createPage(0, createField()),
             createPage(1, createField(4)),
@@ -37,9 +37,33 @@ describe('GIF export layout', () => {
         expect(layout.hasAnyComment).toBe(false);
         expect(layout.width).toBe(THUMBNAIL_WIDTH);
         expect(layout.fieldX).toBe(0);
+        expect(layout.commentY).toBe(layout.fieldBottomY);
+        expect(layout.commentHeight).toBe(20);
+        expect(layout.height).toBe(layout.maxFieldHeight + 20);
+    });
+
+    test('omits all metadata when page numbers and comments are disabled', () => {
+        const pages = [createPage(0, createField(), 'comment')];
+        const layout = calculateGifFrameLayout(pages, true, {
+            showPageNumbers: false,
+            showComments: false,
+        });
+
+        expect(layout.hasAnyComment).toBe(false);
         expect(layout.commentY).toBeNull();
         expect(layout.commentHeight).toBe(0);
         expect(layout.height).toBe(layout.maxFieldHeight);
+    });
+
+    test('keeps comment metadata without reserving a page-number-only footer', () => {
+        const pages = [createPage(0, createField(), 'comment')];
+        const layout = calculateGifFrameLayout(pages, true, {
+            showPageNumbers: false,
+            showComments: true,
+        });
+
+        expect(layout.hasAnyComment).toBe(true);
+        expect(layout.commentHeight).toBe(50);
     });
 
     test('keeps a shared comment area when any page has a comment', () => {

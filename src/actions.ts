@@ -454,6 +454,12 @@ const loadUserSettings = () => {
     if (viewSettings.shortenUrls !== undefined) {
         main.setListViewShortenUrls({ enabled: viewSettings.shortenUrls });
     }
+    if (viewSettings.exportShowPageNumbers !== undefined) {
+        main.setExportShowPageNumbers({ enabled: viewSettings.exportShowPageNumbers });
+    }
+    if (viewSettings.exportShowComments !== undefined) {
+        main.setExportShowComments({ enabled: viewSettings.exportShowComments });
+    }
     if (viewSettings.listViewMenuTab !== undefined) {
         main.setListViewMenuTab({ tab: viewSettings.listViewMenuTab });
     }

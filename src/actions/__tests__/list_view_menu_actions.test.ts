@@ -109,6 +109,8 @@ const createState = (overrides: any = {}) => ({
         menuTab: overrides.menuTab || 'export',
         trimTopBlank: false,
         shortenUrls: overrides.shortenUrls ?? false,
+        exportShowPageNumbers: overrides.exportShowPageNumbers ?? true,
+        exportShowComments: overrides.exportShowComments ?? true,
         scale: 1.0,
         dragState: { draggingIndex: null, dropTargetIndex: null },
     },
@@ -192,6 +194,30 @@ describe('setListViewShortenUrls', () => {
         const next = listViewActions.setListViewShortenUrls({ enabled: true })(state) as any;
 
         expect(next.listView.shortenUrls).toBe(true);
+    });
+});
+
+describe('image export visibility settings', () => {
+    test('updates and persists page-number visibility', () => {
+        const state = createState({ exportShowPageNumbers: true });
+        const next = listViewActions.setExportShowPageNumbers({ enabled: false })(state) as any;
+
+        expect(next.listView.exportShowPageNumbers).toBe(false);
+        const { localStorageWrapper } = require('../../memento');
+        expect(localStorageWrapper.saveViewSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ exportShowPageNumbers: false, exportShowComments: true }),
+        );
+    });
+
+    test('updates and persists comment visibility', () => {
+        const state = createState({ exportShowComments: true });
+        const next = listViewActions.setExportShowComments({ enabled: false })(state) as any;
+
+        expect(next.listView.exportShowComments).toBe(false);
+        const { localStorageWrapper } = require('../../memento');
+        expect(localStorageWrapper.saveViewSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ exportShowPageNumbers: true, exportShowComments: false }),
+        );
     });
 });
 

@@ -5,25 +5,39 @@ import { getNodeDfsNumbers } from './fumen/tree_utils';
 import {
     calculateTreeViewLayout,
     TREE_HORIZONTAL_GAP,
+    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
     TREE_PADDING,
     TREE_THUMBNAIL_WIDTH,
 } from './fumen/tree_view_layout';
-import { BLOCK_SIZE, drawThumbnail, EXPORT_SCALE, getPageCommentText } from './thumbnail';
+import {
+    BLOCK_SIZE,
+    DEFAULT_IMAGE_EXPORT_OPTIONS,
+    drawThumbnail,
+    EXPORT_SCALE,
+    getPageCommentText,
+    ImageExportOptions,
+} from './thumbnail';
 
 export function generateTreeViewExportImage(
     pages: Page[],
     guideLineColor: boolean,
     tree: SerializedTree,
     trimTopBlank: boolean = false,
+    options: ImageExportOptions = DEFAULT_IMAGE_EXPORT_OPTIONS,
 ): string {
     if (!tree.rootId || tree.nodes.length === 0 || pages.length === 0) {
         return '';
     }
 
     // Calculate layout
-    const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
+    const treeViewLayout = calculateTreeViewLayout(
+        tree,
+        pages,
+        trimTopBlank,
+        getExportNodeExtraHeight(options),
+    );
     const { layout } = treeViewLayout;
     const dfsNumbers = getNodeDfsNumbers(tree);
 
@@ -103,11 +117,19 @@ export function generateTreeViewExportImage(
             dfsNumber,
             hasBranch,
             trimTopBlank,
+            options,
         );
     });
 
     return canvas.toDataURL('image/png');
 }
+
+const getExportNodeExtraHeight = (options: ImageExportOptions): number => {
+    if (options.showComments) {
+        return options.showPageNumbers ? TREE_NODE_EXTRA_HEIGHT : 64;
+    }
+    return options.showPageNumbers ? 36 : 16;
+};
 
 function drawTreeNode(
     ctx: CanvasRenderingContext2D,
@@ -122,6 +144,7 @@ function drawTreeNode(
     dfsNumber: number,
     hasBranches: boolean,
     trimTopBlank: boolean,
+    options: ImageExportOptions,
 ): void {
     // Node background
     ctx.fillStyle = '#fff';
@@ -152,13 +175,18 @@ function drawTreeNode(
         : undefined;
     drawThumbnail(ctx, pages, pageIndex, thumbX, thumbY, guideLineColor, trimTopBlank, visibleTopRow);
 
-    // DFS order number
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`#${dfsNumber}`, x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + 20);
+    if (options.showPageNumbers) {
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`#${dfsNumber}`, x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + 20);
+    }
 
-    // Comment text
+    if (!options.showComments) {
+        ctx.textAlign = 'left';
+        return;
+    }
+
     let commentText = '';
     try {
         commentText = getPageCommentText(pagesObj, pageIndex);
@@ -189,7 +217,8 @@ function drawTreeNode(
         }
 
         lines.forEach((line, idx) => {
-            ctx.fillText(line, x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + 38 + idx * 14);
+            const commentTop = options.showPageNumbers ? 38 : 20;
+            ctx.fillText(line, x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + commentTop + idx * 14);
         });
     }
 

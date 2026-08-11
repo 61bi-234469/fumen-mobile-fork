@@ -397,6 +397,10 @@ export const resources = {
             Title: '短縮URL',
             Description: '共有URL・外部サイト・tetgramを開くときにTinyURL作成ページを使用',
         },
+        ImageOptions: {
+            PageNumbers: 'ページ番号を表示',
+            Comments: 'コメントを表示',
+        },
         Buttons: {
             Insert: 'クリップボードから挿入',
             InsertHint: '現在のテト譜の末尾へ追加',

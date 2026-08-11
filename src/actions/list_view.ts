@@ -238,6 +238,8 @@ export interface ListViewActions {
     setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
     setListViewSettingsOpened: (data: { opened: boolean }) => action;
     setListViewShortenUrls: (data: { enabled: boolean }) => action;
+    setExportShowPageNumbers: (data: { enabled: boolean }) => action;
+    setExportShowComments: (data: { enabled: boolean }) => action;
     setListViewMenuTab: (data: { tab: 'export' | 'import' }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
@@ -767,6 +769,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                 state.fumen.guideLineColor,
                 tree,
                 state.listView.trimTopBlank,
+                {
+                    showPageNumbers: state.listView.exportShowPageNumbers,
+                    showComments: state.listView.exportShowComments,
+                },
             );
             filenamePrefix = 'fumen_tree';
         } else {
@@ -775,6 +781,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                 state.fumen.pages,
                 state.fumen.guideLineColor,
                 state.listView.trimTopBlank,
+                {
+                    showPageNumbers: state.listView.exportShowPageNumbers,
+                    showComments: state.listView.exportShowComments,
+                },
             );
             filenamePrefix = 'fumen_list';
         }
@@ -792,6 +802,10 @@ export const listViewActions: Readonly<ListViewActions> = {
             state.fumen.guideLineColor,
             state.listView.trimTopBlank,
             state.mode.gifFrameDelayMs,
+            {
+                showPageNumbers: state.listView.exportShowPageNumbers,
+                showComments: state.listView.exportShowComments,
+            },
         );
 
         if (blob) {
@@ -909,6 +923,10 @@ export const listViewActions: Readonly<ListViewActions> = {
             segment.pages,
             state.fumen.guideLineColor,
             state.listView.trimTopBlank,
+            {
+                showPageNumbers: state.listView.exportShowPageNumbers,
+                showComments: state.listView.exportShowComments,
+            },
         );
 
         if (dataURL) {
@@ -930,6 +948,10 @@ export const listViewActions: Readonly<ListViewActions> = {
             state.fumen.guideLineColor,
             state.listView.trimTopBlank,
             state.mode.gifFrameDelayMs,
+            {
+                showPageNumbers: state.listView.exportShowPageNumbers,
+                showComments: state.listView.exportShowComments,
+            },
         );
 
         if (blob) {
@@ -957,6 +979,32 @@ export const listViewActions: Readonly<ListViewActions> = {
             listView: {
                 ...state.listView,
                 shortenUrls: enabled,
+            },
+        };
+    },
+    setExportShowPageNumbers: ({ enabled }) => (state): NextState => {
+        if (state.listView.exportShowPageNumbers === enabled) {
+            return undefined;
+        }
+
+        persistViewSettings(state, { exportShowPageNumbers: enabled });
+        return {
+            listView: {
+                ...state.listView,
+                exportShowPageNumbers: enabled,
+            },
+        };
+    },
+    setExportShowComments: ({ enabled }) => (state): NextState => {
+        if (state.listView.exportShowComments === enabled) {
+            return undefined;
+        }
+
+        persistViewSettings(state, { exportShowComments: enabled });
+        return {
+            listView: {
+                ...state.listView,
+                exportShowComments: enabled,
             },
         };
     },

@@ -424,6 +424,10 @@
             Title: 'Short URL',
             Description: 'Use the TinyURL creation page when opening share, external, and tetgram URLs',
         },
+        ImageOptions: {
+            PageNumbers: 'Show page numbers',
+            Comments: 'Show comments',
+        },
         Buttons: {
             Insert: 'Insert from clipboard',
             InsertHint: 'Add to the end of the current fumen',

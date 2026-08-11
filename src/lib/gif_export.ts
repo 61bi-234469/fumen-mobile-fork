@@ -7,6 +7,8 @@ import { HighlightType } from '../state_types';
 import { RGBColor } from './clipboard_parser/palette';
 import {
     BLOCK_SIZE,
+    DEFAULT_IMAGE_EXPORT_OPTIONS,
+    ImageExportOptions,
     THUMBNAIL_WIDTH,
     drawThumbnail,
     getPageCommentText,
@@ -43,12 +45,14 @@ export const normalizeGifFrameDelayMs = (delayMs: number): number => {
 export const calculateGifFrameLayout = (
     pages: Page[],
     trimTopBlank: boolean,
+    options: ImageExportOptions = DEFAULT_IMAGE_EXPORT_OPTIONS,
 ): GifFrameLayout => {
     const thumbnailHeights = pages.map((_, index) => getThumbnailHeight(pages, index, trimTopBlank));
     const maxFieldHeight = thumbnailHeights.reduce((max, height) => Math.max(max, height), BLOCK_SIZE);
     const pagesObj = new Pages(pages);
-    const hasAnyComment = pages.some((_, index) => getPageCommentText(pagesObj, index).trim().length > 0);
-    const commentHeight = hasAnyComment ? GIF_COMMENT_HEIGHT : 0;
+    const hasAnyComment = options.showComments
+        && pages.some((_, index) => getPageCommentText(pagesObj, index).trim().length > 0);
+    const commentHeight = hasAnyComment ? GIF_COMMENT_HEIGHT : options.showPageNumbers ? 20 : 0;
     const width = THUMBNAIL_WIDTH + GIF_PADDING * 2;
     const height = GIF_PADDING * 2 + maxFieldHeight + commentHeight;
     const fieldBottomY = GIF_PADDING + maxFieldHeight;
@@ -61,7 +65,7 @@ export const calculateGifFrameLayout = (
         hasAnyComment,
         commentHeight,
         fieldX: GIF_PADDING,
-        commentY: hasAnyComment ? fieldBottomY : null,
+        commentY: commentHeight > 0 ? fieldBottomY : null,
     };
 };
 
@@ -70,13 +74,14 @@ export function generateGifBlob(
     guideLineColor: boolean,
     trimTopBlank: boolean,
     frameDelayMs: number,
+    options: ImageExportOptions = DEFAULT_IMAGE_EXPORT_OPTIONS,
 ): Blob | null {
     if (pages.length === 0) {
         return null;
     }
 
     const delayCentiseconds = Math.max(1, Math.round(normalizeGifFrameDelayMs(frameDelayMs) / 10));
-    const layout = calculateGifFrameLayout(pages, trimTopBlank);
+    const layout = calculateGifFrameLayout(pages, trimTopBlank, options);
     const canvas = document.createElement('canvas');
     canvas.width = layout.width * GIF_SCALE;
     canvas.height = layout.height * GIF_SCALE;
@@ -92,7 +97,7 @@ export function generateGifBlob(
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.scale(GIF_SCALE, GIF_SCALE);
-        drawGifFrame(ctx, pages, pagesObj, i, guideLineColor, trimTopBlank, layout);
+        drawGifFrame(ctx, pages, pagesObj, i, guideLineColor, trimTopBlank, layout, options);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         encoder.addFrame(imageData.data);
     }
@@ -108,6 +113,7 @@ const drawGifFrame = (
     guideLineColor: boolean,
     trimTopBlank: boolean,
     layout: GifFrameLayout,
+    options: ImageExportOptions,
 ): void => {
     ctx.fillStyle = GIF_BACKGROUND;
     ctx.fillRect(0, 0, layout.width, layout.height);
@@ -121,22 +127,34 @@ const drawGifFrame = (
     drawThumbnail(ctx, pages, pageIndex, layout.fieldX, fieldY, guideLineColor, trimTopBlank, visibleTopRow);
 
     if (layout.commentY !== null) {
-        drawGifComment(ctx, pagesObj, pageIndex, layout.fieldX, layout.commentY);
+        drawGifMetadata(ctx, pagesObj, pageIndex, layout.fieldX, layout.commentY, layout.commentHeight, options);
     }
 };
 
-const drawGifComment = (
+const drawGifMetadata = (
     ctx: CanvasRenderingContext2D,
     pagesObj: Pages,
     pageIndex: number,
     x: number,
     y: number,
+    height: number,
+    options: ImageExportOptions,
 ): void => {
     ctx.fillStyle = GIF_COMMENT_BACKGROUND;
-    ctx.fillRect(x, y, THUMBNAIL_WIDTH, GIF_COMMENT_HEIGHT);
+    ctx.fillRect(x, y, THUMBNAIL_WIDTH, height);
     ctx.strokeStyle = GIF_COMMENT_BORDER;
     ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, THUMBNAIL_WIDTH, GIF_COMMENT_HEIGHT);
+    ctx.strokeRect(x, y, THUMBNAIL_WIDTH, height);
+
+    if (options.showPageNumbers) {
+        ctx.fillStyle = GIF_COMMENT_TEXT;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`#${pageIndex + 1}`, x + 4, y + 4);
+    }
+
+    if (!options.showComments) return;
 
     const commentText = getPageCommentText(pagesObj, pageIndex);
     if (commentText.trim().length === 0) {
@@ -150,7 +168,8 @@ const drawGifComment = (
 
     const lines = wrapText(ctx, commentText, THUMBNAIL_WIDTH - 8);
     for (let i = 0; i < Math.min(lines.length, GIF_MAX_COMMENT_LINES); i += 1) {
-        ctx.fillText(lines[i], x + 4, y + 6 + i * 13);
+        const commentTop = options.showPageNumbers ? 20 : 6;
+        ctx.fillText(lines[i], x + 4, y + commentTop + i * 13);
     }
 };
 

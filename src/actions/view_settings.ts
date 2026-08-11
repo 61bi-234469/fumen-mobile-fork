@@ -5,6 +5,8 @@ import { TreeOperationScope } from '../lib/fumen/tree_types';
 type ViewSettingsOverrides = Partial<{
     trimTopBlank: boolean;
     shortenUrls: boolean;
+    exportShowPageNumbers: boolean;
+    exportShowComments: boolean;
     listViewMenuTab: 'export' | 'import';
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
@@ -81,6 +83,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
     localStorageWrapper.saveViewSettings({
         trimTopBlank: overrides.trimTopBlank ?? state.listView.trimTopBlank,
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
+        exportShowPageNumbers: overrides.exportShowPageNumbers ?? state.listView.exportShowPageNumbers ?? true,
+        exportShowComments: overrides.exportShowComments ?? state.listView.exportShowComments ?? true,
         listViewMenuTab: overrides.listViewMenuTab ?? state.listView.menuTab,
         treeOperationScope: overrides.treeOperationScope ?? state.tree.operationScope ?? 'node',
         grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,

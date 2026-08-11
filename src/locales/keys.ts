@@ -448,6 +448,10 @@ export const i18n = {
             Title: () => t('ListViewMenu.ShortUrl.Title'),
             Description: () => t('ListViewMenu.ShortUrl.Description'),
         },
+        ImageOptions: {
+            PageNumbers: () => t('ListViewMenu.ImageOptions.PageNumbers'),
+            Comments: () => t('ListViewMenu.ImageOptions.Comments'),
+        },
         Buttons: {
             Insert: () => t('ListViewMenu.Buttons.Insert'),
             InsertHint: () => t('ListViewMenu.Buttons.InsertHint'),

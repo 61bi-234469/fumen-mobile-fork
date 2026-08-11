@@ -301,6 +301,8 @@ interface UserSettings {
 interface ViewSettings {
     trimTopBlank: boolean;
     shortenUrls: boolean;
+    exportShowPageNumbers: boolean;
+    exportShowComments: boolean;
     listViewMenuTab: 'export' | 'import';
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
@@ -419,6 +421,8 @@ export const localStorageWrapper = {
         return {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
             shortenUrls: safer.boolean(obj.shortenUrls),
+            exportShowPageNumbers: safer.boolean(obj.exportShowPageNumbers),
+            exportShowComments: safer.boolean(obj.exportShowComments),
             listViewMenuTab: safer.listViewMenuTab(obj.listViewMenuTab),
             treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
                 ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),

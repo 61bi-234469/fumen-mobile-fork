@@ -238,10 +238,26 @@ const EXPORT_GAP = 8;
 const EXPORT_PADDING = 10;
 export const EXPORT_SCALE = 2; // High DPI scaling for better quality
 
+export interface ImageExportOptions {
+    showPageNumbers: boolean;
+    showComments: boolean;
+}
+
+export const DEFAULT_IMAGE_EXPORT_OPTIONS: ImageExportOptions = {
+    showPageNumbers: true,
+    showComments: true,
+};
+
+const getExportMetadataHeight = (options: ImageExportOptions): number => {
+    if (options.showComments) return options.showPageNumbers ? EXPORT_COMMENT_HEIGHT : 40;
+    return options.showPageNumbers ? 20 : 0;
+};
+
 export function generateListViewExportImage(
     pages: Page[],
     guideLineColor: boolean,
     trimTopBlank: boolean = false,
+    options: ImageExportOptions = DEFAULT_IMAGE_EXPORT_OPTIONS,
 ): string {
     const pageCount = pages.length;
     if (pageCount === 0) {
@@ -254,7 +270,8 @@ export function generateListViewExportImage(
     const thumbnailHeights = pages.map((_, index) => (trimTopBlank
         ? getThumbnailHeight(pages, index, true)
         : EXPORT_ITEM_HEIGHT));
-    const itemHeights = thumbnailHeights.map(height => height + EXPORT_COMMENT_HEIGHT);
+    const metadataHeight = getExportMetadataHeight(options);
+    const itemHeights = thumbnailHeights.map(height => height + metadataHeight);
 
     const rowHeights: number[] = [];
     for (let row = 0; row < rows; row += 1) {
@@ -312,8 +329,9 @@ export function generateListViewExportImage(
         // Draw thumbnail
         drawThumbnail(ctx, pages, i, x, y, guideLineColor, trimTopBlank, visibleTopRow);
 
-        // Draw page number and comment
-        drawComment(ctx, pagesObj, i, x, y + thumbnailHeight);
+        if (metadataHeight > 0) {
+            drawExportMetadata(ctx, pagesObj, i, x, y + thumbnailHeight, metadataHeight, options);
+        }
     }
 
     return canvas.toDataURL('image/png');
@@ -428,28 +446,32 @@ export function getPageCommentText(pagesObj: Pages, pageIndex: number): string {
     return commentResult.quiz;
 }
 
-function drawComment(
+function drawExportMetadata(
     ctx: CanvasRenderingContext2D,
     pagesObj: Pages,
     pageIndex: number,
     x: number,
     y: number,
+    height: number,
+    options: ImageExportOptions,
 ): void {
     // White background for comment area
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x, y, EXPORT_ITEM_WIDTH, EXPORT_COMMENT_HEIGHT);
+    ctx.fillRect(x, y, EXPORT_ITEM_WIDTH, height);
 
     // Border
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, EXPORT_ITEM_WIDTH, EXPORT_COMMENT_HEIGHT);
+    ctx.strokeRect(x, y, EXPORT_ITEM_WIDTH, height);
 
-    // Page number
-    ctx.fillStyle = '#666666';
-    ctx.font = 'bold 10px sans-serif';
-    ctx.fillText(`#${pageIndex + 1}`, x + 4, y + 12);
+    if (options.showPageNumbers) {
+        ctx.fillStyle = '#666666';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(`#${pageIndex + 1}`, x + 4, y + 12);
+    }
 
-    // Comment text
+    if (!options.showComments) return;
+
     const commentText = getPageCommentText(pagesObj, pageIndex);
 
     if (commentText) {
@@ -463,7 +485,8 @@ function drawComment(
         const maxLines = 3;
 
         for (let i = 0; i < Math.min(lines.length, maxLines); i += 1) {
-            ctx.fillText(lines[i], x + 4, y + 24 + i * lineHeight);
+            const commentTop = options.showPageNumbers ? 24 : 12;
+            ctx.fillText(lines[i], x + 4, y + commentTop + i * lineHeight);
         }
     }
 }

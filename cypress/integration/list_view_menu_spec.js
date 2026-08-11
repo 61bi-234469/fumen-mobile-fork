@@ -272,7 +272,7 @@ describe('Unified import/export menu', () => {
     it('shows accurate page counts for the tree export scope', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
         cy.get(datatest('btn-list-view')).click();
-        cy.get('[title="ツリーモードを有効にする"]').click();
+        cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
         cy.get('[title="ページをツリービューで表示"]').click();
 
         cy.get('svg circle[fill="#10B981"]').last().click({ force: true });

@@ -78,8 +78,11 @@ export interface InputGarbageRow {
 
 export interface InputGarbageView {
     gauge: number;
+    cap: number;
+    maxGauge: number;
     nextRise?: InputGarbageRow;
     nextTankRows: InputGarbageRow[];
+    reservedTanks: InputGarbageRow[][];
     nextTankFrame?: number;
 }
 
@@ -122,17 +125,18 @@ export const cloneGarbageQueueSnapshot = (snapshot: GarbageQueueSnapshot): Garba
     queue: snapshot.queue.map(item => ({ ...item })),
 });
 
-/** Keeps only the next confirmed incoming attack when detaching a replay into INPUT. */
-export const selectCurrentGarbageParcel = (
+/** Keeps every confirmed incoming attack when detaching a replay into INPUT. */
+export const selectCurrentGarbageParcels = (
     snapshot: GarbageQueueSnapshot,
 ): GarbageQueueSnapshot => {
     const selected = snapshot.queue
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => item.confirmed && item.amount > 0)
-        .sort((a, b) => a.item.frame - b.item.frame || a.index - b.index)[0]?.item;
+        .sort((a, b) => a.item.frame - b.item.frame || a.index - b.index)
+        .map(({ item }) => ({ ...item }));
     return {
         ...cloneGarbageQueueSnapshot(snapshot),
-        queue: selected === undefined ? [] : [{ ...selected }],
+        queue: selected,
     };
 };
 
@@ -262,7 +266,7 @@ export const createInputReplayContext = (
     const empty = new GarbageQueue(config.garbage).snapshot();
     return createInputReplayContextFromSnapshot({
         stats: inputReplayStatsAt(player, pointIndex),
-        snapshot: selectCurrentGarbageParcel(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
+        snapshot: selectCurrentGarbageParcels(garbageAtFrame(player, cursorFrame)?.snapshot ?? empty),
         frame: cursorFrame,
         pieces: replayPlacedCount(player, pointIndex),
         options: config.garbage,
@@ -315,12 +319,42 @@ const tankNext = (
     return { frame, rows };
 };
 
+const previewReservedTanks = (context: InputReplayContext): InputGarbageRow[][] => {
+    const queue = restoreQueue(context);
+    let working = cloneInputReplayContext(context);
+    const tanks: InputGarbageRow[][] = [];
+    const reserved = working.garbage.snapshot.queue
+        .reduce((sum, item) => sum + (item.confirmed ? Math.max(0, item.amount) : 0), 0);
+    let previewed = 0;
+
+    // Each pass consumes confirmed rows; the second condition protects malformed legacy snapshots.
+    while (previewed < reserved && tanks.length <= reserved) {
+        const next = tankNext(working, queue);
+        if (next.rows.length === 0) break;
+        tanks.push(next.rows);
+        previewed += next.rows.length;
+        working = {
+            ...working,
+            garbage: {
+                ...working.garbage,
+                frame: next.frame ?? working.garbage.frame,
+                snapshot: cloneGarbageQueueSnapshot(queue.snapshot()),
+            },
+        };
+    }
+    return tanks;
+};
+
 export const inputGarbageView = (context: InputReplayContext): InputGarbageView => {
     const queue = restoreQueue(context);
     const { frame, rows } = tankNext(context, queue);
     const gauge = context.garbage.snapshot.queue.reduce((sum, item) => sum + Math.max(0, item.amount), 0);
+    const reservedTanks = previewReservedTanks(context);
     return {
         gauge,
+        reservedTanks,
+        cap: Math.max(1, context.garbage.rules.garbageCap),
+        maxGauge: Math.max(gauge, context.garbage.rules.garbageCap),
         nextRise: rows[0],
         nextTankRows: rows,
         nextTankFrame: frame,

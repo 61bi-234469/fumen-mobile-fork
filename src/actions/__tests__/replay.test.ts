@@ -745,12 +745,12 @@ describe('replayActions', () => {
             expect(ticked.replay!.cursor.turnStop).toBeFalsy();
         });
 
-        test('only the step basis side shows the pre-lock board', () => {
+        test('a stale opponent basis still stops on the self pre-lock board', () => {
             const state = withCells(1, { stepBasis: 'opponent' });
             const stopped = applyResult(state, replayActions.stepReplayLock({ step: 1 })(state));
 
-            expect(getReplayOpponentVisual(stopped)!.active).toBeDefined();
-            expect(getReplaySelfVisual(stopped)!.active).toBeUndefined();
+            expect(getReplaySelfVisual(stopped)!.active).toBeDefined();
+            expect(getReplayOpponentVisual(stopped)!.active).toBeUndefined();
         });
 
         test('a turn whose pre-lock board cannot be restored keeps the old landing', () => {
@@ -800,7 +800,7 @@ describe('replayActions', () => {
 
     describe('swapping sides (FR-11/12)', () => {
         test('the frame is preserved and the two indices trade places', () => {
-            const state = playingState(3, 3);
+            const state = playingState(3, 3, { stepBasis: 'opponent' });
             const before = state.replay.cursor;
             const result = replayActions.swapReplaySides()(state)!;
 
@@ -808,6 +808,7 @@ describe('replayActions', () => {
             expect(result.replay!.cursor.frame).toEqual(before.frame);
             expect(result.replay!.cursor.selfIndex).toEqual(before.opponentIndex);
             expect(result.replay!.cursor.opponentIndex).toEqual(before.selfIndex);
+            expect(result.replay!.cursor.stepBasis).toEqual('self');
         });
 
         test('the swap is not remembered in localStorage (P2 §7-4)', () => {
@@ -841,21 +842,16 @@ describe('replayActions', () => {
         });
     });
 
-    describe('step basis (FR-22)', () => {
-        test('with the opponent as the basis the opponent index advances by one', () => {
+    describe('step basis', () => {
+        test('always advances the self index even when a stale opponent basis is present', () => {
             const state = playingState(3, 3, { stepBasis: 'opponent' });
-            const before = state.replay.cursor.opponentIndex;
+            const before = state.replay.cursor.selfIndex;
             const result = replayActions.stepReplayLock({ step: 1 })(state)!;
 
-            expect(result.replay!.cursor.opponentIndex).toEqual(before + 1);
-            // frame は相手の設置に合わせて動き、自陣 index は追従で決まる
+            expect(result.replay!.cursor.selfIndex).toEqual(before + 1);
+            // frame は常に自陣の設置に合わせて動く。
             expect(result.replay!.cursor.frame)
-                .toEqual(frameAt(state.replay.ir!.rounds[0].players[1], before + 1));
-        });
-
-        test('setReplayStepBasis is a no-op when the basis is unchanged', () => {
-            expect(replayActions.setReplayStepBasis({ basis: 'self' })(playingState(3, 1)))
-                .toBeUndefined();
+                .toEqual(frameAt(state.replay.ir!.rounds[0].players[0], before + 1));
         });
     });
 

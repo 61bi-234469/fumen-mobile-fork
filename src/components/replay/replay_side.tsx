@@ -258,7 +258,7 @@ export const replaySide = (
             })}
         >
             {garbage !== undefined
-                ? replayGauge({ variant, size, garbage, boardHeight })
+                ? replayGauge({ variant, size, garbage, boardHeight, rowHeight: blockSize })
                 : undefined}
             <div
                 key={`replay-board-stack-${variant}`}

@@ -5,7 +5,6 @@ import {
     initialReplayState,
     ReplaySpeed,
     ReplayState,
-    ReplayStepBasis,
     State,
 } from '../states';
 import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
@@ -122,21 +121,10 @@ const cursorAtFrame = (
     };
 };
 
-// 相手が居ないリプレイで基準が 'opponent' のまま操作不能にならないよう、自陣へ落とす。
-const effectiveStepBasis = (state: State): ReplayStepBasis =>
-    state.replay.cursor.stepBasis === 'opponent' && getOpponentPlayerRound(state) !== undefined
-        ? 'opponent'
-        : 'self';
+// 手番送りは常に自陣の配置を基準にする。相手側を追いたい場合は右上の入替を使う。
+const stepBasisPlayer = (state: State): PlayerRoundIR | undefined => getSelfPlayerRound(state);
 
-const stepBasisPlayer = (state: State): PlayerRoundIR | undefined =>
-    effectiveStepBasis(state) === 'opponent'
-        ? getOpponentPlayerRound(state)
-        : getSelfPlayerRound(state);
-
-const basisIndex = (state: State): number =>
-    effectiveStepBasis(state) === 'opponent'
-        ? state.replay.cursor.opponentIndex
-        : state.replay.cursor.selfIndex;
+const basisIndex = (state: State): number => state.replay.cursor.selfIndex;
 
 // 明示的に送った側の index は再計算しない。同一 frame に複数 lock が並ぶとき、
 // 送った手番が飛ぶのを防ぐため（P2 §3-2 / §7-2 の懸念 6）。
@@ -148,9 +136,7 @@ const moveToPointIndex = (state: State, index: number): NextState => {
         return undefined;
     }
     const target = clampPointIndex(player, index);
-    const keep = effectiveStepBasis(state) === 'opponent'
-        ? { opponent: target }
-        : { self: target };
+    const keep = { self: target };
     return {
         replay: {
             ...state.replay,
@@ -169,7 +155,7 @@ const preLockPointOf = (
     if (state.replay.phase !== 'playing' || !state.replay.cursor.turnStop) {
         return undefined;
     }
-    if (effectiveStepBasis(state) !== variant) {
+    if (variant !== 'self') {
         return undefined;
     }
     const player = variant === 'self' ? getSelfPlayerRound(state) : getOpponentPlayerRound(state);
@@ -220,7 +206,6 @@ export interface ReplayActions {
     showReplayMove: (data: { index: number }) => action;
     seekReplayFrame: (data: { frame: number }) => action;
     swapReplaySides: () => action;
-    setReplayStepBasis: (data: { basis: ReplayStepBasis }) => action;
     toggleReplayOpponent: () => action;
     setReplayShowOpponent: (data: { showOpponent: boolean, persist?: boolean }) => action;
     toggleReplayGarbage: () => action;
@@ -413,7 +398,7 @@ export const replayActions: Readonly<ReplayActions> = {
                 ...(stopped?.replay ?? state.replay),
                 analysis: haltedReplayAnalysisState(state),
                 phase: 'select',
-                cursor: { ...initialReplayState.cursor, stepBasis: state.replay.cursor.stepBasis },
+                cursor: initialReplayState.cursor,
             },
         };
     },
@@ -514,18 +499,8 @@ export const replayActions: Readonly<ReplayActions> = {
                     turnStop: false,
                     selfIndex: state.replay.cursor.opponentIndex,
                     opponentIndex: state.replay.cursor.selfIndex,
+                    stepBasis: 'self',
                 },
-            },
-        };
-    },
-    setReplayStepBasis: ({ basis }) => (state): NextState => {
-        if (state.replay.cursor.stepBasis === basis) {
-            return undefined;
-        }
-        return {
-            replay: {
-                ...state.replay,
-                cursor: { ...state.replay.cursor, stepBasis: basis },
             },
         };
     },

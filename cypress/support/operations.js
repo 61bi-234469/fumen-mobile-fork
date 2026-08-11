@@ -996,8 +996,6 @@ export const operations = {
         seek: (frame) => {
             cy.get(datatest('replay-timeline')).invoke('val', frame).trigger('input');
         },
-        // 手番送りの基準（FR-22）
-        setBasis: (side) => cy.get(datatest(`btn-replay-basis-${side}`)).click(),
         // 自陣／相手の入れ替え（FR-11）
         swapSides: () => cy.get(datatest('btn-replay-swap-sides')).click(),
         // 相手盤面の表示／非表示（FR-34）
@@ -1005,6 +1003,8 @@ export const operations = {
         // P3: ガベージ表示（FR-40〜45 / NFR-08）
         // ゲージバーはゲージ 0 でも枠を残すため、常に存在する。量は data-gauge で読む。
         gauge: (side = 'self') => cy.get(datatest(`replay-gauge-${side}`)),
+        gaugeBar: (side = 'self') => cy.get(datatest(`replay-gauge-${side}-bar`)),
+        gaugeSegments: (side = 'self') => cy.get(datatest(`replay-gauge-${side}-segment`)),
         // せり上がり予告行（FR-42/43）。保留が無い地点では存在しない。
         risePreview: (side = 'self') => cy.get(datatest(
             side === 'self' ? 'replay-rise-preview' : 'replay-rise-preview-opponent')),
@@ -1036,6 +1036,9 @@ export const operations = {
     inputReplay: {
         openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),
         gauge: () => cy.get(datatest('input-garbage-gauge')),
+        fieldGauge: () => cy.get(datatest('replay-gauge-input')),
+        fieldGaugeBar: () => cy.get(datatest('replay-gauge-input-bar')),
+        fieldGaugeSegments: () => cy.get(datatest('replay-gauge-input-segment')),
         rise: () => cy.get(datatest('input-garbage-rise')),
         damage: () => cy.get(datatest('input-garbage-damage')),
         b2b: () => cy.get(datatest('input-stats-b2b')),

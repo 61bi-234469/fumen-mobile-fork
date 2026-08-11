@@ -11,7 +11,7 @@ import {
     createInputReplayContextFromSnapshot,
     inputGarbageView,
     inputReplayContextAt,
-    selectCurrentGarbageParcel,
+    selectCurrentGarbageParcels,
 } from '../input_replay';
 
 const options = (overrides: Partial<GarbageQueueInitializeParams> = {}): GarbageQueueInitializeParams => ({
@@ -92,7 +92,7 @@ const verticalI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9,
 const quadI = { type: Piece.I, rotation: Rotation.Right, coordinate: { x: 9, y: 2 } };
 
 describe('INPUT replay battle context', () => {
-    test('keeps only the oldest confirmed incoming parcel when detaching a replay', () => {
+    test('keeps every confirmed incoming parcel in application order when detaching a replay', () => {
         const original = snapshot(0, {
             queue: [
                 { amount: 4, frame: 30, size: 1, cid: 3, gameid: 9, confirmed: true },
@@ -102,10 +102,12 @@ describe('INPUT replay battle context', () => {
             ],
         });
 
-        const selected = selectCurrentGarbageParcel(original);
+        const selected = selectCurrentGarbageParcels(original);
 
         expect(selected.queue).toEqual([
             { amount: 2, frame: 20, size: 1, cid: 2, gameid: 9, confirmed: true },
+            { amount: 5, frame: 20, size: 1, cid: 4, gameid: 9, confirmed: true },
+            { amount: 4, frame: 30, size: 1, cid: 3, gameid: 9, confirmed: true },
         ]);
         expect(original.queue).toHaveLength(4);
         selected.queue[0].amount = 1;
@@ -113,7 +115,7 @@ describe('INPUT replay battle context', () => {
     });
 
     test('drops incoming parcels when none have been confirmed', () => {
-        const selected = selectCurrentGarbageParcel(snapshot(0, {
+        const selected = selectCurrentGarbageParcels(snapshot(0, {
             queue: [{ amount: 3, frame: 10, size: 1, cid: 1, gameid: 9, confirmed: false }],
         }));
 
@@ -151,6 +153,7 @@ describe('INPUT replay battle context', () => {
         expect(first).toEqual(second);
         expect(first.gauge).toBe(5);
         expect(first.nextTankRows).toHaveLength(3);
+        expect(first.reservedTanks.map(rows => rows.length)).toEqual([3, 2]);
         expect(first.nextTankFrame).toBe(20);
         expect(original).toEqual(before);
     });

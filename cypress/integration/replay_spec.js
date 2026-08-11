@@ -319,18 +319,18 @@ describe('TETR.IO Replay', () => {
         });
     });
 
-    it('steps by the opponent placements when the basis is switched (FR-22)', () => {
+    it('always steps by your placements and has no basis selector', () => {
         cy.clearLocalStorage();
         startPlaying();
 
-        operations.replay.setBasis('opponent');
-        cy.get(datatest('replay-opponent-counter')).then(($before) => {
+        cy.get(datatest('btn-replay-basis-self')).should('not.exist');
+        cy.get(datatest('btn-replay-basis-opponent')).should('not.exist');
+        cy.get(datatest('replay-lock-counter')).then(($before) => {
             const before = pieceNumberOf($before);
-            expect(before, 'opponent point index before stepping').to.not.equal(null);
+            expect(before, 'self point index before stepping').to.not.equal(null);
 
             operations.replay.next();
-            cy.get(datatest('replay-opponent-counter')).then(($after) => {
-                // 相手基準では相手の設置が 1 つずつ進む
+            cy.get(datatest('replay-lock-counter')).then(($after) => {
                 expect(pieceNumberOf($after)).to.equal(before + 1);
             });
         });
@@ -463,6 +463,20 @@ describe('TETR.IO Replay', () => {
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.gauge('self').should('have.attr', 'data-gauge', GAUGE_ROWS);
         operations.replay.gauge('self').should('contain', GAUGE_ROWS);
+        operations.replay.gaugeSegments('self')
+            .should('have.length', 1)
+            .and('have.attr', 'data-rows', GAUGE_ROWS);
+        operations.replay.gaugeBar('self').then(($bar) => {
+            operations.replay.gaugeSegments('self').then(($segments) => {
+                const bar = $bar[0].getBoundingClientRect();
+                const segment = $segments[0].getBoundingClientRect();
+                expect(segment.bottom).to.be.closeTo(bar.bottom - 1, 0.5);
+                operations.replay.board('self').then(($board) => {
+                    const cellHeight = $board[0].getBoundingClientRect().width / 10;
+                    expect(segment.height).to.be.closeTo(cellHeight * Number(GAUGE_ROWS), 0.5);
+                });
+            });
+        });
         cy.get(datatest('replay-stat-gauge')).should('contain', GAUGE_ROWS);
     });
 
@@ -548,6 +562,21 @@ describe('TETR.IO Replay', () => {
         operations.replay.openInEditor();
 
         operations.inputReplay.gauge().should('have.attr', 'data-value', GAUGE_ROWS);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        operations.inputReplay.fieldGaugeSegments()
+            .should('have.length', 1)
+            .and('have.attr', 'data-rows', GAUGE_ROWS);
+        operations.inputReplay.fieldGaugeBar().then(($bar) => {
+            operations.inputReplay.fieldGaugeSegments().then(($segments) => {
+                const bar = $bar[0].getBoundingClientRect();
+                const segment = $segments[0].getBoundingClientRect();
+                expect(segment.bottom).to.be.closeTo(bar.bottom - 1, 0.5);
+                cy.get(datatest('editor-field-frame')).then(($field) => {
+                    const cellHeight = ($field[0].getBoundingClientRect().width - 1) / 10;
+                    expect(segment.height).to.be.closeTo(cellHeight * Number(GAUGE_ROWS), 0.5);
+                });
+            });
+        });
         operations.inputReplay.rise().should('have.attr', 'data-value', `${GAUGE_HOLE_COLUMN}:1`);
         operations.inputReplay.b2b().should('exist');
         operations.inputReplay.ren().should('exist');
@@ -555,6 +584,8 @@ describe('TETR.IO Replay', () => {
         // 元リプレイと同じく次lockはライン消去なし。cap内の5行が1手で同時に上がる。
         operations.mode.piece.harddrop();
         operations.inputReplay.gauge().should('have.attr', 'data-value', '0');
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
+        operations.inputReplay.fieldGaugeSegments().should('not.exist');
         operations.inputReplay.rise().should('have.attr', 'data-value', '');
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
     });

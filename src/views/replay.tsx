@@ -375,13 +375,10 @@ const playingPhase = (state: State, actions: Actions) => {
     const showOpponent = layout.showOpponent && opponentPoint !== undefined;
     const isWide = layout.mode === 'wide';
 
-    const opponentBasis = state.replay.cursor.stepBasis === 'opponent' && opponent !== undefined;
-    const basisPlayer = opponentBasis ? opponent! : player;
-    const basisPointIndex = opponentBasis
-        ? state.replay.cursor.opponentIndex : state.replay.cursor.selfIndex;
-    // 手番停止（接地直前）が効くのは基準側だけ。もう一方はフリーカーソルのまま。
-    const selfParked = state.replay.cursor.turnStop && !opponentBasis;
-    const opponentParked = state.replay.cursor.turnStop && opponentBasis;
+    const basisPointIndex = state.replay.cursor.selfIndex;
+    // 手番停止（接地直前）は常に自陣側だけに適用する。
+    const selfParked = state.replay.cursor.turnStop;
+    const opponentParked = false;
 
     return (
         <div
@@ -563,8 +560,7 @@ const playingPhase = (state: State, actions: Actions) => {
                 state, actions, stats,
                 endFrame: getReplayEndFrame(state),
                 canStepBack: 0 < basisPointIndex,
-                canStepForward: basisPointIndex < lastPointIndex(basisPlayer),
-                hasOpponent: opponent !== undefined,
+                canStepForward: basisPointIndex < lastPointIndex(player),
                 garbagePlayer: showGarbage ? player : undefined,
                 markerWidth: layout.containerMaxWidth - 32,
             })}

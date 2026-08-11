@@ -39,6 +39,21 @@ describe('Cold Clear menu', () => {
         cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
             .each(block => expect(block.attr('visible')).to.equal('true'));
 
+        cy.get('[datatest^="input-ai-guide-block-"]').then($blocks => {
+            const placement = [...$blocks].map(block => ({
+                x: block.getAttribute('x'),
+                y: block.getAttribute('y'),
+            }));
+            cy.get(datatest('tray-piece-hold')).click();
+            cy.get(datatest('btn-input-ai-guide'))
+                .should('have.attr', 'data-status', 'ready');
+            cy.get('[datatest^="input-ai-guide-block-"]').each((block, index) => {
+                expect(block.attr('visible')).to.equal('true');
+                expect(block[0].getAttribute('x')).to.equal(placement[index].x);
+                expect(block[0].getAttribute('y')).to.equal(placement[index].y);
+            });
+        });
+
         operations.mode.piece.harddrop();
         cy.get('[datatest^="input-ai-guide-block-"]')
             .each(block => expect(block.attr('visible')).not.to.equal('true'));

@@ -351,6 +351,52 @@ describe('coldClearActions run isolation', () => {
         expect(ColdClearWrapper).toHaveBeenCalledTimes(1);
     });
 
+    test('INPUT AI guide keeps the ready placement across hold swaps', () => {
+        const setCommentText = jest.fn(({ pageIndex, text }) => (state: any) => {
+            state.fumen.pages[pageIndex].comment.text = text;
+            return { fumen: state.fumen };
+        });
+        const spawnPiece = jest.fn(({ piece }) => (state: any) => {
+            state.fumen.pages[state.fumen.currentIndex].piece = {
+                type: piece,
+                rotation: Rotation.Spawn,
+                coordinate: { x: 4, y: 0 },
+            };
+            return { fumen: state.fumen };
+        });
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: '#Q=[S](T)LZJI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        state.coldClear.inputGuide = {
+            enabled: true,
+            status: 'ready',
+            runId: 1,
+            positionKey: 'before-hold',
+            move: {
+                type: Piece.S,
+                rotation: Rotation.Spawn,
+                coordinate: { x: 4, y: 0 },
+            },
+            usedHold: true,
+        };
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state) as any;
+
+        expect(result.coldClear.inputGuide.status).toBe('ready');
+        expect(result.coldClear.inputGuide.move).toEqual(state.coldClear.inputGuide.move);
+        expect(result.coldClear.inputGuide.usedHold).toBe(false);
+        expect(result.coldClear.inputGuide.positionKey).not.toBe('before-hold');
+
+        const heldState = { ...state, ...result };
+        expect(coldClearActions.syncInputAiGuide()(heldState)).toBeUndefined();
+        expect(ColdClearWrapper).not.toHaveBeenCalled();
+    });
+
     test('startColdClearSearch returns new runId', () => {
         const state = makeColdClearState();
         const result = coldClearActions.startColdClearSearch()(state);

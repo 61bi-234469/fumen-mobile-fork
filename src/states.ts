@@ -168,7 +168,6 @@ export type ReplaySpeed = 0.25 | 0.5 | 1 | 2 | 4;
 export const REPLAY_SPEEDS: ReplaySpeed[] = [0.25, 0.5, 1, 2, 4];
 export const DEFAULT_REPLAY_SPEED: ReplaySpeed = 1;
 export const DEFAULT_REPLAY_SHOW_OPPONENT = true;
-export const DEFAULT_REPLAY_SHOW_GARBAGE = true;
 
 // Cold Clear によるリプレイ解析（手評価グラフ）。結果は永続化しない。
 export type ReplayAnalysisStatus = 'idle' | 'running' | 'done' | 'aborted' | 'failed';
@@ -237,10 +236,10 @@ export interface ReplayState {
         status: AnimationState;
         speed: ReplaySpeed;
     };
+    // 先頭／末尾への大きなジャンプだけを誤タッチから保護する。永続化しない。
+    endpointJumpLocked: boolean;
     view: {
         showOpponent: boolean;
-        // FR-40〜45 の表示可否（NFR-08）。切り出しのゲージ保持（FR-54）はこれに連動しない。
-        showGarbage: boolean;
     };
     analysis: ReplayAnalysisState;
     error?: { stage: string; message: string };
@@ -266,9 +265,9 @@ export const initialReplayState: ReplayState = {
         status: AnimationState.Pause,
         speed: DEFAULT_REPLAY_SPEED,
     },
+    endpointJumpLocked: false,
     view: {
         showOpponent: DEFAULT_REPLAY_SHOW_OPPONENT,
-        showGarbage: DEFAULT_REPLAY_SHOW_GARBAGE,
     },
     analysis: initialReplayAnalysisState,
     error: undefined,

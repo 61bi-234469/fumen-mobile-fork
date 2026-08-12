@@ -18,7 +18,6 @@ const createActions = () => ({
     setColdClearThinkMs: jest.fn(),
     setInputAiGuideEnabled: jest.fn(),
     setReplayShowOpponent: jest.fn(),
-    setReplayShowGarbage: jest.fn(),
     setReplayAnalysisThinkMs: jest.fn(),
     setTreeState: jest.fn(),
 });
@@ -47,7 +46,6 @@ describe('restoreViewSettings', () => {
             coldClearThinkMs: 500,
             coldClearInputGuideEnabled: true,
             replayShowOpponent: false,
-            replayShowGarbage: false,
             replayAnalysisThinkMs: 200,
         });
 
@@ -68,7 +66,6 @@ describe('restoreViewSettings', () => {
         expect(actions.setColdClearThinkMs).toHaveBeenCalledWith({ thinkMs: 500, persist: false });
         expect(actions.setInputAiGuideEnabled).toHaveBeenCalledWith({ enabled: true, persist: false });
         expect(actions.setReplayShowOpponent).toHaveBeenCalledWith({ showOpponent: false, persist: false });
-        expect(actions.setReplayShowGarbage).toHaveBeenCalledWith({ showGarbage: false, persist: false });
         expect(actions.setReplayAnalysisThinkMs).toHaveBeenCalledWith({ thinkMs: 200, persist: false });
         expect(actions.setTreeState).toHaveBeenCalledWith({
             operationScope: 'descendants',

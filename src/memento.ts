@@ -319,7 +319,6 @@ export interface ViewSettings {
     coldClearInputGuideEnabled: boolean;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
-    replayShowGarbage: boolean;
     replayAnalysisThinkMs: number;
 }
 
@@ -444,7 +443,6 @@ export const localStorageWrapper = {
             coldClearInputGuideEnabled: safer.boolean(obj.coldClearInputGuideEnabled),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
-            replayShowGarbage: safer.boolean(obj.replayShowGarbage),
             replayAnalysisThinkMs: safer.number(obj.replayAnalysisThinkMs),
         };
     },

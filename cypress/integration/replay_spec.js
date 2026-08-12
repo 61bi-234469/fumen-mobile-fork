@@ -95,6 +95,36 @@ describe('TETR.IO Replay', () => {
         expectFumen(TERMINAL_FUMEN);
     });
 
+    it('supports keyboard transport and protects endpoint jumps with a lock', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        operations.replay.pressRight();
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+        operations.replay.pressLeft();
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+
+        cy.get(datatest('btn-replay-endpoint-lock'))
+            .should('have.attr', 'aria-pressed', 'false');
+        operations.replay.endpointLock();
+        cy.get(datatest('btn-replay-endpoint-lock'))
+            .should('have.attr', 'aria-pressed', 'true')
+            .and('have.attr', 'data-locked', 'true');
+        cy.get(datatest('btn-replay-first')).should('have.class', 'disabled')
+            .and('have.attr', 'data-endpoint-locked', 'true');
+        cy.get(datatest('btn-replay-last')).should('have.class', 'disabled')
+            .and('have.attr', 'data-endpoint-locked', 'true');
+
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+        operations.replay.next();
+        cy.get(datatest('replay-lock-counter')).should('contain', `1 / ${PLAYER_A_LOCKS}`);
+
+        operations.replay.pressSpace();
+        cy.get(datatest('btn-replay-play-pause')).find('i').should('contain', 'pause');
+        operations.replay.pressSpace();
+        cy.get(datatest('btn-replay-play-pause')).find('i').should('contain', 'play_arrow');
+    });
+
     it('inserts as a new page and opens the INPUT layout without overwriting edits', () => {
         visit({ mode: 'edit' });
 
@@ -551,8 +581,11 @@ describe('TETR.IO Replay', () => {
         cy.get(datatest('replay-time-label')).should('contain', KILLER_SENDER_TIME);
     });
 
-    it('remembers that the garbage display is hidden (NFR-08)', () => {
+    it('always shows garbage information and ignores the former saved visibility setting', () => {
         cy.clearLocalStorage();
+        cy.window().then((win) => {
+            win.localStorage.setItem('view-settings@1', JSON.stringify({ replayShowGarbage: false }));
+        });
         startPlaying();
 
         operations.replay.seek(GAUGE_FRAME);
@@ -560,21 +593,7 @@ describe('TETR.IO Replay', () => {
         operations.replay.risePreview().should('exist');
         cy.get(datatest('replay-garbage-markers')).should('exist');
 
-        operations.replay.toggleGarbage();
-        operations.replay.gauge('self').should('not.exist');
-        operations.replay.gauge('opponent').should('not.exist');
-        operations.replay.risePreview().should('not.exist');
-        cy.get(datatest('replay-garbage-markers')).should('not.exist');
-        // P2 と同じ見た目に戻るだけで、盤面は消えない
         operations.replay.board('self').should('exist');
-
-        // 再訪問しても消えたまま（localStorage 経由の復元）
-        startPlaying({ reload: true });
-        operations.replay.seek(GAUGE_FRAME);
-        operations.replay.gauge('self').should('not.exist');
-
-        operations.replay.toggleGarbage();
-        operations.replay.gauge('self').should('exist');
     });
 
     it('carries the gauge into the exported page (FR-54)', () => {
@@ -665,19 +684,6 @@ describe('TETR.IO Replay', () => {
         operations.replay.openInEditor();
 
         expectFumen(LOCK1_FUMEN);
-    });
-
-    // §7-4: 表示の好みと成果物の内容は別の関心事
-    it('exports the same page whether or not the garbage display is on (FR-54)', () => {
-        cy.clearLocalStorage();
-        startPlaying();
-
-        operations.replay.toggleGarbage();
-        operations.replay.gauge('self').should('not.exist');
-        operations.replay.seek(GAUGE_FRAME);
-        operations.replay.openInEditor();
-
-        expectFumen(GAUGE_FUMEN);
     });
 
     it('takes the gauge from the swapped-in side (FR-11 x FR-54)', () => {

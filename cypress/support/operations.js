@@ -997,6 +997,10 @@ export const operations = {
         prev: () => cy.get(datatest('btn-replay-prev-lock')).click(),
         first: () => cy.get(datatest('btn-replay-first')).click(),
         last: () => cy.get(datatest('btn-replay-last')).click(),
+        endpointLock: () => cy.get(datatest('btn-replay-endpoint-lock')).click(),
+        pressLeft: () => cy.get('body').trigger('keydown', { code: 'ArrowLeft' }),
+        pressRight: () => cy.get('body').trigger('keydown', { code: 'ArrowRight' }),
+        pressSpace: () => cy.get('body').trigger('keydown', { code: 'Space' }),
         openInEditor: () => cy.get(datatest('btn-replay-open-editor')).click(),
         backToSelect: () => cy.get(datatest('btn-replay-back-select')).click(),
         reset: () => cy.get(datatest('btn-replay-reset')).click(),
@@ -1033,7 +1037,6 @@ export const operations = {
         // 死因バッジ（FR-45）とその地点へのジャンプ
         killer: () => cy.get(datatest('replay-killer')),
         killerSeek: () => cy.get(datatest('btn-replay-killer-seek')).click(),
-        toggleGarbage: () => cy.get(datatest('btn-replay-toggle-garbage')).click(),
         // Cold Clear による手評価解析
         analysis: {
             panel: () => cy.get(datatest('replay-analysis-panel')),

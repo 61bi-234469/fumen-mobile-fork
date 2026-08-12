@@ -49,7 +49,6 @@ describe('view settings tree operation scope migration', () => {
             coldClearInputGuideEnabled: true,
             replaySelfPlayer: null,
             replayShowOpponent: true,
-            replayShowGarbage: true,
             replayAnalysisThinkMs: 100,
         });
 
@@ -81,21 +80,14 @@ describe('view settings tree operation scope migration', () => {
         expect(localStorageWrapper.loadViewSettings().replayShowOpponent).toBeUndefined();
     });
 
-    // P3 / NFR-08: ガベージ表示の可否
-    test('saves and restores the garbage visibility', () => {
-        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowGarbage: false }));
-        expect(localStorageWrapper.loadViewSettings().replayShowGarbage).toBe(false);
-
-        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowGarbage: true }));
-        expect(localStorageWrapper.loadViewSettings().replayShowGarbage).toBe(true);
-    });
-
-    test('rejects a non-boolean garbage visibility so the default stays in effect', () => {
-        localStorage.setItem('view-settings@1', JSON.stringify({ replayShowGarbage: 'yes' }));
-        expect(localStorageWrapper.loadViewSettings().replayShowGarbage).toBeUndefined();
-
-        localStorage.setItem('view-settings@1', JSON.stringify({}));
-        expect(localStorageWrapper.loadViewSettings().replayShowGarbage).toBeUndefined();
+    test('ignores the removed garbage visibility setting while preserving known settings', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({
+            replayShowGarbage: false,
+            replayShowOpponent: false,
+        }));
+        const loaded = localStorageWrapper.loadViewSettings();
+        expect(loaded.replayShowOpponent).toBe(false);
+        expect((loaded as any).replayShowGarbage).toBeUndefined();
     });
 
     test('loads a valid PIECE layout and rejects anything else', () => {

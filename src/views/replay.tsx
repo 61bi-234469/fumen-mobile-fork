@@ -358,14 +358,12 @@ const playingPhase = (state: State, actions: Actions) => {
         ? opponent.locks[opponentPoint.index - 1] : undefined;
     const guideLineColor = state.fumen.guideLineColor;
 
-    // ガベージ表示（NFR-08）。オフにするとゲージ・予告・マーカー・死因がすべて消え、
-    // P2 と同じ見た目に戻る。切り出しのゲージ保持（FR-54）はこれに連動しない（§7-4）。
-    const showGarbage = state.replay.view.showGarbage;
-    const selfGarbage = showGarbage ? getReplaySelfGarbage(state) : undefined;
-    const opponentGarbage = showGarbage ? getReplayOpponentGarbage(state) : undefined;
-    const killer = showGarbage ? getReplayKiller(state) : undefined;
+    // ガベージ情報は常時表示する。Replay→INPUT切り出しの内容とも独立している。
+    const selfGarbage = getReplaySelfGarbage(state);
+    const opponentGarbage = getReplayOpponentGarbage(state);
+    const killer = getReplayKiller(state);
     // 終端で死因の攻撃が特定できないとき（topout など）は理由の文字列だけを出す（§7-4）
-    const terminalReason = showGarbage && selfPoint.kind === 'terminal'
+    const terminalReason = selfPoint.kind === 'terminal'
         && player.terminal.reason !== 'winner'
         ? player.terminal.reason : undefined;
 
@@ -428,24 +426,6 @@ const playingPhase = (state: State, actions: Actions) => {
                                 : i18n.Replay.Playing.ShowOpponent()}
                         </a>
                     ) : undefined}
-                    <a
-                        href="#"
-                        key="btn-replay-toggle-garbage"
-                        datatest="btn-replay-toggle-garbage"
-                        className="btn-flat"
-                        style={style({
-                            color: '#555', fontSize: px(11), padding: '0 6px',
-                            textTransform: 'none', whiteSpace: 'nowrap',
-                        })}
-                        onclick={(e: MouseEvent) => {
-                            e.preventDefault();
-                            actions.toggleReplayGarbage();
-                        }}
-                    >
-                        {showGarbage
-                            ? i18n.Replay.Playing.HideGarbage()
-                            : i18n.Replay.Playing.ShowGarbage()}
-                    </a>
                     {opponent !== undefined ? (
                         <a
                             href="#"
@@ -561,7 +541,7 @@ const playingPhase = (state: State, actions: Actions) => {
                 endFrame: getReplayEndFrame(state),
                 canStepBack: 0 < basisPointIndex,
                 canStepForward: basisPointIndex < lastPointIndex(player),
-                garbagePlayer: showGarbage ? player : undefined,
+                garbagePlayer: player,
                 markerWidth: layout.containerMaxWidth - 32,
             })}
 

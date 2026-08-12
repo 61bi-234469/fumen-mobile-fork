@@ -32,6 +32,8 @@ describe('clipboard insert shortcut', () => {
     let nextPage: jest.Mock;
     let undo: jest.Mock;
     let toggleSpawnMinoAndBlocks: jest.Mock;
+    let stepReplayLock: jest.Mock;
+    let toggleReplayPlayback: jest.Mock;
 
     beforeAll(() => {
         initShortcutHandlers(() => state, () => actions);
@@ -56,6 +58,8 @@ describe('clipboard insert shortcut', () => {
         nextPage = jest.fn();
         undo = jest.fn();
         toggleSpawnMinoAndBlocks = jest.fn();
+        stepReplayLock = jest.fn();
+        toggleReplayPlayback = jest.fn();
         state = {
             modal: {
                 append: false,
@@ -129,6 +133,8 @@ describe('clipboard insert shortcut', () => {
             selectEditorPalette,
             toggleSpawnMinoAndBlocks,
             undo,
+            stepReplayLock,
+            toggleReplayPlayback,
         } as unknown as Actions;
     });
 
@@ -162,6 +168,10 @@ describe('clipboard insert shortcut', () => {
     const dispatchMinoBlockToggleShortcut = () => {
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB', bubbles: true }));
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB', bubbles: true }));
+    };
+
+    const dispatchReplayShortcut = (code: 'ArrowLeft' | 'ArrowRight' | 'Space', options: any = {}) => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, ...options }));
     };
 
     test('KeyB toggles the spawn mino and paint blocks on the editor screen', () => {
@@ -347,5 +357,35 @@ describe('clipboard insert shortcut', () => {
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyZ', ctrlKey: true, bubbles: true }));
 
         expect(undo).not.toHaveBeenCalled();
+    });
+
+    describe('Replay fixed shortcuts', () => {
+        beforeEach(() => {
+            state.mode.screen = Screens.Replay;
+            (state as any).replay = { phase: 'playing' };
+        });
+
+        test('ArrowLeft and ArrowRight step one replay point', () => {
+            dispatchReplayShortcut('ArrowLeft');
+            dispatchReplayShortcut('ArrowRight');
+
+            expect(stepReplayLock).toHaveBeenNthCalledWith(1, { step: -1 });
+            expect(stepReplayLock).toHaveBeenNthCalledWith(2, { step: 1 });
+        });
+
+        test('Space toggles replay playback', () => {
+            dispatchReplayShortcut('Space');
+            expect(toggleReplayPlayback).toHaveBeenCalledTimes(1);
+        });
+
+        test('ignores repeats, modifiers, and non-playing replay phases', () => {
+            dispatchReplayShortcut('ArrowLeft', { repeat: true });
+            dispatchReplayShortcut('ArrowRight', { ctrlKey: true });
+            state.replay.phase = 'select';
+            dispatchReplayShortcut('Space');
+
+            expect(stepReplayLock).not.toHaveBeenCalled();
+            expect(toggleReplayPlayback).not.toHaveBeenCalled();
+        });
     });
 });

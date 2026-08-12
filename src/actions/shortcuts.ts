@@ -271,6 +271,27 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 入力フォーカス中は無効
     if (isInputFocused()) return;
 
+    // Replayは編集ショートカットを持たない固定操作画面。キーリピートで大量に手番が
+    // 動かないよう、物理キーの最初のkeydownだけを受け付ける。
+    if (screen === Screens.Replay && state.replay.phase === 'playing'
+        && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && !event.repeat) {
+        if (event.code === 'ArrowLeft') {
+            event.preventDefault();
+            actions.stepReplayLock({ step: -1 });
+            return;
+        }
+        if (event.code === 'ArrowRight') {
+            event.preventDefault();
+            actions.stepReplayLock({ step: 1 });
+            return;
+        }
+        if (event.code === 'Space') {
+            event.preventDefault();
+            actions.toggleReplayPlayback();
+            return;
+        }
+    }
+
     if (event.key === 'Escape') {
         if (state.editorUi.inspector !== 'none') {
             actions.closeEditorInspector();

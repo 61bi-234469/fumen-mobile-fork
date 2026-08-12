@@ -9,13 +9,14 @@ import { PlayerRoundIR } from '../../lib/ttrm/types';
 import { MARKER_BAND_HEIGHT, renderReplayTimelineMarkers } from './replay_timeline_markers';
 
 const transportButton = (
-    keyName: string, icon: string, disabled: boolean, onclick: () => void,
+    keyName: string, icon: string, disabled: boolean, onclick: () => void, locked: boolean = false,
 ) => (
     <a
         href="#"
         key={keyName}
         datatest={keyName}
-        className={`btn-flat ${disabled ? 'disabled' : ''}`}
+        className={`btn-flat ${disabled ? 'disabled' : ''} ${locked ? 'locked' : ''}`}
+        data-endpoint-locked={locked ? 'true' : undefined}
         style={style({ padding: '0 8px' })}
         onclick={(e: MouseEvent) => {
             e.preventDefault();
@@ -35,8 +36,8 @@ interface ReplayTransportProps {
     endFrame: number;
     canStepBack: boolean;
     canStepForward: boolean;
-    // ガベージ表示がオンのときだけ渡す。☢ の統計とマーカー帯の両方がこれで決まる
-    garbagePlayer?: PlayerRoundIR;
+    // ☢ の統計とマーカー帯の両方がこれで決まる
+    garbagePlayer: PlayerRoundIR;
     // タイムラインの実幅は取れないので、レイアウトが決めた最大幅を使う
     markerWidth: number;
 }
@@ -69,12 +70,8 @@ export const replayTransport = (
                 {/* pps / apm / B2B / Combo は盤面の左（HOLD 列）へ移した */}
                 <span key="stat-attack">↑ {stats.attack}</span>
                 {/* ☢ は TETR.IO の集計ではなくエンジン基準であることを示す印（§3-8） */}
-                {garbagePlayer !== undefined ? (
-                    <span key="stat-gauge" datatest="replay-stat-gauge">☢ {stats.gauge}</span>
-                ) : undefined}
-                {garbagePlayer !== undefined ? (
-                    <span key="stat-tanked" datatest="replay-stat-tanked">☢↓ {stats.tanked}</span>
-                ) : undefined}
+                <span key="stat-gauge" datatest="replay-stat-gauge">☢ {stats.gauge}</span>
+                <span key="stat-tanked" datatest="replay-stat-tanked">☢↓ {stats.tanked}</span>
             </div>
 
             <input
@@ -94,19 +91,17 @@ export const replayTransport = (
 
             {/* 被弾＝赤 / 相殺＝緑。受信は描かない（§7-4）。設置マーカーは 1.7px 間隔に
                 なって帯にしか見えないため対象外（§2） */}
-            {garbagePlayer !== undefined ? (
-                <img
-                    key="replay-garbage-markers"
-                    datatest="replay-garbage-markers"
-                    src={renderReplayTimelineMarkers(garbagePlayer, markerWidth, endFrame)}
-                    alt=""
-                    style={style({
-                        display: 'block',
-                        height: px(MARKER_BAND_HEIGHT),
-                        width: '100%',
-                    })}
-                />
-            ) : undefined}
+            <img
+                key="replay-garbage-markers"
+                datatest="replay-garbage-markers"
+                src={renderReplayTimelineMarkers(garbagePlayer, markerWidth, endFrame)}
+                alt=""
+                style={style({
+                    display: 'block',
+                    height: px(MARKER_BAND_HEIGHT),
+                    width: '100%',
+                })}
+            />
 
             <div
                 key="replay-time-label"
@@ -128,14 +123,40 @@ export const replayTransport = (
                     alignItems: 'center', display: 'flex', justifyContent: 'center', marginBottom: px(4),
                 })}
             >
-                {transportButton('btn-replay-first', 'first_page', !canStepBack, actions.replayFirstLock)}
+                {transportButton(
+                    'btn-replay-first', 'first_page', !canStepBack || state.replay.endpointJumpLocked,
+                    actions.replayFirstLock, state.replay.endpointJumpLocked)}
                 {transportButton('btn-replay-prev-lock', 'chevron_left', !canStepBack,
                                  () => actions.stepReplayLock({ step: -1 }))}
                 {transportButton('btn-replay-play-pause', playing ? 'pause' : 'play_arrow', false,
                                  actions.toggleReplayPlayback)}
                 {transportButton('btn-replay-next-lock', 'chevron_right', !canStepForward,
                                  () => actions.stepReplayLock({ step: 1 }))}
-                {transportButton('btn-replay-last', 'last_page', !canStepForward, actions.replayLastLock)}
+                {transportButton(
+                    'btn-replay-last', 'last_page', !canStepForward || state.replay.endpointJumpLocked,
+                    actions.replayLastLock, state.replay.endpointJumpLocked)}
+                <a
+                    href="#"
+                    key="btn-replay-endpoint-lock"
+                    datatest="btn-replay-endpoint-lock"
+                    aria-label={state.replay.endpointJumpLocked
+                        ? i18n.Replay.Playing.UnlockEndpoints() : i18n.Replay.Playing.LockEndpoints()}
+                    aria-pressed={state.replay.endpointJumpLocked ? 'true' : 'false'}
+                    data-locked={state.replay.endpointJumpLocked ? 'true' : 'false'}
+                    className={`btn-flat ${state.replay.endpointJumpLocked ? 'active' : ''}`}
+                    style={style({
+                        color: state.replay.endpointJumpLocked ? '#1565c0' : '#555',
+                        padding: '0 8px',
+                    })}
+                    onclick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        actions.toggleReplayEndpointJumpLock();
+                    }}
+                >
+                    <i className="material-icons">
+                        {state.replay.endpointJumpLocked ? 'lock' : 'lock_open'}
+                    </i>
+                </a>
 
                 <select
                     key="replay-speed-select"

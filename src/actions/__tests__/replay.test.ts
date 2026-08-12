@@ -42,7 +42,8 @@ jest.mock('../../states', () => ({
         selection: { roundIndex: 0, selfPlayerId: null },
         cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, stepBasis: 'self', turnStop: false },
         playback: { status: 'pause', speed: 1 },
-        view: { showOpponent: true, showGarbage: true },
+        endpointJumpLocked: false,
+        view: { showOpponent: true },
         analysis: {
             key: null,
             status: 'idle',
@@ -66,7 +67,6 @@ jest.mock('../../states', () => ({
     REPLAY_SPEEDS: [0.25, 0.5, 1, 2, 4],
     DEFAULT_REPLAY_SPEED: 1,
     DEFAULT_REPLAY_SHOW_OPPONENT: true,
-    DEFAULT_REPLAY_SHOW_GARBAGE: true,
 }));
 jest.mock('../../lib/ttrm/ReplayWorkerWrapper', () => {
     const start = jest.fn();
@@ -992,7 +992,7 @@ describe('replayActions', () => {
         });
 
         test('the setting survives a new import', () => {
-            const hidden = playingState(3, 1, {}, { view: { showOpponent: false, showGarbage: true } });
+            const hidden = playingState(3, 1, {}, { view: { showOpponent: false } });
             expect(replayActions.resetReplayImport()(hidden)!.replay!.view.showOpponent).toBeFalsy();
             expect(replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 },
@@ -1145,7 +1145,7 @@ describe('replayActions', () => {
                     ...withGarbage(2),
                     replay: {
                         ...withGarbage(2).replay,
-                        view: { showOpponent: true, showGarbage: false },
+                        view: { showOpponent: true },
                     },
                 } as State;
                 replayActions.openReplayInEditor()(hidden);
@@ -1155,34 +1155,32 @@ describe('replayActions', () => {
         });
     });
 
-    describe('garbage visibility (NFR-08)', () => {
-        test('toggling saves through persistViewSettings', () => {
-            (persistViewSettings as jest.Mock).mockClear();
+    describe('endpoint jump lock', () => {
+        test('toggles only during the playing phase', () => {
             const state = playingState(3, 1);
-            const result = replayActions.toggleReplayGarbage()(state)!;
-
-            expect(result.replay!.view.showGarbage).toBeFalsy();
-            expect(persistViewSettings).toHaveBeenCalledWith(state, { replayShowGarbage: false });
+            const locked = applyResult(state, replayActions.toggleReplayEndpointJumpLock()(state));
+            expect(locked.replay.endpointJumpLocked).toBeTruthy();
+            expect(replayActions.toggleReplayEndpointJumpLock()(locked)!
+                .replay!.endpointJumpLocked).toBeFalsy();
+            expect(replayActions.toggleReplayEndpointJumpLock()(createState({ phase: 'select' })))
+                .toBeUndefined();
         });
 
-        test('restoring from localStorage does not write back', () => {
-            (persistViewSettings as jest.Mock).mockClear();
-            const result = replayActions.setReplayShowGarbage(
-                { showGarbage: false, persist: false })(playingState(3, 1))!;
-
-            expect(result.replay!.view.showGarbage).toBeFalsy();
-            expect(persistViewSettings).not.toHaveBeenCalled();
+        test('blocks endpoint jumps but keeps single-step navigation available', () => {
+            const state = playingState(3, 1, {}, { endpointJumpLocked: true });
+            expect(replayActions.replayFirstLock()(state)).toBeUndefined();
+            expect(replayActions.replayLastLock()(state)).toBeUndefined();
+            expect(replayActions.stepReplayLock({ step: 1 })(state)!
+                .replay!.cursor.selfIndex).toEqual(2);
         });
 
-        // P2 §8 で踏んだ initialReplayState の全体置換と同じ罠
-        test('the setting survives a new import and a reset', () => {
-            const hidden = playingState(3, 1, {}, {
-                view: { showOpponent: true, showGarbage: false },
-            });
-            expect(replayActions.resetReplayImport()(hidden)!.replay!.view.showGarbage).toBeFalsy();
+        test('survives returning to selection but resets with a new import or reset', () => {
+            const locked = playingState(3, 1, {}, { endpointJumpLocked: true });
+            expect(replayActions.backToReplaySelect()(locked)!.replay!.endpointJumpLocked).toBeTruthy();
+            expect(replayActions.resetReplayImport()(locked)!.replay!.endpointJumpLocked).toBeFalsy();
             expect(replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 },
-            )(hidden)!.replay!.view.showGarbage).toBeFalsy();
+            )(locked)!.replay!.endpointJumpLocked).toBeFalsy();
         });
     });
 

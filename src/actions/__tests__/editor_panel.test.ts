@@ -91,7 +91,6 @@ describe('editorPanelActions', () => {
                 coldClearInputGuideEnabled: false,
                 replaySelfPlayer: null,
                 replayShowOpponent: true,
-                replayShowGarbage: true,
                 replayAnalysisThinkMs: 100,
             });
         });

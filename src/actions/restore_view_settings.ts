@@ -19,7 +19,6 @@ interface ViewSettingsRestorationActions {
     setColdClearThinkMs: (data: { thinkMs: number; persist: false }) => void;
     setInputAiGuideEnabled: (data: { enabled: boolean; persist: false }) => void;
     setReplayShowOpponent: (data: { showOpponent: boolean; persist: false }) => void;
-    setReplayShowGarbage: (data: { showGarbage: boolean; persist: false }) => void;
     setReplayAnalysisThinkMs: (data: { thinkMs: number; persist: false }) => void;
     setTreeState: (data: Partial<State['tree']>) => void;
 }
@@ -78,9 +77,6 @@ export const restoreViewSettings = (
     }
     if (settings.replayShowOpponent !== undefined) {
         actions.setReplayShowOpponent({ showOpponent: settings.replayShowOpponent, persist: false });
-    }
-    if (settings.replayShowGarbage !== undefined) {
-        actions.setReplayShowGarbage({ showGarbage: settings.replayShowGarbage, persist: false });
     }
     if (settings.replayAnalysisThinkMs !== undefined) {
         actions.setReplayAnalysisThinkMs({ thinkMs: settings.replayAnalysisThinkMs, persist: false });

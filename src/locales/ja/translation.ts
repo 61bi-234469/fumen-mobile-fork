@@ -307,8 +307,8 @@ export const resources = {
             Speed: '速度',
             Basis: '基準',
             Timeline: 'タイムライン',
-            ShowGarbage: 'ガベージを表示',
-            HideGarbage: 'ガベージを隠す',
+            LockEndpoints: '最初と最後への移動をロック',
+            UnlockEndpoints: '最初と最後への移動のロックを解除',
             Gauge: 'ゲージ',
             // 予告は当時見えていた情報ではなく、実際にせり上がった行の後知恵である
             RiseRow: 'せり上がり段',

@@ -80,9 +80,9 @@ const drawGraph = (moves: ReplayMoveEval[], width: number, endFrame: number): st
     const scale = lossScaleOf(moves);
     const totalLoss = moves.reduce((sum, move) => sum + (move.loss ?? 0), 0);
 
-    // 基線
+    // 損失（マイナス評価）は天井を基準に下へ伸ばす。
     ctx.fillStyle = BASE_COLOR;
-    ctx.fillRect(0, height - 1, width, 1);
+    ctx.fillRect(0, 0, width, 1);
 
     // 累積損失（傾向線）。総損失が 0 なら描かない
     if (totalLoss > 0) {
@@ -91,14 +91,14 @@ const drawGraph = (moves: ReplayMoveEval[], width: number, endFrame: number): st
         ctx.lineWidth = 1;
         ctx.beginPath();
         let cumulative = 0;
-        ctx.moveTo(0, height - 1);
+        ctx.moveTo(0, 1);
         for (const move of moves) {
             if (move.status === 'pending') {
                 continue;
             }
             cumulative += move.loss ?? 0;
             const x = frameToX(move.frame, endFrame, width);
-            ctx.lineTo(x, height - 1 - cumulative / totalLoss * (height - 2));
+            ctx.lineTo(x, 1 + cumulative / totalLoss * (height - 2));
         }
         ctx.stroke();
         ctx.globalAlpha = 1;
@@ -111,19 +111,19 @@ const drawGraph = (moves: ReplayMoveEval[], width: number, endFrame: number): st
         const x = Math.min(width - BAR_WIDTH, Math.max(0, frameToX(move.frame, endFrame, width)));
 
         if (move.status === 'unmatched') {
-            // 圏外は損失が測れない。上端に固定の欠測マーカーを出す
+            // 圏外は損失が測れない。損失棒と区別して下端に固定の欠測マーカーを出す
             ctx.fillStyle = UNMATCHED_COLOR;
-            ctx.fillRect(x, 0, BAR_WIDTH, 6);
+            ctx.fillRect(x, height - 6, BAR_WIDTH, 6);
             continue;
         }
         if (move.status === 'failed') {
             ctx.fillStyle = FAILED_COLOR;
-            ctx.fillRect(x, 0, BAR_WIDTH, 6);
+            ctx.fillRect(x, height - 6, BAR_WIDTH, 6);
             continue;
         }
         if (move.status === 'skipped') {
             ctx.fillStyle = BASE_COLOR;
-            ctx.fillRect(x, height - 3, BAR_WIDTH, 2);
+            ctx.fillRect(x, 1, BAR_WIDTH, 2);
             continue;
         }
 
@@ -131,7 +131,7 @@ const drawGraph = (moves: ReplayMoveEval[], width: number, endFrame: number): st
         const ratio = Math.min(1, loss / scale);
         const barHeight = Math.max(MIN_BAR_HEIGHT, Math.round(ratio * (height - 2)));
         ctx.fillStyle = GRADE_COLORS[gradeOf(loss, move.rank, scale)] ?? BASE_COLOR;
-        ctx.fillRect(x, height - 1 - barHeight, BAR_WIDTH, barHeight);
+        ctx.fillRect(x, 1, BAR_WIDTH, barHeight);
     }
 
     return canvas.toDataURL('image/png');

@@ -200,6 +200,7 @@ export interface ReplayActions {
     startReplayPlayback: () => action;
     backToReplaySelect: () => action;
     resetReplayImport: () => action;
+    toggleReplayEndpointJumpLock: () => action;
     stepReplayLock: (data: { step: number }) => action;
     replayFirstLock: () => action;
     replayLastLock: () => action;
@@ -208,8 +209,6 @@ export interface ReplayActions {
     swapReplaySides: () => action;
     toggleReplayOpponent: () => action;
     setReplayShowOpponent: (data: { showOpponent: boolean, persist?: boolean }) => action;
-    toggleReplayGarbage: () => action;
-    setReplayShowGarbage: (data: { showGarbage: boolean, persist?: boolean }) => action;
     setReplaySpeed: (data: { speed: ReplaySpeed }) => action;
     toggleReplayPlayback: () => action;
     pauseReplayPlayback: () => action;
@@ -415,6 +414,17 @@ export const replayActions: Readonly<ReplayActions> = {
             },
         };
     },
+    toggleReplayEndpointJumpLock: () => (state): NextState => {
+        if (state.replay.phase !== 'playing') {
+            return undefined;
+        }
+        return {
+            replay: {
+                ...state.replay,
+                endpointJumpLocked: !state.replay.endpointJumpLocked,
+            },
+        };
+    },
     // 基準プレイヤー（FR-22）のポイント空間を 1 つ進む／戻る。
     stepReplayLock: ({ step }) => (state): NextState => {
         if (state.replay.phase !== 'playing' || step === 0) {
@@ -433,14 +443,14 @@ export const replayActions: Readonly<ReplayActions> = {
     },
     // P2 §7-2 の意図的変更: 先頭は「手番 1」ではなく「開始（設置 0）」。
     replayFirstLock: () => (state): NextState => {
-        if (state.replay.phase !== 'playing') {
+        if (state.replay.phase !== 'playing' || state.replay.endpointJumpLocked) {
             return undefined;
         }
         return moveToPointIndex(state, 0);
     },
     replayLastLock: () => (state): NextState => {
         const player = stepBasisPlayer(state);
-        if (state.replay.phase !== 'playing' || player === undefined) {
+        if (state.replay.phase !== 'playing' || state.replay.endpointJumpLocked || player === undefined) {
             return undefined;
         }
         return moveToPointIndex(state, lastPointIndex(player));
@@ -518,23 +528,6 @@ export const replayActions: Readonly<ReplayActions> = {
             replay: {
                 ...state.replay,
                 view: { ...state.replay.view, showOpponent },
-            },
-        };
-    },
-    toggleReplayGarbage: () => (state): NextState => {
-        return replayActions.setReplayShowGarbage({
-            showGarbage: !state.replay.view.showGarbage,
-        })(state);
-    },
-    // 表示の好みだけを切り替える。切り出しのゲージ保持（FR-54）は連動させない（§7-4）。
-    setReplayShowGarbage: ({ showGarbage, persist = true }) => (state): NextState => {
-        if (persist) {
-            persistViewSettings(state, { replayShowGarbage: showGarbage });
-        }
-        return {
-            replay: {
-                ...state.replay,
-                view: { ...state.replay.view, showGarbage },
             },
         };
     },
@@ -770,8 +763,7 @@ export const getReplayKiller = (state: State): KillerGarbage | undefined => {
 };
 
 // FR-54。ゲージがある地点でだけ、次にせり上がる 1 行を切り出しに載せる。
-// 表示トグル（view.showGarbage）には連動させない ―― 画面を整理したら fumen の
-// 中身が変わっていた、を避けるため（§7-4）。
+// ガベージ表示は常時有効だが、画面上の情報量とfumenの中身は独立させる。
 export const getReplayExportRise = (
     state: State,
 ): { column: number, size: number } | undefined => {

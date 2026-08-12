@@ -12,9 +12,11 @@ const move = (
 ): ReplayMoveEval => ({ index, frame, status, loss, rank });
 
 describe('replay_eval_graph', () => {
+    let context: any;
+
     beforeAll(() => {
         // jsdom の canvas は 2d コンテキストを持たないため、必要な API だけ差し替える
-        (HTMLCanvasElement.prototype as any).getContext = () => ({
+        context = {
             scale: jest.fn(),
             fillRect: jest.fn(),
             beginPath: jest.fn(),
@@ -25,7 +27,8 @@ describe('replay_eval_graph', () => {
             strokeStyle: '',
             globalAlpha: 1,
             lineWidth: 1,
-        });
+        };
+        (HTMLCanvasElement.prototype as any).getContext = () => context;
         (HTMLCanvasElement.prototype as any).toDataURL = () => 'data:image/png;base64,stub';
     });
 
@@ -62,5 +65,25 @@ describe('replay_eval_graph', () => {
         // 範囲外でも端の手へ丸める
         expect(moveAtGraphX(moves, 9999, 300, 1200)!.index).toEqual(3);
         expect(moveAtGraphX([], 10, 300, 1200)).toBeUndefined();
+    });
+
+    test('損失を上端基線から下向きに描く', () => {
+        context.fillRect.mockClear();
+        context.moveTo.mockClear();
+        context.lineTo.mockClear();
+        renderReplayEvalGraph([
+            move(1, 0, 'ok', 40, 5),
+            move(2, 1200, 'unmatched'),
+            move(3, 1200, 'skipped'),
+        ], 300, 1200);
+
+        // 基線は天井、損失棒はその直下から下向き。
+        expect(context.fillRect).toHaveBeenCalledWith(0, 0, 300, 1);
+        expect(context.fillRect).toHaveBeenCalledWith(0, 1, 3, 54);
+        // unmatched は下端、skipped は上端側の印。
+        expect(context.fillRect).toHaveBeenCalledWith(297, 50, 3, 6);
+        expect(context.fillRect).toHaveBeenCalledWith(297, 1, 3, 2);
+        expect(context.moveTo).toHaveBeenCalledWith(0, 1);
+        expect(context.lineTo).toHaveBeenCalledWith(0, 55);
     });
 });

@@ -362,21 +362,6 @@ export const operations = {
                 cy.get(datatest('btn-piece-empty')).click();
                 cy.wait(100);
             },
-            click: (x, y) => {
-                operations.mode.block.click(x, y);
-            },
-            dragToRight: ({ from, to }, y) => {
-                operations.mode.block.dragToRight({ from, to }, y);
-            },
-            dragHoldStart: ({ from, to }, y) => {
-                operations.mode.block.dragHoldStart({ from, to }, y);
-            },
-            dragHoldEnd: (x, y) => {
-                operations.mode.block.dragHoldEnd(x, y);
-            },
-            dragToUp: (x, { from, to }) => {
-                operations.mode.block.dragToUp(x, { from, to });
-            },
         },
         utils: {
             open: ({ home = true } = {}) => {
@@ -513,9 +498,6 @@ export const operations = {
                 ensurePieceLayout('select');
                 cy.get(datatest('btn-piece-gray')).click();
             },
-            move: () => {
-                cy.get(datatest('tray-piece-move-left')).should('be.visible');
-            },
             draw: () => {
                 ensurePieceLayout('select');
                 cy.get(datatest('btn-piece-t')).click();
@@ -582,16 +564,6 @@ export const operations = {
                 // pointer.  Start from the spawn area so the helper exercises
                 // the same drag path as a user placing a piece on the field.
                 operations.mode.block.drag({ x: 4, y: 20 }, { x, y });
-            },
-            lockToOn: () => {
-                operations.mode.flags.open({ home: false });
-                cy.get(datatest('btn-lock-flag-off')).click();
-                operations.mode.flags.close();
-            },
-            lockToOff: () => {
-                operations.mode.flags.open({ home: false });
-                cy.get(datatest('btn-lock-flag-on')).click();
-                operations.mode.flags.close();
             },
             spawn: {
                 T: () => {
@@ -995,15 +967,12 @@ export const operations = {
         },
         next: () => cy.get(datatest('btn-replay-next-lock')).click(),
         prev: () => cy.get(datatest('btn-replay-prev-lock')).click(),
-        first: () => cy.get(datatest('btn-replay-first')).click(),
         last: () => cy.get(datatest('btn-replay-last')).click(),
         endpointLock: () => cy.get(datatest('btn-replay-endpoint-lock')).click(),
         pressLeft: () => cy.get('body').trigger('keydown', { code: 'ArrowLeft' }),
         pressRight: () => cy.get('body').trigger('keydown', { code: 'ArrowRight' }),
         pressSpace: () => cy.get('body').trigger('keydown', { code: 'Space' }),
         openInEditor: () => cy.get(datatest('btn-replay-open-editor')).click(),
-        backToSelect: () => cy.get(datatest('btn-replay-back-select')).click(),
-        reset: () => cy.get(datatest('btn-replay-reset')).click(),
         // P2: 自陣盤面は replay-board-self に改名。相手側は replay-board-opponent。
         board: (side = 'self') => cy.get(datatest(`replay-board-${side}`)),
         active: (side = 'self') => cy.get(datatest(`replay-active-${side}`)),

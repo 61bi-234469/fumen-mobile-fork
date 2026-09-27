@@ -30,10 +30,6 @@ export enum Operation {
     Stock = 'stock',
 }
 
-export enum Action {
-    Block = 'block',
-}
-
 export enum FieldConstants {
     Width = 10,
     Height = 23,

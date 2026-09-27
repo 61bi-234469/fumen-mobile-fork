@@ -3,18 +3,10 @@ import {
     EditorInspector,
     PaintTool,
     PaletteSelection,
-    PieceAction,
-    PrimaryTool,
     State,
 } from '../states';
 import { PageFieldOperation, Pages } from './pages';
 import { hasAnyLiftableMino } from './spawn_mino_convert';
-
-export const getPrimaryTool = (state: State): PrimaryTool => state.editorUi.primaryTool;
-export const getPaintTool = (state: State): PaintTool => state.editorUi.paintTool;
-export const getPieceAction = (state: State): PieceAction => state.editorUi.pieceAction;
-export const getInspector = (state: State): EditorInspector => state.editorUi.inspector;
-export const getPaletteSelection = (state: State): PaletteSelection => state.editorUi.paletteSelection;
 
 // ツールやパレットの切り替えは通常インスペクタを閉じるが、「UTILSメニューを開いたままにする」設定の
 // ときは UTILS だけ残す。並行して通常操作するための設定なので、操作のたびに閉じては意味がないため。

@@ -32,11 +32,17 @@ yarn check-build-performance   # deploy.yml fails on the same precache budget
 ```
 
 All must pass. Additionally run the relevant Cypress specs (`.agents/skills/e2e/SKILL.md`)
-when the released changes touch a flow with E2E coverage; if local E2E is not runnable
-(GPU issue / timeout), verify the latest `dev-workflow` run on `develop` is green instead:
+when the released changes touch a flow with E2E coverage. If local E2E is not runnable
+(GPU issue / timeout), a green `dev-workflow` run may stand in only for the exact commit
+being released:
+
+1. Push `develop` first (see Procedure) so CI runs on the release commit.
+2. Wait for the `dev-workflow` run whose `headSha` equals `git rev-parse develop` to finish
+   with `conclusion: success`. A green run on an older `develop` commit does not count.
 
 ```bash
-gh run list --workflow dev-workflow.yaml --branch develop --limit 3
+git rev-parse develop
+gh run list --workflow dev-workflow.yaml --branch develop --limit 5 --json headSha,status,conclusion,url
 ```
 
 Apply any `gh` environment notes from `AGENTS.local.md` (gitignored, optional) to
@@ -52,8 +58,9 @@ every `gh` command in this skill.
 git config user.name
 git config user.email
 
-# push develop first if it has unpushed commits (needs its own user confirmation)
+# push develop first if it has unpushed commits (per AGENTS.md, no confirmation needed)
 git push origin develop
+# if local E2E was not runnable, wait here for the green dev-workflow run on this exact SHA
 
 git checkout main
 git pull origin main
@@ -62,7 +69,8 @@ git push origin main           # ← this deploys; confirm with the user immedia
 git checkout develop
 ```
 
-- Ask for explicit confirmation immediately before **each** push (develop and main).
+- Pushing `develop` needs no extra confirmation (AGENTS.md). Ask for explicit confirmation
+  immediately before the `main` push.
 - A push to `develop` starts `dev-workflow` and also `deploy.yml`, which republishes the
   preview and rebuilds production from the current `main`.
 - After pushing main, verify the deploy:

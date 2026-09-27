@@ -87,7 +87,7 @@
 - Add a persisted view setting: extend `ViewSettings` in `src/memento.ts`, write it through `persistViewSettings`, restore it in `src/actions/restore_view_settings.ts`, and cover it in `src/__tests__/memento_view_settings.test.ts`.
 - Add or rename a `datatest` selector: follow the Cypress rule in "Change And Test Rules" and run `yarn test e2e_selector_contract`.
 - Add a Cypress spec: add a row to `cypress/SPEC_MAP.md` and its measured seconds to `cypress/spec-timings.json`; `yarn test spec_timings_contract` checks the table.
-- Add or upgrade a dependency that ships in the app: record its license in `THIRD_PARTY_LICENSES.md`, and copy its license file into `dest/` when the build copies its assets directly.
+- Add or upgrade a dependency that ships in the app (bundled code or copied assets): record its license in `THIRD_PARTY_LICENSES.md` and add its license file to `shippedPackageLicenses` in `webpack.config.js`, which copies it to `dest/third_party/npm/`.
 - Rebuild the Cold Clear WASM: follow `third_party/cold-clear/README.md`, then update the checksums recorded there.
 
 ## Commands And CI

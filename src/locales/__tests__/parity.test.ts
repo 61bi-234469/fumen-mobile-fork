@@ -12,14 +12,20 @@ const flatten = (value: unknown, prefix = ''): string[] => {
 };
 
 // The legacy menu labels are English in both languages by design; ja falls back to en for them.
-const EN_ONLY = [/^Menu\.Title$/, /^Menu\.Build$/, /^Menu\.Buttons\./];
+// Listed one by one so that a newly added Menu key still needs a Japanese translation.
+const LEGACY_MENU_BUTTONS = [
+    'List', 'Tree', 'Readonly', 'Writable', 'Clipboard', 'FirstPage', 'LastPage', 'New', 'Open',
+    'Help', 'ShowComment', 'ReadonlyComment', 'WritableComment', 'PageSlider', 'ClearToEnd',
+    'ClearPast', 'Append', 'UserSettings', 'SavePlayfieldToImage', 'ForceReload',
+];
+const EN_ONLY = new Set(['Menu.Title', 'Menu.Build', ...LEGACY_MENU_BUTTONS.map(name => `Menu.Buttons.${name}`)]);
 
 describe('locale parity', () => {
     const enKeys = flatten(en);
     const jaKeys = flatten(ja);
 
     test('every English key has a Japanese translation', () => {
-        const missing = enKeys.filter(key => !jaKeys.includes(key) && !EN_ONLY.some(pattern => pattern.test(key)));
+        const missing = enKeys.filter(key => !jaKeys.includes(key) && !EN_ONLY.has(key));
         expect(missing).toEqual([]);
     });
 

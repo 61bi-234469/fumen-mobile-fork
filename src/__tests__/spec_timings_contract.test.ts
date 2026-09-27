@@ -9,7 +9,17 @@ const repoRoot = path.resolve(__dirname, '../..');
 const specRoot = path.join(repoRoot, 'cypress', 'integration');
 const timings = JSON.parse(fs.readFileSync(path.join(repoRoot, 'cypress', 'spec-timings.json'), 'utf8'));
 
-const specFiles = fs.readdirSync(specRoot).filter(name => name.endsWith('.js')).sort();
+// Same recursive range and basename keys as scripts/plan_cypress_shards.js.
+const listSpecs = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
+    .reduce<string[]>((files, entry) => {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            return files.concat(listSpecs(fullPath));
+        }
+        return entry.name.endsWith('.js') ? files.concat(entry.name) : files;
+    }, []);
+
+const specFiles = listSpecs(specRoot).sort();
 const timedSpecs = Object.keys(timings.specs).sort();
 
 describe('cypress/spec-timings.json', () => {

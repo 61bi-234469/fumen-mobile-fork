@@ -1,7 +1,7 @@
 /* tslint:disable:no-console */
 // Standing replacement for the throwaway "decode both fumens and compare pages" Jest that
 // got rewritten from scratch every time an E2E `expectFumen()` assertion failed (see
-// docs/notes/2026_07_22_e2e-ci-failure-investigation.md §8続き6, §14). Base64 substring comparison of
+// docs/notes/2026_07_22_e2e-ci-failure-investigation.md §8続き6, §14; local-only). Base64 substring comparison of
 // fumen strings lies — this decodes both and reports the semantic (page/field/piece) diff.
 //
 // Usage (skipped entirely unless FUMEN_A is set, so it never affects a normal `yarn test`):

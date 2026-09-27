@@ -124,7 +124,7 @@ describe('URL behavior', () => {
 
             // cy.visit はハッシュのみが異なるURLでは完全な再読み込みを行わないため、
             // 「別タブで新規に開く」を再現するには明示的な cy.reload() が必要
-            // (see docs/notes/2026_07_22_e2e-ci-failure-investigation.md:
+            // (see docs/notes/2026_07_22_e2e-ci-failure-investigation.md, local-only:
             // 一部 skip テストの hash collapse と同種の注意点)。
 
             // 画面指定なしのURLは受け取り側の初期画面設定(デフォルト: Reader)で開く

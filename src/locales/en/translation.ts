@@ -273,6 +273,7 @@
         },
         GrayAfterLineClear: 'Gray out with + button',
         ZoomReset: 'Reset zoom',
+        TreeDataTooLarge: 'The tree is too large to save. Shorten the first page comment or reduce pages, or the tree structure will be lost on reload.',
         DeleteNode: 'Delete page',
         DragHandle: 'Drag to move',
         DeleteToast: {

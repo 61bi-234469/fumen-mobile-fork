@@ -11,6 +11,9 @@ const COMMENT_TABLE =
     ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
 const MAX_COMMENT_CHAR_VALUE = COMMENT_TABLE.length + 1;
 
+// fumen v115 はコメント長を2桁の値で持つため、escape() 後の長さがこれを超えた分は切り捨てられる。
+export const FUMEN_COMMENT_MAX_ESCAPED_LENGTH = 4095;
+
 const shouldReportDecodeError = (): boolean => {
     if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
         return false;
@@ -383,7 +386,7 @@ export async function encode(inputPages: Page[], isAsync: boolean = false): Prom
         // コメントの更新
         if (currentPage.comment.text !== undefined && isComment) {
             const comment = escape(currentPage.comment.text);
-            const commentLength = Math.min(comment.length, 4095);
+            const commentLength = Math.min(comment.length, FUMEN_COMMENT_MAX_ESCAPED_LENGTH);
 
             allValues.push(commentLength, 2);
 

@@ -244,6 +244,7 @@ export const resources = {
         },
         GrayAfterLineClear: '+ボタンでグレー化',
         ZoomReset: 'ズームをリセット',
+        TreeDataTooLarge: 'ツリーが大きすぎて保存しきれません。先頭ページのコメントを短くするかページを減らさないと、再読み込み時にツリー構造が失われます。',
         DeleteNode: 'ページを削除',
         DragHandle: 'ドラッグして移動',
         DeleteToast: {

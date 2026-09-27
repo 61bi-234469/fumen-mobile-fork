@@ -19,6 +19,7 @@ import {
     VIRTUAL_PAGE_INDEX,
 } from '../lib/fumen/tree_types';
 import { clearThumbnailCache } from '../lib/thumbnail';
+import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { Screens } from '../lib/enums';
 import { parseQueueComment } from '../lib/cold_clear/queueParser';
 import { getColdClearQueueCommentAt, getCurrentColdClearQueueComment } from './cold_clear';
@@ -226,6 +227,8 @@ export const toPagesForStorage = (state: Readonly<State>): Page[] => {
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {
-    memento.save(toPagesForStorage(state));
+    const pages = toPagesForStorage(state);
+    warnIfTreeCommentOverLimit(pages);
+    memento.save(pages);
     return undefined;
 };

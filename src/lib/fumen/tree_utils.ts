@@ -4,6 +4,7 @@
 
 import { generateKey } from '../random';
 import { Page } from './types';
+import { FUMEN_COMMENT_MAX_ESCAPED_LENGTH } from './fumen';
 import { recomputeQuizFlags } from '../pages';
 import {
     TreeNodeId,
@@ -1597,6 +1598,19 @@ export const embedTreeInPages = (
         }
         return page;
     });
+};
+
+/**
+ * True when the first page comment carries #TREE= data that the fumen encoder would cut off.
+ * The encoder silently truncates comments over the escaped-length limit, and a cut
+ * base64 payload makes the whole tree unrecoverable on the next load.
+ */
+export const isTreeCommentOverLimit = (pages: Page[]): boolean => {
+    const text = pages.length > 0 ? pages[0].comment.text : undefined;
+    if (text === undefined || text.indexOf(TREE_COMMENT_PREFIX) === -1) {
+        return false;
+    }
+    return escape(text).length > FUMEN_COMMENT_MAX_ESCAPED_LENGTH;
 };
 
 /**

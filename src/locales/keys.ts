@@ -292,6 +292,7 @@ export const i18n = {
         },
         GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
         ZoomReset: () => t('TreeView.ZoomReset'),
+        TreeDataTooLarge: () => t('TreeView.TreeDataTooLarge'),
         DeleteNode: () => t('TreeView.DeleteNode'),
         DragHandle: () => t('TreeView.DragHandle'),
         DeleteToast: {

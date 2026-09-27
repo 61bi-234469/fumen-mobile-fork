@@ -39,6 +39,7 @@ import {
     isVirtualNode,
     removeTreeFromComment,
 } from '../lib/fumen/tree_utils';
+import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 
 declare const M: any;
 
@@ -821,6 +822,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         (async () => {
             try {
                 const pagesToEncode = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
+                warnIfTreeCommentOverLimit(pagesToEncode);
                 const encoded = await encode(pagesToEncode);
 
                 const params = buildShareParams(encoded);

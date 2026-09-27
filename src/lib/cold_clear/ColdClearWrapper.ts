@@ -7,6 +7,8 @@ export class ColdClearWrapper {
     // init を投げずに Worker だけ起こす。リプレイ解析は局面ごとに自己完結した
     // メッセージを送るため、モジュールスコープの bot を作らせない。
     open(onMessage: (msg: WorkerResponse) => void): void {
+        // 再オープン時に前の Worker を残すと、thinkMs の同期探索が裏で走り続ける。
+        this.terminate();
         this.onMessage = onMessage;
         this.worker = new Worker(new URL('./cold_clear.worker.ts', import.meta.url));
         this.worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
@@ -17,6 +19,11 @@ export class ColdClearWrapper {
         this.worker.onerror = (error) => {
             if (this.onMessage) {
                 this.onMessage({ type: 'error', message: String(error.message) });
+            }
+        };
+        this.worker.onmessageerror = () => {
+            if (this.onMessage) {
+                this.onMessage({ type: 'error', message: 'Failed to deserialize a worker message' });
             }
         };
     }

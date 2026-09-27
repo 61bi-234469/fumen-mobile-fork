@@ -11,6 +11,23 @@ const version = buildNumber ? `${buildNumber}` : `dev-${new Date().toISOString()
 const cacheId = 'fumen-mobile-fork';
 const destDirectory = path.join(__dirname, 'dest')
 
+// Keep in sync with THIRD_PARTY_LICENSES.md. Covers packages bundled into the JS output
+// (check with `webpack --json`) and packages whose files are copied as-is.
+const shippedPackageLicenses = [
+    '@babel/runtime/LICENSE',
+    '@haelp/teto/LICENSE.md',
+    '@hyperapp/html/LICENSE.md',
+    'hyperapp/LICENSE.md',
+    'i18next/LICENSE',
+    'i18next-browser-languagedetector/LICENSE',
+    'konva/LICENSE',
+    'lodash/LICENSE',
+    'material-icons/LICENSE',
+    'materialize-css/LICENSE',
+    'tslib/LICENSE.txt',
+    'workbox-core/LICENSE',
+];
+
 module.exports = (_env, argv = {}) => {
     const mode = argv.mode || 'production';
     const isDebug = process.env.DEBUG_ON === undefined
@@ -112,14 +129,13 @@ module.exports = (_env, argv = {}) => {
                     from: path.join(__dirname, 'node_modules/material-icons/iconfont/material-icons.woff'),
                     to: path.join(destDirectory, 'material-iconfont/material-icons.woff'),
                 },
-                {
-                    from: path.join(__dirname, 'node_modules/material-icons/LICENSE'),
-                    to: path.join(destDirectory, 'material-iconfont/LICENSE'),
-                },
-                {
-                    from: path.join(__dirname, 'node_modules/materialize-css/LICENSE'),
-                    to: path.join(destDirectory, 'materialize/LICENSE'),
-                },
+                // License texts of the npm packages whose code or assets ship in dest/.
+                // Kept under third_party/ so the service worker never precaches them.
+                ...shippedPackageLicenses.map(file => ({
+                    from: path.join(__dirname, 'node_modules', file),
+                    to: path.join(destDirectory, 'third_party', 'npm', file),
+                    toType: 'file',
+                })),
                 {
                     from: path.join(__dirname, 'LICENSE'),
                     to: destDirectory,
@@ -140,8 +156,8 @@ module.exports = (_env, argv = {}) => {
             clientsClaim: true,
             skipWaiting: true,
             offlineGoogleAnalytics: true,
-            // License texts are for redistribution, not offline use, so keep them out of the precache.
-            exclude: [/^manual\//, /^third_party\//, /\.wasm$/, /(^|\/)LICENSE$/],
+            // The root LICENSE is for redistribution, not offline use, so keep it out of the precache.
+            exclude: [/^manual\//, /^third_party\//, /\.wasm$/, /^LICENSE$/],
             runtimeCaching: [{
                 urlPattern: /\.wasm$/,
                 handler: 'CacheFirst',

@@ -24,7 +24,8 @@ a TETR.IO client/engine library, for TETR.IO replay (.ttrm) re-simulation.
 - **Source Code**: https://github.com/halp1/triangle
 - **Usage**: npm dependency pinned to version 4.2.7 (`@haelp/teto/engine`),
   bundled into the replay worker. `chalk` is replaced by a local stub
-  (`src/lib/ttrm/chalk_stub.js`) via webpack alias.
+  (`src/lib/ttrm/chalk_stub.js`) via webpack alias. The package license is shipped at
+  `third_party/npm/@haelp/teto/LICENSE.md`.
 
 ## Material Icons
 
@@ -35,7 +36,7 @@ redistributes Google's Material Icons.
 - **License**: Apache License 2.0
 - **Source Code**: https://github.com/google/material-design-icons
 - **Files**: copied to `material-iconfont/` at build time, with the package
-  license at `material-iconfont/LICENSE`
+  license at `third_party/npm/material-icons/LICENSE`
 
 ## Materialize
 
@@ -44,10 +45,25 @@ The app ships `materialize.min.js` and `materialize.min.css` from
 
 - **License**: MIT
 - **Files**: copied to `materialize/` at build time, with the package
-  license at `materialize/LICENSE`
+  license at `third_party/npm/materialize-css/LICENSE`
 
-Other bundled npm dependencies (hyperapp, i18next, konva, lodash, workbox) are
-MIT-licensed; their notices are preserved in `vendor.bundle.js.LICENSE.txt`.
+## Other npm packages shipped in the build
+
+The build copies each package's own license text to `third_party/npm/<package>/`
+in the published site. The list is maintained in `webpack.config.js`
+(`shippedPackageLicenses`).
+
+| Package | License |
+|---|---|
+| @babel/runtime | MIT |
+| @hyperapp/html | MIT |
+| hyperapp | MIT |
+| i18next | MIT |
+| i18next-browser-languagedetector | MIT |
+| konva | MIT |
+| lodash | MIT |
+| tslib | 0BSD |
+| workbox (service worker runtime, `workbox-core`) | MIT |
 
 The full text of the MPL-2.0 license can be found at:
 https://mozilla.org/MPL/2.0/

@@ -35,6 +35,7 @@ import { createPageFromClipboardField, parseClipboard } from '../lib/clipboard_p
 import { i18n } from '../locales/keys';
 import { showToast } from '../lib/toast';
 import { copyTextToClipboard } from '../lib/clipboard_copy';
+import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 
 const safeDecodeClipboardFumen = (value: string): string => {
     try {
@@ -100,6 +101,7 @@ export interface PageActions {
     insertPageFromClipboard: () => action;
     copyAllPagesToClipboard: () => action;
     cutAllPages: () => action;
+    finishCutAllPages: (data: { pages: Page[], undoCount: number, pageCount: number }) => action;
     replaceAllFromClipboard: () => action;
 }
 
@@ -686,6 +688,7 @@ export const pageActions: Readonly<PageActions> = {
             version: 1,
         } : null;
         const pages = embedTreeInPages(state.fumen.pages, tree, treeExists);
+        warnIfTreeCommentOverLimit(pages, { everyTime: true });
 
         // 非同期でエンコードしてクリップボードにコピー
         (async () => {
@@ -708,6 +711,7 @@ export const pageActions: Readonly<PageActions> = {
     cutAllPages: () => (state): NextState => {
         const pages = state.fumen.pages;
         const pageCount = pages.length;
+        const undoCount = state.history.undoCount;
 
         // ページ情報のスナップショットを同期的にエンコード開始
         // （参照が変更される前にエンコード処理を開始する）
@@ -720,9 +724,7 @@ export const pageActions: Readonly<PageActions> = {
                 const url = `v115@${encoded}`;
 
                 if (await copyTextToClipboard(url)) {
-                    // コピー成功後に新しい空のfumenをロード
-                    main.loadNewFumen();
-                    showToast(i18n.Toast.CutAllPages(pageCount), 1000);
+                    main.finishCutAllPages({ pages, undoCount, pageCount });
                 } else {
                     showToast(i18n.Toast.FailedToCut());
                 }
@@ -731,6 +733,17 @@ export const pageActions: Readonly<PageActions> = {
             }
         })();
 
+        return undefined;
+    },
+    // Clipboard API のコピーは非同期に完了する。待っている間に編集や別テト譜の読み込みがあれば、
+    // クリップボードにあるのは古い内容なので、空テト譜で上書きせずにコピーだけで終える。
+    finishCutAllPages: ({ pages, undoCount, pageCount }) => (state): NextState => {
+        if (state.fumen.pages !== pages || state.history.undoCount !== undoCount) {
+            showToast(i18n.Toast.CopiedAllPages(pageCount), 1000);
+            return undefined;
+        }
+        showToast(i18n.Toast.CutAllPages(pageCount), 1000);
+        main.loadNewFumen();
         return undefined;
     },
     replaceAllFromClipboard: () => (state): NextState => {

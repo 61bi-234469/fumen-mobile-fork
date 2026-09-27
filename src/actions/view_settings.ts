@@ -26,10 +26,20 @@ type ViewSettingsOverrides = Partial<{
     replayAnalysisThinkMs: number;
 }>;
 
+// サイトデータをブロックしたブラウザでは localStorage の getter 自体が例外になるため、
+// typeof による存在確認も例外を握る。
+const isStorageAvailable = (): boolean => {
+    try {
+        return typeof localStorage !== 'undefined';
+    } catch {
+        return false;
+    }
+};
+
 // 自陣プレイヤー名は state に持たないため、全体置換の saveViewSettings で
 // 消さないように保存済みの値を読み戻す。
 export const loadPersistedReplaySelfPlayer = (): string | null => {
-    if (typeof localStorage === 'undefined') return null;
+    if (!isStorageAvailable()) return null;
     try {
         return localStorageWrapper.loadViewSettings().replaySelfPlayer ?? null;
     } catch {
@@ -43,7 +53,7 @@ export const loadPersistedReplaySelfPlayer = (): string | null => {
 const REPLAY_SHOW_OPPONENT_FALLBACK = true;
 
 const loadPersistedReplayShowOpponent = (): boolean => {
-    if (typeof localStorage === 'undefined') return REPLAY_SHOW_OPPONENT_FALLBACK;
+    if (!isStorageAvailable()) return REPLAY_SHOW_OPPONENT_FALLBACK;
     try {
         return localStorageWrapper.loadViewSettings().replayShowOpponent ?? REPLAY_SHOW_OPPONENT_FALLBACK;
     } catch {
@@ -56,7 +66,7 @@ const loadPersistedReplayShowOpponent = (): boolean => {
 const REPLAY_ANALYSIS_THINK_MS_FALLBACK = 100;
 
 const loadPersistedReplayAnalysisThinkMs = (): number => {
-    if (typeof localStorage === 'undefined') return REPLAY_ANALYSIS_THINK_MS_FALLBACK;
+    if (!isStorageAvailable()) return REPLAY_ANALYSIS_THINK_MS_FALLBACK;
     try {
         return localStorageWrapper.loadViewSettings().replayAnalysisThinkMs
             ?? REPLAY_ANALYSIS_THINK_MS_FALLBACK;
@@ -66,7 +76,7 @@ const loadPersistedReplayAnalysisThinkMs = (): number => {
 };
 
 export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
-    if (typeof localStorage === 'undefined') return;
+    if (!isStorageAvailable()) return;
     localStorageWrapper.saveViewSettings({
         trimTopBlank: overrides.trimTopBlank ?? state.listView.trimTopBlank,
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,

@@ -305,7 +305,9 @@ const resolvePagesToEncode = (state: Readonly<State>): { pages: Page[] } | { err
     if (state.tree.enabled && state.listView.exportScope === 'left') {
         return extractRootToActiveSegmentPages(state);
     }
-    return { pages: embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled) };
+    const pages = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
+    warnIfTreeCommentOverLimit(pages, { everyTime: true });
+    return { pages };
 };
 
 const resolveTetgramExport = (
@@ -718,7 +720,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         (async () => {
             try {
                 const pagesToEncode = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
-                warnIfTreeCommentOverLimit(pagesToEncode);
+                warnIfTreeCommentOverLimit(pagesToEncode, { everyTime: true });
                 const encoded = await encode(pagesToEncode);
 
                 const params = buildShareParams(encoded);

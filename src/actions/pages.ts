@@ -33,8 +33,9 @@ import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
 import { createPageFromClipboardField, parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
+import { showToast } from '../lib/toast';
+import { copyTextToClipboard } from '../lib/clipboard_copy';
 
-declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
     try {
         return decodeURIComponent(value);
@@ -576,27 +577,13 @@ export const pageActions: Readonly<PageActions> = {
                 const encoded = await encode([singlePage]);
                 const url = `v115@${encoded}`;
 
-                // クリップボードにコピー
-                const element = document.createElement('pre');
-                element.style.position = 'fixed';
-                element.style.left = '-100%';
-                element.textContent = url;
-                document.body.appendChild(element);
-
-                const selection = document.getSelection();
-                if (selection) {
-                    selection.selectAllChildren(element);
-                    const success = document.execCommand('copy');
-                    if (success) {
-                        M.toast({ html: 'Copied to clipboard', classes: 'top-toast', displayLength: 1000 });
-                    } else {
-                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
-                    }
+                if (await copyTextToClipboard(url)) {
+                    showToast(i18n.Toast.CopiedToClipboard(), 1000);
+                } else {
+                    showToast(i18n.Toast.FailedToCopy());
                 }
-
-                document.body.removeChild(element);
             } catch (error) {
-                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`${i18n.Toast.FailedToCopy()}: ${error}`);
             }
         })();
 
@@ -636,27 +623,13 @@ export const pageActions: Readonly<PageActions> = {
                 const encoded = await encode([singlePage]);
                 const url = `v115@${encoded}`;
 
-                // クリップボードにコピー
-                const element = document.createElement('pre');
-                element.style.position = 'fixed';
-                element.style.left = '-100%';
-                element.textContent = url;
-                document.body.appendChild(element);
-
-                const selection = document.getSelection();
-                if (selection) {
-                    selection.selectAllChildren(element);
-                    const success = document.execCommand('copy');
-                    if (success) {
-                        M.toast({ html: 'Cut to clipboard', classes: 'top-toast', displayLength: 1000 });
-                    } else {
-                        M.toast({ html: 'Failed to cut', classes: 'top-toast', displayLength: 1500 });
-                    }
+                if (await copyTextToClipboard(url)) {
+                    showToast(i18n.Toast.CutToClipboard(), 1000);
+                } else {
+                    showToast(i18n.Toast.FailedToCut());
                 }
-
-                document.body.removeChild(element);
             } catch (error) {
-                M.toast({ html: `Failed to cut: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`${i18n.Toast.FailedToCut()}: ${error}`);
             }
         })();
 
@@ -678,11 +651,7 @@ export const pageActions: Readonly<PageActions> = {
                 case 'fumen': {
                     const decodedPages = await decode(content.fumen!);
                     main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
-                    M.toast({
-                        html: i18n.Clipboard.Messages.InsertedFromClipboard(),
-                        classes: 'top-toast',
-                        displayLength: 1000,
-                    });
+                    showToast(i18n.Clipboard.Messages.InsertedFromClipboard(), 1000);
                     break;
                 }
                 case 'fieldText':
@@ -693,24 +662,16 @@ export const pageActions: Readonly<PageActions> = {
                     if (content.warning) {
                         msg += ` (${content.warning})`;
                     }
-                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    showToast(msg, 1000);
                     break;
                 }
                 case 'none':
                 default:
-                    M.toast({
-                        html: i18n.Clipboard.Errors.NoValidData(),
-                        classes: 'top-toast',
-                        displayLength: 1500,
-                    });
+                    showToast(i18n.Clipboard.Errors.NoValidData());
                 }
             } catch (error) {
                 console.error(error);
-                M.toast({
-                    html: `${i18n.Clipboard.Errors.FailedToInsert()}: ${error}`,
-                    classes: 'top-toast',
-                    displayLength: 1500,
-                });
+                showToast(`${i18n.Clipboard.Errors.FailedToInsert()}: ${error}`);
             }
         })();
 
@@ -732,28 +693,13 @@ export const pageActions: Readonly<PageActions> = {
                 const encoded = await encode(pages);
                 const url = `v115@${encoded}`;
 
-                // クリップボードにコピー
-                const element = document.createElement('pre');
-                element.style.position = 'fixed';
-                element.style.left = '-100%';
-                element.textContent = url;
-                document.body.appendChild(element);
-
-                const selection = document.getSelection();
-                if (selection) {
-                    selection.selectAllChildren(element);
-                    const success = document.execCommand('copy');
-                    if (success) {
-                        const msg = `Copied all ${pages.length} pages`;
-                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
-                    } else {
-                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
-                    }
+                if (await copyTextToClipboard(url)) {
+                    showToast(i18n.Toast.CopiedAllPages(pages.length), 1000);
+                } else {
+                    showToast(i18n.Toast.FailedToCopy());
                 }
-
-                document.body.removeChild(element);
             } catch (error) {
-                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`${i18n.Toast.FailedToCopy()}: ${error}`);
             }
         })();
 
@@ -773,29 +719,15 @@ export const pageActions: Readonly<PageActions> = {
                 const encoded = await encodePromise;
                 const url = `v115@${encoded}`;
 
-                // クリップボードにコピー
-                const element = document.createElement('pre');
-                element.style.position = 'fixed';
-                element.style.left = '-100%';
-                element.textContent = url;
-                document.body.appendChild(element);
-
-                const selection = document.getSelection();
-                if (selection) {
-                    selection.selectAllChildren(element);
-                    const success = document.execCommand('copy');
-                    if (success) {
-                        // コピー成功後に新しい空のfumenをロード
-                        main.loadNewFumen();
-                        M.toast({ html: `Cut all ${pageCount} pages`, classes: 'top-toast', displayLength: 1000 });
-                    } else {
-                        M.toast({ html: 'Failed to cut', classes: 'top-toast', displayLength: 1500 });
-                    }
+                if (await copyTextToClipboard(url)) {
+                    // コピー成功後に新しい空のfumenをロード
+                    main.loadNewFumen();
+                    showToast(i18n.Toast.CutAllPages(pageCount), 1000);
+                } else {
+                    showToast(i18n.Toast.FailedToCut());
                 }
-
-                document.body.removeChild(element);
             } catch (error) {
-                M.toast({ html: `Failed to cut: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`${i18n.Toast.FailedToCut()}: ${error}`);
             }
         })();
 
@@ -810,11 +742,7 @@ export const pageActions: Readonly<PageActions> = {
                 case 'fumen': {
                     const decodedPages = await decode(content.fumen!);
                     main.loadFumen({ fumen: content.fumen! });
-                    M.toast({
-                        html: i18n.Clipboard.Messages.ReplacedPages(decodedPages.length),
-                        classes: 'top-toast',
-                        displayLength: 1000,
-                    });
+                    showToast(i18n.Clipboard.Messages.ReplacedPages(decodedPages.length), 1000);
                     break;
                 }
                 case 'fieldText':
@@ -826,24 +754,16 @@ export const pageActions: Readonly<PageActions> = {
                     if (content.warning) {
                         msg += ` (${content.warning})`;
                     }
-                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    showToast(msg, 1000);
                     break;
                 }
                 case 'none':
                 default:
-                    M.toast({
-                        html: i18n.Clipboard.Errors.NoValidData(),
-                        classes: 'top-toast',
-                        displayLength: 1500,
-                    });
+                    showToast(i18n.Clipboard.Errors.NoValidData());
                 }
             } catch (error) {
                 console.error(error);
-                M.toast({
-                    html: `${i18n.Clipboard.Errors.FailedToReplace()}: ${error}`,
-                    classes: 'top-toast',
-                    displayLength: 1500,
-                });
+                showToast(`${i18n.Clipboard.Errors.FailedToReplace()}: ${error}`);
             }
         })();
 

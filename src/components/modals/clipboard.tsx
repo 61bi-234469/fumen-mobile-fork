@@ -2,6 +2,7 @@ import { Component, ComponentWithText, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { resources } from '../../states';
 import { i18n } from '../../locales/keys';
+import { showToast } from '../../lib/toast';
 import { encode } from '../../lib/fumen/fumen';
 import { Page } from '../../lib/fumen/types';
 import { FumenError } from '../../lib/errors';
@@ -103,10 +104,10 @@ export const ClipboardModal: Component<ClipboardModalProps> = ({ actions, pages 
                 }
             })
             .then(() => {
-                M.toast({ html: 'Copied to clipboard', classes: 'top-toast', displayLength: 1000 });
+                showToast(i18n.Toast.CopiedToClipboard(), 1000);
             })
             .catch((error) => {
-                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                showToast(`${i18n.Toast.FailedToCopy()}: ${error}`);
             })
             .finally(() => {
                 if (element) {
@@ -134,11 +135,7 @@ export const ClipboardModal: Component<ClipboardModalProps> = ({ actions, pages 
                 form.submit();
             })
             .catch((error) => {
-                M.toast({
-                    html: `Failed to open tinyurl: ${error}`,
-                    classes: 'top-toast',
-                    displayLength: 1500,
-                });
+                showToast(`${i18n.Toast.FailedToOpenTinyUrl()}: ${error}`);
             });
     };
 

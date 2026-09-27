@@ -6,6 +6,24 @@ export const resources = {
     Top: {
         RestoreFromStorage: '最後の状態が復元されました',
     },
+    Toast: {
+        CopiedToClipboard: 'クリップボードにコピーしました',
+        CopiedShareUrl: '共有URLをコピーしました',
+        CopiedTetgramRaw: 'tetgramの生データをコピーしました',
+        CopiedPages: '{{count}}ページをコピーしました',
+        CopiedAllPages: '全{{count}}ページをコピーしました',
+        CutToClipboard: 'クリップボードへ切り取りました',
+        CutAllPages: '全{{count}}ページを切り取りました',
+        FailedToCopy: 'コピーできませんでした',
+        FailedToCopyUrl: 'URLをコピーできませんでした',
+        FailedToCut: '切り取れませんでした',
+        FailedToExportUrl: 'URLを書き出せませんでした',
+        FailedToOpen: '開けませんでした',
+        FailedToOpenTinyUrl: 'tinyurlを開けませんでした',
+        FailedToImport: '取り込めませんでした',
+        FailedToDownloadImage: '画像をダウンロードできませんでした',
+        NoImportableClipboardData: 'クリップボードにテト譜・tetgram・盤面データがありません',
+    },
     OpenFumen: {
         Title: 'テト譜を開く',
         PlaceHolder: 'URL または v115@~ / v115・v110 に対応',
@@ -15,6 +33,7 @@ export const resources = {
         },
         Errors: {
             FailedToLoad: 'テト譜を読み込めませんでした',
+            EmptyInput: 'データを入力してください',
             Unexpected: '予期しないエラー: {{message}}',
         },
     },

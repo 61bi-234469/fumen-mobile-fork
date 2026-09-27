@@ -11,6 +11,24 @@ export const i18n = {
     Top: {
         RestoreFromStorage: () => t('Top.RestoreFromStorage'),
     },
+    Toast: {
+        CopiedToClipboard: () => t('Toast.CopiedToClipboard'),
+        CopiedShareUrl: () => t('Toast.CopiedShareUrl'),
+        CopiedTetgramRaw: () => t('Toast.CopiedTetgramRaw'),
+        CopiedPages: (count: number) => t('Toast.CopiedPages', { count }),
+        CopiedAllPages: (count: number) => t('Toast.CopiedAllPages', { count }),
+        CutToClipboard: () => t('Toast.CutToClipboard'),
+        CutAllPages: (count: number) => t('Toast.CutAllPages', { count }),
+        FailedToCopy: () => t('Toast.FailedToCopy'),
+        FailedToCopyUrl: () => t('Toast.FailedToCopyUrl'),
+        FailedToCut: () => t('Toast.FailedToCut'),
+        FailedToExportUrl: () => t('Toast.FailedToExportUrl'),
+        FailedToOpen: () => t('Toast.FailedToOpen'),
+        FailedToOpenTinyUrl: () => t('Toast.FailedToOpenTinyUrl'),
+        FailedToImport: () => t('Toast.FailedToImport'),
+        FailedToDownloadImage: () => t('Toast.FailedToDownloadImage'),
+        NoImportableClipboardData: () => t('Toast.NoImportableClipboardData'),
+    },
     OpenFumen: {
         Title: () => t('OpenFumen.Title'),
         PlaceHolder: () => t('OpenFumen.PlaceHolder'),
@@ -20,6 +38,7 @@ export const i18n = {
         },
         Errors: {
             FailedToLoad: () => t('OpenFumen.Errors.FailedToLoad'),
+            EmptyInput: () => t('OpenFumen.Errors.EmptyInput'),
             Unexpected: (message: string) => t('OpenFumen.Errors.Unexpected', { message }),
         },
     },

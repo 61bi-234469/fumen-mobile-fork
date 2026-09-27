@@ -4,6 +4,8 @@
 import { Piece, Rotation } from '../../lib/enums';
 import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
+import { default as i18next } from 'i18next';
+import { resources as resourcesEn } from '../../locales/en/translation';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -423,6 +425,10 @@ describe('exportListViewAsUrl', () => {
 });
 
 describe('copyListViewUrlToClipboard toast', () => {
+    beforeAll(async () => {
+        await i18next.init({ lng: 'en', resources: { en: { translation: resourcesEn } } });
+    });
+
     test('shows the "Copied share URL" toast when tree mode is disabled', async () => {
         const selectAllChildren = jest.fn();
         const selectionSpy = jest.spyOn(document, 'getSelection').mockReturnValue({ selectAllChildren } as any);

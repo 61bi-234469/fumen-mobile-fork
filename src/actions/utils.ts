@@ -441,7 +441,7 @@ const loadFumen = (fumen: string, purgeOnFailed: boolean, initialLoad: boolean =
     main.pauseAnimation();
 
     if (fumen === undefined) {
-        main.showOpenErrorMessage({ message: 'データを入力してください' });
+        main.showOpenErrorMessage({ message: i18n.OpenFumen.Errors.EmptyInput() });
         return undefined;
     }
 
@@ -491,7 +491,7 @@ const appendFumen = (fumen: string, pageIndex: number): NextState => {
     main.pauseAnimation();
 
     if (fumen === undefined) {
-        main.showOpenErrorMessage({ message: 'データを入力してください' });
+        main.showOpenErrorMessage({ message: i18n.OpenFumen.Errors.EmptyInput() });
         return undefined;
     }
 

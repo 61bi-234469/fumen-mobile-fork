@@ -6,6 +6,24 @@
     Top: {
         RestoreFromStorage: 'Restored to last state',
     },
+    Toast: {
+        CopiedToClipboard: 'Copied to clipboard',
+        CopiedShareUrl: 'Copied share URL',
+        CopiedTetgramRaw: 'Copied tetgram raw data',
+        CopiedPages: 'Copied {{count}} pages',
+        CopiedAllPages: 'Copied all {{count}} pages',
+        CutToClipboard: 'Cut to clipboard',
+        CutAllPages: 'Cut all {{count}} pages',
+        FailedToCopy: 'Failed to copy',
+        FailedToCopyUrl: 'Failed to copy URL',
+        FailedToCut: 'Failed to cut',
+        FailedToExportUrl: 'Failed to export URL',
+        FailedToOpen: 'Failed to open',
+        FailedToOpenTinyUrl: 'Failed to open tinyurl',
+        FailedToImport: 'Failed to import',
+        FailedToDownloadImage: 'Failed to download image',
+        NoImportableClipboardData: 'No fumen / tetgram / field data in clipboard',
+    },
     OpenFumen: {
         Title: 'Open fumen',
         PlaceHolder: 'URL or v115@~ / Support v115 or v110',
@@ -15,6 +33,7 @@
         },
         Errors: {
             FailedToLoad: 'Failed to load',
+            EmptyInput: 'Enter fumen data',
             Unexpected: 'Unexpected error: {{message}}',
         },
     },

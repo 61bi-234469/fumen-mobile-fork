@@ -2,7 +2,7 @@
   "source": {
     "run": "31088968213",
     "date": "2026-08-06",
-    "note": "Per-spec durations from the Cypress run summary of the five shards. Refresh with the procedure in cypress/SPEC_MAP.md."
+    "note": "Per-spec durations from the Cypress run summary of the five shards. replay_spec.js and spawn_mino_toggle_spec.js were re-measured locally on 2026-09-28 (local runs track CI within a few seconds). Refresh with the procedure in cypress/SPEC_MAP.md."
   },
   "defaultSeconds": 60,
   "specs": {
@@ -15,8 +15,8 @@
     "drawing_tool_spec.js": 62,
     "editor_side_panel_spec.js": 19,
     "editor_ui_spec.js": 45,
-    "fill_spec.js": 6,
     "fill_row_spec.js": 6,
+    "fill_spec.js": 6,
     "history_comment_spec.js": 118,
     "history_field_spec.js": 103,
     "history_piece_spec.js": 85,
@@ -28,10 +28,11 @@
     "piece_queue_spec.js": 54,
     "put_piece_spec.js": 87,
     "quiz_spec.js": 65,
-    "replay_spec.js": 8,
+    "replay_spec.js": 53,
     "right_click_spec.js": 24,
     "sent_spec.js": 16,
     "slide_spec.js": 3,
+    "spawn_mino_toggle_spec.js": 25,
     "tree_mode_spec.js": 16,
     "url_behavior_spec.js": 4,
     "user_settings_spec.js": 22,

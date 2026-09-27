@@ -7,6 +7,7 @@
     "webpack-prod": "webpack --mode production",
     "serve": "node serve.js",
     "lint": "tslint --project tsconfig.json --config tslint.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json --module esnext",
     "test": "jest",
     "cy-run": "node scripts/cypress_wrapper.js run",
     "cy-open": "node scripts/cypress_wrapper.js open",

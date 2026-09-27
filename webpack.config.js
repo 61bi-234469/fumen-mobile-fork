@@ -24,6 +24,8 @@ module.exports = (_env, argv = {}) => {
     output: {
         filename: '[name].bundle.js',
         path: destDirectory,
+        // 古い workbox / wasm / チャンクが dest に残って配信・E2E されないよう毎回消す。
+        clean: true,
     },
     experiments: {
         asyncWebAssembly: true,

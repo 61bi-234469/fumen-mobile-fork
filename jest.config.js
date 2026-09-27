@@ -19,6 +19,8 @@ module.exports = {
         "node"
     ],
     roots: ["<rootDir>/src/"],
-    collectCoverage: true,
+    // Coverage is opt-in (`yarn test --coverage`); no threshold is enforced, so
+    // collecting it on every run only slows local tests down.
+    collectCoverage: false,
     coverageReporters: ['html'],
 };

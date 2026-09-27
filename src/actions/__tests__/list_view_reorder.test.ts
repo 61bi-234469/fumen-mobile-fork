@@ -1,6 +1,7 @@
 import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
-import { Piece } from '../../lib/enums';
+import { Piece, Rotation } from '../../lib/enums';
+import { PageFieldOperation, Pages } from '../../lib/pages';
 import { toPrimitivePage } from '../../history_task';
 
 jest.mock('../../actions', () => ({
@@ -110,5 +111,71 @@ describe('toReorderPageTask', () => {
         const result = task.replay([...pages]);
 
         expect(result.pages.map((p: Page) => p.index)).toEqual([0, 1, 2]);
+    });
+});
+
+describe('toReorderPageTask with locked pieces inside a reference span', () => {
+    // Each page locks a piece, so a ref page's field depends on every page between the key
+    // page and itself. Moving a page inside that span must not change any page's own field.
+    const createLockedPages = (): Page[] => {
+        const lockedPiece = (type: Piece, x: number) => ({
+            type,
+            rotation: Rotation.Spawn,
+            coordinate: { x, y: 0 },
+        });
+        return [
+            {
+                index: 0,
+                field: { obj: new Field({}) },
+                piece: lockedPiece(Piece.O, 0),
+                comment: { text: 'a' },
+                flags: { ...defaultFlags, lock: true },
+            },
+            {
+                index: 1,
+                field: { ref: 0 },
+                piece: lockedPiece(Piece.O, 3),
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true },
+            },
+            {
+                index: 2,
+                field: { ref: 0 },
+                piece: lockedPiece(Piece.O, 6),
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true },
+            },
+            {
+                index: 3,
+                field: { ref: 0 },
+                comment: { ref: 0 },
+                flags: { ...defaultFlags, lock: true },
+            },
+        ];
+    };
+
+    const fieldsById = (pages: Page[], ids: number[]) => {
+        const pagesObj = new Pages(pages);
+        return new Map(ids.map((id, index) => [id, pagesObj.getField(index, PageFieldOperation.None)]));
+    };
+
+    test.each([
+        [3, 1],
+        [1, 4],
+        [2, 1],
+    ])('moving page %i to slot %i keeps every page field', (fromIndex, toSlot) => {
+        const pages = createLockedPages();
+        const before = fieldsById(pages, [0, 1, 2, 3]);
+
+        const task = toReorderPageTask(fromIndex, toSlot, pages.map(toPrimitivePage));
+        const order = [0, 1, 2, 3];
+        const [moved] = order.splice(fromIndex, 1);
+        order.splice(fromIndex < toSlot ? toSlot - 1 : toSlot, 0, moved);
+        const result = task.replay(createLockedPages());
+        const after = fieldsById(result.pages, order);
+
+        order.forEach((id) => {
+            expect(after.get(id)!.equals(before.get(id)!)).toBe(true);
+        });
     });
 });

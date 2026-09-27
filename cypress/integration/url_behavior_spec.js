@@ -27,7 +27,8 @@ describe('URL behavior', () => {
     // history.pushState/replaceState or location.hash writes exist anywhere in src/ git history). The app
     // only reads URL params; it never rewrites the URL to reflect editor/screen/tree state. These specs
     // were added speculatively (AI-generated, commit c32ef0b) without a backing implementation.
-    // See docs/e2e-ci-failure-investigation.md §4 / §8続き7 (class B). Re-enable if URL-sync is implemented.
+    // See docs/notes/2026_07_22_e2e-ci-failure-investigation.md (local-only) §4 / §8続き7 (class B).
+    // Re-enable if URL-sync is implemented.
     it.skip('removes d after first edit and keeps working params', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
 
@@ -123,7 +124,8 @@ describe('URL behavior', () => {
 
             // cy.visit はハッシュのみが異なるURLでは完全な再読み込みを行わないため、
             // 「別タブで新規に開く」を再現するには明示的な cy.reload() が必要
-            // (see docs/notes/e2e-ci-failure-investigation.md 一部 skip テストの hash collapse と同種の注意点)。
+            // (see docs/notes/2026_07_22_e2e-ci-failure-investigation.md:
+            // 一部 skip テストの hash collapse と同種の注意点)。
 
             // 画面指定なしのURLは受け取り側の初期画面設定(デフォルト: Reader)で開く
             cy.visit(exportedUrl);

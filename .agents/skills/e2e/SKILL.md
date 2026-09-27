@@ -1,6 +1,6 @@
 ---
 name: e2e
-description: Run, debug, or stabilize Cypress E2E tests in this repo. Use when running specs locally, investigating dev-workflow CI failures, or diagnosing a flaky or failing E2E test. Encodes hard-won pitfalls from docs/notes/e2e-ci-failure-investigation.md.
+description: Run, debug, or stabilize Cypress E2E tests in this repo. Use when running specs locally, investigating dev-workflow CI failures, or diagnosing a flaky or failing E2E test. Encodes hard-won pitfalls from docs/notes/2026_07_22_e2e-ci-failure-investigation.md.
 ---
 
 # Cypress E2E — run and debug
@@ -22,6 +22,12 @@ yarn cy-run --spec cypress/integration/<name>_spec.js
 yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
 ```
 
+- The block above is bash. In Windows PowerShell 5.1 follow `AGENTS.local.md` (if present):
+  use `yarn.cmd`, and start the server with `Start-Process` or a separate terminal instead of `&`.
+- CI runs `yarn check-build-performance` right after `yarn webpack-prod` in every e2e shard, so a
+  precache-budget overrun shows up as a failed e2e job before any spec runs. Run it locally
+  after the build when a change adds assets or grows a bundle.
+
 - **Scope to the affected spec(s), not the full suite.** For a minor UI-only change
   (styling, copy, layout, non-selector markup) that touches no `datatest` attribute and
   adds/moves/removes no control, run only the spec(s) that already cover the touched
@@ -39,9 +45,12 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
   "local Cypress cannot run" without date, permission level, and error type — and
   re-verify any such note by actually running once before citing it.
 - Failure screenshots: `cypress/screenshots/<spec>/`.
-- The three `history_*_spec.js` files are the heaviest specs (~2-3 min each locally,
-  ~6 min for all three); full suite ~15 min. They share `play()` from
+- `open_spec.js` and the three `history_*_spec.js` files are the heaviest specs (~1.5-2 min each;
+  see `cypress/spec-timings.json`); full suite ~15 min. The history specs share `play()` from
   `cypress/support/history_play.js`, so a change there hits all three.
+- Adding or removing a spec: add its measured seconds to `cypress/spec-timings.json` and a row to
+  `cypress/SPEC_MAP.md` in the same change. `src/__tests__/spec_timings_contract.test.ts` fails
+  until the timing table matches the spec files.
 - Checking CI: `gh run list --workflow dev-workflow.yaml --branch develop`
   (apply any `gh` environment notes from `AGENTS.local.md` if present).
 
@@ -109,5 +118,5 @@ yarn cy-run --spec "cypress/integration/a_spec.js,cypress/integration/b_spec.js"
 ## Background
 
 Full investigation history, per-spec timings, and the reasoning behind every rule above:
-`docs/notes/e2e-ci-failure-investigation.md` (local-only, gitignored). Update it when you learn
+`docs/notes/2026_07_22_e2e-ci-failure-investigation.md` (local-only, gitignored). Update it when you learn
 something new about the E2E suite.

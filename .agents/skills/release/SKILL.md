@@ -14,15 +14,21 @@ A push to `main` triggers `.github/workflows/deploy.yml` and publishes the site.
    Approval to push `develop` is NOT approval to merge into `main`.
 2. Working tree: `git status` — unrelated user changes stay untouched; do not release
    with uncommitted changes that belong to the release.
-3. You are on `develop` and it contains everything intended for release
-   (`git log origin/main..develop --oneline` — show this list to the user).
+3. You are on `develop` and it contains everything intended for release. Run
+   `git fetch origin` first, then `git log origin/main..develop --oneline` and show this list
+   to the user.
+4. If that list contains user-visible UI or workflow changes, ask the user whether the user
+   manual should be updated before the release (`.agents/skills/update-user-manual/`). Do not
+   update the manual without that explicit request.
 
 ## Validation (required before merging)
 
 ```bash
 yarn lint
+yarn typecheck
 yarn test
 yarn webpack-prod
+yarn check-build-performance   # deploy.yml fails on the same precache budget
 ```
 
 All must pass. Additionally run the relevant Cypress specs (`.agents/skills/e2e/SKILL.md`)
@@ -39,12 +45,12 @@ every `gh` command in this skill.
 ## Procedure
 
 ```bash
-# Per AGENTS.md, commit as the repository owner's confirmed GitHub noreply identity
-# (`<id>+<username>@users.noreply.github.com`). If it is not already known in this
-# session, ask the user to confirm it. Never use a real email address, and never
-# derive the identity automatically from git history or the environment.
-git config user.name "<owner GitHub username>"
-git config user.email "<owner confirmed noreply email>"
+# Per AGENTS.md, the merge commit must use the owner's GitHub noreply identity, which is
+# already set in this repository's local git config. Only verify it; never run
+# `git config user.*` or override the author/committer. If it is missing or not the noreply
+# address, stop and ask the user.
+git config user.name
+git config user.email
 
 # push develop first if it has unpushed commits (needs its own user confirmation)
 git push origin develop
@@ -57,6 +63,8 @@ git checkout develop
 ```
 
 - Ask for explicit confirmation immediately before **each** push (develop and main).
+- A push to `develop` starts `dev-workflow` and also `deploy.yml`, which republishes the
+  preview and rebuilds production from the current `main`.
 - After pushing main, verify the deploy:
 
 ```bash

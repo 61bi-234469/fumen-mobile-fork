@@ -385,5 +385,6 @@ export const expectFumen = (fumen) => {
     // (body click at 300,300) used to land on the "L" piece button of the drawing-tool palette
     // after the fork's UI rework, silently selecting L as mode.piece. That corrupted later
     // operations whose default piece must stay unset (e.g. Fill row defaults to Gray, drawing-tool
-    // Flags 2), producing deterministic fumen/color mismatches. See docs/e2e-ci-failure-investigation.md.
+    // Flags 2), producing deterministic fumen/color mismatches.
+    // See docs/notes/2026_07_22_e2e-ci-failure-investigation.md (local-only).
 };

@@ -26,6 +26,29 @@ a TETR.IO client/engine library, for TETR.IO replay (.ttrm) re-simulation.
   bundled into the replay worker. `chalk` is replaced by a local stub
   (`src/lib/ttrm/chalk_stub.js`) via webpack alias.
 
+## Material Icons
+
+The app ships the Material Icons font files and stylesheet from the
+[material-icons](https://www.npmjs.com/package/material-icons) package, which
+redistributes Google's Material Icons.
+
+- **License**: Apache License 2.0
+- **Source Code**: https://github.com/google/material-design-icons
+- **Files**: copied to `material-iconfont/` at build time, with the package
+  license at `material-iconfont/LICENSE`
+
+## Materialize
+
+The app ships `materialize.min.js` and `materialize.min.css` from
+[materialize-css](https://github.com/Dogfalo/materialize) 1.0.0.
+
+- **License**: MIT
+- **Files**: copied to `materialize/` at build time, with the package
+  license at `materialize/LICENSE`
+
+Other bundled npm dependencies (hyperapp, i18next, konva, lodash, workbox) are
+MIT-licensed; their notices are preserved in `vendor.bundle.js.LICENSE.txt`.
+
 The full text of the MPL-2.0 license can be found at:
 https://mozilla.org/MPL/2.0/
 

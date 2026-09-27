@@ -113,6 +113,14 @@ module.exports = (_env, argv = {}) => {
                     to: path.join(destDirectory, 'material-iconfont/material-icons.woff'),
                 },
                 {
+                    from: path.join(__dirname, 'node_modules/material-icons/LICENSE'),
+                    to: path.join(destDirectory, 'material-iconfont/LICENSE'),
+                },
+                {
+                    from: path.join(__dirname, 'node_modules/materialize-css/LICENSE'),
+                    to: path.join(destDirectory, 'materialize/LICENSE'),
+                },
+                {
                     from: path.join(__dirname, 'LICENSE'),
                     to: destDirectory,
                 },
@@ -132,7 +140,8 @@ module.exports = (_env, argv = {}) => {
             clientsClaim: true,
             skipWaiting: true,
             offlineGoogleAnalytics: true,
-            exclude: [/^manual\//, /^third_party\//, /\.wasm$/],
+            // License texts are for redistribution, not offline use, so keep them out of the precache.
+            exclude: [/^manual\//, /^third_party\//, /\.wasm$/, /(^|\/)LICENSE$/],
             runtimeCaching: [{
                 urlPattern: /\.wasm$/,
                 handler: 'CacheFirst',

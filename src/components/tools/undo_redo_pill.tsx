@@ -1,5 +1,6 @@
 import { h } from 'hyperapp';
 import { Component, px, style } from '../../lib/types';
+import { i18n } from '../../locales/keys';
 
 interface Props {
     undoEnabled: boolean;
@@ -66,6 +67,7 @@ export const UndoRedoPill: Component<Props> = ({
         h('button', {
             key: 'btn-undo',
             datatest: undoDatatest,
+            'aria-label': i18n.UserSettings.EditShortcuts.Undo(),
             className: 'corner-btn',
             style: iconButtonStyle(undoEnabled),
             onclick: () => {
@@ -75,12 +77,13 @@ export const UndoRedoPill: Component<Props> = ({
             },
             disabled: !undoEnabled,
         }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(iconSize) }) }, 'undo'),
+            h('i', { className: 'material-icons', 'aria-hidden': 'true', style: style({ fontSize: px(iconSize) }) }, 'undo'),
         ]),
         h('div', { key: 'undo-redo-divider', style: dividerStyle }),
         h('button', {
             key: 'btn-redo',
             datatest: redoDatatest,
+            'aria-label': i18n.UserSettings.EditShortcuts.Redo(),
             className: 'corner-btn',
             style: iconButtonStyle(redoEnabled),
             onclick: () => {
@@ -90,7 +93,7 @@ export const UndoRedoPill: Component<Props> = ({
             },
             disabled: !redoEnabled,
         }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(iconSize) }) }, 'redo'),
+            h('i', { className: 'material-icons', 'aria-hidden': 'true', style: style({ fontSize: px(iconSize) }) }, 'redo'),
         ]),
     ]);
 };

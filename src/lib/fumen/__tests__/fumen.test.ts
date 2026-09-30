@@ -1,4 +1,4 @@
-import { decode, encode, extract } from '../fumen';
+import { decode, encode, encodeSync, extract } from '../fumen';
 import { Field, PlayField } from '../field';
 import { FumenError } from '../../errors';
 import { Page } from '../types';
@@ -858,6 +858,17 @@ describe('fumen', () => {
         test('all cyan', async () => {
             const pages = await decode('v115@flAgH');
             await expect(encode(pages)).resolves.toEqual('flAgH');
+        });
+    });
+
+    describe('encodeSync', () => {
+        test('matches encode in both sync and async modes', async () => {
+            const pages = await decode('v115@vhGSSYXAFLDmClcJSAVDEHBEooRBMoAVBUtfBAXsBA?AANrBmnBAAAAAA');
+            const expected = encodeSync(pages);
+            expect(expected).toEqual('vhGSSYXAFLDmClcJSAVDEHBEooRBMoAVBUtfBAXsBA?AANrBmnBAAAAAA');
+
+            await expect(encode(pages)).resolves.toEqual(expected);
+            await expect(encode(pages, true)).resolves.toEqual(expected);
         });
     });
 });

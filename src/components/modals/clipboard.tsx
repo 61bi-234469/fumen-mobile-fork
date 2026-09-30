@@ -3,6 +3,7 @@ import { h } from 'hyperapp';
 import { resources } from '../../states';
 import { i18n } from '../../locales/keys';
 import { showToast } from '../../lib/toast';
+import { warnIfTreeCommentOverLimit } from '../../lib/tree_overflow_toast';
 import { encode } from '../../lib/fumen/fumen';
 import { Page } from '../../lib/fumen/types';
 import { FumenError } from '../../lib/errors';
@@ -65,7 +66,13 @@ export const ClipboardModal: Component<ClipboardModalProps> = ({ actions, pages 
         return `v115@${encoded}`;
     })();
 
+    // 書き出すたびに、#TREE= が上限を超えてツリーが復元できなくなることを知らせる
+    const warnTreeOverflow = () => {
+        warnIfTreeCommentOverLimit(pages, { everyTime: true });
+    };
+
     const clipboard = (domain: string) => () => {
+        warnTreeOverflow();
         let element: HTMLElement | undefined = undefined;
         encodePromise
             .then((data) => {
@@ -118,6 +125,7 @@ export const ClipboardModal: Component<ClipboardModalProps> = ({ actions, pages 
     };
 
     const tinyurl = (domain: string) => () => {
+        warnTreeOverflow();
         encodePromise
             .then(data => `${domain}${data}`)
             .then((data) => {

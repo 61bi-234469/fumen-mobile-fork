@@ -15,10 +15,10 @@ import {
     toRemovePageTask,
     toSinglePageTask,
 } from '../history_task';
-import { State } from '../states';
+import { resources, State } from '../states';
 import { FumenError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
-import { decode, encode } from '../lib/fumen/fumen';
+import { decode, encode, encodeSync } from '../lib/fumen/fumen';
 import { liftableCellIndices } from '../lib/spawn_mino_convert';
 import {
     embedTreeInPages,
@@ -101,7 +101,7 @@ export interface PageActions {
     insertPageFromClipboard: () => action;
     copyAllPagesToClipboard: () => action;
     cutAllPages: () => action;
-    finishCutAllPages: (data: { pages: Page[], undoCount: number, pageCount: number }) => action;
+    finishCutAllPages: (data: { copied: string, pageCount: number }) => action;
     replaceAllFromClipboard: () => action;
 }
 
@@ -109,6 +109,37 @@ export interface PageActions {
 // 挿入時に計算したインデックスがずれるため、確定後の currentIndex から導出する。
 const openInsertedPage = (state: Readonly<State>): NextState =>
     pageActions.openPage({ index: state.fumen.currentIndex + 1 })(state);
+
+// 全ページのコピー・切り取りで書き出すページ。ツリーモードなら #TREE= を先頭コメントに埋め込む。
+const toTreeEmbeddedPages = (state: Readonly<State>): Page[] => {
+    const treeExists = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const tree: SerializedTree | null = treeExists ? {
+        nodes: state.tree.nodes,
+        rootId: state.tree.rootId,
+        version: 1,
+    } : null;
+    return embedTreeInPages(state.fumen.pages, tree, treeExists);
+};
+
+const startCutAllPages = (state: Readonly<State>): NextState => {
+    const pages = toTreeEmbeddedPages(state);
+    warnIfTreeCommentOverLimit(pages, { everyTime: true });
+
+    (async () => {
+        try {
+            const url = `v115@${await encode(pages)}`;
+            if (await copyTextToClipboard(url)) {
+                main.finishCutAllPages({ copied: url, pageCount: pages.length });
+            } else {
+                showToast(i18n.Toast.FailedToCut());
+            }
+        } catch (error) {
+            showToast(`${i18n.Toast.FailedToCut()}: ${error}`);
+        }
+    })();
+
+    return undefined;
+};
 
 export const pageActions: Readonly<PageActions> = {
     reopenCurrentPage: () => (state): NextState => {
@@ -680,14 +711,7 @@ export const pageActions: Readonly<PageActions> = {
         return undefined;
     },
     copyAllPagesToClipboard: () => (state): NextState => {
-        // Embed tree data only when tree mode is enabled
-        const treeExists = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
-        const tree: SerializedTree | null = treeExists ? {
-            nodes: state.tree.nodes,
-            rootId: state.tree.rootId,
-            version: 1,
-        } : null;
-        const pages = embedTreeInPages(state.fumen.pages, tree, treeExists);
+        const pages = toTreeEmbeddedPages(state);
         warnIfTreeCommentOverLimit(pages, { everyTime: true });
 
         // 非同期でエンコードしてクリップボードにコピー
@@ -709,36 +733,19 @@ export const pageActions: Readonly<PageActions> = {
         return undefined;
     },
     cutAllPages: () => (state): NextState => {
-        const pages = state.fumen.pages;
-        const pageCount = pages.length;
-        const undoCount = state.history.undoCount;
-
-        // ページ情報のスナップショットを同期的にエンコード開始
-        // （参照が変更される前にエンコード処理を開始する）
-        const encodePromise = encode(pages);
-
-        // 非同期でクリップボードにコピー
-        (async () => {
-            try {
-                const encoded = await encodePromise;
-                const url = `v115@${encoded}`;
-
-                if (await copyTextToClipboard(url)) {
-                    main.finishCutAllPages({ pages, undoCount, pageCount });
-                } else {
-                    showToast(i18n.Toast.FailedToCut());
-                }
-            } catch (error) {
-                showToast(`${i18n.Toast.FailedToCut()}: ${error}`);
-            }
-        })();
-
-        return undefined;
+        return sequence(state, [
+            actions.commitCommentText(),
+            startCutAllPages,
+        ]);
     },
     // Clipboard API のコピーは非同期に完了する。待っている間に編集や別テト譜の読み込みがあれば、
     // クリップボードにあるのは古い内容なので、空テト譜で上書きせずにコピーだけで終える。
-    finishCutAllPages: ({ pages, undoCount, pageCount }) => (state): NextState => {
-        if (state.fumen.pages !== pages || state.history.undoCount !== undoCount) {
+    // ページはその場で書き換えられることもあるため、参照や Undo 件数ではなく再エンコードした内容で比べる。
+    finishCutAllPages: ({ copied, pageCount }) => (state): NextState => {
+        // 入力途中のコメントはまだページに反映されていない
+        const changed = resources.comment !== undefined
+            || `v115@${encodeSync(toTreeEmbeddedPages(state))}` !== copied;
+        if (changed) {
             showToast(i18n.Toast.CopiedAllPages(pageCount), 1000);
             return undefined;
         }

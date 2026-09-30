@@ -29,9 +29,11 @@ yarn typecheck
 yarn test
 yarn webpack-prod
 yarn check-build-performance   # deploy.yml fails on the same precache budget
+yarn check-sold-slear-exclusion  # the production build must not contain the Sold Slear dev bot
 ```
 
-All must pass. Additionally run the relevant Cypress specs (`.agents/skills/e2e/SKILL.md`)
+All must pass. Sold Slear is published only in the develop preview (`SOLD_SLEAR_ENABLED`); do not set
+`SOLD_SLEAR_ENABLED=true` for the production build without a separate explicit user approval. Additionally run the relevant Cypress specs (`.agents/skills/e2e/SKILL.md`)
 when the released changes touch a flow with E2E coverage. If local E2E is not runnable
 (GPU issue / timeout), a green `dev-workflow` run may stand in only for the exact commit
 being released:

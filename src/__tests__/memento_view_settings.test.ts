@@ -47,9 +47,12 @@ describe('view settings tree operation scope migration', () => {
             coldClearWeightsPreset: 0,
             coldClearThinkMs: 1000,
             coldClearInputGuideEnabled: true,
+            aiEngine: 'soldSlear',
+            soldSlearBudget: 't500',
             replaySelfPlayer: null,
             replayShowOpponent: true,
             replayAnalysisThinkMs: 100,
+            replaySoldSlearBudget: 'standard',
         });
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
@@ -59,8 +62,25 @@ describe('view settings tree operation scope migration', () => {
         expect(saved.exportShowComments).toBe(false);
         expect(saved.pieceLayout).toBe('play');
         expect(saved.coldClearInputGuideEnabled).toBe(true);
+        expect(saved.aiEngine).toBe('soldSlear');
+        expect(saved.soldSlearBudget).toBe('t500');
+        expect(saved.replaySoldSlearBudget).toBe('standard');
         expect(saved.buttonDropMovesSubtree).toBeUndefined();
         expect(localStorageWrapper.loadViewSettings().pieceLayout).toBe('play');
+    });
+
+    test('loads engine and budget settings as strings and drops non-string values', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({
+            aiEngine: 'soldSlear', soldSlearBudget: 't200', replaySoldSlearBudget: 'standard',
+        }));
+        const loaded = localStorageWrapper.loadViewSettings();
+        expect(loaded.aiEngine).toBe('soldSlear');
+        expect(loaded.soldSlearBudget).toBe('t200');
+        expect(loaded.replaySoldSlearBudget).toBe('standard');
+
+        localStorage.setItem('view-settings@1', JSON.stringify({ aiEngine: 1, soldSlearBudget: null }));
+        expect(localStorageWrapper.loadViewSettings().aiEngine).toBeUndefined();
+        expect(localStorageWrapper.loadViewSettings().soldSlearBudget).toBeUndefined();
     });
 
     // FR-34: 相手盤面の表示可否

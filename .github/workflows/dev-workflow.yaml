@@ -43,10 +43,13 @@ jobs:
           path: ~/.cache/Cypress
           key: cypress-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - run: yarn install --frozen-lockfile
+      # E2E covers Sold Slear, so build it in as the develop preview does
       - run: yarn webpack-prod
         env:
           DEBUG_ON: false
+          SOLD_SLEAR_ENABLED: 'true'
       - run: yarn check-build-performance
+      - run: yarn check-sold-slear-exclusion --present
       - run: mkdir -p logs
       - run: yarn serve > logs/serve.log 2> logs/serve.err.log &
       - name: Wait for static server

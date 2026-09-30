@@ -317,9 +317,13 @@ export interface ViewSettings {
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
     coldClearInputGuideEnabled: boolean;
+    // 値の検証（未知値・このビルドで使えないエンジンの扱い）は復元側のアクションで行う
+    aiEngine: string;
+    soldSlearBudget: string;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayAnalysisThinkMs: number;
+    replaySoldSlearBudget: string;
 }
 
 const safer = {
@@ -468,9 +472,12 @@ export const localStorageWrapper = {
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
             coldClearInputGuideEnabled: safer.boolean(obj.coldClearInputGuideEnabled),
+            aiEngine: safer.string(obj.aiEngine),
+            soldSlearBudget: safer.string(obj.soldSlearBudget),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
             replayAnalysisThinkMs: safer.number(obj.replayAnalysisThinkMs),
+            replaySoldSlearBudget: safer.string(obj.replaySoldSlearBudget),
         };
     },
 };

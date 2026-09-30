@@ -15,6 +15,14 @@ import {
     moveAtGraphX,
     renderReplayEvalGraph,
 } from './replay_eval_graph';
+import { AiEngineId, aiEngineCapabilities, availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
+import {
+    budgetMillisOf,
+    estimatedMillisPerMove,
+    normalizeSoldSlearBudgetId,
+    SOLD_SLEAR_BUDGET_IDS,
+} from '../../lib/sold_slear/budget';
+import { engineDisplayName } from '../modals/cold_clear_menu';
 
 const ACCENT = '#00796b';
 const MUTED = '#777';
@@ -30,13 +38,15 @@ const currentMoveOf = (
     moves: ReplayMoveEval[], selfIndex: number,
 ): ReplayMoveEval | undefined => moves[selfIndex - 1];
 
-const currentText = (move: ReplayMoveEval | undefined): string => {
+const currentText = (move: ReplayMoveEval | undefined, rankMode: boolean): string => {
     if (move === undefined || move.status === 'pending') {
         return i18n.Replay.Analysis.CurrentPending();
     }
     switch (move.status) {
     case 'unmatched':
-        return i18n.Replay.Analysis.CurrentUnmatched();
+        return rankMode
+            ? i18n.Replay.Analysis.CurrentNotReturned(move.candidateCount ?? 0)
+            : i18n.Replay.Analysis.CurrentUnmatched();
     case 'skipped':
     case 'failed':
         return i18n.Replay.Analysis.CurrentSkipped();
@@ -45,6 +55,9 @@ const currentText = (move: ReplayMoveEval | undefined): string => {
     }
     if (move.rank === 1 || (move.loss ?? 0) <= 0) {
         return i18n.Replay.Analysis.CurrentBest();
+    }
+    if (rankMode) {
+        return i18n.Replay.Analysis.CurrentRank(move.rank ?? 0, move.candidateCount ?? 0);
     }
     return i18n.Replay.Analysis.CurrentLoss(formatLoss(move.loss ?? 0), move.rank ?? 0);
 };
@@ -66,6 +79,12 @@ export const replayAnalysisPanel = (
     { state, actions, analysis, thinkMs, totalMoves, endFrame, width, canStart }: ReplayAnalysisPanelProps,
 ) => {
     const running = analysis !== undefined && analysis.status === 'running';
+    const engine: AiEngineId = resolveAiEngine(state.coldClear.engine);
+    const engineSwitchable = availableAiEngines().length > 1;
+    // Sold Slear は損失ではなく順位で評価する（loss には推奨手からの順位差が入る）
+    const rankMode = aiEngineCapabilities(engine).evaluation === 'rank';
+    const soldSlearBudget = normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget);
+    const millisPerMove = engine === 'soldSlear' ? estimatedMillisPerMove(soldSlearBudget) : thinkMs;
     const moves = analysis !== undefined ? analysis.moves : [];
     const drawable = hasDrawableEval(moves);
     const summary = summarizeAnalysis(moves);
@@ -92,13 +111,72 @@ export const replayAnalysisPanel = (
                 })}
             >
                 <span key="replay-analysis-title" style={style({ fontWeight: 'bold' })}>
-                    {i18n.Replay.Analysis.Title()}
+                    {engineSwitchable
+                        ? <a
+                            href="#"
+                            key="btn-replay-analysis-engine"
+                            datatest="btn-replay-analysis-engine"
+                            role="button"
+                            data-engine={engine}
+                            aria-label={i18n.ColdClear.EngineSwitchAria(engineDisplayName(engine))}
+                            aria-disabled={running || state.coldClear.isRunning ? 'true' : 'false'}
+                            style={style({
+                                alignItems: 'center',
+                                color: running ? '#9e9e9e' : '#111827',
+                                display: 'inline-flex',
+                                gap: px(4),
+                            })}
+                            onclick={(e: MouseEvent) => {
+                                e.preventDefault();
+                                if (!running && !state.coldClear.isRunning) {
+                                    actions.toggleAiEngine();
+                                }
+                            }}
+                        >
+                            {i18n.Replay.Analysis.Title(engineDisplayName(engine))}
+                            <i
+                                className="material-icons"
+                                style={style({ color: running ? '#bdbdbd' : ACCENT, fontSize: px(18) })}
+                            >
+                                swap_horiz
+                            </i>
+                        </a>
+                        : i18n.Replay.Analysis.Title(engineDisplayName(engine))}
                 </span>
                 <span
                     key="replay-analysis-actions"
                     style={style({ alignItems: 'center', display: 'flex', gap: px(6) })}
                 >
-                    <select
+                    {engine === 'soldSlear' ? <select
+                        key="replay-analysis-budget-select"
+                        datatest="replay-analysis-budget-select"
+                        aria-label={i18n.Replay.Analysis.BudgetLabel()}
+                        value={soldSlearBudget}
+                        disabled={running}
+                        style={style({
+                            border: '1px solid #ccc',
+                            borderRadius: px(4),
+                            display: 'block',
+                            fontSize: px(12),
+                            height: px(26),
+                            padding: '0 4px',
+                            width: px(96),
+                        })}
+                        onchange={(e: Event) => {
+                            actions.setReplaySoldSlearBudget({
+                                budget: (e.target as HTMLSelectElement).value,
+                            });
+                        }}
+                    >
+                        {SOLD_SLEAR_BUDGET_IDS.map((id) => {
+                            const millis = budgetMillisOf(id);
+                            return <option key={`replay-analysis-budget-${id}`} value={id}>
+                                {millis === null
+                                    ? i18n.ColdClear.SoldSlearBudgetStandard()
+                                    : i18n.Replay.Analysis.ThinkMsOption(millis)}
+                            </option>;
+                        })}
+                    </select> : <select
                         key="replay-analysis-think-select"
                         datatest="replay-analysis-think-select"
                         aria-label={i18n.Replay.Analysis.ThinkMs()}
@@ -124,7 +202,7 @@ export const replayAnalysisPanel = (
                                 {i18n.Replay.Analysis.ThinkMsOption(ms)}
                             </option>
                         ))}
-                    </select>
+                    </select>}
                     {running ? (
                         <a
                             href="#"
@@ -182,7 +260,7 @@ export const replayAnalysisPanel = (
                         : analysis !== undefined && analysis.status === 'aborted'
                             ? i18n.Replay.Analysis.Aborted()
                             : i18n.Replay.Analysis.Estimate(
-                                totalMoves, Math.max(1, Math.round(totalMoves * thinkMs / 1000)))}
+                                totalMoves, Math.max(1, Math.round(totalMoves * millisPerMove / 1000)))}
             </div>
 
             {drawable ? (
@@ -235,6 +313,7 @@ export const replayAnalysisPanel = (
                     data-mean-loss={String(Math.round(summary.meanLoss))}
                     data-max-loss={String(Math.round(summary.maxLoss))}
                     data-analyzed={String(summary.analyzed)}
+                    data-mode={rankMode ? 'rank' : 'loss'}
                     data-unmatched={String(summary.unmatched)}
                     data-skipped={String(summary.skipped)}
                     style={style({
@@ -246,14 +325,20 @@ export const replayAnalysisPanel = (
                         {i18n.Replay.Analysis.MatchRate(Math.round(summary.matchRate * 100))}
                     </span>
                     <span key="analysis-mean">
-                        {i18n.Replay.Analysis.MeanLoss(formatLoss(summary.meanLoss))}
+                        {rankMode
+                            ? i18n.Replay.Analysis.MeanRank((summary.meanLoss + 1).toFixed(1))
+                            : i18n.Replay.Analysis.MeanLoss(formatLoss(summary.meanLoss))}
                     </span>
                     <span key="analysis-max">
-                        {i18n.Replay.Analysis.MaxLoss(formatLoss(summary.maxLoss))}
+                        {rankMode
+                            ? i18n.Replay.Analysis.MaxRank(Math.round(summary.maxLoss) + 1)
+                            : i18n.Replay.Analysis.MaxLoss(formatLoss(summary.maxLoss))}
                     </span>
                     {0 < summary.unmatched ? (
                         <span key="analysis-unmatched" style={style({ color: '#5e35b1' })}>
-                            {i18n.Replay.Analysis.Unmatched(summary.unmatched)}
+                            {rankMode
+                                ? i18n.Replay.Analysis.NotReturned(summary.unmatched)
+                                : i18n.Replay.Analysis.Unmatched(summary.unmatched)}
                         </span>
                     ) : undefined}
                     {0 < summary.skipped ? (
@@ -275,7 +360,7 @@ export const replayAnalysisPanel = (
                     style={style({ color: '#555', fontSize: px(11), margin: '2px 0' })}
                 >
                     {i18n.Replay.Playing.LockLabel()} {current !== undefined ? current.index : '—'}
-                    {' — '}{currentText(current)}
+                    {' — '}{currentText(current, rankMode)}
                 </div>
             ) : undefined}
 
@@ -288,7 +373,7 @@ export const replayAnalysisPanel = (
                     })}
                 >
                     <span key="analysis-worst-label" style={style({ color: MUTED })}>
-                        {i18n.Replay.Analysis.Worst()}
+                        {rankMode ? i18n.Replay.Analysis.WorstRank() : i18n.Replay.Analysis.Worst()}
                     </span>
                     {worst.map((move, order) => (
                         <a
@@ -307,7 +392,9 @@ export const replayAnalysisPanel = (
                                 actions.showReplayMove({ index: move.index });
                             }}
                         >
-                            {i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}
+                            {rankMode
+                                ? i18n.Replay.Analysis.WorstRankItem(move.index, move.rank ?? 0)
+                                : i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}
                         </a>
                     ))}
                 </div>
@@ -318,7 +405,7 @@ export const replayAnalysisPanel = (
                     key="replay-analysis-note"
                     style={style({ color: MUTED, fontSize: px(10), margin: '2px 0 0' })}
                 >
-                    {i18n.Replay.Analysis.Note()}
+                    {rankMode ? i18n.Replay.Analysis.NoteRank() : i18n.Replay.Analysis.Note()}
                 </div>
             ) : undefined}
         </div>

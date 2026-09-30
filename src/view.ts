@@ -28,6 +28,7 @@ import {
     resolveCurrentColdClearMenuQueueState,
     canClearCommentForColdClearQueue,
 } from './actions/cold_clear';
+import { availableAiEngines, resolveAiEngine } from './lib/ai_engine';
 
 export const view: View<State, Actions> = (state, actions) => {
     const searchBlockedByHoldQueue = isColdClearSearchBlockedByHoldQueue(state);
@@ -158,6 +159,10 @@ export const view: View<State, Actions> = (state, actions) => {
             canClearComment,
             actions,
             currentQueueState,
+            engine: resolveAiEngine(state.coldClear.engine),
+            engineSwitchable: availableAiEngines().length > 1,
+            soldSlearBudget: state.coldClear.soldSlearBudget,
+            rotationSystemMismatch: state.mode.rotationSystem !== 'srsPlus',
             isRunning: state.coldClear.isRunning,
             progress: state.coldClear.progress,
             topBranchCount: state.coldClear.topBranchCount,

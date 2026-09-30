@@ -8,6 +8,8 @@ import {
     Screens,
     TouchTypes,
 } from './lib/enums';
+import type { AiEngineId } from './lib/ai_engine';
+import type { SoldSlearBudgetId } from './lib/sold_slear/budget';
 
 export type PaletteShortcuts = {
     [key in 'I' | 'L' | 'O' | 'Z' | 'T' | 'J' | 'S' | 'Empty' | 'Gray' | 'Comp']: string;
@@ -185,12 +187,16 @@ export interface ReplayMoveEval {
 }
 
 export interface ReplayAnalysisState {
-    // roundIndex / selfPlayerId / requestId / 探索設定 を連結した無効化キー。
-    // 現在のキーと一致しない結果は捨てる（IR 差し替え・ラウンド変更・自陣入れ替え対策）。
+    // roundIndex / selfPlayerId / requestId / エンジン / 探索設定 を連結した無効化キー。
+    // 現在のキーと一致しない結果は捨てる（IR 差し替え・ラウンド変更・自陣入れ替え・エンジン切替対策）。
     key: string | null;
     status: ReplayAnalysisStatus;
     runId: number;
     thinkMs: number;
+    // Sold Slear で解析するときの探索予算（Cold Clear の thinkMs とは別に保存する）
+    soldSlearBudget: SoldSlearBudgetId;
+    // 結果を出したエンジン。loss はこのエンジンの評価軸（Sold Slear は順位差）で解釈する
+    engine: AiEngineId;
     progress: { current: number, total: number };
     moves: ReplayMoveEval[];
     error?: string;
@@ -205,6 +211,8 @@ export const initialReplayAnalysisState: ReplayAnalysisState = {
     status: 'idle',
     runId: 0,
     thinkMs: DEFAULT_REPLAY_ANALYSIS_THINK_MS,
+    soldSlearBudget: 'standard',
+    engine: 'coldClear',
     progress: { current: 0, total: 0 },
     moves: [],
     error: undefined,
@@ -486,6 +494,9 @@ export interface State {
         nextLimit: number | null;
         weightsPreset: number;
         thinkMs: number;
+        // エディタ AI とリプレイ解析で共有するエンジン選択
+        engine: AiEngineId;
+        soldSlearBudget: SoldSlearBudgetId;
         queuePreview: { pageIndex: number; text: string; historyKey?: string } | null;
         inputGuide: {
             enabled: boolean;
@@ -693,6 +704,8 @@ export const initState: Readonly<State> = {
         nextLimit: null,
         weightsPreset: 0,
         thinkMs: 1000,
+        engine: 'coldClear',
+        soldSlearBudget: 'standard',
         queuePreview: null,
         inputGuide: {
             enabled: false,

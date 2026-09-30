@@ -3,7 +3,9 @@ import { createInputReplayContext, inputGarbageView } from '../input_replay';
 import { irFieldToField } from '../ttrm/board_converter';
 import { boardAtFrame, pointAt } from '../ttrm/timeline';
 import { IRField, PlayerRoundIR } from '../ttrm/types';
-import { fieldToCC } from './fieldConverter';
+import { fieldToCC, fieldToCells } from './fieldConverter';
+import { AiEngineId, aiEngineCapabilities } from '../ai_engine';
+import { SoldSlearBudgetId } from '../sold_slear/budget';
 import { toCellKey } from './move_match';
 import { CCAnalyzePositionMessage, CC_HOLD_NONE, PIECE_TO_CC } from './types';
 import {
@@ -26,11 +28,17 @@ export const normalizeAnalysisThinkMs = (thinkMs: number): number =>
     ANALYSIS_THINK_MS_PRESETS.includes(thinkMs) ? thinkMs : ANALYSIS_THINK_MS_DEFAULT;
 
 export interface AnalysisSettings {
+    engine: AiEngineId;
     thinkMs: number;
+    soldSlearBudget: SoldSlearBudgetId;
     holdAllowed: boolean;
     speculate: boolean;
     weightsPreset: number;
 }
+
+// Sold Slear は候補内の順位で評価する。損失の代わりに「推奨手からの順位差」を入れ、
+// グラフ・集計・ワースト一覧は Cold Clear と同じ相対スケールの仕組みで描く。
+export const rankLossOf = (rank: number): number => Math.max(0, rank - 1);
 
 export type AnalysisSkipReason =
     | 'noCurrent'
@@ -126,7 +134,17 @@ export const buildAnalysisPosition = (
     // clear.b2b / clear.ren は当該 lock 後のエンジン統計で、非成立時は -1 になり得る。
     const previousLock = player.locks[index - 2];
     const b2b = previousLock !== undefined && previousLock.clear.b2b >= 0;
+    const b2bLevel = previousLock !== undefined ? Math.max(0, previousLock.clear.b2b + 1) : 0;
     const combo = previousLock !== undefined ? Math.max(0, previousLock.clear.ren + 1) : 0;
+    const field = irFieldToField(board.field);
+    const soldSlear = settings.engine === 'soldSlear'
+        ? {
+            b2bLevel,
+            fieldCells: fieldToCells(field),
+            soldSlearBudget: settings.soldSlearBudget,
+            placedSpin: lock.clear.spin,
+        }
+        : {};
 
     const hold = previous.hold !== null && isMinoPiece(previous.hold) ? previous.hold : null;
     const queue = [current, ...next.slice(0, ANALYSIS_NEXT_COUNT)].map(piece => PIECE_TO_CC[piece]);
@@ -140,15 +158,18 @@ export const buildAnalysisPosition = (
             b2b,
             combo,
             type: 'analyzePosition',
-            field: fieldToCC(irFieldToField(board.field)),
+            field: fieldToCC(field),
             hold: hold !== null ? PIECE_TO_CC[hold] : CC_HOLD_NONE,
             holdAllowed: settings.holdAllowed,
             speculate: settings.speculate,
             weightsPreset: settings.weightsPreset,
             thinkMs: settings.thinkMs,
             incoming: incomingAt(player, index, frame),
-            candidateCount: ANALYSIS_CANDIDATE_COUNT,
+            candidateCount: settings.engine === 'soldSlear'
+                ? aiEngineCapabilities(settings.engine).candidateLimit
+                : ANALYSIS_CANDIDATE_COUNT,
             placedCellKey: toCellKey(lock.cells.map(([x, y]) => [x, y])),
+            ...soldSlear,
         },
     };
 };

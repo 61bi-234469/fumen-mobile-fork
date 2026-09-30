@@ -33,6 +33,21 @@ module.exports = (_env, argv = {}) => {
     const isDebug = process.env.DEBUG_ON === undefined
         ? mode === 'development'
         : process.env.DEBUG_ON === 'true';
+    // Sold Slear (development bot) ships only in development builds, the develop preview and the
+    // e2e builds. Production builds leave it out unless SOLD_SLEAR_ENABLED=true is set explicitly.
+    const soldSlearEnabled = process.env.SOLD_SLEAR_ENABLED === undefined
+        ? mode === 'development'
+        : process.env.SOLD_SLEAR_ENABLED === 'true';
+    // help.html marks the Sold Slear credits with SOLD_SLEAR:BEGIN / END comments, either on their
+    // own lines around a block or inline within a line.
+    const transformHelpHtml = (content) => {
+        const text = content.toString();
+        return soldSlearEnabled
+            ? text.replace(/^[ \t]*<!-- SOLD_SLEAR:(BEGIN|END) -->\r?\n/gm, '')
+                .replace(/<!-- SOLD_SLEAR:(BEGIN|END) -->/g, '')
+            : text.replace(/^[ \t]*<!-- SOLD_SLEAR:BEGIN -->[\s\S]*?<!-- SOLD_SLEAR:END -->\r?\n/gm, '')
+                .replace(/<!-- SOLD_SLEAR:BEGIN -->[\s\S]*?<!-- SOLD_SLEAR:END -->/g, '');
+    };
 
     return {
     entry: {
@@ -70,6 +85,10 @@ module.exports = (_env, argv = {}) => {
                 use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
             },
             {
+                test: /sold_slear[\\/]sold_slear\.worker\.ts$/,
+                use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
+            },
+            {
                 test: /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
                 use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
             },
@@ -77,6 +96,7 @@ module.exports = (_env, argv = {}) => {
                 test: /\.tsx?$/,
                 exclude: [
                     /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                    /sold_slear[\\/]sold_slear\.worker\.ts$/,
                     /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
                 ],
                 use: [{ loader: 'ts-loader', options: { ignoreDiagnostics: [1343] } }],
@@ -102,12 +122,19 @@ module.exports = (_env, argv = {}) => {
     plugins: [
         new webpack.DefinePlugin({
             __DEBUG__: JSON.stringify(isDebug),
+            __SOLD_SLEAR_ENABLED__: JSON.stringify(soldSlearEnabled),
         }),
         new CopyPlugin({
             patterns: [
                 {
                     from: path.join(__dirname, 'resources'),
                     to: destDirectory,
+                    globOptions: { ignore: ['**/help.html'] },
+                },
+                {
+                    from: path.join(__dirname, 'resources/help.html'),
+                    to: destDirectory,
+                    transform: transformHelpHtml,
                 },
                 {
                     from: path.join(__dirname, 'node_modules/materialize-css/dist/js/materialize.min.js'),
@@ -164,7 +191,8 @@ module.exports = (_env, argv = {}) => {
                 options: {
                     cacheName: `${cacheId}-wasm`,
                     expiration: {
-                        maxEntries: 2,
+                        // Cold Clear and Sold Slear, each with one previous version kept.
+                        maxEntries: 4,
                         maxAgeSeconds: 30 * 24 * 60 * 60,
                     },
                 },

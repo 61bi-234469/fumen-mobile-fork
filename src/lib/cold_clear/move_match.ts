@@ -45,16 +45,27 @@ export const ccMoveCellKey = (result: CCMove): string | null => {
     return move === null ? null : toOccupiedCellKey(move);
 };
 
-// 候補列の中の実手の位置。完全一致を優先し、無ければ占有セル一致へフォールバックする。
-// 見つからない場合は -1（= 圏外）。
-export const findPlacedIndexByKey = (results: CCMove[], expectedCellKey: string): number => {
+// 候補列の中の実手の位置。占有セルで照合し、見つからない場合は -1（= 圏外）。
+// spin が分かり候補も spin を持つ（Sold Slear）場合は、同じセルで spin も一致する候補を優先する。
+// CC2 の spin 表記は TETR.IO 本体の判定と食い違うことがあるため、無ければセル一致へ戻す。
+export const findPlacedIndexByKey = (
+    results: CCMove[], expectedCellKey: string, expectedSpin?: string,
+): number => {
+    let sameCellsIndex = -1;
     for (let index = 0; index < results.length; index += 1) {
         const key = ccMoveCellKey(results[index]);
-        if (key !== null && key === expectedCellKey) {
+        if (key === null || key !== expectedCellKey) {
+            continue;
+        }
+        const spin = results[index].s2?.spin;
+        if (expectedSpin === undefined || spin === undefined || spin === expectedSpin) {
             return index;
         }
+        if (sameCellsIndex < 0) {
+            sameCellsIndex = index;
+        }
     }
-    return -1;
+    return sameCellsIndex;
 };
 
 export const findExactPlacedResult = (

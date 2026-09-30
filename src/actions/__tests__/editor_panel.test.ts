@@ -45,6 +45,8 @@ const createState = (override: any = {}) => ({
         nextLimit: null,
         weightsPreset: 0,
         thinkMs: 1000,
+        engine: 'coldClear',
+        soldSlearBudget: 'standard',
         inputGuide: { enabled: false },
     },
     editorPanel: {
@@ -89,9 +91,12 @@ describe('editorPanelActions', () => {
                 coldClearWeightsPreset: 0,
                 coldClearThinkMs: 1000,
                 coldClearInputGuideEnabled: false,
+                aiEngine: 'coldClear',
+                soldSlearBudget: 'standard',
                 replaySelfPlayer: null,
                 replayShowOpponent: true,
                 replayAnalysisThinkMs: 100,
+                replaySoldSlearBudget: 'standard',
             });
         });
 

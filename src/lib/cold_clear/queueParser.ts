@@ -14,6 +14,8 @@ export interface ParsedQueue {
 
 export interface ParsedQueueState extends ParsedQueue {
     b2b: boolean;
+    // S2 の B2B レベル。b2b=1 / true は 1、b2b=0 / false は 0。Sold Slear の結果ページは整数で書く
+    b2bLevel: number;
     combo: number;
     inputRotation?: InputRotationEvidence;
     sevenBagGray?: SevenBagGrayProgress;
@@ -26,7 +28,7 @@ const QUIZ_QUEUE_REGEX = /^#Q=\[([IOTLJSZiotljsz]?)\]\(([IOTLJSZiotljsz]?)\)([IO
 const LEGACY_QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]*$/;
 const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
-const B2B_SEGMENT_REGEX = /^b2b=(0|1|true|false)$/;
+const B2B_SEGMENT_REGEX = /^b2b=(true|false|0|[1-9]\d{0,5})$/;
 const COMBO_SEGMENT_REGEX = /^combo=(-?\d+)$/;
 const METADATA_SEPARATOR = ' | ';
 
@@ -88,7 +90,7 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     const metadataSegmentCount = queueOnly ? segments.length - 1 : segments.length;
     const queue = queueOnly || { hold: null, current: null, queue: [] };
 
-    let b2b = false;
+    let b2bLevel = 0;
     let combo = 0;
     for (let i = 0; i < metadataSegmentCount; i += 1) {
         const tokens = segments[i].split(' ');
@@ -106,7 +108,9 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
 
             const b2bMatch = B2B_SEGMENT_REGEX.exec(token);
             if (b2bMatch) {
-                b2b = b2bMatch[1] === '1' || b2bMatch[1] === 'true';
+                b2bLevel = b2bMatch[1] === 'true' ? 1
+                    : b2bMatch[1] === 'false' ? 0
+                        : Number.parseInt(b2bMatch[1], 10);
                 continue;
             }
 
@@ -121,8 +125,9 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     }
 
     const result: ParsedQueueState = {
-        b2b,
+        b2bLevel,
         combo,
+        b2b: b2bLevel > 0,
         hold: queue.hold,
         current: queue.current,
         queue: queue.queue,
@@ -211,15 +216,19 @@ export function buildQueueStateComment(
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-    b2b: boolean,
+    b2b: boolean | number,
     combo: number,
     suffix: string = '',
 ): string {
     const queueComment = buildQueueComment(hold, current, queue, suffix);
     const metadataTokens: string[] = [];
 
-    if (b2b) {
-        metadataTokens.push('b2b=1');
+    // 真偽値（Cold Clear・INPUT）は従来どおり b2b=1。数値は S2 の B2B レベルとしてそのまま書く
+    const b2bLevel = typeof b2b === 'number'
+        ? (Number.isFinite(b2b) ? Math.max(0, Math.floor(b2b)) : 0)
+        : (b2b ? 1 : 0);
+    if (b2bLevel > 0) {
+        metadataTokens.push(`b2b=${b2bLevel}`);
     }
 
     const normalizedCombo = Math.max(0, Math.floor(combo));

@@ -771,6 +771,38 @@ describe('TETR.IO Replay', () => {
             operations.replay.analysis.graph().should('not.exist');
             operations.replay.analysis.summary().should('not.exist');
         });
+
+        // Sold Slear は候補内の順位で評価する（標準予算は決定的）
+        it('analyzes with Sold Slear by rank and drops the graph when the engine changes', () => {
+            cy.clearLocalStorage();
+            startPlaying();
+
+            operations.replay.analysis.switchEngineTo('soldSlear');
+            cy.get(datatest('replay-analysis-think-select')).should('not.exist');
+            operations.replay.analysis.setBudget('standard');
+            operations.replay.analysis.start();
+            operations.replay.analysis.waitDone();
+
+            operations.replay.analysis.graph().should('be.visible');
+            operations.replay.analysis.summary()
+                .should('have.attr', 'data-mode', 'rank')
+                .then(($summary) => {
+                    const analyzed = Number($summary.attr('data-analyzed'));
+                    expect(analyzed, 'analyzed moves').to.be.greaterThan(0);
+                    expect(analyzed + Number($summary.attr('data-unmatched'))
+                        + Number($summary.attr('data-skipped')), 'moves accounted for')
+                        .to.equal(PLAYER_A_LOCKS);
+                });
+            cy.window().then(win => {
+                const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+                expect(settings.aiEngine).to.equal('soldSlear');
+            });
+
+            // エンジンを戻すと Sold Slear の結果は表示しない
+            operations.replay.analysis.switchEngineTo('coldClear');
+            operations.replay.analysis.graph().should('not.exist');
+            cy.get(datatest('replay-analysis-think-select')).should('exist');
+        });
     });
 
     it('keeps both gauges the same size on PC', () => {

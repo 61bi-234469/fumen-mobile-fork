@@ -21,7 +21,7 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 |---|---|---|---|---|---|
 | `append_spec.js` | Append fumen（インポートモーダル、失敗→成功、キャンセル） | `src/components/modals/append.tsx`, `src/actions/list_view.ts` | `menu.append` | 0:06 | readonly画面から起動 |
 | `box_spec.js` | Hold/Nextボックス表示（Quiz有無・Reverse・Multi quiz） readonly | `src/views/reader.ts`, `src/lib/piece_queue.ts`, `src/lib/fumen/quiz.ts` | なし（`holdBox`/`nextBox`セレクタ直接） | 0:21 | 776行だが単純アサーション主体 |
-| `cold_clear_spec.js` | Cold Clear AIメニュー（提案検索・top branch編集・現在ピース再spawn） | `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/components/modals/cold_clear_menu.tsx` | `mode.comment`, `mode.piece`, `mode.tools` | 0:11 | Worker/WASM利用。`window.Worker`スタブでは制御不可（e2e skill参照） |
+| `cold_clear_spec.js` | Cold Clear AIメニュー（提案検索・top branch編集・現在ピース再spawn）と Sold Slear（見出しタップでのエンジン切替・専用設定の非表示・連続探索・上位分岐・置いたミノの順位・INPUTガイド再計算） | `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/ai_engine.ts`, `src/lib/sold_slear/`, `src/components/modals/cold_clear_menu.tsx` | `mode.comment`, `mode.piece`, `mode.tools`, `aiMenu` | 0:26 | Worker/WASM利用。`window.Worker`スタブでは制御不可（e2e skill参照） |
 | `color_spec.js` | ガイドライン色・Classic配色・回転システム切替時の配色同期 | `src/lib/classic_rotation.ts`, `src/lib/rotation_system.ts`, `src/components/field.tsx` | `menu.setRotationSystem` | 0:04 | readonly画面中心 |
 | `comments_spec.js` | コメント編集（Utils起動・他ページ非適用・readonly/writable切替・Quiz/Multi quiz/不正quiz・マージ） | `src/actions/comment.ts`, `src/views/editor/editor.ts`（getComment）, `src/lib/fumen/quiz.ts` | `menu.commentReadonly/Writable`, `mode.comment/piece/tools/utils` | 0:55 | - |
 | `draw_spec.js` | PAINT描画（ドラッグ補間・コンプリート補完・分割inference・sentブロック） | `src/actions/draw_block.ts`, `src/actions/field_editor.ts`, `src/lib/inference.ts` | `menu.copyToClipboard/newPage`, `mode.block/flags/tools`, `screen.readonly` | 0:34 | - |
@@ -41,7 +41,7 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 | `piece_queue_spec.js` | HOLD/NEXTキュー（PIECEモード限定表示・infinite 7bag・キューモーダル編集） | `src/lib/piece_queue.ts`, `src/views/editor/piece_queue_overlay.ts`, `src/components/modals/piece_queue.tsx` | `mode.comment/piece/tools` | 0:54 | `#Q=` 同期（AGENTS.md invariant）に関わる |
 | `put_piece_spec.js` | ピース設置操作（キー/タッチ同時操作・DAS Cut・ハードドロップ・Reset・Inference・回転系） | `src/actions/put_piece.ts`, `src/actions/move_piece.ts`, `src/lib/piece_shortcut.ts`, `src/lib/rotation_system.ts`, `src/lib/srs.ts`, `src/lib/srs_plus.ts`, `src/lib/inference.ts` | `menu.openUserSettings/selectUserSettingsTab/setRotationSystem`, `mode.block/comment/piece/tools` | 1:27 | 557行。タイミング系（DAS Cut等）はCI環境依存でflakyになりやすい |
 | `quiz_spec.js` | Quiz（`#Q=`）表示のreadonly挙動（PC・不正quiz・最終ページLockオフ） | `src/lib/fumen/quiz.ts`, `src/views/reader.ts` | なし | 1:05 | readonly |
-| `replay_spec.js` | TETR.IOリプレイ（.ttrm取り込み・ラウンド/自陣選択・手番送り/終端ロック・キーボード操作・時計再生とシーク・相手盤面とフレーム軸・左右入れ替え・PC/スマホのレイアウト・ガベージのゲージ/せり上がり予告/死因・Editorへ新規ページとして挿入・INPUTでのゲージ継続とNEXT上のショートカット・AI解析グラフ・壊れたファイルのエラー表示） | `src/lib/ttrm/`, `src/actions/replay.ts`, `src/actions/replay_analysis.ts`, `src/lib/cold_clear/replay_analysis.ts`, `src/lib/input_replay.ts`, `src/views/replay.tsx`, `src/views/replay_layout.ts`, `src/components/replay/`, `src/views/editor/piece_queue_overlay.ts`（INPUTからの導線） | `replay.*`, `inputReplay.*`, `mode.utils/block` | 0:53 | 期待fumenはfixtureに対するJest（simulator+garbage+ir_to_page+encode）の決定論的出力。34ケース（2026-09-28） |
+| `replay_spec.js` | TETR.IOリプレイ（.ttrm取り込み・ラウンド/自陣選択・手番送り/終端ロック・キーボード操作・時計再生とシーク・相手盤面とフレーム軸・左右入れ替え・PC/スマホのレイアウト・ガベージのゲージ/せり上がり予告/死因・Editorへ新規ページとして挿入・INPUTでのゲージ継続とNEXT上のショートカット・AI解析グラフ（Cold Clear / Sold Slear）・壊れたファイルのエラー表示） | `src/lib/ttrm/`, `src/actions/replay.ts`, `src/actions/replay_analysis.ts`, `src/lib/cold_clear/replay_analysis.ts`, `src/lib/sold_slear/`, `src/lib/input_replay.ts`, `src/views/replay.tsx`, `src/views/replay_layout.ts`, `src/components/replay/`, `src/views/editor/piece_queue_overlay.ts`（INPUTからの導線） | `replay.*`, `inputReplay.*`, `mode.utils/block` | 0:57 | 期待fumenはfixtureに対するJest（simulator+garbage+ir_to_page+encode）の決定論的出力。34ケース（2026-09-28） |
 | `right_click_spec.js` | 盤面の右クリック統合挙動（PAINT/SELECT/PIECE共通の消しゴム・SPAWNミノのキュー戻し/削除・選択やパーツのまるごと削除・COMP残骸の消去） | `src/actions/field_editor.ts`, `src/actions/field_editor_right_click.ts`, `src/components/event/drawing_event_canvas.tsx`, `src/actions/rect_select.ts` | `mode.block.Completion/rightClick/rightDrag`, `mode.piece.spawn`, `menu.openUserSettings` | 0:24 | 右クリックは主ツールに依存しない単一ポリシー |
 | `sent_spec.js` | せり上がりライン（Highlight・Reverse・v110互換） | `src/lib/fumen/field.ts`（sentLine）, `src/lib/rotation_system.ts` | `menu.setRotationSystem` | 0:16 | readonly |
 | `slide_spec.js` | Slideモード（上下移動・UTILトレイを保持したままの全体ドラッグ） | `src/views/editor/context_tray.ts`（Slideトレイ）, `src/actions/convert.ts`（shiftTo系） | `mode.block/slide` | 0:03 | - |
@@ -74,8 +74,9 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
   `put_piece`, `color`, `sent`, `drawing_tool`（Flags）, `user_settings`（回転システム設定）
 - `src/lib/piece_queue.ts`, `src/components/modals/piece_queue.tsx` →
   `piece_queue`, `box`, `history_piece`, `history_comment`（quiz）
-- `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/cold_clear_wasm/` →
-  `cold_clear_spec`。INPUTのAIゴーストガイド（`src/components/input_ai_guide_overlay.tsx`）を触ったら
+- `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/cold_clear_wasm/`, `src/lib/ai_engine.ts`,
+  `src/lib/sold_slear/`, `src/lib/sold_slear_wasm/` →
+  `cold_clear_spec`（Sold Slear を触ったら `replay` も）。INPUTのAIゴーストガイド（`src/components/input_ai_guide_overlay.tsx`）を触ったら
   `editor_ui` も、`src/lib/cold_clear/replay_analysis.ts` を触ったら `replay` も
 - `src/lib/ttrm/`, `src/actions/replay.ts`, `src/actions/replay_analysis.ts`, `src/lib/input_replay.ts`,
   `src/views/replay.tsx`, `src/views/replay_layout.ts`, `src/components/replay/` →

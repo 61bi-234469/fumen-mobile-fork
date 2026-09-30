@@ -1,6 +1,8 @@
 import { EditorSidePanelTab, PieceLayoutMode, State } from '../states';
 import { localStorageWrapper } from '../memento';
 import { TreeOperationScope } from '../lib/fumen/tree_types';
+import { AI_ENGINE_DEFAULT, AiEngineId, isAiEngineId, isSoldSlearAvailable } from '../lib/ai_engine';
+import { SoldSlearBudgetId } from '../lib/sold_slear/budget';
 
 type ViewSettingsOverrides = Partial<{
     trimTopBlank: boolean;
@@ -21,9 +23,12 @@ type ViewSettingsOverrides = Partial<{
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
     coldClearInputGuideEnabled: boolean;
+    aiEngine: AiEngineId;
+    soldSlearBudget: SoldSlearBudgetId;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayAnalysisThinkMs: number;
+    replaySoldSlearBudget: SoldSlearBudgetId;
 }>;
 
 // サイトデータをブロックしたブラウザでは localStorage の getter 自体が例外になるため、
@@ -75,6 +80,31 @@ const loadPersistedReplayAnalysisThinkMs = (): number => {
     }
 };
 
+// リプレイ解析の Sold Slear 予算。replayAnalysisThinkMs と同じく他画面からの保存で消さない。
+const loadPersistedReplaySoldSlearBudget = (): string => {
+    if (!isStorageAvailable()) return 'standard';
+    try {
+        return localStorageWrapper.loadViewSettings().replaySoldSlearBudget ?? 'standard';
+    } catch {
+        return 'standard';
+    }
+};
+
+// 本番とプレビューは同じ origin の localStorage を共有する。Sold Slear を持たないビルドが
+// 保存し直してもプレビューでの選択を消さないよう、使えないビルドでは保存済みの値を書き戻す。
+const persistedAiEngine = (state: Readonly<State>): string => {
+    const current = state.coldClear.engine ?? AI_ENGINE_DEFAULT;
+    if (isSoldSlearAvailable() || !isStorageAvailable()) {
+        return current;
+    }
+    try {
+        const saved = localStorageWrapper.loadViewSettings().aiEngine;
+        return isAiEngineId(saved) ? saved : current;
+    } catch {
+        return current;
+    }
+};
+
 export const persistViewSettings = (state: Readonly<State>, overrides: ViewSettingsOverrides = {}) => {
     if (!isStorageAvailable()) return;
     localStorageWrapper.saveViewSettings({
@@ -99,6 +129,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         coldClearThinkMs: overrides.coldClearThinkMs ?? state.coldClear.thinkMs,
         coldClearInputGuideEnabled: overrides.coldClearInputGuideEnabled
             ?? state.coldClear.inputGuide?.enabled ?? false,
+        aiEngine: overrides.aiEngine ?? persistedAiEngine(state),
+        soldSlearBudget: overrides.soldSlearBudget ?? state.coldClear.soldSlearBudget ?? 'standard',
         // 自陣プレイヤー名の記憶（FR-13）。ユーザ名で保存し、次回取り込み時に一致すれば復元する。
         replaySelfPlayer: overrides.replaySelfPlayer !== undefined
             ? overrides.replaySelfPlayer
@@ -107,5 +139,6 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         replayShowOpponent: overrides.replayShowOpponent ?? loadPersistedReplayShowOpponent(),
         // AI 解析の思考時間。解析結果そのものは永続化しない
         replayAnalysisThinkMs: overrides.replayAnalysisThinkMs ?? loadPersistedReplayAnalysisThinkMs(),
+        replaySoldSlearBudget: overrides.replaySoldSlearBudget ?? loadPersistedReplaySoldSlearBudget(),
     });
 };

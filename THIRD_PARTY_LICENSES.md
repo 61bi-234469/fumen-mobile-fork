@@ -14,6 +14,34 @@ a Tetris AI engine by MinusKelvin.
     (supersedes `0001-export-move-score-to-wasm.patch` and
     `0002-add-hold-speculate-and-b2b-combo-feedback.patch`, kept for history)
   - `third_party/licenses/MPL-2.0.txt`
+- **Rust crates linked into the WASM**: `third_party/cold-clear/rust-crates.txt` lists each
+  crate with its license texts (MIT, Apache-2.0, BSD, Unlicense, Unicode-3.0 and similar
+  permissive licenses; shared full texts in `third_party/licenses/`).
+
+## Sold Slear (Cold Clear 2 derivative, develop preview only)
+
+The develop preview (`/preview/`) includes a WebAssembly build of Sold Slear, a development
+Tetris bot for TETR.IO Season 2 rules made by the owner of this repository in the s2-bot-lab
+project. Production builds do not include it (`SOLD_SLEAR_ENABLED`, see `webpack.config.js`).
+
+- **Files**: `src/lib/sold_slear_wasm/cold_clear_2_s2.wasm`; the TypeScript port of the
+  s2-bot-lab request/profile code in `src/lib/sold_slear/`
+- **Derived from**:
+  - [MinusKelvin/cold-clear-2](https://github.com/MinusKelvin/cold-clear-2) at
+    `ed8b19327b6bd1410ddd873d8611485bd45d8fae`, licensed MIT OR Apache-2.0,
+    Copyright (c) 2021 Mark Carlson
+  - [chouhy/cold-clear-2](https://github.com/chouhy/cold-clear-2) at
+    `b20a92b0ed3230dd910d0674f7a09c552a34dd46` (non-T mini spin retention and the all-spin
+    weight preset), under the same dual license files (`LICENSE-MIT`, `LICENSE-APACHE`)
+  - [61bi-234469/s2-bot-lab](https://github.com/61bi-234469/s2-bot-lab) at
+    `ff7210f28977ce0851301a351f751c0a3ad1bd98` (the s2-bot-lab modifications and the build),
+    MIT, Copyright (c) 2026 61bi-234469
+- **License choice for this distribution**: MIT (texts in `third_party/sold-slear/`:
+  `LICENSE-MIT-cold-clear-2`, `LICENSE-s2-bot-lab`; Apache-2.0 text in `third_party/licenses/`)
+- **`instant` 0.1.13 (patched)**: BSD-3-Clause, Copyright (c) 2019 Sébastien Crozet
+  (`third_party/sold-slear/LICENSE-instant`)
+- **Rust crates linked into the WASM**: `third_party/sold-slear/rust-crates.txt`
+- **Provenance, rebuild steps and checksum**: `third_party/sold-slear/README.md`
 
 ## @haelp/teto (Triangle.js)
 

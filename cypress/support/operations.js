@@ -925,6 +925,17 @@ export const operations = {
             cy.get(datatest(`tree-scope-option-${scope}`)).click();
         },
     },
+    // AI モーダル。見出しのエンジン名をタップすると Cold Clear / Sold Slear を切り替える
+    aiMenu: {
+        switchEngineTo: (engine) => {
+            cy.get(datatest('btn-ai-engine-switch')).then(($button) => {
+                if ($button.attr('data-engine') !== engine) {
+                    cy.wrap($button).click();
+                }
+            });
+            cy.get(datatest('btn-ai-engine-switch')).should('have.attr', 'data-engine', engine);
+        },
+    },
     editorPanel: {
         // ユーザー設定 View タブでサイドパネル(PC)の表示を切り替える
         enable: () => {
@@ -1010,6 +1021,16 @@ export const operations = {
         analysis: {
             panel: () => cy.get(datatest('replay-analysis-panel')),
             setThinkMs: (ms) => cy.get(datatest('replay-analysis-think-select')).select(String(ms)),
+            // エンジン選択はエディタの AI モーダルと共有
+            switchEngineTo: (engine) => {
+                cy.get(datatest('btn-replay-analysis-engine')).then(($button) => {
+                    if ($button.attr('data-engine') !== engine) {
+                        cy.wrap($button).click();
+                    }
+                });
+                cy.get(datatest('btn-replay-analysis-engine')).should('have.attr', 'data-engine', engine);
+            },
+            setBudget: (budget) => cy.get(datatest('replay-analysis-budget-select')).select(budget),
             start: () => cy.get(datatest('btn-replay-analysis-start')).click(),
             abort: () => cy.get(datatest('btn-replay-analysis-abort')).click(),
             progress: (options = {}) => cy.get(datatest('replay-analysis-progress'), options),

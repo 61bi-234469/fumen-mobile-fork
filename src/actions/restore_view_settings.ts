@@ -18,6 +18,9 @@ interface ViewSettingsRestorationActions {
     setColdClearWeightsPreset: (data: { weightsPreset: number; persist: false }) => void;
     setColdClearThinkMs: (data: { thinkMs: number; persist: false }) => void;
     setInputAiGuideEnabled: (data: { enabled: boolean; persist: false }) => void;
+    setAiEngine: (data: { engine: string; persist: false }) => void;
+    setSoldSlearBudget: (data: { budget: string; persist: false }) => void;
+    setReplaySoldSlearBudget: (data: { budget: string; persist: false }) => void;
     setReplayShowOpponent: (data: { showOpponent: boolean; persist: false }) => void;
     setReplayAnalysisThinkMs: (data: { thinkMs: number; persist: false }) => void;
     setTreeState: (data: Partial<State['tree']>) => void;
@@ -75,11 +78,20 @@ export const restoreViewSettings = (
     if (settings.coldClearInputGuideEnabled !== undefined) {
         actions.setInputAiGuideEnabled({ enabled: settings.coldClearInputGuideEnabled, persist: false });
     }
+    if (settings.aiEngine !== undefined) {
+        actions.setAiEngine({ engine: settings.aiEngine, persist: false });
+    }
+    if (settings.soldSlearBudget !== undefined) {
+        actions.setSoldSlearBudget({ budget: settings.soldSlearBudget, persist: false });
+    }
     if (settings.replayShowOpponent !== undefined) {
         actions.setReplayShowOpponent({ showOpponent: settings.replayShowOpponent, persist: false });
     }
     if (settings.replayAnalysisThinkMs !== undefined) {
         actions.setReplayAnalysisThinkMs({ thinkMs: settings.replayAnalysisThinkMs, persist: false });
+    }
+    if (settings.replaySoldSlearBudget !== undefined) {
+        actions.setReplaySoldSlearBudget({ budget: settings.replaySoldSlearBudget, persist: false });
     }
 
     const tree: Partial<State['tree']> = {};

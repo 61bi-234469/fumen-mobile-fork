@@ -10,6 +10,10 @@ module.exports = {
         "^@haelp/teto/engine$": "<rootDir>/node_modules/@haelp/teto/dist/engine/index.js",
         "^chalk$": "<rootDir>/src/lib/ttrm/chalk_stub.js",
     },
+    // Build-time constants injected by webpack's DefinePlugin.
+    globals: {
+        __SOLD_SLEAR_ENABLED__: true,
+    },
     moduleFileExtensions: [
         "ts",
         "tsx",

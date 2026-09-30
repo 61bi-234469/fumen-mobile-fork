@@ -9,8 +9,9 @@ description: Run, debug, or stabilize Cypress E2E tests in this repo. Use when r
 
 ```bash
 # 1. ALWAYS rebuild first — running against a stale dest/ bundle produces
-#    false failures (and false passes). CI always builds fresh.
-yarn webpack-prod
+#    false failures (and false passes). CI always builds fresh, with the Sold Slear
+#    dev bot included (production builds leave it out unless this is set).
+SOLD_SLEAR_ENABLED=true yarn webpack-prod
 
 # 2. Static server on :8080 (serves /fumen-mobile-fork and /fumen-for-mobile).
 #    If one is already running it keeps serving the new dest/ — EADDRINUSE is ignorable.

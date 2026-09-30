@@ -1,6 +1,6 @@
 import { Piece } from '../../enums';
 import { Field, PlayField } from '../../fumen/field';
-import { fieldToCC } from '../fieldConverter';
+import { fieldToCC, fieldToCells } from '../fieldConverter';
 
 describe('fieldToCC', () => {
     test('empty field produces 400 zeros', () => {
@@ -84,5 +84,23 @@ describe('fieldToCC', () => {
             expect(result[i]).toBe(1);
         });
         expect(result[8]).toBe(0); // x=8 is empty
+    });
+});
+
+describe('fieldToCells', () => {
+    test('writes piece letters and G for gray, bottom row first, 40 rows', () => {
+        const field = new Field({});
+        field.setToPlayField(0, Piece.I);
+        field.setToPlayField(1, Piece.Gray);
+        field.setToPlayField(9, Piece.Z);
+        field.setToPlayField(10 * 22 + 4, Piece.T);
+        field.setToSentLine(0, Piece.Gray);
+
+        const cells = fieldToCells(field);
+        expect(cells).toHaveLength(400);
+        expect(cells.slice(0, 10)).toBe('IG_______Z');
+        expect(cells[22 * 10 + 4]).toBe('T');
+        // せり上がり行と 23 行目より上は空き
+        expect(cells.slice(230)).toBe('_'.repeat(170));
     });
 });

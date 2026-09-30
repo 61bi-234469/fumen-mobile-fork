@@ -369,7 +369,7 @@ export const i18n = {
             KillerSeek: () => t('Replay.Playing.KillerSeek'),
         },
         Analysis: {
-            Title: () => t('Replay.Analysis.Title'),
+            Title: (engine: string) => t('Replay.Analysis.Title', { engine }),
             Start: () => t('Replay.Analysis.Start'),
             Reanalyze: () => t('Replay.Analysis.Reanalyze'),
             Abort: () => t('Replay.Analysis.Abort'),
@@ -397,6 +397,17 @@ export const i18n = {
             Aborted: () => t('Replay.Analysis.Aborted'),
             Failed: () => t('Replay.Analysis.Failed'),
             Note: () => t('Replay.Analysis.Note'),
+            BudgetLabel: () => t('Replay.Analysis.BudgetLabel'),
+            MeanRank: (rank: string) => t('Replay.Analysis.MeanRank', { rank }),
+            MaxRank: (rank: number) => t('Replay.Analysis.MaxRank', { rank }),
+            NotReturned: (count: number) => t('Replay.Analysis.NotReturned', { count }),
+            WorstRank: () => t('Replay.Analysis.WorstRank'),
+            WorstRankItem: (index: number, rank: number) =>
+                t('Replay.Analysis.WorstRankItem', { index, rank }),
+            CurrentRank: (rank: number, total: number) =>
+                t('Replay.Analysis.CurrentRank', { rank, total }),
+            CurrentNotReturned: (total: number) => t('Replay.Analysis.CurrentNotReturned', { total }),
+            NoteRank: () => t('Replay.Analysis.NoteRank'),
         },
         Error: {
             Title: () => t('Replay.Error.Title'),
@@ -556,5 +567,20 @@ export const i18n = {
         InputGuideThinking: () => t('ColdClear.InputGuideThinking'),
         InputGuideReady: () => t('ColdClear.InputGuideReady'),
         InputGuideUnavailable: () => t('ColdClear.InputGuideUnavailable'),
+        EngineColdClear: () => t('ColdClear.EngineColdClear'),
+        EngineSoldSlear: () => t('ColdClear.EngineSoldSlear'),
+        EngineSwitchAria: (name: string) => t('ColdClear.EngineSwitchAria', { name }),
+        SoldSlearNotice: () => t('ColdClear.SoldSlearNotice'),
+        SoldSlearRotationWarning: () => t('ColdClear.SoldSlearRotationWarning'),
+        SoldSlearNeedsNext: () => t('ColdClear.SoldSlearNeedsNext'),
+        SoldSlearPlacedRank: (rank: number, total: number) =>
+            t('ColdClear.SoldSlearPlacedRank', { rank, total }),
+        SoldSlearPlacedOutside: (total: number) => t('ColdClear.SoldSlearPlacedOutside', { total }),
+        SoldSlearBudgetLabel: () => t('ColdClear.SoldSlearBudgetLabel'),
+        SoldSlearBudgetDescription: () => t('ColdClear.SoldSlearBudgetDescription'),
+        SoldSlearBudgetStandard: () => t('ColdClear.SoldSlearBudgetStandard'),
+        SoldSlearBudgetTime: (ms: number) => t('ColdClear.SoldSlearBudgetTime', { ms }),
+        SoldSlearTopBranchCountDescription: () => t('ColdClear.SoldSlearTopBranchCountDescription'),
+        SoldSlearNextLimitDescription: () => t('ColdClear.SoldSlearNextLimitDescription'),
     },
 };

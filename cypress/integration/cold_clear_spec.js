@@ -162,6 +162,120 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('input-cold-clear-top-branch-count')).should('be.disabled');
     });
 
+    describe('Sold Slear engine', () => {
+        const openAiMenuWithQueue = (queue) => {
+            visit({ mode: 'edit', lng: 'en' });
+            operations.mode.comment.open();
+            cy.get(datatest('text-comment')).clear().type(queue).blur();
+            ensureTreeGraphView();
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
+        };
+
+        it('switches from the modal title, hides Cold Clear-only settings and remembers it', () => {
+            cy.clearLocalStorage();
+            openAiMenuWithQueue('#Q=[](T)SILZJO');
+
+            cy.get(datatest('btn-ai-engine-switch'))
+                .should('have.attr', 'data-engine', 'coldClear')
+                .and('contain', 'Cold Clear');
+            cy.get(datatest('toggle-cold-clear-hold-allowed')).should('exist');
+            cy.get(datatest('select-cold-clear-weights-preset')).should('exist');
+            cy.get(datatest('toggle-cold-clear-speculate')).should('exist');
+            cy.get(datatest('txt-ai-engine-notice')).should('not.exist');
+
+            operations.aiMenu.switchEngineTo('soldSlear');
+            cy.get(datatest('btn-ai-engine-switch')).should('contain', 'Sold Slear');
+            cy.get(datatest('toggle-cold-clear-hold-allowed')).should('not.exist');
+            cy.get(datatest('select-cold-clear-weights-preset')).should('not.exist');
+            cy.get(datatest('toggle-cold-clear-speculate')).should('not.exist');
+            cy.get(datatest('select-cold-clear-think-time')).should('not.exist');
+            cy.get(datatest('select-sold-slear-budget')).should('have.value', 'standard');
+            cy.get(datatest('txt-ai-engine-notice')).should('exist');
+            cy.window().then(win => {
+                const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+                expect(settings.aiEngine).to.equal('soldSlear');
+            });
+
+            cy.reload();
+            ensureTreeGraphView();
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('btn-ai-engine-switch')).should('have.attr', 'data-engine', 'soldSlear');
+
+            operations.aiMenu.switchEngineTo('coldClear');
+            cy.get(datatest('toggle-cold-clear-hold-allowed')).should('exist');
+        });
+
+        it('runs a sequence search and adds the result pages to the tree', () => {
+            cy.clearLocalStorage();
+            openAiMenuWithQueue('#Q=[](T)SILZ');
+            operations.aiMenu.switchEngineTo('soldSlear');
+
+            cy.get(datatest('btn-cold-clear-sequence-search')).click();
+            cy.get(datatest('btn-ai-engine-switch')).should('have.attr', 'aria-disabled', 'true');
+            cy.get(datatest('mdl-cold-clear-menu'), { timeout: 30000 }).should('not.exist');
+
+            // current + NEXT 4 個 → 最大 4 手（最後の 1 個は NEXT が無いので置かない。HOLD を使えば減る）
+            cy.get('[datatest^="tree-node-"]', { timeout: 30000 })
+                .should('have.length.within', 3, 5);
+        });
+
+        it('adds up to 16 top branches', () => {
+            cy.clearLocalStorage();
+            openAiMenuWithQueue('#Q=[](T)SILZJO');
+            operations.aiMenu.switchEngineTo('soldSlear');
+
+            cy.get(datatest('input-cold-clear-top-branch-count')).scrollIntoView()
+                .should('have.attr', 'max', '16');
+            cy.get(datatest('input-cold-clear-top-branch-count')).clear().type('3').blur();
+            cy.get(datatest('btn-cold-clear-top-branches-search')).click();
+
+            cy.get(datatest('mdl-cold-clear-menu'), { timeout: 30000 }).should('not.exist');
+            cy.get('[datatest^="tree-node-"]', { timeout: 30000 }).should('have.length', 4);
+        });
+
+        it('reports the placed piece rank without rewriting the comment', () => {
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', lng: 'en' });
+            operations.mode.comment.open();
+            cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+            operations.mode.piece.open();
+            operations.mode.piece.spawn.T();
+            operations.mode.piece.harddrop();
+            operations.mode.tools.backPage();
+
+            ensureTreeGraphView();
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            operations.aiMenu.switchEngineTo('soldSlear');
+            cy.get(datatest('btn-cold-clear-evaluate-placed-spawn-score')).click();
+
+            cy.contains('.toast', /Sold Slear: (rank \d+ of \d+ candidates|not among the \d+ candidates)/,
+                { timeout: 30000 }).should('be.visible');
+            cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
+            cy.get(datatest('text-comment')).invoke('val').should('not.match', /score=|outsideTop=/);
+        });
+
+        it('recomputes the INPUT guide after switching engines', () => {
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', lng: 'en' });
+            operations.mode.comment.open();
+            cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+            operations.mode.piece.open();
+            operations.mode.piece.spawn.T();
+            operations.mode.piece.layout('play');
+            operations.mode.piece.toggleAiGuide();
+            operations.mode.piece.waitAiGuideReady();
+
+            cy.get(datatest('btn-cold-clear')).click();
+            operations.aiMenu.switchEngineTo('soldSlear');
+            cy.get(datatest('btn-cold-clear-menu-close')).click();
+
+            operations.mode.piece.waitAiGuideReady();
+            cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
+                .each(block => expect(block.attr('visible')).to.equal('true'));
+        });
+    });
+
     it('respawns the current piece edited in the AI menu', () => {
         visit({ mode: 'edit', lng: 'en' });
         operations.mode.comment.open();

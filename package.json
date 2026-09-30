@@ -13,6 +13,7 @@
     "cy-open": "node scripts/cypress_wrapper.js open",
     "test-ci": "jest --coverage=false",
     "check-build-performance": "node scripts/check-build-performance.js",
+    "check-sold-slear-exclusion": "node scripts/check-sold-slear-exclusion.js",
     "cy-run-ci": "node scripts/cypress_wrapper.js run",
     "dev": "concurrently \"webpack --mode development --watch\" \"node serve.js\""
   },

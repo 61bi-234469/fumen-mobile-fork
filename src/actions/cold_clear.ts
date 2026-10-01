@@ -2,7 +2,7 @@ import { FieldConstants, Piece, Screens, isMinoPiece } from '../lib/enums';
 import type { action } from '../actions';
 import type { TreeOperationActions } from './tree_operations';
 import { NextState, sequence } from './commons';
-import { State } from '../states';
+import { InputGuideUnavailableReason, State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Quiz } from '../lib/fumen/quiz';
@@ -35,6 +35,7 @@ import {
     COLD_CLEAR_THINK_MS_PRESETS as SHARED_COLD_CLEAR_THINK_MS_PRESETS,
 } from '../lib/cold_clear/think_time';
 import { i18n } from '../locales/keys';
+import { showToast } from '../lib/toast';
 import {
     createTreeFromPages,
     ensureVirtualRoot,
@@ -362,6 +363,7 @@ const idleInputGuide = (state: Readonly<State>): State['coldClear']['inputGuide'
         runId: 0,
     }),
     status: 'idle',
+    reason: undefined,
     positionKey: null,
     move: null,
     usedHold: false,
@@ -920,44 +922,46 @@ interface InputGuideInput {
     positionKey: string;
 }
 
-const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null => {
+type InputGuideInputResult = { input: InputGuideInput } | { reason: InputGuideUnavailableReason };
+
+const resolveInputGuideInputResult = (state: Readonly<State>): InputGuideInputResult => {
     if (!isInputGuideMode(state) || state.coldClear.queuePreview !== null) {
-        return null;
+        return { reason: 'preview' };
     }
     const pageIndex = state.fumen.currentIndex;
     const page = state.fumen.pages[pageIndex];
     if (!isPageSupported(page)) {
-        return null;
+        return { reason: 'unsupportedPage' };
     }
     const parsedResult = parseQueueCommentResultFromPage(state.fumen.pages, pageIndex, null);
     if (!parsedResult.parsed) {
-        return null;
+        return { reason: 'noQueue' };
     }
     const searchQueue = resolveSearchQueueState(parsedResult.parsed);
     if (!searchQueue) {
-        return null;
+        return { reason: 'noQueue' };
     }
     if (page.piece !== undefined
         && isMinoPiece(page.piece.type)
         && page.piece.type !== searchQueue.current) {
-        return null;
+        return { reason: 'pieceMismatch' };
     }
     const settings = effectiveAiSettings(state);
     if (settings.holdAllowed && settings.nextLimit === 0
         && searchQueue.hold === null) {
-        return null;
+        return { reason: 'shortQueue' };
     }
 
     const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
     if (fieldContainsCompleteLine(field)) {
-        return null;
+        return { reason: 'lineClear' };
     }
     const fullQueue = [searchQueue.current, ...searchQueue.queue];
     const initQueue = settings.nextLimit === null
         ? fullQueue
         : fullQueue.slice(0, settings.nextLimit + 1);
     if (initQueue.length < 1 + aiEngineCapabilities(settings.engine).minNext) {
-        return null;
+        return { reason: 'shortQueue' };
     }
     const incoming = incomingForPage(page);
     // Sold Slear は盤面の色（灰色）も読むので、キーも色付き盤面で作る
@@ -977,16 +981,23 @@ const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null 
         settings.engine === 'soldSlear' ? settings.soldSlearBudget : settings.thinkMs,
     ].join('|');
     return {
-        settings,
-        field,
-        searchQueue,
-        incoming,
-        initQueue,
-        positionKey,
-        b2b: parsedResult.parsed.b2b,
-        b2bLevel: parsedResult.parsed.b2bLevel,
-        combo: normalizeCombo(parsedResult.parsed.combo),
+        input: {
+            settings,
+            field,
+            searchQueue,
+            incoming,
+            initQueue,
+            positionKey,
+            b2b: parsedResult.parsed.b2b,
+            b2bLevel: parsedResult.parsed.b2bLevel,
+            combo: normalizeCombo(parsedResult.parsed.combo),
+        },
     };
+};
+
+const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null => {
+    const result = resolveInputGuideInputResult(state);
+    return 'input' in result ? result.input : null;
 };
 
 // HOLD only changes which of the already-known pieces is active. Keep a completed
@@ -1700,11 +1711,12 @@ const isBlockedByReplayAnalysis = (state: Readonly<State>): boolean => {
 };
 
 export const coldClearActions: Readonly<ColdClearActions> = {
-    toggleInputAiGuide: () => (state): NextState => (
-        coldClearActions.setInputAiGuideEnabled({
-            enabled: !(state.coldClear.inputGuide?.enabled ?? false),
-        })(state)
-    ),
+    toggleInputAiGuide: () => (state): NextState => {
+        const enabled = !(state.coldClear.inputGuide?.enabled ?? false);
+        // ボタンだけでは押した結果が伝わりにくいので、切り替えのたびに一言添える
+        showToast(enabled ? i18n.ColdClear.InputGuideToastOn() : i18n.ColdClear.InputGuideToastOff());
+        return coldClearActions.setInputAiGuideEnabled({ enabled })(state);
+    },
     setInputAiGuideEnabled: ({ enabled, persist = true }) => (state): NextState => {
         const current = state.coldClear.inputGuide ?? idleInputGuide(state);
         if (current.enabled === enabled) {
@@ -1743,10 +1755,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             };
         }
 
-        const input = resolveInputGuideInput(state);
-        if (!input) {
+        const resolved = resolveInputGuideInputResult(state);
+        if ('reason' in resolved) {
             terminateInputGuideSession();
-            if (guide.status === 'unavailable' && guide.positionKey === null && guide.move === null) {
+            if (guide.status === 'unavailable' && guide.reason === resolved.reason
+                && guide.positionKey === null && guide.move === null) {
                 return undefined;
             }
             return {
@@ -1755,6 +1768,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     inputGuide: {
                         ...guide,
                         status: 'unavailable',
+                        reason: resolved.reason,
                         positionKey: null,
                         move: null,
                         usedHold: false,
@@ -1762,6 +1776,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 },
             };
         }
+        const input = resolved.input;
         if (guide.positionKey === input.positionKey
             && (guide.status === 'thinking' || guide.status === 'ready' || guide.status === 'unavailable')) {
             return undefined;
@@ -1794,6 +1809,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     ...guide,
                     runId,
                     status: 'thinking',
+                    reason: undefined,
                     positionKey: input.positionKey,
                     move: null,
                     usedHold: false,
@@ -1849,6 +1865,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     inputGuide: {
                         ...guide,
                         status: 'unavailable',
+                        reason: 'noMove',
                         move: null,
                         usedHold: false,
                     },
@@ -1863,6 +1880,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     ...guide,
                     move,
                     status: 'ready',
+                    reason: undefined,
                     usedHold: result.hold,
                 },
             },
@@ -1880,6 +1898,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 inputGuide: {
                     ...guide,
                     status: 'unavailable',
+                    reason: 'engineError',
                     move: null,
                     usedHold: false,
                 },

@@ -26,6 +26,7 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('btn-input-ai-guide'))
             .should('have.attr', 'aria-pressed', 'false')
             .and('have.attr', 'data-status', 'idle');
+        cy.get(datatest('input-ai-guide-status')).should('have.text', 'OFF');
         operations.mode.piece.toggleAiGuide();
         cy.get(datatest('btn-input-ai-guide')).should('have.attr', 'aria-pressed', 'true');
         cy.window().then(win => {
@@ -36,6 +37,7 @@ describe('Cold Clear menu', () => {
             .each(block => expect(block.attr('visible')).not.to.equal('true'));
 
         operations.mode.piece.waitAiGuideReady();
+        cy.get(datatest('input-ai-guide-status')).should('have.text', 'Showing');
         cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
             .each(block => expect(block.attr('visible')).to.equal('true'));
 
@@ -71,6 +73,19 @@ describe('Cold Clear menu', () => {
         });
         cy.get('[datatest^="input-ai-guide-block-"]')
             .each(block => expect(block.attr('visible')).not.to.equal('true'));
+    });
+
+    it('shows why the INPUT AI guide cannot run', () => {
+        visit({ mode: 'edit', lng: 'en' });
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+
+        operations.mode.piece.toggleAiGuide();
+        cy.get(datatest('btn-input-ai-guide'))
+            .should('have.attr', 'aria-pressed', 'true')
+            .and('have.attr', 'data-status', 'unavailable')
+            .and('have.attr', 'data-reason', 'noQueue');
+        cy.get(datatest('input-ai-guide-status')).should('have.text', 'No queue');
     });
 
     it('adds a top-level node from ghost add button in tree view', () => {

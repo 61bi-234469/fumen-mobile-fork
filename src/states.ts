@@ -59,6 +59,9 @@ export type { InitialScreenSetting } from './lib/initial_screen';
 export type EditorSidePanelTab = 'list' | 'tree';
 
 export type PrimaryTool = 'paint' | 'piece' | 'select';
+export type InputGuideUnavailableReason =
+    'preview' | 'unsupportedPage' | 'noQueue' | 'pieceMismatch' | 'shortQueue' | 'lineClear' | 'noMove'
+    | 'engineError';
 export type PaintTool = 'pen' | 'fill' | 'fillRow';
 export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
@@ -501,6 +504,8 @@ export interface State {
         inputGuide: {
             enabled: boolean;
             status: 'idle' | 'thinking' | 'ready' | 'unavailable';
+            // status が 'unavailable' のときだけ入る。ボタンに理由を短く表示する
+            reason?: InputGuideUnavailableReason;
             runId: number;
             positionKey: string | null;
             move: Move | null;

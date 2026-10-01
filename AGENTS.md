@@ -35,7 +35,7 @@
 - Import/export: `src/actions/list_view.ts`, `src/components/modals/list_view_menu.tsx`, `open.tsx`, `append.tsx`, `src/lib/tetgram.ts`, `src/lib/gif_export.ts`, `src/lib/thumbnail.ts`, `src/lib/tree_export.ts`, `src/lib/comment_metadata.ts`, and `src/lib/clipboard_parser/`.
 - Cold Clear: `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/cold_clear_wasm/`, `src/components/modals/cold_clear_menu.tsx`, `src/components/input_ai_guide_overlay.tsx`, and the matching third-party notices and patches. `third_party/cold-clear/README.md` documents how to rebuild the WASM from the pinned source and patch.
 - TETR.IO replay: `src/actions/replay.ts`, `src/actions/replay_analysis.ts`, `src/views/replay.tsx`, `src/views/replay_layout.ts`, `src/components/replay/`, `src/lib/ttrm/`, `src/lib/input_replay.ts`, and `src/lib/cold_clear/replay_analysis.ts`. It depends on `@haelp/teto`; `chalk` is aliased to `src/lib/ttrm/chalk_stub.js` in both `webpack.config.js` and `jest.config.js`.
-- Sold Slear (second AI engine, a TETR.IO S2 Cold Clear 2 derivative from the owner's s2-bot-lab, develop preview only): `src/lib/ai_engine.ts` (engine choice and capabilities), `src/lib/sold_slear/`, `src/lib/sold_slear_wasm/`, and `third_party/sold-slear/README.md` (provenance, rebuild steps, checksum). It reuses the Cold Clear worker message protocol, so actions and UI stay in the Cold Clear modules.
+- Sold Slear (second AI engine, a TETR.IO S2 Cold Clear 2 derivative from the owner's s2-bot-lab): `src/lib/ai_engine.ts` (engine choice and capabilities), `src/lib/sold_slear/`, `src/lib/sold_slear_wasm/`, and `third_party/sold-slear/README.md` (provenance, rebuild steps, checksum). It reuses the Cold Clear worker message protocol, so actions and UI stay in the Cold Clear modules.
 - Web workers: Cold Clear, Sold Slear, and the ttrm replay worker are compiled with `tsconfig.worker.json` (see the worker rules in `webpack.config.js`).
 - PWA, SEO, and build budget: Workbox `GenerateSW` in `webpack.config.js`, `src/lib/force_reload.ts`, `src/lib/seo.ts`, `resources/manifest.json`, `resources/robots.txt`, `resources/sitemap.xml`, and `scripts/check-build-performance.js` (precache URL/byte budget enforced in CI and deploy).
 
@@ -96,7 +96,7 @@
 - Development server with watch build: `yarn dev`. Static server only: `yarn serve` (port 8080).
 - Development build: `yarn webpack`. Production build: `yarn webpack-prod`. Both clean `dest/` first.
 - Precache budget check (run after a production build): `yarn check-build-performance`.
-- Sold Slear (development AI bot) is built in only when `SOLD_SLEAR_ENABLED=true` or in development mode; production builds leave it out. `yarn check-sold-slear-exclusion` (add `--present` for preview/e2e builds) verifies `dest/`.
+- Sold Slear is included by default in production, preview, and development builds. `SOLD_SLEAR_ENABLED=false` explicitly opts out. `yarn check-sold-slear-exclusion --present` verifies its assets and credits in `dest/`; omit `--present` when verifying an opt-out build.
 - Lint: `yarn lint`. Type check: `yarn typecheck`.
 - Unit tests: `yarn test`; target a file/pattern with `yarn test <pattern>`. Coverage is opt-in with `yarn test --coverage`.
 - Cypress: `yarn cy-run --spec <specs>` (see the e2e skill); `yarn cy-open` for the interactive runner.

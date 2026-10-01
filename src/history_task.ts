@@ -4,7 +4,7 @@ import { generateKey } from './lib/random';
 import { Move, Page, PreCommand } from './lib/fumen/types';
 import { decode } from './lib/fumen/fumen';
 import { Field, PlayField } from './lib/fumen/field';
-import { cloneInputReplayContext } from './lib/input_replay';
+import { clonePageInternal } from './lib/page_internal';
 
 export type HistoryTask = OperationTask | FixedTask;
 
@@ -314,17 +314,7 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
             rise: page.flags.rise,
             quiz: page.flags.quiz,
         },
-        internal: page.internal === undefined ? undefined : {
-            sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
-                ? undefined : { ...page.internal.sevenBagGrayProgress },
-            sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {
-                pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
-                rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
-            },
-            sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
-            inputReplayContext: page.internal.inputReplayContext === undefined
-                ? undefined : cloneInputReplayContext(page.internal.inputReplayContext),
-        },
+        internal: clonePageInternal(page.internal),
     };
 };
 
@@ -357,16 +347,6 @@ export const toPage = (page: PrimitivePage): Page => {
             rise: page.flags.rise,
             quiz: page.flags.quiz,
         },
-        internal: page.internal === undefined ? undefined : {
-            sevenBagGrayProgress: page.internal.sevenBagGrayProgress === undefined
-                ? undefined : { ...page.internal.sevenBagGrayProgress },
-            sevenBagGrayDisplay: page.internal.sevenBagGrayDisplay === undefined ? undefined : {
-                pieces: page.internal.sevenBagGrayDisplay.pieces.slice(),
-                rowMap: page.internal.sevenBagGrayDisplay.rowMap.slice(),
-            },
-            sevenBagGrayWorkspace: page.internal.sevenBagGrayWorkspace,
-            inputReplayContext: page.internal.inputReplayContext === undefined
-                ? undefined : cloneInputReplayContext(page.internal.inputReplayContext),
-        },
+        internal: clonePageInternal(page.internal),
     };
 };

@@ -3,6 +3,7 @@ import { isMinoPiece, Piece } from './enums';
 import { Quiz } from './fumen/quiz';
 import { Page, PreCommand } from './fumen/types';
 import { Field } from './fumen/field';
+import { clonePageInternal } from './page_internal';
 
 const NEXT_PIECES = 5;
 
@@ -385,6 +386,7 @@ export class Pages {
 
         const page: Page = {
             index,
+            internal: clonePageInternal(prev.internal),
             field: { obj: currentField },
             comment: { ref: undefined },
             flags: {

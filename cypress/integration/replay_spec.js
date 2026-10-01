@@ -674,6 +674,46 @@ describe('TETR.IO Replay', () => {
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
     });
 
+    it('keeps AI and independent garbage state after copying a replay INPUT node', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+
+        cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('btn-cold-clear-sequence-search')).should('not.have.attr', 'aria-disabled', 'true');
+        cy.get(datatest('btn-cold-clear-menu-close')).click();
+
+        cy.get(datatest('navigator-side-panel-toggle')).click();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get('[datatest^="btn-tree-copy-"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+
+        cy.get(datatest('btn-panel-undo')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get(datatest('btn-panel-redo')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('btn-cold-clear-sequence-search')).should('not.have.attr', 'aria-disabled', 'true');
+        cy.get(datatest('btn-cold-clear-menu-close')).click();
+        operations.mode.piece.toggleAiGuide();
+        operations.mode.piece.waitAiGuideReady();
+
+        operations.mode.piece.harddrop();
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
+        operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
+
+        // The source node is still page #2; only the copied branch consumed its incoming rows.
+        cy.get('[datatest^="tree-page-link-"]').contains('#2').click({ force: true });
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        cy.get(datatest('input-stats-action')).should('have.text', '—');
+    });
+
     it('opens Replay from the shortcut above the INPUT NEXT queue', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();

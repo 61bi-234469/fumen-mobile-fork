@@ -2451,6 +2451,28 @@ describe('coldClearActions run isolation', () => {
         expect(canStartColdClearSequenceSearch(state)).toBe(false);
     });
 
+    test('keeps a duplicated replay rise position searchable without sharing incoming state', () => {
+        const state = attachReplayIncoming(makeColdClearState({
+            commentText: '#Q=[](T)IOT',
+            flags: { lock: true, mirror: false, rise: true, quiz: true, colorize: true },
+        }), 3);
+        const sourceContext = state.fumen.pages[0].internal.inputReplayContext;
+        const pages = new Pages(state.fumen.pages);
+        pages.duplicatePage(1);
+        state.fumen.pages = pages.pages;
+        state.fumen.currentIndex = 1;
+        state.fumen.maxPage = 2;
+
+        expect(canStartColdClearSequenceSearch(state)).toBe(true);
+        const copyContext = state.fumen.pages[1].internal.inputReplayContext;
+        expect(copyContext).toEqual(sourceContext);
+        expect(copyContext).not.toBe(sourceContext);
+        copyContext.garbage.snapshot.queue[0].amount = 0;
+        copyContext.stats.pieces = 1;
+        expect(sourceContext.garbage.snapshot.queue[0].amount).toBe(3);
+        expect(sourceContext.stats.pieces).toBe(0);
+    });
+
     test('nextLimit slices queue for top branch search', () => {
         const state = makeColdClearState({ commentText: 'IOTL', nextLimit: 2 });
         coldClearActions.startColdClearTopThreeSearch()(state);

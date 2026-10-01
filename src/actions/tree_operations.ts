@@ -63,7 +63,7 @@ import {
 import { Quiz } from '../lib/fumen/quiz';
 import { persistViewSettings } from './view_settings';
 import { Screens } from '../lib/enums';
-import { cloneInputReplayContext } from '../lib/input_replay';
+import { clonePageInternal } from '../lib/page_internal';
 
 // ============================================================================
 // Helpers for root reparenting
@@ -699,6 +699,7 @@ const clonePageForAppend = (page: Page, index: number): Page => {
     return {
         ...page,
         index,
+        internal: clonePageInternal(page.internal),
         field: clonedField,
         comment: clonedComment,
         flags: { ...page.flags, quiz },
@@ -736,17 +737,9 @@ const createSevenBagGrayWorkspacePage = (state: State): Page | undefined => {
     if (source === undefined) return undefined;
 
     const field = new Pages(state.fumen.pages).getField(sourceIndex, PageFieldOperation.Command);
-    const sourceInternal = source.internal;
     const internal = {
-        sevenBagGrayProgress: sourceInternal?.sevenBagGrayProgress === undefined
-            ? undefined : { ...sourceInternal.sevenBagGrayProgress },
-        sevenBagGrayDisplay: sourceInternal?.sevenBagGrayDisplay === undefined ? undefined : {
-            pieces: sourceInternal.sevenBagGrayDisplay.pieces.slice(),
-            rowMap: sourceInternal.sevenBagGrayDisplay.rowMap.slice(),
-        },
+        ...clonePageInternal(source.internal),
         sevenBagGrayWorkspace: true,
-        inputReplayContext: sourceInternal?.inputReplayContext === undefined
-            ? undefined : cloneInputReplayContext(sourceInternal.inputReplayContext),
     };
     return {
         internal,
@@ -1368,6 +1361,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Copy all flags from source (including quiz flag - per spec, don't force quiz=false)
         const newPage: Page = {
             comment,
+            internal: clonePageInternal(sourcePage.internal),
             index: newPageIndex,
             field: { obj: newField },
             flags: { ...sourcePage.flags, quiz },

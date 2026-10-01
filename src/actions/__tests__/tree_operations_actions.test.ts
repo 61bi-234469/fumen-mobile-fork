@@ -1,7 +1,7 @@
 import { Field } from '../../lib/fumen/field';
 import { decode, encode } from '../../lib/fumen/fumen';
 import { Page } from '../../lib/fumen/types';
-import { Piece } from '../../lib/enums';
+import { Piece, Screens } from '../../lib/enums';
 import { createSpawnMove } from '../../lib/piece';
 import { PageFieldOperation, Pages, resolvePageCommentText } from '../../lib/pages';
 import {
@@ -13,6 +13,8 @@ import {
 } from '../../lib/fumen/tree_types';
 import { addBranchNode, createTreeFromPages, findNode, findNodeByPageIndex } from '../../lib/fumen/tree_utils';
 import { toPrimitivePage } from '../../history_task';
+import { createInputReplayContext, inputGarbageView } from '../../lib/input_replay';
+import { isSevenBagGrayInput } from '../field_editor';
 
 jest.mock('../../actions', () => ({
     actions: {
@@ -47,6 +49,10 @@ jest.mock('../../env', () => ({
         Version: 'test',
         Debug: false,
     },
+}));
+
+jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
+    ColdClearWrapper: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('../memento', () => ({
@@ -160,6 +166,33 @@ const createPlacedQuizState = () => {
         piece: createSpawnMove(Piece.I, false),
     };
     return state;
+};
+
+const createWorkingInternal = (): NonNullable<Page['internal']> => {
+    const context = createInputReplayContext({
+        resolvedOptions: {}, locks: [], terminal: { frame: 0 },
+    } as any, 0, 0);
+    context.garbage.snapshot.seed = 1234;
+    context.garbage.options.seed = 1234;
+    context.garbage.snapshot.queue = [
+        { amount: 3, frame: 0, size: 1, cid: 1, gameid: 1, confirmed: true },
+    ];
+    return {
+        inputReplayContext: context,
+        sevenBagGrayProgress: { bag: 2, pieces: 9, lines: 1, perfectClears: 0 },
+        sevenBagGrayDisplay: { pieces: [Piece.T], rowMap: [0] },
+        sevenBagGrayWorkspace: true,
+    };
+};
+
+const changeWorkingInternal = (internal: NonNullable<Page['internal']>) => {
+    internal.inputReplayContext!.stats.pieces += 1;
+    internal.inputReplayContext!.garbage.snapshot.queue[0].amount = 0;
+    internal.inputReplayContext!.garbage.options.cap.value = 0;
+    internal.inputReplayContext!.garbage.rules.garbageCap = 0;
+    internal.sevenBagGrayProgress!.bag = 0;
+    internal.sevenBagGrayDisplay!.pieces[0] = Piece.I;
+    internal.sevenBagGrayDisplay!.rowMap[0] = 1;
 };
 
 describe('tree node navigation', () => {
@@ -311,6 +344,67 @@ describe('insertNodeAfterCurrent', () => {
 });
 
 describe('copyTreeNode', () => {
+    test.each([true, false, undefined])('preserves workspace=%s on a non-last sibling copy', (workspace) => {
+        const state = createBaseState();
+        const source = state.fumen.pages[1];
+        source.internal = createWorkingInternal();
+        source.internal.sevenBagGrayWorkspace = workspace;
+        state.fumen.pages.push({
+            index: 2, field: { obj: new Field({}) }, comment: { text: 'other root' }, flags: { ...defaultFlags },
+        });
+        const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
+        state.tree.nodes = addBranchNode(tree, tree.rootId, 2).tree.nodes;
+        state.fumen.maxPage = 3;
+        state.mode = { screen: Screens.Editor, sevenBagGrayEnabled: true };
+        state.editorUi = { primaryTool: 'piece', pieceLayout: 'play', infinitePieceQueue: true };
+
+        const next = treeOperationActions.copyTreeNode({ nodeId: state.tree.activeNodeId })(state) as any;
+        const copiedState = { ...state, ...next };
+        expect(next.fumen.currentIndex).toBeLessThan(next.fumen.pages.length - 1);
+        expect(next.fumen.pages[next.fumen.currentIndex].internal.sevenBagGrayWorkspace).toBe(workspace);
+        expect(isSevenBagGrayInput(copiedState)).toBe(workspace === true);
+    });
+
+    test('preserves independent replay and seven-bag state through copying and undo/redo', () => {
+        const state = createBaseState();
+        const source = state.fumen.pages[1];
+        source.flags = { ...source.flags, lock: true, rise: true, quiz: true };
+        source.comment = { text: '#Q=[](T)IOT' };
+        source.piece = createSpawnMove(Piece.T, false);
+        source.internal = createWorkingInternal();
+        source.commands = { pre: { block: { type: 'block', x: 0, y: 0, piece: Piece.Gray } } };
+        const original = toPrimitivePage(source);
+        const nodeId = state.tree.activeNodeId;
+        const register = require('../memento').mementoActions.registerHistoryTask as jest.Mock;
+        register.mockClear();
+
+        const next = treeOperationActions.copyTreeNode({ nodeId })(state) as any;
+        const copy: Page = next.fumen.pages[next.fumen.currentIndex];
+
+        expect(copy.flags.rise).toBe(true);
+        expect(copy.piece).toEqual(source.piece);
+        expect(copy.commands).toBeUndefined();
+        expect(copy.field.obj!.get(0, 0)).toBe(Piece.Gray);
+        expect(copy.internal).toEqual(source.internal);
+        expect(copy.internal).not.toBe(source.internal);
+        expect(inputGarbageView(copy.internal!.inputReplayContext!).nextTankRows)
+            .toEqual(inputGarbageView(source.internal!.inputReplayContext!).nextTankRows);
+        changeWorkingInternal(copy.internal!);
+        expect(toPrimitivePage(source)).toEqual(original);
+
+        const task = register.mock.calls[0][0].task;
+        const undone = task.revert(next.fumen.pages);
+        expect(undone.pages).toHaveLength(2);
+        expect(undone.pages[1].internal).toEqual(original.internal);
+        const redone = task.replay(undone.pages);
+        expect(redone.pages).toHaveLength(3);
+        expect(redone.pages[redone.index].internal).toEqual(original.internal);
+        changeWorkingInternal(redone.pages[redone.index].internal);
+        const replayedAgain = task.replay(undone.pages);
+        expect(replayedAgain.pages[replayedAgain.index].internal).toEqual(original.internal);
+        expect(toPrimitivePage(source)).toEqual(original);
+    });
+
     test('adds the copy as the next sibling directly after the source node', () => {
         const state = createBaseState();
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
@@ -340,6 +434,30 @@ describe('copyTreeNode', () => {
 
         expect(next.fumen.pages[2].comment).toEqual({ text: '#Q=[](I)OT' });
         expect(next.fumen.pages[2].flags.quiz).toBe(true);
+    });
+});
+
+describe('addColdClearBranches', () => {
+    test('detaches working data from supplied pages and other copies of the same page', () => {
+        const state = createBaseState();
+        const supplied: Page = {
+            index: 0,
+            field: { obj: new Field({}) },
+            comment: { text: '#Q=[](T)IO' },
+            flags: { ...defaultFlags, lock: true, rise: true, quiz: true },
+            internal: createWorkingInternal(),
+        };
+        const original = toPrimitivePage(supplied);
+        const next = treeOperationActions.addColdClearBranches({
+            parentNodeId: state.tree.activeNodeId,
+            pages: [supplied, supplied],
+        })(state) as any;
+
+        expect(next.fumen.pages[2].internal).toEqual(supplied.internal);
+        expect(next.fumen.pages[3].internal).toEqual(supplied.internal);
+        changeWorkingInternal(next.fumen.pages[2].internal);
+        expect(toPrimitivePage(supplied)).toEqual(original);
+        expect(next.fumen.pages[3].internal).toEqual(original.internal);
     });
 });
 

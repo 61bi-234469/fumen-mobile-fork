@@ -20,8 +20,10 @@ const forbiddenUrls = urls.filter((url) => forbidden.some((pattern) => pattern.t
 if (urls.length > 75) {
     throw new Error(`Precache has ${urls.length} URLs; the limit is 75`);
 }
-if (totalBytes > 1.83 * 1024 * 1024) {
-    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.83 MiB`);
+// Raised from 1.83 MiB when Sold Slear was added (develop preview build measured 1,943,435 bytes:
+// the engine switch UI and strings in main, plus its 13 KB worker chunk; its WASM is runtime-cached).
+if (totalBytes > 1.87 * 1024 * 1024) {
+    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.87 MiB`);
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);

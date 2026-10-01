@@ -6,7 +6,6 @@ import { PageFieldOperation, Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
-import { Field } from '../lib/fumen/field';
 import {
     createPageFromClipboardField,
     parseClipboard,
@@ -39,8 +38,11 @@ import {
     isVirtualNode,
     removeTreeFromComment,
 } from '../lib/fumen/tree_utils';
-
-declare const M: any;
+import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
+import { showToast } from '../lib/toast';
+import { rebuildPageRefsForOrder } from './tree_operations';
+import { i18n } from '../locales/keys';
+import { copyTextToClipboard } from '../lib/clipboard_copy';
 
 type ClipboardImportMode = 'import' | 'add';
 
@@ -279,36 +281,6 @@ const createTimestampedImageFileName = (prefix: string, extension: 'png' | 'gif'
     return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.${extension}`;
 };
 
-const copyTextToClipboard = async (text: string): Promise<boolean> => {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch {
-            // Fall back to the legacy selection API below.
-        }
-    }
-
-    const element = document.createElement('pre');
-    element.style.position = 'fixed';
-    element.style.left = '-100%';
-    element.textContent = text;
-    document.body.appendChild(element);
-
-    try {
-        const selection = typeof document.getSelection === 'function'
-            ? document.getSelection()
-            : window.getSelection();
-        if (!selection || typeof document.execCommand !== 'function') {
-            return false;
-        }
-        selection.selectAllChildren(element);
-        return document.execCommand('copy');
-    } finally {
-        document.body.removeChild(element);
-    }
-};
-
 const openGeneratedUrl = (url: string, shortenUrls: boolean): void => {
     if (shortenUrls) {
         const params = new URLSearchParams();
@@ -317,10 +289,6 @@ const openGeneratedUrl = (url: string, shortenUrls: boolean): void => {
         return;
     }
     window.open(url, '_blank');
-};
-
-const showToast = (html: string, displayLength: number = 1500): void => {
-    M.toast({ html, displayLength, classes: 'top-toast' });
 };
 
 // Resolve the tree to embed for export, mirroring the previous per-callsite hasTreeData logic exactly.
@@ -337,7 +305,9 @@ const resolvePagesToEncode = (state: Readonly<State>): { pages: Page[] } | { err
     if (state.tree.enabled && state.listView.exportScope === 'left') {
         return extractRootToActiveSegmentPages(state);
     }
-    return { pages: embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled) };
+    const pages = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
+    warnIfTreeCommentOverLimit(pages, { everyTime: true });
+    return { pages };
 };
 
 const resolveTetgramExport = (
@@ -482,86 +452,15 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     // 元の最初のページのcolorizeフラグを保存
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
 
+    const originalPages = [...pages];
     const [movedPage] = pages.splice(fromIndex, 1);
 
     // toIndex is already adjusted by the caller (reorderPage action)
     // so no additional adjustment is needed here
     pages.splice(toIndex, 0, movedPage);
 
-    return rebuildPageRefs(pages, originalFirstPageColorize);
-}
-
-function rebuildPageRefs(
-    pages: Page[],
-    originalFirstPageColorize: boolean,
-): Page[] {
-    const oldIndexToNewIndex = new Map<number, number>();
-    pages.forEach((page, newIndex) => {
-        oldIndexToNewIndex.set(page.index, newIndex);
-    });
-
-    return pages.map((page, newIndex) => {
-        const newPage = { ...page, index: newIndex };
-
-        // 最初のページのcolorizeフラグを元の値に維持する
-        // （テト譜の仕様により、最初のページのflagsが全体に反映されるため）
-        if (newIndex === 0) {
-            newPage.flags = {
-                ...page.flags,
-                colorize: originalFirstPageColorize,
-            };
-        }
-
-        if (page.field.ref !== undefined) {
-            const mappedRef = oldIndexToNewIndex.get(page.field.ref);
-            if (mappedRef !== undefined && mappedRef < newIndex) {
-                newPage.field = { ...page.field, ref: mappedRef };
-            } else {
-                // Resolve the field reference before reorder using oldIndexToNewIndex
-                // We need to find the actual field by following the ref chain
-                let resolvedField: import('../lib/fumen/field').Field | undefined;
-                let refIndex: number | undefined = page.field.ref;
-                while (refIndex !== undefined) {
-                    const refPage = pages.find(p => oldIndexToNewIndex.get(p.index) !== undefined &&
-                        p.index === refIndex);
-                    if (refPage && refPage.field.obj) {
-                        resolvedField = refPage.field.obj.copy();
-                        break;
-                    }
-                    refIndex = refPage?.field.ref;
-                }
-                if (resolvedField) {
-                    newPage.field = { obj: resolvedField };
-                } else {
-                    // Fallback: create empty field if resolution fails
-                    newPage.field = { obj: new Field({}) };
-                }
-            }
-        }
-
-        if (page.comment.ref !== undefined) {
-            const mappedRef = oldIndexToNewIndex.get(page.comment.ref);
-            if (mappedRef !== undefined && mappedRef < newIndex) {
-                newPage.comment = { ...page.comment, ref: mappedRef };
-            } else {
-                // Resolve the comment reference before reorder using oldIndexToNewIndex
-                // We need to find the actual comment by following the ref chain
-                let resolvedText: string | undefined;
-                let refIndex: number | undefined = page.comment.ref;
-                while (refIndex !== undefined) {
-                    const refPage = pages.find(p => p.index === refIndex);
-                    if (refPage && refPage.comment.text !== undefined) {
-                        resolvedText = refPage.comment.text;
-                        break;
-                    }
-                    refIndex = refPage?.comment.ref;
-                }
-                newPage.comment = { text: resolvedText ?? '' };
-            }
-        }
-
-        return newPage;
-    });
+    // Tree mode reorders through the same helper, so both paths keep each page's own field and quiz comment.
+    return rebuildPageRefsForOrder(pages, originalPages, originalFirstPageColorize);
 }
 
 export const listViewActions: Readonly<ListViewActions> = {
@@ -821,6 +720,7 @@ export const listViewActions: Readonly<ListViewActions> = {
         (async () => {
             try {
                 const pagesToEncode = embedTreeInPages(state.fumen.pages, getExportTree(state), state.tree.enabled);
+                warnIfTreeCommentOverLimit(pagesToEncode, { everyTime: true });
                 const encoded = await encode(pagesToEncode);
 
                 const params = buildShareParams(encoded);
@@ -829,7 +729,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to export URL: ${error}`);
+                showToast(`${i18n.Toast.FailedToExportUrl()}: ${error}`);
             }
         })();
 
@@ -853,7 +753,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to export URL: ${error}`);
+                showToast(`${i18n.Toast.FailedToExportUrl()}: ${error}`);
             }
         })();
 
@@ -874,13 +774,13 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;
                 if (await copyTextToClipboard(url)) {
-                    showToast('Copied share URL', 1000);
+                    showToast(i18n.Toast.CopiedShareUrl(), 1000);
                 } else {
-                    showToast('Failed to copy');
+                    showToast(i18n.Toast.FailedToCopy());
                 }
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to copy URL: ${error}`);
+                showToast(`${i18n.Toast.FailedToCopyUrl()}: ${error}`);
             }
         })();
 
@@ -897,7 +797,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             try {
                 const rawData = generateTetgramRawData(resolved.pages, resolved.tree);
                 if (!(await copyTextToClipboard(rawData))) {
-                    showToast('Failed to copy');
+                    showToast(i18n.Toast.FailedToCopy());
                     return;
                 }
 
@@ -905,10 +805,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                 document.body.setAttribute('data', rawData);
                 const warnings = getTetgramRawDataWarnings(resolved.pages, resolved.tree);
                 const warningSuffix = warnings.length > 0 ? ` (${warnings.join('; ')})` : '';
-                showToast(`Copied tetgram raw data${warningSuffix}`, warnings.length > 0 ? 3000 : 1000);
+                showToast(`${i18n.Toast.CopiedTetgramRaw()}${warningSuffix}`, warnings.length > 0 ? 3000 : 1000);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to copy: ${error}`);
+                showToast(`${i18n.Toast.FailedToCopy()}: ${error}`);
             }
         })();
 
@@ -1044,7 +944,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 openGeneratedUrl(`https://fumen.zui.jp/?v115@${encoded}`, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to open: ${error}`);
+                showToast(`${i18n.Toast.FailedToOpen()}: ${error}`);
             }
         })();
 
@@ -1066,7 +966,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 );
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to open: ${error}`);
+                showToast(`${i18n.Toast.FailedToOpen()}: ${error}`);
             }
         })();
 
@@ -1087,7 +987,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 openGeneratedUrl(url.toString(), state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to open: ${error}`);
+                showToast(`${i18n.Toast.FailedToOpen()}: ${error}`);
             }
         })();
 
@@ -1107,7 +1007,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 openGeneratedUrl(url, state.listView.shortenUrls);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to open: ${error}`);
+                showToast(`${i18n.Toast.FailedToOpen()}: ${error}`);
             }
         })();
 
@@ -1127,12 +1027,12 @@ export const listViewActions: Readonly<ListViewActions> = {
                 const url = `v115@${encoded}`;
 
                 if (await copyTextToClipboard(url)) {
-                    showToast(`Copied ${segment.pages.length} pages`, 1000);
+                    showToast(i18n.Toast.CopiedPages(segment.pages.length), 1000);
                 } else {
-                    showToast('Failed to copy');
+                    showToast(i18n.Toast.FailedToCopy());
                 }
             } catch (error) {
-                showToast(`Failed to copy: ${error}`);
+                showToast(`${i18n.Toast.FailedToCopy()}: ${error}`);
             }
         })();
 
@@ -1267,7 +1167,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 if (looksLikeTetgramRawData(text)) {
                     const parsedTetgram = parseTetgramRawData(text);
                     if ('error' in parsedTetgram) {
-                        showToast(`Failed to import: ${parsedTetgram.error}`);
+                        showToast(`${i18n.Toast.FailedToImport()}: ${parsedTetgram.error}`);
                         return;
                     }
                     decodedPages = parsedTetgram.pages;
@@ -1283,7 +1183,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                         const textContent = resolveTextClipboardContent(text);
                         const content = textContent ?? await parseClipboard();
                         if ((content.type !== 'fieldText' && content.type !== 'fieldImage') || !content.field) {
-                            showToast('No fumen / tetgram / field data in clipboard');
+                            showToast(i18n.Toast.NoImportableClipboardData());
                             return;
                         }
 
@@ -1323,7 +1223,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 showToast(msg, 1000);
             } catch (error) {
                 console.error(error);
-                showToast(`Failed to import: ${error}`);
+                showToast(`${i18n.Toast.FailedToImport()}: ${error}`);
             }
         })();
 

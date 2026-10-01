@@ -302,6 +302,68 @@ describe('replayAnalysisActions', () => {
         expect(next).toBeUndefined();
     });
 
+    describe('Sold Slear', () => {
+        const soldSlear = { coldClear: { engine: 'soldSlear' } };
+        const soldSlearState = () => stateWith(
+            { ...initialReplayAnalysisState, soldSlearBudget: 'standard' } as ReplayAnalysisState, soldSlear);
+
+        test('エンジンと予算が変わると解析キーが変わる', () => {
+            const coldClearKey = analysisKeyOf(idleState());
+            const soldSlearKey = analysisKeyOf(soldSlearState());
+            expect(soldSlearKey).not.toEqual(coldClearKey);
+            const otherBudget = stateWith(
+                { ...initialReplayAnalysisState, soldSlearBudget: 't500' } as ReplayAnalysisState, soldSlear);
+            expect(analysisKeyOf(otherBudget)).not.toEqual(soldSlearKey);
+        });
+
+        test('色付き盤面・S2 の B2B・実手の spin を付けて 16 候補で解析する', () => {
+            const state = soldSlearState();
+            const next = replayAnalysisActions.startReplayAnalysis()(state) as any;
+            const request = __mockWrapper.analyzePosition.mock.calls[0][0];
+            expect(analysisOf(next).engine).toEqual('soldSlear');
+            expect(request.fieldCells).toHaveLength(400);
+            expect(request.candidateCount).toEqual(16);
+            expect(request.soldSlearBudget).toEqual('standard');
+            expect(typeof request.b2bLevel).toEqual('number');
+            expect(['none', 'mini', 'normal']).toContain(request.placedSpin);
+        });
+
+        test('Cold Clear と同じく探索値の差を損失として入れ、候補外は圏外にする', () => {
+            let state = soldSlearState();
+            state = { ...state, replay: { ...state.replay, analysis: analysisOf(
+                replayAnalysisActions.startReplayAnalysis()(state) as any) } } as State;
+
+            const first = __mockWrapper.analyzePosition.mock.calls[0][0];
+            const ranked = replayAnalysisActions.onReplayAnalysisResult({
+                runId: state.replay.analysis.runId,
+                result: { ...resultFor(first.index, 5.5, 2, 3), candidateCount: 12 },
+            })(state) as any;
+            const move = analysisOf(ranked).moves[first.index - 1];
+            expect(move).toMatchObject({
+                status: 'ok', rank: 3, loss: 3.5, bestScore: 5.5, playedScore: 2, candidateCount: 12,
+            });
+
+            const second = __mockWrapper.analyzePosition.mock.calls[1][0];
+            state = { ...state, replay: { ...state.replay, analysis: analysisOf(ranked) } } as State;
+            const unmatched = replayAnalysisActions.onReplayAnalysisResult({
+                runId: state.replay.analysis.runId,
+                result: { ...resultFor(second.index, 5.5, null, null), candidateCount: 16 },
+            })(state) as any;
+            const missing = analysisOf(unmatched).moves[second.index - 1];
+            expect(missing.status).toEqual('unmatched');
+            expect(missing.loss).toBeUndefined();
+        });
+
+        test('予算を変えると結果を捨てて保存する', () => {
+            const state = soldSlearState();
+            const next = replayAnalysisActions.setReplaySoldSlearBudget({ budget: 't1000' })(state) as any;
+            expect(analysisOf(next).soldSlearBudget).toEqual('t1000');
+            expect(analysisOf(next).key).toBeNull();
+            expect(persistViewSettings).toHaveBeenCalledWith(state, { replaySoldSlearBudget: 't1000' });
+            expect(replayAnalysisActions.setReplaySoldSlearBudget({ budget: 'bogus' })(state)).toBeUndefined();
+        });
+    });
+
     test('resetReplayAnalysis は実行中でも結果を捨てる', () => {
         let state = idleState();
         state = { ...state, replay: { ...state.replay, analysis: analysisOf(

@@ -11,6 +11,9 @@ const COMMENT_TABLE =
     ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
 const MAX_COMMENT_CHAR_VALUE = COMMENT_TABLE.length + 1;
 
+// fumen v115 はコメント長を2桁の値で持つため、escape() 後の長さがこれを超えた分は切り捨てられる。
+export const FUMEN_COMMENT_MAX_ESCAPED_LENGTH = 4095;
+
 const shouldReportDecodeError = (): boolean => {
     if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
         return false;
@@ -303,6 +306,26 @@ export async function innerDecode(
 }
 
 export async function encode(inputPages: Page[], isAsync: boolean = false): Promise<string> {
+    const encoder = createEncoder(inputPages);
+    for (let index = 0; index < inputPages.length; index += 1) {
+        encoder.encodePage(index);
+        if (isAsync) {
+            await Promise.resolve();
+        }
+    }
+    return encoder.finish();
+}
+
+// 結果をその場で受け取りたい呼び出し側（状態との同期比較など）のための同期版
+export function encodeSync(inputPages: Page[]): string {
+    const encoder = createEncoder(inputPages);
+    for (let index = 0; index < inputPages.length; index += 1) {
+        encoder.encodePage(index);
+    }
+    return encoder.finish();
+}
+
+const createEncoder = (inputPages: Page[]) => {
     const updateField = (prev: Field, current: Field) => {
         const { changed, values } = encodeField(prev, current);
 
@@ -383,7 +406,7 @@ export async function encode(inputPages: Page[], isAsync: boolean = false): Prom
         // コメントの更新
         if (currentPage.comment.text !== undefined && isComment) {
             const comment = escape(currentPage.comment.text);
-            const commentLength = Math.min(comment.length, 4095);
+            const commentLength = Math.min(comment.length, FUMEN_COMMENT_MAX_ESCAPED_LENGTH);
 
             allValues.push(commentLength, 2);
 
@@ -423,31 +446,23 @@ export async function encode(inputPages: Page[], isAsync: boolean = false): Prom
         prevField = currentField;
     };
 
-    const innerEncodeAsync = async (index: number) => {
-        innerEncode(index);
+    const finish = (): string => {
+        // テト譜が短いときはそのまま出力する
+        // 47文字ごとに?が挿入されるが、実際は先頭にv115@が入るため、最初の?は42文字後になる
+        const data = allValues.toString();
+        if (data.length < 41) {
+            return data;
+        }
+
+        // ?を挿入する
+        const head = [data.substr(0, 42)];
+        const tails = data.substring(42);
+        const split = tails.match(/[\S]{1,47}/g) || [];
+        return head.concat(split).join('?');
     };
 
-    for (let index = 0; index < inputPages.length; index += 1) {
-        if (isAsync) {
-            await innerEncodeAsync(index);
-        } else {
-            innerEncode(index);
-        }
-    }
-
-    // テト譜が短いときはそのまま出力する
-    // 47文字ごとに?が挿入されるが、実際は先頭にv115@が入るため、最初の?は42文字後になる
-    const data = allValues.toString();
-    if (data.length < 41) {
-        return data;
-    }
-
-    // ?を挿入する
-    const head = [data.substr(0, 42)];
-    const tails = data.substring(42);
-    const split = tails.match(/[\S]{1,47}/g) || [];
-    return head.concat(split).join('?');
-}
+    return { finish, encodePage: innerEncode };
+};
 
 // フィールドをエンコードする
 // 前のフィールドがないときは空のフィールドを指定する

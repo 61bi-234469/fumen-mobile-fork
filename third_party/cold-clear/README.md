@@ -47,3 +47,12 @@ so reproducing the checksum exactly also requires building at the same absolute
 path; the `.js` and `.d.ts` are path-independent.
 
 MPL-2.0 text is provided at `third_party/licenses/MPL-2.0.txt`.
+
+## Rust crate licenses
+
+`rust-crates.txt` lists the crates linked into the WASM with their license texts. It was generated
+on 2026-10-01 from the pinned commit with patch 0003 applied, using
+`cargo metadata --filter-platform wasm32-unknown-unknown --manifest-path wasm-api/Cargo.toml`
+and keeping runtime dependencies only (proc-macro and build-only crates excluded). Upstream has
+no `Cargo.lock`, so the versions are the ones resolved that day; the crate set is a superset of
+what the distributed build links. The shared Apache-2.0 text is `third_party/licenses/Apache-2.0.txt`.

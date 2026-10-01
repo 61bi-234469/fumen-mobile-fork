@@ -4,6 +4,7 @@ import { resources } from '../../states';
 import { CommentType, Platforms, Screens } from '../../lib/enums';
 import { TreeViewMode } from '../../lib/fumen/tree_types';
 import { i18n } from '../../locales/keys';
+import { showToast } from '../../lib/toast';
 import { Icon } from '../atomics/icons';
 import { getFieldLayout as getReaderFieldLayout } from '../../views/reader';
 import { getFieldLayout as getEditorFieldLayout } from '../../views/editor/editor';
@@ -183,11 +184,7 @@ export const MenuModal: Component<MenuProps> = (
                                    if (dataURL != null) {
                                        downloadURI(dataURL, 'playfield_fumen.png');
                                    } else {
-                                       M.toast({
-                                           html: 'Failed to download image',
-                                           classes: 'top-toast',
-                                           displayLength: 5000,
-                                       });
+                                       showToast(i18n.Toast.FailedToDownloadImage(), 5000);
                                    }
                                }
 

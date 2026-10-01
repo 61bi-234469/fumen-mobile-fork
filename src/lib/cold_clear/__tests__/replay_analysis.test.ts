@@ -24,7 +24,9 @@ import {
 const leagueLoss = require('../../ttrm/__tests__/fixtures/league_loss.json') as TtrmFile;
 
 const settings: AnalysisSettings = {
+    engine: 'coldClear',
     thinkMs: 100,
+    soldSlearBudget: 'standard',
     holdAllowed: true,
     speculate: true,
     weightsPreset: 0,

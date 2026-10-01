@@ -51,6 +51,8 @@ jest.mock('../../../locales/keys', () => ({
             StopLabel: () => 'STOP',
             Progress: (c: number, t: number) => `${c}/${t}`,
             NoMoveFound: () => 'No move found',
+            InputGuideToastOn: () => 'Guide on',
+            InputGuideToastOff: () => 'Guide off',
             WorkerError: () => 'Worker error',
             WorkerErrorPartialSaved: (count: number) => `Saved ${count} moves`,
             InitTimeout: () => 'Init timeout',
@@ -304,6 +306,71 @@ describe('coldClearActions run isolation', () => {
         const running = { ...state, coldClear: result.coldClear };
         coldClearActions.onInputAiGuideInitDone({ runId: result.coldClear.inputGuide.runId })(running);
         expect(wrapper.requestMove).toHaveBeenCalledTimes(1);
+    });
+
+    test('INPUT AI guide toggle announces the new state', () => {
+        const state = makeColdClearState();
+        const enabled = coldClearActions.toggleInputAiGuide()(state) as any;
+        expect(enabled.coldClear.inputGuide.enabled).toBe(true);
+        expect((global as any).M.toast).toHaveBeenLastCalledWith(expect.objectContaining({ html: 'Guide on' }));
+
+        coldClearActions.toggleInputAiGuide()({ ...state, coldClear: enabled.coldClear });
+        expect((global as any).M.toast).toHaveBeenLastCalledWith(expect.objectContaining({ html: 'Guide off' }));
+    });
+
+    test('INPUT AI guide reports why it is unavailable', () => {
+        const cases: [ReturnType<typeof makeColdClearState>, string][] = [
+            [makeColdClearState({ commentText: 'no queue here' }), 'noQueue'],
+            [makeColdClearState({ commentText: '#Q=[](T)SILZJO', nextLimit: 0 }), 'shortQueue'],
+            [makeColdClearState({
+                commentText: '#Q=[](T)SILZJO',
+                flags: { lock: false, mirror: false, rise: false, quiz: false, colorize: true },
+            }), 'unsupportedPage'],
+            [makeColdClearState({
+                commentText: '#Q=[](T)SILZJO',
+                queuePreview: { pageIndex: 0, text: '#Q=[](I)SLZJO' },
+            }), 'preview'],
+        ];
+        cases.forEach(([state, reason]) => {
+            state.coldClear.inputGuide.enabled = true;
+            const result = coldClearActions.syncInputAiGuide()(state) as any;
+            expect({ status: result.coldClear.inputGuide.status, reason: result.coldClear.inputGuide.reason })
+                .toEqual({ reason, status: 'unavailable' });
+        });
+        expect(ColdClearWrapper).not.toHaveBeenCalled();
+    });
+
+    test('INPUT AI guide reports a mismatched current piece and a pending line clear', () => {
+        const mismatch = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        mismatch.fumen.pages[0].piece = { type: Piece.I, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } };
+        mismatch.coldClear.inputGuide.enabled = true;
+        expect((coldClearActions.syncInputAiGuide()(mismatch) as any).coldClear.inputGuide.reason)
+            .toBe('pieceMismatch');
+
+        const lineClear = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        for (let x = 0; x < 10; x += 1) {
+            lineClear.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
+        }
+        lineClear.coldClear.inputGuide.enabled = true;
+        expect((coldClearActions.syncInputAiGuide()(lineClear) as any).coldClear.inputGuide.reason)
+            .toBe('lineClear');
+    });
+
+    test('INPUT AI guide clears the reason once a search starts and marks engine failures', () => {
+        const state = makeColdClearState({ commentText: '#Q=[](T)SILZJO' });
+        state.coldClear.inputGuide = {
+            ...state.coldClear.inputGuide, enabled: true, status: 'unavailable', reason: 'noQueue',
+        };
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        expect(started.coldClear.inputGuide.status).toBe('thinking');
+        expect(started.coldClear.inputGuide.reason).toBeUndefined();
+
+        const running = { ...state, coldClear: started.coldClear };
+        const failed = coldClearActions.onInputAiGuideUnavailable({
+            runId: started.coldClear.inputGuide.runId,
+        })(running) as any;
+        expect(failed.coldClear.inputGuide.status).toBe('unavailable');
+        expect(failed.coldClear.inputGuide.reason).toBe('engineError');
     });
 
     test('INPUT AI guide stores only the latest legal move as a ready ghost', () => {
@@ -2449,6 +2516,28 @@ describe('coldClearActions run isolation', () => {
         });
 
         expect(canStartColdClearSequenceSearch(state)).toBe(false);
+    });
+
+    test('keeps a duplicated replay rise position searchable without sharing incoming state', () => {
+        const state = attachReplayIncoming(makeColdClearState({
+            commentText: '#Q=[](T)IOT',
+            flags: { lock: true, mirror: false, rise: true, quiz: true, colorize: true },
+        }), 3);
+        const sourceContext = state.fumen.pages[0].internal.inputReplayContext;
+        const pages = new Pages(state.fumen.pages);
+        pages.duplicatePage(1);
+        state.fumen.pages = pages.pages;
+        state.fumen.currentIndex = 1;
+        state.fumen.maxPage = 2;
+
+        expect(canStartColdClearSequenceSearch(state)).toBe(true);
+        const copyContext = state.fumen.pages[1].internal.inputReplayContext;
+        expect(copyContext).toEqual(sourceContext);
+        expect(copyContext).not.toBe(sourceContext);
+        copyContext.garbage.snapshot.queue[0].amount = 0;
+        copyContext.stats.pieces = 1;
+        expect(sourceContext.garbage.snapshot.queue[0].amount).toBe(3);
+        expect(sourceContext.stats.pieces).toBe(0);
     });
 
     test('nextLimit slices queue for top branch search', () => {

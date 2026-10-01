@@ -712,9 +712,6 @@ export const getCurrentReplayQueue = (state: State): IRQueue | undefined => {
     return { hold: visual.hold, current: visual.current, next: visual.next };
 };
 
-export const getCurrentReplayClippedRowCount = (state: State): number =>
-    getReplaySelfVisual(state)?.clippedRowCount ?? 0;
-
 // FR-26。TETR.IO の received は出さない（R7 / §3-8）。
 export const getReplayStats = (state: State): ReplayStats | undefined => {
     const player = getSelfPlayerRound(state);

@@ -6,6 +6,8 @@ import { FieldConstants, Piece } from '../../../lib/enums';
 import { IRField, ReplayVisualState } from '../../../lib/ttrm/types';
 import { ReplayPoint, ReplayStats } from '../../../lib/ttrm/timeline';
 import { replaySide, visibleReplayActiveCells } from '../replay_side';
+import { replayRisePreview } from '../replay_gauge';
+import { ReplayGarbageView } from '../../../lib/ttrm/garbage';
 
 const emptyField = (): IRField =>
     Array.from({ length: FieldConstants.PlayBlocks }).map(() => Piece.Empty);
@@ -79,6 +81,28 @@ const render = (value: ReplayVisualState) => replaySide({
     label: 'self',
     counterText: 'start',
     queueWidth: 40,
+});
+
+describe('replay rise preview', () => {
+    test.each(['full', 'compact'] as const)('keeps the %s row when no rise is forecast', (size) => {
+        const garbage: ReplayGarbageView = { gauge: 0, cap: 8, maxGauge: 5, rises: [], moreRows: 0 };
+        const renderPreview = (value: ReplayGarbageView) => replayRisePreview({
+            size, garbage: value, variant: 'self', boardWidth: 100,
+        });
+        const empty: any = renderPreview(garbage);
+        const rise = { frame: 200, column: 5, size: 1, rows: 5 };
+        const pending: any = renderPreview({ ...garbage, rise, gauge: 5, rises: [rise], moreRows: 4 });
+
+        expect(empty.children[0].children).toHaveLength(10);
+        expect(empty.children[0].children[0].attributes.style.height)
+            .toEqual(pending.children[0].children[0].attributes.style.height);
+        expect(empty.attributes.style.marginTop).toEqual(pending.attributes.style.marginTop);
+        expect(empty.attributes['data-hole-column']).toBeUndefined();
+        expect(findAllByDatatest(empty, 'replay-rise-hole')).toHaveLength(0);
+        expect(findAllByDatatest(empty, 'replay-rise-preview-label')).toHaveLength(0);
+        expect(findAllByDatatest(pending, 'replay-rise-hole')).toHaveLength(1);
+        expect(textContents(findAllByDatatest(pending, 'replay-rise-preview-label')[0])).toEqual(['+5']);
+    });
 });
 
 describe('replaySide realtime visual', () => {

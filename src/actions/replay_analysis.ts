@@ -17,6 +17,8 @@ import {
     normalizeAnalysisThinkMs,
 } from '../lib/cold_clear/replay_analysis';
 import { PlayerRoundIR } from '../lib/ttrm/types';
+import { resolveAiEngine } from '../lib/ai_engine';
+import { normalizeSoldSlearBudgetId } from '../lib/sold_slear/budget';
 import { getSelfPlayerRound } from './replay';
 import { persistViewSettings } from './view_settings';
 
@@ -42,8 +44,11 @@ interface AnalysisSession {
 let currentSession: AnalysisSession | null = null;
 let nextRunId = 1;
 
+// エンジン選択はエディタの AI と共有し、探索予算だけはリプレイ解析専用の値を使う。
 const settingsOf = (state: State): AnalysisSettings => ({
+    engine: resolveAiEngine(state.coldClear.engine),
     thinkMs: normalizeAnalysisThinkMs(state.replay.analysis.thinkMs),
+    soldSlearBudget: normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget),
     holdAllowed: state.coldClear.holdAllowed,
     speculate: state.coldClear.speculate,
     weightsPreset: state.coldClear.weightsPreset,
@@ -60,7 +65,8 @@ export const analysisKeyOf = (state: State): string | null => {
         state.replay.requestId,
         state.replay.selection.roundIndex,
         player.id,
-        settings.thinkMs,
+        settings.engine,
+        settings.engine === 'soldSlear' ? settings.soldSlearBudget : settings.thinkMs,
         settings.holdAllowed ? 1 : 0,
         settings.speculate ? 1 : 0,
         settings.weightsPreset,
@@ -103,6 +109,7 @@ export const stopReplayAnalysisSession = () => {
 export const clearedReplayAnalysisState = (state: State): ReplayAnalysisState => ({
     ...initialReplayAnalysisState,
     thinkMs: state.replay.analysis.thinkMs,
+    soldSlearBudget: state.replay.analysis.soldSlearBudget,
 });
 
 // 画面を離れるときなど、結果は残して実行だけ止めたい場合の状態。
@@ -145,6 +152,7 @@ const processedCount = (session: AnalysisSession): number =>
 
 const runningState = (state: State, session: AnalysisSession): ReplayAnalysisState => ({
     ...state.replay.analysis,
+    engine: session.settings.engine,
     key: session.key,
     runId: session.runId,
     status: 'running',
@@ -159,6 +167,7 @@ const finishedState = (
     ...state.replay.analysis,
     status,
     error,
+    engine: session.settings.engine,
     key: session.key,
     runId: session.runId,
     moves: session.moves.slice(),
@@ -187,6 +196,7 @@ export interface ReplayAnalysisActions {
     abortReplayAnalysis: () => action;
     resetReplayAnalysis: () => action;
     setReplayAnalysisThinkMs: (data: { thinkMs: number; persist?: boolean }) => action;
+    setReplaySoldSlearBudget: (data: { budget: string; persist?: boolean }) => action;
     onReplayAnalysisResult: (data: { runId: number, result: CCAnalysisResult }) => action;
     onReplayAnalysisNoMove: (data: { runId: number }) => action;
     onReplayAnalysisError: (data: { runId: number, message: string }) => action;
@@ -205,12 +215,13 @@ export const replayAnalysisActions: Readonly<ReplayAnalysisActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
+        const settings = settingsOf(state);
         const session: AnalysisSession = {
             runId,
             key,
             player,
-            settings: settingsOf(state),
-            wrapper: new ColdClearWrapper(),
+            settings,
+            wrapper: new ColdClearWrapper(settings.engine),
             moves: pendingMoves(player),
             total: analysisMoveCount(player),
             nextIndex: 1,
@@ -264,6 +275,24 @@ export const replayAnalysisActions: Readonly<ReplayAnalysisActions> = {
             replay: {
                 ...state.replay,
                 analysis: { ...clearedReplayAnalysisState(state), thinkMs: validMs },
+            },
+        };
+    },
+
+    setReplaySoldSlearBudget: ({ budget, persist = true }) => (state): NextState => {
+        const validBudget = normalizeSoldSlearBudgetId(budget);
+        if (state.replay.analysis.soldSlearBudget === validBudget) {
+            return undefined;
+        }
+        // 予算が変わると順位の前提が変わるため、既存の結果は破棄する
+        terminateSession();
+        if (persist) {
+            persistViewSettings(state, { replaySoldSlearBudget: validBudget });
+        }
+        return {
+            replay: {
+                ...state.replay,
+                analysis: { ...clearedReplayAnalysisState(state), soldSlearBudget: validBudget },
             },
         };
     },

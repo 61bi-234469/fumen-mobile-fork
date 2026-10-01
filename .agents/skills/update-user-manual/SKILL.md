@@ -42,8 +42,8 @@ Order the main sections by the user workflow:
 5. List
 6. Tree
 7. PC side panel
-8. Cold Clear
-9. Import, export, and sharing
+8. Cold Clear (including INPUT mode's AI ghost guide)
+9. Import, export, and sharing (including TETR.IO replay import and the Replay screen)
 10. Settings
 11. Useful operations
 12. Troubleshooting
@@ -62,7 +62,12 @@ Before declaring the manual current, compare the live app and Cypress coverage f
 - the PC List/Tree side panel, tabs, resizing, saved width, and responsive auto-hide;
 - localized List/Tree setting labels, read directly from the Japanese locale file;
 - Settings ownership of all kick-table choices, using their current localized labels;
-- Cold Clear queue editing, search types, and every visible setting.
+- Cold Clear queue editing, search types, and every visible setting;
+- the TETR.IO replay screen: .ttrm import, round and side selection, playback and timeline,
+  garbage display, AI analysis, and inserting a point into the editor;
+- INPUT mode: statistics panel, 7bag gray, the AI ghost guide, and the Replay shortcut above NEXT;
+- the SPAWN mino / paint toggle and the unified right-click behavior;
+- image export metadata options and the menu's force-reload entry.
 
 ## Maintain screenshots
 

@@ -317,9 +317,13 @@ export interface ViewSettings {
     coldClearWeightsPreset: number;
     coldClearThinkMs: number;
     coldClearInputGuideEnabled: boolean;
+    // 値の検証（未知値・このビルドで使えないエンジンの扱い）は復元側のアクションで行う
+    aiEngine: string;
+    soldSlearBudget: string;
     replaySelfPlayer: string | null;
     replayShowOpponent: boolean;
     replayAnalysisThinkMs: number;
+    replaySoldSlearBudget: string;
 }
 
 const safer = {
@@ -355,23 +359,52 @@ const safer = {
     },
 };
 
+// localStorage は、サイトデータをブロックしたブラウザではアクセス自体が例外になる。
+// 容量超過でも setItem が例外になる。どちらも起動や action を止めないよう握りつぶす。
+const safeGetItem = (key: string): string | null => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const safeSetItem = (key: string, value: string): void => {
+    try {
+        localStorage.setItem(key, value);
+    } catch (error) {
+        console.warn(`Failed to save ${key} to localStorage:`, error);
+    }
+};
+
+const safeParseJson = (data: string): any => {
+    try {
+        return JSON.parse(data);
+    } catch {
+        return undefined;
+    }
+};
+
 export const localStorageWrapper = {
     saveFumen: (data: string) => {
-        localStorage.setItem('data@1', data);
+        safeSetItem('data@1', data);
     },
     loadFumen: (): string | undefined => {
-        const data = localStorage.getItem('data@1');
+        const data = safeGetItem('data@1');
         return safer.fumenV115(data);
     },
     saveUserSettings: (data: UserSettings) => {
-        localStorage.setItem('user-settings@1', JSON.stringify(data));
+        safeSetItem('user-settings@1', JSON.stringify(data));
     },
     loadUserSettings: (): Partial<UserSettings> => {
-        const data = localStorage.getItem('user-settings@1');
+        const data = safeGetItem('user-settings@1');
         if (!data) {
             return {};
         }
-        const obj = JSON.parse(data);
+        const obj = safeParseJson(data);
+        if (obj === null || typeof obj !== 'object') {
+            return {};
+        }
 
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
@@ -401,18 +434,16 @@ export const localStorageWrapper = {
         };
     },
     saveViewSettings: (data: ViewSettings) => {
-        localStorage.setItem('view-settings@1', JSON.stringify(data));
+        safeSetItem('view-settings@1', JSON.stringify(data));
     },
     loadViewSettings: (): Partial<ViewSettings> => {
-        const data = localStorage.getItem('view-settings@1');
+        const data = safeGetItem('view-settings@1');
         if (!data) {
             return {};
         }
 
-        let obj: any;
-        try {
-            obj = JSON.parse(data);
-        } catch {
+        const obj = safeParseJson(data);
+        if (obj === null || typeof obj !== 'object') {
             return {};
         }
 
@@ -441,9 +472,12 @@ export const localStorageWrapper = {
             coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
             coldClearThinkMs: safer.number(obj.coldClearThinkMs),
             coldClearInputGuideEnabled: safer.boolean(obj.coldClearInputGuideEnabled),
+            aiEngine: safer.string(obj.aiEngine),
+            soldSlearBudget: safer.string(obj.soldSlearBudget),
             replaySelfPlayer: obj.replaySelfPlayer === null ? null : safer.string(obj.replaySelfPlayer),
             replayShowOpponent: safer.boolean(obj.replayShowOpponent),
             replayAnalysisThinkMs: safer.number(obj.replayAnalysisThinkMs),
+            replaySoldSlearBudget: safer.string(obj.replaySoldSlearBudget),
         };
     },
 };

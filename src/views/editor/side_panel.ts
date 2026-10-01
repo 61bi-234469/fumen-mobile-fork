@@ -393,10 +393,11 @@ const renderPanelContent = (
             key: 'btn-view-settings',
             datatest: 'btn-view-settings',
             title: i18n.ListView.ViewSettings(),
+            'aria-label': i18n.ListView.ViewSettings(),
             style: panelFabStyle(PANEL_FLOATING_BOTTOM_OFFSET, settingsOpened, false, false),
             onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
         }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(20) }) }, 'tune'),
+            h('i', { className: 'material-icons', 'aria-hidden': 'true', style: style({ fontSize: px(20) }) }, 'tune'),
         ]),
 
         ...(settingsOpened ? [

@@ -2,7 +2,7 @@ import { FieldConstants, Piece, Screens, isMinoPiece } from '../lib/enums';
 import type { action } from '../actions';
 import type { TreeOperationActions } from './tree_operations';
 import { NextState, sequence } from './commons';
-import { State } from '../states';
+import { InputGuideUnavailableReason, State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Quiz } from '../lib/fumen/quiz';
@@ -14,7 +14,7 @@ import {
     buildQueueStateComment,
 } from '../lib/cold_clear/queueParser';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
-import { fieldToCC } from '../lib/cold_clear/fieldConverter';
+import { fieldToCC, fieldToCells } from '../lib/cold_clear/fieldConverter';
 import {
     CCInitMessage,
     CCMove,
@@ -23,13 +23,19 @@ import {
     PIECE_TO_CC,
     WorkerResponse,
 } from '../lib/cold_clear/types';
-import { ccMoveToMove, findExactPlacedResult } from '../lib/cold_clear/move_match';
+import {
+    ccMoveToMove,
+    findExactPlacedResult,
+    findPlacedIndexByKey,
+    toOccupiedCellKey,
+} from '../lib/cold_clear/move_match';
 import { ColdClearWrapper } from '../lib/cold_clear/ColdClearWrapper';
 import {
     COLD_CLEAR_THINK_MS_DEFAULT,
     COLD_CLEAR_THINK_MS_PRESETS as SHARED_COLD_CLEAR_THINK_MS_PRESETS,
 } from '../lib/cold_clear/think_time';
 import { i18n } from '../locales/keys';
+import { showToast } from '../lib/toast';
 import {
     createTreeFromPages,
     ensureVirtualRoot,
@@ -47,6 +53,15 @@ import type { PageActions } from './pages';
 import { persistViewSettings } from './view_settings';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
 import { inputGarbageView } from '../lib/input_replay';
+import {
+    AiEngineId,
+    aiEngineCapabilities,
+    isAiEngineId,
+    nextAiEngine,
+    resolveAiEngine,
+} from '../lib/ai_engine';
+import { normalizeSoldSlearBudgetId, SoldSlearBudgetId } from '../lib/sold_slear/budget';
+import { advanceF14Chain, toF14Spin } from '../lib/sold_slear/chain';
 
 declare const M: any;
 
@@ -55,12 +70,16 @@ type RunType = 'single' | 'top3' | 'placed';
 interface SessionBase {
     runId: number;
     runType: RunType;
+    engine: AiEngineId;
     wrapper: ColdClearWrapper;
     weightsPreset: number;
     thinkMs: number;
+    soldSlearBudget: SoldSlearBudgetId;
     queueSuffix?: string;
     initDone: boolean;
     incoming: number;
+    // S2 の B2B レベル。Sold Slear は結果を返さないため、手ごとにアプリ側で進める
+    b2bLevel: number;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -119,6 +138,7 @@ type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
 interface InputGuideSession {
     runId: number;
+    engine: AiEngineId;
     positionKey: string;
     wrapper: ColdClearWrapper;
     incoming: number;
@@ -170,6 +190,9 @@ export interface ColdClearActions {
     setColdClearNextLimit: (data: { nextLimit: number | null; persist?: boolean }) => action;
     setColdClearWeightsPreset: (data: { weightsPreset: number; persist?: boolean }) => action;
     setColdClearThinkMs: (data: { thinkMs: number; persist?: boolean }) => action;
+    setAiEngine: (data: { engine: string; persist?: boolean }) => action;
+    toggleAiEngine: () => action;
+    setSoldSlearBudget: (data: { budget: string; persist?: boolean }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     toggleInfinitePieceQueue: () => action;
@@ -237,6 +260,82 @@ const normalizeNextLimit = (nextLimit: number | null): number | null => {
     return normalized;
 };
 
+// 探索に実際に使う設定。エンジンが持たない設定（Sold Slear の HOLD 可否・推測・重みプリセット）は
+// UI に出さないため、保存済みの Cold Clear 用の値がここへ漏れないようにする。
+export interface EffectiveAiSettings {
+    engine: AiEngineId;
+    holdAllowed: boolean;
+    speculate: boolean;
+    weightsPreset: number;
+    nextLimit: number | null;
+    thinkMs: number;
+    soldSlearBudget: SoldSlearBudgetId;
+}
+
+export const effectiveAiSettings = (state: Readonly<State>): EffectiveAiSettings => {
+    const engine = resolveAiEngine(state.coldClear.engine);
+    const soldSlearBudget = normalizeSoldSlearBudgetId(state.coldClear.soldSlearBudget);
+    if (engine === 'soldSlear') {
+        const minNext = aiEngineCapabilities(engine).minNext;
+        const nextLimit = state.coldClear.nextLimit;
+        return {
+            engine,
+            soldSlearBudget,
+            holdAllowed: true,
+            speculate: true,
+            weightsPreset: 0,
+            nextLimit: nextLimit === null ? null : Math.max(minNext, nextLimit),
+            thinkMs: state.coldClear.thinkMs,
+        };
+    }
+    return {
+        engine,
+        soldSlearBudget,
+        holdAllowed: state.coldClear.holdAllowed,
+        speculate: state.coldClear.speculate,
+        weightsPreset: state.coldClear.weightsPreset,
+        nextLimit: state.coldClear.nextLimit,
+        thinkMs: state.coldClear.thinkMs,
+    };
+};
+
+// Sold Slear だけが読む init / 解析メッセージの追加フィールド。Cold Clear には付けない。
+const soldSlearMessageFields = (
+    engine: AiEngineId, field: Field, b2bLevel: number, budget: SoldSlearBudgetId,
+): Partial<CCInitMessage> => (
+    engine === 'soldSlear'
+        ? { b2bLevel, fieldCells: fieldToCells(field), soldSlearBudget: budget }
+        : {}
+);
+
+const countFilledLines = (field: Field): number => {
+    let lines = 0;
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        let filled = true;
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            if (field.get(x, y) === Piece.Empty) {
+                filled = false;
+                break;
+            }
+        }
+        if (filled) {
+            lines += 1;
+        }
+    }
+    return lines;
+};
+
+const isFieldEmpty = (field: Field): boolean => {
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            if (field.get(x, y) !== Piece.Empty) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+
 const saveColdClearViewSettings = (
     state: Readonly<State>,
     overrides?: Partial<{
@@ -264,6 +363,7 @@ const idleInputGuide = (state: Readonly<State>): State['coldClear']['inputGuide'
         runId: 0,
     }),
     status: 'idle',
+    reason: undefined,
     positionKey: null,
     move: null,
     usedHold: false,
@@ -679,6 +779,11 @@ const resolveSearchQueueState = (
     };
 };
 
+// Sold Slear は current に加えて NEXT が 1 個以上ないと探索できない（WASM が trap する）
+const isSoldSlearQueueTooShort = (engine: AiEngineId, searchQueue: { queue: Piece[] }): boolean => (
+    searchQueue.queue.length < aiEngineCapabilities(engine).minNext
+);
+
 type SearchInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
@@ -806,77 +911,93 @@ const resolveTopBranchSearchInput = (
 ) => resolveSingleSearchInput(state);
 
 interface InputGuideInput {
+    settings: EffectiveAiSettings;
     field: Field;
     searchQueue: SearchQueueState;
     b2b: boolean;
+    b2bLevel: number;
     combo: number;
     incoming: number;
     initQueue: Piece[];
     positionKey: string;
 }
 
-const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null => {
+type InputGuideInputResult = { input: InputGuideInput } | { reason: InputGuideUnavailableReason };
+
+const resolveInputGuideInputResult = (state: Readonly<State>): InputGuideInputResult => {
     if (!isInputGuideMode(state) || state.coldClear.queuePreview !== null) {
-        return null;
+        return { reason: 'preview' };
     }
     const pageIndex = state.fumen.currentIndex;
     const page = state.fumen.pages[pageIndex];
     if (!isPageSupported(page)) {
-        return null;
+        return { reason: 'unsupportedPage' };
     }
     const parsedResult = parseQueueCommentResultFromPage(state.fumen.pages, pageIndex, null);
     if (!parsedResult.parsed) {
-        return null;
+        return { reason: 'noQueue' };
     }
     const searchQueue = resolveSearchQueueState(parsedResult.parsed);
     if (!searchQueue) {
-        return null;
+        return { reason: 'noQueue' };
     }
     if (page.piece !== undefined
         && isMinoPiece(page.piece.type)
         && page.piece.type !== searchQueue.current) {
-        return null;
+        return { reason: 'pieceMismatch' };
     }
-    if (state.coldClear.holdAllowed && state.coldClear.nextLimit === 0
+    const settings = effectiveAiSettings(state);
+    if (settings.holdAllowed && settings.nextLimit === 0
         && searchQueue.hold === null) {
-        return null;
+        return { reason: 'shortQueue' };
     }
 
     const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
     if (fieldContainsCompleteLine(field)) {
-        return null;
+        return { reason: 'lineClear' };
     }
     const fullQueue = [searchQueue.current, ...searchQueue.queue];
-    const initQueue = state.coldClear.nextLimit === null
+    const initQueue = settings.nextLimit === null
         ? fullQueue
-        : fullQueue.slice(0, state.coldClear.nextLimit + 1);
-    if (initQueue.length === 0) {
-        return null;
+        : fullQueue.slice(0, settings.nextLimit + 1);
+    if (initQueue.length < 1 + aiEngineCapabilities(settings.engine).minNext) {
+        return { reason: 'shortQueue' };
     }
     const incoming = incomingForPage(page);
-    const fieldKey = Array.from(fieldToCC(field)).join('');
+    // Sold Slear は盤面の色（灰色）も読むので、キーも色付き盤面で作る
+    const fieldKey = settings.engine === 'soldSlear' ? fieldToCells(field) : Array.from(fieldToCC(field)).join('');
     const positionKey = [
+        settings.engine,
         fieldKey,
         searchQueue.hold ?? 0,
         initQueue.join(','),
-        parsedResult.parsed.b2b ? 1 : 0,
+        parsedResult.parsed.b2bLevel,
         normalizeCombo(parsedResult.parsed.combo),
         incoming,
-        state.coldClear.holdAllowed ? 1 : 0,
-        state.coldClear.speculate ? 1 : 0,
-        state.coldClear.nextLimit === null ? 'all' : state.coldClear.nextLimit,
-        state.coldClear.weightsPreset,
-        state.coldClear.thinkMs,
+        settings.holdAllowed ? 1 : 0,
+        settings.speculate ? 1 : 0,
+        settings.nextLimit === null ? 'all' : settings.nextLimit,
+        settings.weightsPreset,
+        settings.engine === 'soldSlear' ? settings.soldSlearBudget : settings.thinkMs,
     ].join('|');
     return {
-        field,
-        searchQueue,
-        incoming,
-        initQueue,
-        positionKey,
-        b2b: parsedResult.parsed.b2b,
-        combo: normalizeCombo(parsedResult.parsed.combo),
+        input: {
+            settings,
+            field,
+            searchQueue,
+            incoming,
+            initQueue,
+            positionKey,
+            b2b: parsedResult.parsed.b2b,
+            b2bLevel: parsedResult.parsed.b2bLevel,
+            combo: normalizeCombo(parsedResult.parsed.combo),
+        },
     };
+};
+
+const resolveInputGuideInput = (state: Readonly<State>): InputGuideInput | null => {
+    const result = resolveInputGuideInputResult(state);
+    return 'input' in result ? result.input : null;
 };
 
 // HOLD only changes which of the already-known pieces is active. Keep a completed
@@ -905,19 +1026,18 @@ const carryReadyInputGuideAcrossHold = (state: Readonly<State>): NextState => {
     };
 };
 
-const buildInputGuideInitMessage = (
-    state: Readonly<State>, input: InputGuideInput,
-): CCInitMessage => ({
+const buildInputGuideInitMessage = (input: InputGuideInput): CCInitMessage => ({
     type: 'init',
     field: fieldToCC(input.field),
     hold: input.searchQueue.hold === null ? CC_HOLD_NONE : PIECE_TO_CC[input.searchQueue.hold],
     b2b: input.b2b,
     combo: input.combo,
     queue: input.initQueue.map(piece => PIECE_TO_CC[piece]),
-    holdAllowed: state.coldClear.holdAllowed,
-    speculate: state.coldClear.speculate,
-    weightsPreset: state.coldClear.weightsPreset,
-    thinkMs: state.coldClear.thinkMs,
+    holdAllowed: input.settings.holdAllowed,
+    speculate: input.settings.speculate,
+    weightsPreset: input.settings.weightsPreset,
+    thinkMs: input.settings.thinkMs,
+    ...soldSlearMessageFields(input.settings.engine, input.field, input.b2bLevel, input.settings.soldSlearBudget),
 });
 
 type PlacedSpawnInputError =
@@ -1031,7 +1151,8 @@ export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean
 export const isColdClearSearchBlockedByHoldQueue = (
     state: Readonly<State>,
 ): boolean => {
-    if (!state.coldClear.holdAllowed || state.coldClear.nextLimit !== 0) {
+    const settings = effectiveAiSettings(state);
+    if (!settings.holdAllowed || settings.nextLimit !== 0) {
         return false;
     }
     const queueState = resolveCurrentColdClearMenuQueueState(state);
@@ -1207,7 +1328,7 @@ const buildScoredQueueComment = (
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-    b2b: boolean,
+    b2b: boolean | number,
     combo: number,
     suffix: string = '',
 ): string => {
@@ -1229,7 +1350,7 @@ const buildPlacedSpawnScoredQueueComment = (
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-    b2b: boolean,
+    b2b: boolean | number,
     combo: number,
     suffix: string = '',
 ): string | null => {
@@ -1384,6 +1505,7 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
         speculate: session.speculate,
         weightsPreset: session.weightsPreset,
         thinkMs: session.thinkMs,
+        ...soldSlearMessageFields(session.engine, session.field, session.b2bLevel, session.soldSlearBudget),
     };
 };
 
@@ -1406,11 +1528,13 @@ const buildSingleInitMessage = (session: SingleRunSession): CCInitMessage => {
         speculate: session.speculate,
         weightsPreset: session.weightsPreset,
         thinkMs: session.thinkMs,
+        ...soldSlearMessageFields(session.engine, session.field, session.b2bLevel, session.soldSlearBudget),
     };
 };
 
 function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
-    if (session.retryCount >= PLACED_SCORE_MAX_RETRY) {
+    // Sold Slear の候補数は固定上限（16）で、時間を延ばしても候補は増えない
+    if (session.engine === 'soldSlear' || session.retryCount >= PLACED_SCORE_MAX_RETRY) {
         return false;
     }
 
@@ -1425,7 +1549,7 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
     }
 
     terminateSession(session);
-    session.wrapper = new ColdClearWrapper();
+    session.wrapper = new ColdClearWrapper(session.engine);
     session.initDone = false;
     session.thinkMs = nextThinkMs;
     session.requestedCandidateCount = nextCandidateCount;
@@ -1435,6 +1559,73 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
 
     startWorkerSession(session, buildPlacedSpawnInitMessage(session), () => false);
     return true;
+}
+
+// Sold Slear のスコアは各候補の探索値。B2B は S2 のレベルを整数で書く。
+const buildSessionQueueComment = (
+    session: SingleRunSession | Top3RunSession,
+    score: number | undefined,
+    hold: Piece | null,
+    current: Piece | null,
+    queue: Piece[],
+): string => buildScoredQueueComment(
+    score, hold, current, queue,
+    session.engine === 'soldSlear' ? session.b2bLevel : session.b2b,
+    session.combo, session.queueSuffix,
+);
+
+// Sold Slear の置いたミノ評価。候補内の順位をトーストで示し、候補内ならスコアをコメントに書く。
+// 候補外ではコメントを書き換えない（候補数は固定上限で、B2B レベルも残したいため）。
+function finishSoldSlearPlacedEvaluation(
+    state: Readonly<State>, session: PlacedRunSession, results: CCMove[],
+): NextState {
+    const runId = session.runId;
+    const placedIndex = findPlacedIndexByKey(results, toOccupiedCellKey(session.placedPiece));
+    const nextComment = placedIndex < 0 ? null : buildPlacedSpawnScoredQueueComment(
+        results[placedIndex].score,
+        session.hold,
+        session.current,
+        session.queue,
+        session.b2bLevel,
+        session.combo,
+        session.queueSuffix,
+    );
+    terminateSession(session);
+    currentSession = null;
+
+    M.toast({
+        html: placedIndex < 0
+            ? i18n.ColdClear.SoldSlearPlacedOutside(results.length)
+            : i18n.ColdClear.SoldSlearPlacedRank(placedIndex + 1, results.length),
+        classes: 'top-toast',
+        displayLength: 2500,
+    });
+
+    if (!appActions) {
+        emitFinish(runId);
+        return undefined;
+    }
+    const runtimeActions = appActions;
+    return sequence(state, [
+        () => {
+            if (nextComment !== null) {
+                runtimeActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment });
+            }
+            return undefined;
+        },
+        () => {
+            runtimeActions.coldClearFinishSearch(runId);
+            return undefined;
+        },
+        () => {
+            runtimeActions.changeToDrawerScreen({});
+            return undefined;
+        },
+        () => {
+            runtimeActions.changeToDrawingToolMode();
+            return undefined;
+        },
+    ]);
 }
 
 function handleWorkerMessage(runId: number, msg: WorkerResponse) {
@@ -1520,11 +1711,12 @@ const isBlockedByReplayAnalysis = (state: Readonly<State>): boolean => {
 };
 
 export const coldClearActions: Readonly<ColdClearActions> = {
-    toggleInputAiGuide: () => (state): NextState => (
-        coldClearActions.setInputAiGuideEnabled({
-            enabled: !(state.coldClear.inputGuide?.enabled ?? false),
-        })(state)
-    ),
+    toggleInputAiGuide: () => (state): NextState => {
+        const enabled = !(state.coldClear.inputGuide?.enabled ?? false);
+        // ボタンだけでは押した結果が伝わりにくいので、切り替えのたびに一言添える
+        showToast(enabled ? i18n.ColdClear.InputGuideToastOn() : i18n.ColdClear.InputGuideToastOff());
+        return coldClearActions.setInputAiGuideEnabled({ enabled })(state);
+    },
     setInputAiGuideEnabled: ({ enabled, persist = true }) => (state): NextState => {
         const current = state.coldClear.inputGuide ?? idleInputGuide(state);
         if (current.enabled === enabled) {
@@ -1563,10 +1755,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             };
         }
 
-        const input = resolveInputGuideInput(state);
-        if (!input) {
+        const resolved = resolveInputGuideInputResult(state);
+        if ('reason' in resolved) {
             terminateInputGuideSession();
-            if (guide.status === 'unavailable' && guide.positionKey === null && guide.move === null) {
+            if (guide.status === 'unavailable' && guide.reason === resolved.reason
+                && guide.positionKey === null && guide.move === null) {
                 return undefined;
             }
             return {
@@ -1575,6 +1768,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     inputGuide: {
                         ...guide,
                         status: 'unavailable',
+                        reason: resolved.reason,
                         positionKey: null,
                         move: null,
                         usedHold: false,
@@ -1582,6 +1776,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 },
             };
         }
+        const input = resolved.input;
         if (guide.positionKey === input.positionKey
             && (guide.status === 'thinking' || guide.status === 'ready' || guide.status === 'unavailable')) {
             return undefined;
@@ -1590,7 +1785,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         terminateInputGuideSession();
         const runId = nextInputGuideRunId;
         nextInputGuideRunId += 1;
-        const wrapper = new ColdClearWrapper();
+        const wrapper = new ColdClearWrapper(input.settings.engine);
         const initTimeoutId = setTimeout(() => {
             if (appActions) {
                 appActions.onInputAiGuideUnavailable({ runId });
@@ -1600,10 +1795,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             runId,
             wrapper,
             initTimeoutId,
+            engine: input.settings.engine,
             positionKey: input.positionKey,
             incoming: input.incoming,
         };
-        wrapper.start(buildInputGuideInitMessage(state, input), (msg) => {
+        wrapper.start(buildInputGuideInitMessage(input), (msg) => {
             handleInputGuideWorkerMessage(runId, msg);
         });
         return {
@@ -1613,6 +1809,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     ...guide,
                     runId,
                     status: 'thinking',
+                    reason: undefined,
                     positionKey: input.positionKey,
                     move: null,
                     usedHold: false,
@@ -1668,6 +1865,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     inputGuide: {
                         ...guide,
                         status: 'unavailable',
+                        reason: 'noMove',
                         move: null,
                         usedHold: false,
                     },
@@ -1682,6 +1880,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     ...guide,
                     move,
                     status: 'ready',
+                    reason: undefined,
                     usedHold: result.hold,
                 },
             },
@@ -1699,6 +1898,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 inputGuide: {
                     ...guide,
                     status: 'unavailable',
+                    reason: 'engineError',
                     move: null,
                     usedHold: false,
                 },
@@ -1723,6 +1923,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return clearQueuePreviewIfNeeded(state);
         }
         const { field, page, parsed, searchQueue, target, tree } = resolved.input;
+        const settings = effectiveAiSettings(state);
+        if (isSoldSlearQueueTooShort(settings.engine, searchQueue)) {
+            M.toast({ html: i18n.ColdClear.SoldSlearNeedsNext(), classes: 'top-toast', displayLength: 1500 });
+            return clearQueuePreviewIfNeeded(state);
+        }
         const shouldEnableTree = !state.tree.enabled;
 
         terminateInputGuideSession();
@@ -1738,9 +1943,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const session: SingleRunSession = {
             runId,
             field,
+            engine: settings.engine,
             runType: 'single',
             queueSuffix: parsed.suffix,
-            wrapper: new ColdClearWrapper(),
+            wrapper: new ColdClearWrapper(settings.engine),
             initDone: false,
             incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
@@ -1749,15 +1955,18 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             current: searchQueue.current,
             queue: searchQueue.queue,
             b2b: parsed.b2b,
+            b2bLevel: parsed.b2bLevel,
             combo: normalizeCombo(parsed.combo),
-            totalMoves: (state.coldClear.holdAllowed && searchQueue.hold === null)
+            // Sold Slear は各手に NEXT が 1 個以上要るため、最後の 1 個は置けない
+            totalMoves: (settings.engine === 'soldSlear' || (settings.holdAllowed && searchQueue.hold === null))
                 ? Math.max(0, totalPieces - 1)
                 : totalPieces,
-            holdAllowed: state.coldClear.holdAllowed,
-            speculate: state.coldClear.speculate,
-            nextLimit: state.coldClear.nextLimit,
-            weightsPreset: state.coldClear.weightsPreset,
-            thinkMs: state.coldClear.thinkMs,
+            holdAllowed: settings.holdAllowed,
+            speculate: settings.speculate,
+            nextLimit: settings.nextLimit,
+            weightsPreset: settings.weightsPreset,
+            thinkMs: settings.thinkMs,
+            soldSlearBudget: settings.soldSlearBudget,
             colorize: page.flags.colorize,
         };
         currentSession = session;
@@ -1804,6 +2013,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return clearQueuePreviewIfNeeded(state);
         }
         const { field, page, parsed, searchQueue, tree, target } = resolved.input;
+        const settings = effectiveAiSettings(state);
+        if (isSoldSlearQueueTooShort(settings.engine, searchQueue)) {
+            M.toast({ html: i18n.ColdClear.SoldSlearNeedsNext(), classes: 'top-toast', displayLength: 1500 });
+            return clearQueuePreviewIfNeeded(state);
+        }
         const shouldEnableTree = !state.tree.enabled;
 
         terminateInputGuideSession();
@@ -1815,15 +2029,19 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
-        const topBranchCount = normalizeTopBranchCount(state.coldClear.topBranchCount);
+        const topBranchCount = Math.min(
+            normalizeTopBranchCount(state.coldClear.topBranchCount),
+            aiEngineCapabilities(settings.engine).maxTopBranches,
+        );
 
         const session: Top3RunSession = {
             runId,
             field,
             topBranchCount,
+            engine: settings.engine,
             runType: 'top3',
             queueSuffix: parsed.suffix,
-            wrapper: new ColdClearWrapper(),
+            wrapper: new ColdClearWrapper(settings.engine),
             initDone: false,
             incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
@@ -1831,11 +2049,13 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             current: searchQueue.current,
             queue: searchQueue.queue,
             b2b: parsed.b2b,
+            b2bLevel: parsed.b2bLevel,
             combo: normalizeCombo(parsed.combo),
-            holdAllowed: state.coldClear.holdAllowed,
-            speculate: state.coldClear.speculate,
-            weightsPreset: state.coldClear.weightsPreset,
-            thinkMs: state.coldClear.thinkMs,
+            holdAllowed: settings.holdAllowed,
+            speculate: settings.speculate,
+            weightsPreset: settings.weightsPreset,
+            thinkMs: settings.thinkMs,
+            soldSlearBudget: settings.soldSlearBudget,
             colorize: page.flags.colorize,
         };
         currentSession = session;
@@ -1843,9 +2063,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const ccField = fieldToCC(field);
         const ccHold = searchQueue.hold !== null ? PIECE_TO_CC[searchQueue.hold] : CC_HOLD_NONE;
         const fullQueue = [searchQueue.current, ...searchQueue.queue];
-        const initQueue = state.coldClear.nextLimit === null
+        const initQueue = settings.nextLimit === null
             ? fullQueue
-            : fullQueue.slice(0, state.coldClear.nextLimit + 1);
+            : fullQueue.slice(0, settings.nextLimit + 1);
         const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
 
         const initMsg: CCInitMessage = {
@@ -1855,10 +2075,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             b2b: parsed.b2b,
             combo: normalizeCombo(parsed.combo),
             queue: ccQueue,
-            holdAllowed: state.coldClear.holdAllowed,
-            speculate: state.coldClear.speculate,
-            weightsPreset: state.coldClear.weightsPreset,
-            thinkMs: state.coldClear.thinkMs,
+            holdAllowed: settings.holdAllowed,
+            speculate: settings.speculate,
+            weightsPreset: settings.weightsPreset,
+            thinkMs: settings.thinkMs,
+            ...soldSlearMessageFields(settings.engine, field, parsed.b2bLevel, settings.soldSlearBudget),
         };
 
         startWorkerSession(session, initMsg, () => false);
@@ -2016,6 +2237,51 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
+    setAiEngine: ({ engine, persist = true }) => (state): NextState => {
+        if (state.coldClear.isRunning || state.replay.analysis.status === 'running') {
+            return undefined;
+        }
+        const nextEngine = resolveAiEngine(isAiEngineId(engine) ? engine : undefined);
+        if (state.coldClear.engine === nextEngine) {
+            return undefined;
+        }
+        if (persist) {
+            persistViewSettings(state, { aiEngine: nextEngine });
+        }
+        // 前のエンジンの INPUT ガイドを残さない。次の同期で新しいエンジンが考え直す
+        terminateInputGuideSession();
+        return {
+            coldClear: {
+                ...state.coldClear,
+                engine: nextEngine,
+                inputGuide: idleInputGuide(state),
+            },
+        };
+    },
+
+    toggleAiEngine: () => (state): NextState => (
+        coldClearActions.setAiEngine({ engine: nextAiEngine(resolveAiEngine(state.coldClear.engine)) })(state)
+    ),
+
+    setSoldSlearBudget: ({ budget, persist = true }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+        const nextBudget = normalizeSoldSlearBudgetId(budget);
+        if (state.coldClear.soldSlearBudget === nextBudget) {
+            return undefined;
+        }
+        if (persist) {
+            persistViewSettings(state, { soldSlearBudget: nextBudget });
+        }
+        return {
+            coldClear: {
+                ...state.coldClear,
+                soldSlearBudget: nextBudget,
+            },
+        };
+    },
+
     evaluatePlacedSpawnMinoScore: () => (state): NextState => {
         if (state.coldClear.isRunning || isBlockedByReplayAnalysis(state)) {
             return undefined;
@@ -2037,6 +2303,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             preLockField,
             placedPiece,
         } = resolved.input;
+        const settings = effectiveAiSettings(state);
+        if (isSoldSlearQueueTooShort(settings.engine, { queue: parsed.queue })) {
+            M.toast({ html: i18n.ColdClear.SoldSlearNeedsNext(), classes: 'top-toast', displayLength: 1500 });
+            return clearQueuePreviewIfNeeded(state);
+        }
 
         terminateInputGuideSession();
         if (currentSession) {
@@ -2050,28 +2321,33 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const session: PlacedRunSession = {
             runId,
             placedPiece,
+            engine: settings.engine,
             runType: 'placed',
             queueSuffix: parsed.suffix,
-            wrapper: new ColdClearWrapper(),
+            wrapper: new ColdClearWrapper(settings.engine),
             initDone: false,
             incoming: incomingForPage(page),
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
             field: preLockField.copy(),
-            initialThinkMs: state.coldClear.thinkMs,
-            thinkMs: state.coldClear.thinkMs,
-            requestedCandidateCount: PLACED_SCORE_INITIAL_CANDIDATE_COUNT,
+            initialThinkMs: settings.thinkMs,
+            thinkMs: settings.thinkMs,
+            soldSlearBudget: settings.soldSlearBudget,
+            requestedCandidateCount: settings.engine === 'soldSlear'
+                ? aiEngineCapabilities(settings.engine).candidateLimit
+                : PLACED_SCORE_INITIAL_CANDIDATE_COUNT,
             retryCount: 0,
             hold: parsed.hold,
             // resolvePlacedSpawnInput で placedPiece.type と一致することを検証済み
             current: placedPiece.type,
             queue: parsed.queue.slice(),
             b2b: parsed.b2b,
+            b2bLevel: parsed.b2bLevel,
             combo: normalizeCombo(parsed.combo),
-            holdAllowed: state.coldClear.holdAllowed,
-            speculate: state.coldClear.speculate,
-            nextLimit: state.coldClear.nextLimit,
-            weightsPreset: state.coldClear.weightsPreset,
+            holdAllowed: settings.holdAllowed,
+            speculate: settings.speculate,
+            nextLimit: settings.nextLimit,
+            weightsPreset: settings.weightsPreset,
         };
         currentSession = session;
 
@@ -2586,7 +2862,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         currentSession.initDone = true;
 
         if (currentSession.runType === 'single') {
-            if (currentSession.nextLimit === null) {
+            // Sold Slear は 1 手ごとに main 側で局面を進めて再 init する
+            if (currentSession.nextLimit === null && currentSession.engine !== 'soldSlear') {
                 const remainingMoves = Math.max(0, currentSession.totalMoves - currentSession.resultPages.length);
                 if (currentSession.incoming > 0) {
                     currentSession.wrapper.requestSequence(remainingMoves, currentSession.incoming);
@@ -2646,14 +2923,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         }
 
         // 結果ページには設置前のキュー状態を書き込む (page.piece がそのページのカレントミノに対応する)
-        const pageComment = buildScoredQueueComment(
+        const pageComment = buildSessionQueueComment(
+            session,
             result.score,
             queueTransition.placement.hold,
             queueTransition.placement.current,
             queueTransition.placement.queue,
-            session.b2b,
-            session.combo,
-            session.queueSuffix,
         );
 
         const resultPage: Page = {
@@ -2675,22 +2950,34 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         session.incoming = 0;
 
         session.field.put(move);
+        const clearedLines = countFilledLines(session.field);
         session.field.clearLine();
 
         session.hold = queueTransition.next.hold;
         session.queue = queueTransition.next.queue;
-        session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
-        session.combo = normalizeCombo(result.combo);
+        if (aiEngineCapabilities(session.engine).reportsChain) {
+            session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
+            session.combo = normalizeCombo(result.combo);
+        } else {
+            const chain = advanceF14Chain(
+                session.combo, session.b2bLevel, clearedLines,
+                toF14Spin(result.s2?.spin), clearedLines > 0 && isFieldEmpty(session.field),
+            );
+            session.combo = chain.comboAfter;
+            session.b2bLevel = chain.b2bAfter;
+            session.b2b = chain.b2bAfter > 0;
+        }
 
-        if (queueTransition.next.current === null || session.resultPages.length >= session.totalMoves) {
+        if (queueTransition.next.current === null || session.resultPages.length >= session.totalMoves
+            || isSoldSlearQueueTooShort(session.engine, session)) {
             finishSingleSearch(runId);
             return undefined;
         }
         session.current = queueTransition.next.current;
 
-        if (session.nextLimit !== null) {
+        if (session.nextLimit !== null || session.engine === 'soldSlear') {
             terminateSession(session);
-            session.wrapper = new ColdClearWrapper();
+            session.wrapper = new ColdClearWrapper(session.engine);
             startWorkerSession(session, buildSingleInitMessage(session), () => session.resultPages.length > 0);
         }
 
@@ -2717,6 +3004,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             if (state.coldClear.abortRequested) {
                 finishPlacedSpawnEvaluation(runId, false, false);
                 return undefined;
+            }
+
+            if (session.engine === 'soldSlear') {
+                return finishSoldSlearPlacedEvaluation(state, session, results);
             }
 
             const exactResult = findExactPlacedSpawnResult(
@@ -2857,14 +3148,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             }
 
             // 各分岐ページには設置前のキュー状態を書き込む (page.piece がカレントミノに対応する)
-            const candidateComment = buildScoredQueueComment(
+            const candidateComment = buildSessionQueueComment(
+                session,
                 result.score,
                 queueTransition.placement.hold,
                 queueTransition.placement.current,
                 queueTransition.placement.queue,
-                session.b2b,
-                session.combo,
-                session.queueSuffix,
             );
             candidatePages.push({
                 index: 0,

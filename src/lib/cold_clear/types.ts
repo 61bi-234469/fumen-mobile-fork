@@ -1,4 +1,5 @@
 import { Piece, Rotation } from '../enums';
+import type { SoldSlearBudgetId } from '../sold_slear/budget';
 
 // === Worker Message Types (Main → Worker) ===
 
@@ -13,6 +14,10 @@ export interface CCInitMessage {
     speculate: boolean;
     weightsPreset: number;
     thinkMs: number;
+    // Sold Slear 用。Cold Clear の Worker は読まない
+    fieldCells?: string;    // 400 文字（y * 10 + x、y = 0 が最下段）。空き '_'、ブロック IJLOSTZG
+    b2bLevel?: number;      // S2 の B2B レベル（0 = なし）
+    soldSlearBudget?: SoldSlearBudgetId;
 }
 
 export interface CCRequestMoveMessage {
@@ -49,6 +54,11 @@ export interface CCAnalyzePositionMessage {
     incoming: number;
     candidateCount: number;
     placedCellKey: string;  // move_match.toCellKey で正規化した実手の占有セル
+    // Sold Slear 用。Cold Clear の Worker は読まない
+    fieldCells?: string;
+    b2bLevel?: number;
+    soldSlearBudget?: SoldSlearBudgetId;
+    placedSpin?: 'none' | 'mini' | 'normal';  // 実手の spin。分かる場合はセルと合わせて照合する
 }
 
 export type WorkerMessage =
@@ -69,6 +79,11 @@ export interface CCMove {
     b2b?: boolean;
     combo?: number;
     score?: number;     // Move evaluation score from Cold Clear (optional)
+    // Sold Slear の手だけが持つ。spin は S2 の連鎖状態更新と実手照合に使う
+    s2?: {
+        spin: 'none' | 'mini' | 'normal';
+        identity: string;
+    };
 }
 
 export interface CCMoveResult extends CCMove {

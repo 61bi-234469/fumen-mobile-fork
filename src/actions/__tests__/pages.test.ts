@@ -23,6 +23,8 @@ jest.mock('../../actions', () => ({
     },
 }));
 
+jest.mock('../../states', () => ({ resources: {} }));
+
 jest.mock('../memento', () => ({
     mementoActions: {
         registerHistoryTask: noopAction,

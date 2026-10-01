@@ -549,8 +549,10 @@ describe('TETR.IO Replay', () => {
         cy.clearLocalStorage();
         startPlaying();
 
-        // 保留が無いあいだは予告を出さない
-        operations.replay.risePreview().should('not.exist');
+        // 保留が無くても予告欄は残し、穴と段数だけを消す。
+        operations.replay.risePreview().should('be.visible').and('not.have.attr', 'data-hole-column');
+        operations.replay.riseHole().should('not.exist');
+        cy.get(datatest('replay-rise-preview-label')).should('not.exist');
 
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.risePreview().should('exist');
@@ -561,6 +563,37 @@ describe('TETR.IO Replay', () => {
         // 穴は 1 列だけ空き、それが実際に開いた列である
         operations.replay.riseHole().should('have.length', 1);
         operations.replay.riseHole().should('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
+    });
+
+    ['mobile', 'PC'].forEach((platform) => {
+        it(`keeps the ${platform} layout stable when the rise preview clears and returns`, () => {
+            cy.clearLocalStorage();
+            if (platform === 'PC') startPlayingOnPC();
+            else startPlaying();
+
+            let previewHeight;
+            let transportOffset;
+            // 1808 は全量がせり上がる瞬間。戻す操作でも高さが変わらない。
+            [GAUGE_FRAME, 1808, GAUGE_FRAME, 0].forEach((frame) => {
+                operations.replay.seek(frame);
+                operations.replay.gauge('self')
+                    .should('have.attr', 'data-gauge', frame === GAUGE_FRAME ? GAUGE_ROWS : '0');
+                operations.replay.risePreview().should('be.visible').then(($preview) => {
+                    const height = $preview[0].getBoundingClientRect().height;
+                    if (previewHeight === undefined) previewHeight = height;
+                    expect(height, 'preview height').to.equal(previewHeight);
+                });
+                operations.replay.board('self').then(($board) => {
+                    cy.get(datatest('replay-transport')).then(($transport) => {
+                        const offset = $transport[0].getBoundingClientRect().top
+                            - $board[0].getBoundingClientRect().bottom;
+                        if (transportOffset === undefined) transportOffset = offset;
+                        expect(offset, 'transport position below board').to.be.closeTo(transportOffset, 0.5);
+                    });
+                });
+                operations.replay.risePreview('opponent').should('be.visible');
+            });
+        });
     });
 
     it('names the attack that ended the round and jumps to it (FR-45)', () => {
@@ -641,6 +674,46 @@ describe('TETR.IO Replay', () => {
         operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
     });
 
+    it('keeps AI and independent garbage state after copying a replay INPUT node', () => {
+        cy.clearLocalStorage();
+        startPlayingOnPC();
+        operations.replay.seek(GAUGE_FRAME);
+        operations.replay.openInEditor();
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+
+        cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('btn-cold-clear-sequence-search')).should('not.have.attr', 'aria-disabled', 'true');
+        cy.get(datatest('btn-cold-clear-menu-close')).click();
+
+        cy.get(datatest('navigator-side-panel-toggle')).click();
+        operations.editorPanel.selectTab('tree');
+        cy.get(datatest('editor-panel-enable-tree')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get('[datatest^="btn-tree-copy-"]').last().click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+
+        cy.get(datatest('btn-panel-undo')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get(datatest('btn-panel-redo')).click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        cy.get(datatest('btn-cold-clear')).click();
+        cy.get(datatest('btn-cold-clear-sequence-search')).should('not.have.attr', 'aria-disabled', 'true');
+        cy.get(datatest('btn-cold-clear-menu-close')).click();
+        operations.mode.piece.toggleAiGuide();
+        operations.mode.piece.waitAiGuideReady();
+
+        operations.mode.piece.harddrop();
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '0');
+        operations.inputReplay.damage().should('have.attr', 'data-value', '0:0:0:5');
+
+        // The source node is still page #2; only the copied branch consumed its incoming rows.
+        cy.get('[datatest^="tree-page-link-"]').contains('#2').click({ force: true });
+        operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', GAUGE_ROWS);
+        cy.get(datatest('input-stats-action')).should('have.text', '—');
+    });
+
     it('opens Replay from the shortcut above the INPUT NEXT queue', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();
@@ -699,7 +772,8 @@ describe('TETR.IO Replay', () => {
         // 入れ替え後の自陣は元の相手なので、ゲージも入れ替わる
         operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
         operations.replay.gauge('opponent').should('have.attr', 'data-gauge', GAUGE_ROWS);
-        operations.replay.risePreview().should('not.exist');
+        operations.replay.risePreview().should('be.visible').and('not.have.attr', 'data-hole-column');
+        operations.replay.riseHole().should('not.exist');
     });
 
     // Cold Clear による手評価解析。探索は時間打ち切りで非決定的なので、
@@ -770,6 +844,38 @@ describe('TETR.IO Replay', () => {
             operations.replay.swapSides();
             operations.replay.analysis.graph().should('not.exist');
             operations.replay.analysis.summary().should('not.exist');
+        });
+
+        // Sold Slear も候補の探索値の差で評価する（標準予算は決定的）
+        it('analyzes with Sold Slear by score and drops the graph when the engine changes', () => {
+            cy.clearLocalStorage();
+            startPlaying();
+
+            operations.replay.analysis.switchEngineTo('soldSlear');
+            cy.get(datatest('replay-analysis-think-select')).should('not.exist');
+            operations.replay.analysis.setBudget('standard');
+            operations.replay.analysis.start();
+            operations.replay.analysis.waitDone();
+
+            operations.replay.analysis.graph().should('be.visible');
+            operations.replay.analysis.summary()
+                .then(($summary) => {
+                    expect(Number($summary.attr('data-mean-loss')), 'mean loss').to.be.at.least(0);
+                    const analyzed = Number($summary.attr('data-analyzed'));
+                    expect(analyzed, 'analyzed moves').to.be.greaterThan(0);
+                    expect(analyzed + Number($summary.attr('data-unmatched'))
+                        + Number($summary.attr('data-skipped')), 'moves accounted for')
+                        .to.equal(PLAYER_A_LOCKS);
+                });
+            cy.window().then(win => {
+                const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+                expect(settings.aiEngine).to.equal('soldSlear');
+            });
+
+            // エンジンを戻すと Sold Slear の結果は表示しない
+            operations.replay.analysis.switchEngineTo('coldClear');
+            operations.replay.analysis.graph().should('not.exist');
+            cy.get(datatest('replay-analysis-think-select')).should('exist');
         });
     });
 

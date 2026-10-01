@@ -10,6 +10,10 @@ module.exports = {
         "^@haelp/teto/engine$": "<rootDir>/node_modules/@haelp/teto/dist/engine/index.js",
         "^chalk$": "<rootDir>/src/lib/ttrm/chalk_stub.js",
     },
+    // Build-time constants injected by webpack's DefinePlugin.
+    globals: {
+        __SOLD_SLEAR_ENABLED__: true,
+    },
     moduleFileExtensions: [
         "ts",
         "tsx",
@@ -19,6 +23,8 @@ module.exports = {
         "node"
     ],
     roots: ["<rootDir>/src/"],
-    collectCoverage: true,
+    // Coverage is opt-in (`yarn test --coverage`); no threshold is enforced, so
+    // collecting it on every run only slows local tests down.
+    collectCoverage: false,
     coverageReporters: ['html'],
 };

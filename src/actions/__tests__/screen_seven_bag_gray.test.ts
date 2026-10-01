@@ -1,6 +1,7 @@
 import { modeActions } from '../screen';
 import { Field } from '../../lib/fumen/field';
 import type { State } from '../../states';
+import { createInputReplayContext } from '../../lib/input_replay';
 
 jest.mock('../../actions', () => ({ actions: {}, main: {} }));
 jest.mock('../../states', () => ({ resources: { konva: { stage: { isReady: false } } } }));
@@ -23,6 +24,18 @@ const createState = (): State => ({
 } as State);
 
 describe('changeSevenBagGrayEnabled', () => {
+    test('preserves replay data while clearing seven-bag data without mutating the source', () => {
+        const state = createState();
+        const context = createInputReplayContext({
+            resolvedOptions: {}, locks: [], terminal: { frame: 0 },
+        } as any, 0, 0);
+        state.fumen.pages[0].internal!.inputReplayContext = context;
+        const next = modeActions.changeSevenBagGrayEnabled({ enable: true })(state) as State;
+
+        expect(next.fumen.pages[0].internal).toEqual({ inputReplayContext: context });
+        expect(state.fumen.pages[0].internal!.sevenBagGrayWorkspace).toBe(true);
+    });
+
     test('drops stale working data when seven-bag gray is enabled without changing comments', () => {
         const next = modeActions.changeSevenBagGrayEnabled({ enable: true })(createState()) as State;
         const page = next.fumen.pages[0];

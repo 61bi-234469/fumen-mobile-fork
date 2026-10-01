@@ -11,11 +11,43 @@ const version = buildNumber ? `${buildNumber}` : `dev-${new Date().toISOString()
 const cacheId = 'fumen-mobile-fork';
 const destDirectory = path.join(__dirname, 'dest')
 
+// Keep in sync with THIRD_PARTY_LICENSES.md. Covers packages bundled into the JS output
+// (check with `webpack --json`) and packages whose files are copied as-is.
+const shippedPackageLicenses = [
+    '@babel/runtime/LICENSE',
+    '@haelp/teto/LICENSE.md',
+    '@hyperapp/html/LICENSE.md',
+    'hyperapp/LICENSE.md',
+    'i18next/LICENSE',
+    'i18next-browser-languagedetector/LICENSE',
+    'konva/LICENSE',
+    'lodash/LICENSE',
+    'material-icons/LICENSE',
+    'materialize-css/LICENSE',
+    'tslib/LICENSE.txt',
+    'workbox-core/LICENSE',
+];
+
 module.exports = (_env, argv = {}) => {
     const mode = argv.mode || 'production';
     const isDebug = process.env.DEBUG_ON === undefined
         ? mode === 'development'
         : process.env.DEBUG_ON === 'true';
+    // Sold Slear (development bot) ships only in development builds, the develop preview and the
+    // e2e builds. Production builds leave it out unless SOLD_SLEAR_ENABLED=true is set explicitly.
+    const soldSlearEnabled = process.env.SOLD_SLEAR_ENABLED === undefined
+        ? mode === 'development'
+        : process.env.SOLD_SLEAR_ENABLED === 'true';
+    // help.html marks the Sold Slear credits with SOLD_SLEAR:BEGIN / END comments, either on their
+    // own lines around a block or inline within a line.
+    const transformHelpHtml = (content) => {
+        const text = content.toString();
+        return soldSlearEnabled
+            ? text.replace(/^[ \t]*<!-- SOLD_SLEAR:(BEGIN|END) -->\r?\n/gm, '')
+                .replace(/<!-- SOLD_SLEAR:(BEGIN|END) -->/g, '')
+            : text.replace(/^[ \t]*<!-- SOLD_SLEAR:BEGIN -->[\s\S]*?<!-- SOLD_SLEAR:END -->\r?\n/gm, '')
+                .replace(/<!-- SOLD_SLEAR:BEGIN -->[\s\S]*?<!-- SOLD_SLEAR:END -->/g, '');
+    };
 
     return {
     entry: {
@@ -24,6 +56,8 @@ module.exports = (_env, argv = {}) => {
     output: {
         filename: '[name].bundle.js',
         path: destDirectory,
+        // 古い workbox / wasm / チャンクが dest に残って配信・E2E されないよう毎回消す。
+        clean: true,
     },
     experiments: {
         asyncWebAssembly: true,
@@ -51,6 +85,10 @@ module.exports = (_env, argv = {}) => {
                 use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
             },
             {
+                test: /sold_slear[\\/]sold_slear\.worker\.ts$/,
+                use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
+            },
+            {
                 test: /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
                 use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
             },
@@ -58,6 +96,7 @@ module.exports = (_env, argv = {}) => {
                 test: /\.tsx?$/,
                 exclude: [
                     /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                    /sold_slear[\\/]sold_slear\.worker\.ts$/,
                     /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
                 ],
                 use: [{ loader: 'ts-loader', options: { ignoreDiagnostics: [1343] } }],
@@ -83,12 +122,19 @@ module.exports = (_env, argv = {}) => {
     plugins: [
         new webpack.DefinePlugin({
             __DEBUG__: JSON.stringify(isDebug),
+            __SOLD_SLEAR_ENABLED__: JSON.stringify(soldSlearEnabled),
         }),
         new CopyPlugin({
             patterns: [
                 {
                     from: path.join(__dirname, 'resources'),
                     to: destDirectory,
+                    globOptions: { ignore: ['**/help.html'] },
+                },
+                {
+                    from: path.join(__dirname, 'resources/help.html'),
+                    to: destDirectory,
+                    transform: transformHelpHtml,
                 },
                 {
                     from: path.join(__dirname, 'node_modules/materialize-css/dist/js/materialize.min.js'),
@@ -110,6 +156,13 @@ module.exports = (_env, argv = {}) => {
                     from: path.join(__dirname, 'node_modules/material-icons/iconfont/material-icons.woff'),
                     to: path.join(destDirectory, 'material-iconfont/material-icons.woff'),
                 },
+                // License texts of the npm packages whose code or assets ship in dest/.
+                // Kept under third_party/ so the service worker never precaches them.
+                ...shippedPackageLicenses.map(file => ({
+                    from: path.join(__dirname, 'node_modules', file),
+                    to: path.join(destDirectory, 'third_party', 'npm', file),
+                    toType: 'file',
+                })),
                 {
                     from: path.join(__dirname, 'LICENSE'),
                     to: destDirectory,
@@ -130,14 +183,16 @@ module.exports = (_env, argv = {}) => {
             clientsClaim: true,
             skipWaiting: true,
             offlineGoogleAnalytics: true,
-            exclude: [/^manual\//, /^third_party\//, /\.wasm$/],
+            // The root LICENSE is for redistribution, not offline use, so keep it out of the precache.
+            exclude: [/^manual\//, /^third_party\//, /\.wasm$/, /^LICENSE$/],
             runtimeCaching: [{
                 urlPattern: /\.wasm$/,
                 handler: 'CacheFirst',
                 options: {
                     cacheName: `${cacheId}-wasm`,
                     expiration: {
-                        maxEntries: 2,
+                        // Cold Clear and Sold Slear, each with one previous version kept.
+                        maxEntries: 4,
                         maxAgeSeconds: 30 * 24 * 60 * 60,
                     },
                 },

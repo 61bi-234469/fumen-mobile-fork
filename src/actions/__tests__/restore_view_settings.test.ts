@@ -17,8 +17,11 @@ const createActions = () => ({
     setColdClearWeightsPreset: jest.fn(),
     setColdClearThinkMs: jest.fn(),
     setInputAiGuideEnabled: jest.fn(),
+    setAiEngine: jest.fn(),
+    setSoldSlearBudget: jest.fn(),
     setReplayShowOpponent: jest.fn(),
     setReplayAnalysisThinkMs: jest.fn(),
+    setReplaySoldSlearBudget: jest.fn(),
     setTreeState: jest.fn(),
 });
 
@@ -45,8 +48,11 @@ describe('restoreViewSettings', () => {
             coldClearWeightsPreset: 1,
             coldClearThinkMs: 500,
             coldClearInputGuideEnabled: true,
+            aiEngine: 'soldSlear',
+            soldSlearBudget: 't1000',
             replayShowOpponent: false,
             replayAnalysisThinkMs: 200,
+            replaySoldSlearBudget: 't100',
         });
 
         expect(actions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true, persist: false });
@@ -67,6 +73,9 @@ describe('restoreViewSettings', () => {
         expect(actions.setInputAiGuideEnabled).toHaveBeenCalledWith({ enabled: true, persist: false });
         expect(actions.setReplayShowOpponent).toHaveBeenCalledWith({ showOpponent: false, persist: false });
         expect(actions.setReplayAnalysisThinkMs).toHaveBeenCalledWith({ thinkMs: 200, persist: false });
+        expect(actions.setAiEngine).toHaveBeenCalledWith({ engine: 'soldSlear', persist: false });
+        expect(actions.setSoldSlearBudget).toHaveBeenCalledWith({ budget: 't1000', persist: false });
+        expect(actions.setReplaySoldSlearBudget).toHaveBeenCalledWith({ budget: 't100', persist: false });
         expect(actions.setTreeState).toHaveBeenCalledWith({
             operationScope: 'descendants',
             grayAfterLineClear: true,

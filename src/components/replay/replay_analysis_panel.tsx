@@ -15,6 +15,14 @@ import {
     moveAtGraphX,
     renderReplayEvalGraph,
 } from './replay_eval_graph';
+import { AiEngineId, availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
+import {
+    budgetMillisOf,
+    estimatedMillisPerMove,
+    normalizeSoldSlearBudgetId,
+    SOLD_SLEAR_BUDGET_IDS,
+} from '../../lib/sold_slear/budget';
+import { engineDisplayName } from '../modals/cold_clear_menu';
 
 const ACCENT = '#00796b';
 const MUTED = '#777';
@@ -66,6 +74,10 @@ export const replayAnalysisPanel = (
     { state, actions, analysis, thinkMs, totalMoves, endFrame, width, canStart }: ReplayAnalysisPanelProps,
 ) => {
     const running = analysis !== undefined && analysis.status === 'running';
+    const engine: AiEngineId = resolveAiEngine(state.coldClear.engine);
+    const engineSwitchable = availableAiEngines().length > 1;
+    const soldSlearBudget = normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget);
+    const millisPerMove = engine === 'soldSlear' ? estimatedMillisPerMove(soldSlearBudget) : thinkMs;
     const moves = analysis !== undefined ? analysis.moves : [];
     const drawable = hasDrawableEval(moves);
     const summary = summarizeAnalysis(moves);
@@ -92,13 +104,72 @@ export const replayAnalysisPanel = (
                 })}
             >
                 <span key="replay-analysis-title" style={style({ fontWeight: 'bold' })}>
-                    {i18n.Replay.Analysis.Title()}
+                    {engineSwitchable
+                        ? <a
+                            href="#"
+                            key="btn-replay-analysis-engine"
+                            datatest="btn-replay-analysis-engine"
+                            role="button"
+                            data-engine={engine}
+                            aria-label={i18n.ColdClear.EngineSwitchAria(engineDisplayName(engine))}
+                            aria-disabled={running || state.coldClear.isRunning ? 'true' : 'false'}
+                            style={style({
+                                alignItems: 'center',
+                                color: running ? '#9e9e9e' : '#111827',
+                                display: 'inline-flex',
+                                gap: px(4),
+                            })}
+                            onclick={(e: MouseEvent) => {
+                                e.preventDefault();
+                                if (!running && !state.coldClear.isRunning) {
+                                    actions.toggleAiEngine();
+                                }
+                            }}
+                        >
+                            {i18n.Replay.Analysis.Title(engineDisplayName(engine))}
+                            <i
+                                className="material-icons"
+                                style={style({ color: running ? '#bdbdbd' : ACCENT, fontSize: px(18) })}
+                            >
+                                swap_horiz
+                            </i>
+                        </a>
+                        : i18n.Replay.Analysis.Title(engineDisplayName(engine))}
                 </span>
                 <span
                     key="replay-analysis-actions"
                     style={style({ alignItems: 'center', display: 'flex', gap: px(6) })}
                 >
-                    <select
+                    {engine === 'soldSlear' ? <select
+                        key="replay-analysis-budget-select"
+                        datatest="replay-analysis-budget-select"
+                        aria-label={i18n.Replay.Analysis.BudgetLabel()}
+                        value={soldSlearBudget}
+                        disabled={running}
+                        style={style({
+                            border: '1px solid #ccc',
+                            borderRadius: px(4),
+                            display: 'block',
+                            fontSize: px(12),
+                            height: px(26),
+                            padding: '0 4px',
+                            width: px(96),
+                        })}
+                        onchange={(e: Event) => {
+                            actions.setReplaySoldSlearBudget({
+                                budget: (e.target as HTMLSelectElement).value,
+                            });
+                        }}
+                    >
+                        {SOLD_SLEAR_BUDGET_IDS.map((id) => {
+                            const millis = budgetMillisOf(id);
+                            return <option key={`replay-analysis-budget-${id}`} value={id}>
+                                {millis === null
+                                    ? i18n.ColdClear.SoldSlearBudgetStandard()
+                                    : i18n.Replay.Analysis.ThinkMsOption(millis)}
+                            </option>;
+                        })}
+                    </select> : <select
                         key="replay-analysis-think-select"
                         datatest="replay-analysis-think-select"
                         aria-label={i18n.Replay.Analysis.ThinkMs()}
@@ -124,7 +195,7 @@ export const replayAnalysisPanel = (
                                 {i18n.Replay.Analysis.ThinkMsOption(ms)}
                             </option>
                         ))}
-                    </select>
+                    </select>}
                     {running ? (
                         <a
                             href="#"
@@ -182,7 +253,7 @@ export const replayAnalysisPanel = (
                         : analysis !== undefined && analysis.status === 'aborted'
                             ? i18n.Replay.Analysis.Aborted()
                             : i18n.Replay.Analysis.Estimate(
-                                totalMoves, Math.max(1, Math.round(totalMoves * thinkMs / 1000)))}
+                                totalMoves, Math.max(1, Math.round(totalMoves * millisPerMove / 1000)))}
             </div>
 
             {drawable ? (

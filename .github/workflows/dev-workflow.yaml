@@ -4,6 +4,8 @@ on:
     branches-ignore:
       - main
   workflow_dispatch:
+permissions:
+  contents: read
 concurrency:
   group: dev-workflow-${{ github.ref }}
   cancel-in-progress: true
@@ -19,6 +21,8 @@ jobs:
       - run: yarn install --frozen-lockfile
         env:
           CYPRESS_INSTALL_BINARY: '0'
+      - run: yarn lint
+      - run: yarn typecheck
       - run: yarn test-ci
   e2e:
     runs-on: ubuntu-latest
@@ -39,12 +43,17 @@ jobs:
           path: ~/.cache/Cypress
           key: cypress-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - run: yarn install --frozen-lockfile
+      # E2E covers Sold Slear, so build it in as the develop preview does
       - run: yarn webpack-prod
         env:
           DEBUG_ON: false
+          SOLD_SLEAR_ENABLED: 'true'
       - run: yarn check-build-performance
+      - run: yarn check-sold-slear-exclusion --present
       - run: mkdir -p logs
       - run: yarn serve > logs/serve.log 2> logs/serve.err.log &
+      - name: Wait for static server
+        run: curl --silent --fail --retry 30 --retry-delay 1 --retry-connrefused -o /dev/null http://localhost:8080/fumen-mobile-fork/
       - name: Select specs for shard
         id: specs
         run: |

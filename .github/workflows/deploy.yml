@@ -47,19 +47,26 @@ jobs:
         working-directory: main-src
         env:
           DEBUG_ON: false
+          # Sold Slear is a development bot published only in the preview. Keep it out of production.
+          SOLD_SLEAR_ENABLED: 'false'
         run: |
           yarn install --frozen-lockfile
+          yarn test-ci
           yarn webpack-prod
           yarn check-build-performance
+          # develop's copy of the check, so it also runs before main has the script
+          node ../develop-src/scripts/check-sold-slear-exclusion.js --dest dest
 
       - name: Build develop (preview)
         working-directory: develop-src
         env:
           DEBUG_ON: false
+          SOLD_SLEAR_ENABLED: 'true'
         run: |
           yarn install --frozen-lockfile
           yarn webpack-prod
           yarn check-build-performance
+          yarn check-sold-slear-exclusion --present
 
       - name: Assemble combined site
         run: |

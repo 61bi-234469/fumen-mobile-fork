@@ -123,3 +123,38 @@ describe('user settings page rotation', () => {
         expect(localStorageWrapper.loadUserSettings().pageRotationLimit).toBeUndefined();
     });
 });
+
+describe('user settings storage failures', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        jest.restoreAllMocks();
+    });
+
+    test('returns defaults for corrupted JSON instead of throwing', () => {
+        localStorage.setItem('user-settings@1', '{"ghostVisible":tr');
+
+        expect(localStorageWrapper.loadUserSettings()).toEqual({});
+    });
+
+    test('returns defaults when stored JSON is not an object', () => {
+        localStorage.setItem('user-settings@1', 'null');
+        localStorage.setItem('view-settings@1', '42');
+
+        expect(localStorageWrapper.loadUserSettings()).toEqual({});
+        expect(localStorageWrapper.loadViewSettings()).toEqual({});
+    });
+
+    test('does not throw when storage access is blocked', () => {
+        jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw new DOMException('blocked', 'SecurityError');
+        });
+        jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('quota', 'QuotaExceededError');
+        });
+        jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        expect(localStorageWrapper.loadUserSettings()).toEqual({});
+        expect(localStorageWrapper.loadFumen()).toBeUndefined();
+        expect(() => localStorageWrapper.saveFumen('v115@vhAAgH')).not.toThrow();
+    });
+});

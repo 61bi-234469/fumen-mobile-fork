@@ -248,6 +248,7 @@ describe('parseQueueStateComment', () => {
             current: Piece.I,
             queue: [Piece.O, Piece.S, Piece.L],
             b2b: false,
+            b2bLevel: 0,
             combo: 0,
         });
     });
@@ -259,6 +260,7 @@ describe('parseQueueStateComment', () => {
             current: Piece.I,
             queue: [Piece.O, Piece.S, Piece.L],
             b2b: true,
+            b2bLevel: 1,
             combo: 3,
         });
     });
@@ -270,6 +272,7 @@ describe('parseQueueStateComment', () => {
             current: Piece.I,
             queue: [Piece.O, Piece.S, Piece.L],
             b2b: true,
+            b2bLevel: 1,
             combo: 3,
         });
     });
@@ -281,6 +284,7 @@ describe('parseQueueStateComment', () => {
             current: Piece.I,
             queue: [Piece.O, Piece.T],
             b2b: false,
+            b2bLevel: 0,
             combo: 0,
         });
     });
@@ -292,12 +296,22 @@ describe('parseQueueStateComment', () => {
             current: null,
             queue: [Piece.I, Piece.O, Piece.S, Piece.L],
             b2b: true,
+            b2bLevel: 1,
             combo: 3,
         });
     });
 
+    test('parse an S2 B2B level written by Sold Slear', () => {
+        expect(parseQueueStateComment('b2b=4 combo=2 | #Q=[](I)OT'))
+            .toMatchObject({ b2b: true, b2bLevel: 4, combo: 2 });
+        expect(parseQueueStateComment('b2b=0 | #Q=[](I)OT')).toMatchObject({ b2b: false, b2bLevel: 0 });
+        expect(parseQueueStateComment('b2b=true | #Q=[](I)OT')).toMatchObject({ b2b: true, b2bLevel: 1 });
+    });
+
     test('return null when metadata grammar is invalid', () => {
         expect(parseQueueStateComment('b2b=yes | combo=2 | #Q=[](I)OT')).toBeNull();
+        expect(parseQueueStateComment('b2b=01 | #Q=[](I)OT')).toBeNull();
+        expect(parseQueueStateComment('b2b=-1 | #Q=[](I)OT')).toBeNull();
         expect(parseQueueStateComment('b2b=1  combo=2 | #Q=[](I)OT')).toBeNull();
     });
 
@@ -308,6 +322,7 @@ describe('parseQueueStateComment', () => {
             current: null,
             queue: [],
             b2b: true,
+            b2bLevel: 1,
             combo: 2,
         });
     });
@@ -319,6 +334,7 @@ describe('parseQueueStateComment', () => {
             current: null,
             queue: [],
             b2b: true,
+            b2bLevel: 1,
             combo: 3,
         });
     });
@@ -333,6 +349,13 @@ describe('buildQueueStateComment', () => {
         expect(buildQueueStateComment(Piece.T, Piece.I, [], true, 3)).toBe('b2b=1 combo=3 | #Q=[T](I)');
     });
 
+    test('emit an S2 B2B level as an integer and booleans as b2b=1', () => {
+        expect(buildQueueStateComment(null, Piece.I, [], 3, 0)).toBe('b2b=3 | #Q=[](I)');
+        expect(buildQueueStateComment(null, Piece.I, [], 1, 0)).toBe('b2b=1 | #Q=[](I)');
+        expect(buildQueueStateComment(null, Piece.I, [], 0, 0)).toBe('#Q=[](I)');
+        expect(buildQueueStateComment(null, Piece.I, [], true, 0)).toBe('b2b=1 | #Q=[](I)');
+    });
+
     test('emit metadata-only when queue is empty', () => {
         expect(buildQueueStateComment(null, null, [], true, 2)).toBe('b2b=1 combo=2');
     });
@@ -344,6 +367,7 @@ describe('buildQueueStateComment', () => {
             current: Piece.I,
             queue: [Piece.O, Piece.S],
             b2b: true,
+            b2bLevel: 1,
             combo: 2,
         });
     });

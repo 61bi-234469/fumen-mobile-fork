@@ -8,10 +8,60 @@ import { pieceQueuePieceToChar } from '../../lib/piece_queue';
 import { px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
 import { HighlightType } from '../../state_types';
-import { PieceQueueFocus } from '../../states';
+import { InputGuideUnavailableReason, PieceQueueFocus } from '../../states';
+import {
+    EDITOR_ACTIVE_BACKGROUND,
+    EDITOR_ACTIVE_COLOR,
+    EDITOR_ACTIVE_TEXT_COLOR,
+    EDITOR_DANGER_COLOR,
+} from './editor_control_style';
 import { INFINITE_TOGGLE_HEIGHT } from './responsive_layout';
 
 const NEXT_COUNT = 5;
+
+interface InputAiGuideView {
+    enabled: boolean;
+    status: 'idle' | 'thinking' | 'ready' | 'unavailable';
+    reason?: InputGuideUnavailableReason;
+}
+
+const inputGuideReasonText = (reason: InputGuideUnavailableReason | undefined): string => {
+    switch (reason) {
+    case 'preview':
+        return i18n.ColdClear.InputGuideStatus.Preview();
+    case 'unsupportedPage':
+        return i18n.ColdClear.InputGuideStatus.UnsupportedPage();
+    case 'noQueue':
+        return i18n.ColdClear.InputGuideStatus.NoQueue();
+    case 'pieceMismatch':
+        return i18n.ColdClear.InputGuideStatus.PieceMismatch();
+    case 'shortQueue':
+        return i18n.ColdClear.InputGuideStatus.ShortQueue();
+    case 'lineClear':
+        return i18n.ColdClear.InputGuideStatus.LineClear();
+    case 'noMove':
+        return i18n.ColdClear.InputGuideStatus.NoMove();
+    case 'engineError':
+    case undefined:
+        return i18n.ColdClear.InputGuideStatus.EngineError();
+    }
+};
+
+const inputAiGuideStatusText = (guide: InputAiGuideView): string => {
+    if (!guide.enabled) {
+        return i18n.ColdClear.InputGuideStatus.Off();
+    }
+    switch (guide.status) {
+    case 'thinking':
+        return i18n.ColdClear.InputGuideStatus.Thinking();
+    case 'ready':
+        return i18n.ColdClear.InputGuideStatus.Ready();
+    case 'unavailable':
+        return inputGuideReasonText(guide.reason);
+    case 'idle':
+        return i18n.ColdClear.InputGuideStatus.Waiting();
+    }
+};
 
 const mino = (
     piece: Piece | undefined, width: number, key: string, guideLineColor: boolean, minoHeight?: number,
@@ -176,10 +226,7 @@ export const pieceQueueOverlays = ({
     toggleInfinitePieceQueue: () => void;
     toggleSevenBagGray: () => void;
     openReplay: () => void;
-    inputAiGuide: {
-        enabled: boolean;
-        status: 'idle' | 'thinking' | 'ready' | 'unavailable';
-    };
+    inputAiGuide: InputAiGuideView;
     toggleInputAiGuide: () => void;
     statsPanel?: VNode<{}>;
 }) => {
@@ -230,6 +277,7 @@ export const pieceQueueOverlays = ({
         span({ key: 'btn-open-replay-input-label' }, i18n.Replay.ShortLabel()),
     ])]);
 
+    const inputGuideStatusText = inputAiGuideStatusText(inputAiGuide);
     const inputGuideTitle = !inputAiGuide.enabled
         ? i18n.ColdClear.InputGuideOff()
         : inputAiGuide.status === 'thinking'
@@ -237,11 +285,38 @@ export const pieceQueueOverlays = ({
             : inputAiGuide.status === 'ready'
                 ? i18n.ColdClear.InputGuideReady()
                 : inputAiGuide.status === 'unavailable'
-                    ? i18n.ColdClear.InputGuideUnavailable()
-                    : i18n.ColdClear.InputGuideLabel();
-    const inputGuideIcon = inputAiGuide.status === 'thinking'
-        ? 'hourglass_top'
-        : inputAiGuide.status === 'unavailable' ? 'error_outline' : 'auto_fix_high';
+                    ? `${i18n.ColdClear.InputGuideUnavailable()}: ${inputGuideStatusText}`
+                    : `${i18n.ColdClear.InputGuideLabel()}: ${inputGuideStatusText}`;
+    const inputGuideHeight = Math.max(24, ceilingOffset - 4);
+    // 低いときはアイコンを外し、スイッチ付きラベルと状態文字の2段だけにする
+    const inputGuideCompact = inputGuideHeight < 34;
+    const inputGuideStatusColor = !inputAiGuide.enabled
+        ? '#757575'
+        : inputAiGuide.status === 'unavailable' ? EDITOR_DANGER_COLOR : EDITOR_ACTIVE_TEXT_COLOR;
+    // リプレイ（押すと別画面へ移る）と見分けられるよう、ON/OFFをスイッチと状態文字で示す
+    const inputGuideSwitch = span({
+        key: 'btn-input-ai-guide-switch',
+        style: style({
+            background: inputAiGuide.enabled ? EDITOR_ACTIVE_COLOR : '#9e9e9e',
+            borderRadius: '5px',
+            display: 'inline-block',
+            flex: '0 0 auto',
+            height: '10px',
+            position: 'relative',
+            width: '16px',
+        }),
+    }, [span({
+        key: 'btn-input-ai-guide-knob',
+        style: style({
+            background: '#fff',
+            borderRadius: '50%',
+            height: '6px',
+            left: inputAiGuide.enabled ? '8px' : '2px',
+            position: 'absolute',
+            top: '2px',
+            width: '6px',
+        }),
+    })]);
     const inputGuideSlot = div({
         key: 'input-ai-guide-slot',
         datatest: 'input-ai-guide-slot',
@@ -258,6 +333,7 @@ export const pieceQueueOverlays = ({
         'aria-pressed': inputAiGuide.enabled ? 'true' : 'false',
         'aria-busy': inputAiGuide.status === 'thinking' ? 'true' : 'false',
         'data-status': inputAiGuide.status,
+        'data-reason': inputAiGuide.status === 'unavailable' ? inputAiGuide.reason : undefined,
         onclick: (event: MouseEvent) => {
             toggleInputAiGuide();
             event.preventDefault();
@@ -265,20 +341,41 @@ export const pieceQueueOverlays = ({
         },
         onpointerdown: (event: PointerEvent) => event.stopPropagation(),
         style: style({
-            alignItems: 'center', background: inputAiGuide.enabled ? '#e3f2fd' : '#fafafa',
-            border: '1px solid #333', boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
-            boxSizing: 'border-box', color: inputAiGuide.status === 'unavailable' ? '#b71c1c' : '#333',
+            alignItems: 'center',
+            background: inputAiGuide.enabled ? EDITOR_ACTIVE_BACKGROUND : '#fafafa',
+            border: '1px solid #333',
+            boxShadow: inputAiGuide.enabled
+                ? `inset 0 -3px 0 ${EDITOR_ACTIVE_COLOR}, 0 2px 5px rgba(0, 0, 0, .16)`
+                : '0 2px 5px rgba(0, 0, 0, .16)',
+            boxSizing: 'border-box', color: inputAiGuide.enabled ? EDITOR_ACTIVE_TEXT_COLOR : '#333',
             cursor: 'pointer', display: 'flex', flexDirection: 'column', fontFamily: 'inherit',
             fontSize: px(Math.max(8, Math.min(10, width * .15))), fontWeight: '700',
-            height: px(Math.max(24, ceilingOffset - 4)), justifyContent: 'center', lineHeight: '1',
-            margin: '0', minWidth: '0', padding: '2px 0', width: px(width),
+            gap: px(inputGuideCompact ? 2 : 3), height: px(inputGuideHeight), justifyContent: 'center',
+            lineHeight: '1', margin: '0', minWidth: '0', overflow: 'hidden', padding: '2px 2px 4px',
+            width: px(width),
         }),
     }, [
-        span({
+        ...(inputGuideCompact ? [] : [span({
             key: 'btn-input-ai-guide-icon', className: 'notranslate material-icons',
-            style: style({ fontSize: px(Math.max(14, Math.min(20, ceilingOffset * .42))), lineHeight: '1' }),
-        }, inputGuideIcon),
-        span({ key: 'btn-input-ai-guide-label' }, i18n.ColdClear.InputGuideLabel()),
+            style: style({ fontSize: px(Math.max(13, Math.min(18, ceilingOffset * .3))), lineHeight: '1' }),
+        }, 'lightbulb')]),
+        div({
+            key: 'btn-input-ai-guide-head',
+            style: style({ alignItems: 'center', display: 'flex', gap: '3px', justifyContent: 'center' }),
+        }, [
+            inputGuideSwitch,
+            span({ key: 'btn-input-ai-guide-label', style: style({ whiteSpace: 'nowrap' }) },
+                i18n.ColdClear.InputGuideLabel()),
+        ]),
+        span({
+            key: 'btn-input-ai-guide-status',
+            datatest: 'input-ai-guide-status',
+            style: style({
+                color: inputGuideStatusColor, fontSize: px(Math.max(8, Math.min(10, width * .14))),
+                fontWeight: inputAiGuide.enabled ? '700' : '400', maxWidth: '100%', overflow: 'hidden',
+                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }),
+        }, inputGuideStatusText),
     ])]);
 
     const holdPanel = div({

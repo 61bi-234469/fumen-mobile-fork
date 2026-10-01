@@ -1026,6 +1026,7 @@ export const view: View<State, Actions> = (state, actions) => {
             key: 'btn-view-settings',
             datatest: 'btn-view-settings',
             title: i18n.ListView.ViewSettings(),
+            'aria-label': i18n.ListView.ViewSettings(),
             className: 'corner-glass corner-press',
             style: style({
                 position: 'fixed',
@@ -1045,7 +1046,7 @@ export const view: View<State, Actions> = (state, actions) => {
             }),
             onclick: () => actions.setListViewSettingsOpened({ opened: !settingsOpened }),
         }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(22) }) }, 'tune'),
+            h('i', { className: 'material-icons', 'aria-hidden': 'true', style: style({ fontSize: px(22) }) }, 'tune'),
         ]),
 
         // Settings popover with tap-to-close scrim

@@ -176,8 +176,9 @@ export const TreeViewToggle: Component<Props> = ({
                             style={segmentButtonStyle(currentViewMode === TreeViewMode.List)}
                             onclick={() => actions.onViewModeChange(TreeViewMode.List)}
                             title={i18n.TreeView.ViewModeTooltip.List()}
+                            aria-label={i18n.TreeView.ViewModeTooltip.List()}
                         >
-                            <i className="material-icons" style={iconBox(20, 22)}>view_list</i>
+                            <i className="material-icons" aria-hidden="true" style={iconBox(20, 22)}>view_list</i>
                             {listShortcutLabel && (
                                 <span style={shortcutLabelStyle}>
                                     {listShortcutLabel}
@@ -189,8 +190,9 @@ export const TreeViewToggle: Component<Props> = ({
                             style={segmentButtonStyle(currentViewMode === TreeViewMode.Tree)}
                             onclick={() => actions.onViewModeChange(TreeViewMode.Tree)}
                             title={i18n.TreeView.ViewModeTooltip.Tree()}
+                            aria-label={i18n.TreeView.ViewModeTooltip.Tree()}
                         >
-                            <i className="material-icons" style={iconBox(20, 22)}>device_hub</i>
+                            <i className="material-icons" aria-hidden="true" style={iconBox(20, 22)}>device_hub</i>
                             {treeShortcutLabel && (
                                 <span style={shortcutLabelStyle}>
                                     {treeShortcutLabel}

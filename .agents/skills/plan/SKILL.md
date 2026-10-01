@@ -30,6 +30,8 @@ current code and report discrepancies per AGENTS.md.
   (e.g. `docs/plans/2026_07_19_piece-queue-hold-swap.md`).
 - Date prefix = the document's creation date, underscores; slug = lowercase kebab-case.
 - Write the document body in Japanese, matching the existing documents in `docs/plans/`.
+- The plan itself is always Markdown. A visual companion (mockups, diagrams) may be saved as
+  `docs/plans/<same basename>.html` and linked from the Markdown.
 
 ## 3. Required structure
 

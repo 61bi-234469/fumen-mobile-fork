@@ -100,6 +100,25 @@ const assertTrayFits = () => {
 const visibleTrayLabelCount = tray => Array.from(tray.querySelectorAll('[data-tray-label]'))
     .filter(label => getComputedStyle(label).display !== 'none').length;
 
+// SPAWNミノを置き、トグルを「ブロック化 → ミノ化 → やめる」と進めながら、各状態でトレイが収まることを確かめる。
+// 「やめる」の状態では open() がツール切替で選択待ちを解除するため、click() だけを使う
+const assertTrayFitsThroughToggleStates = ({ toggleLabelShown = false } = {}) => {
+    operations.mode.piece.open();
+    operations.mode.piece.spawn.T();
+    operations.mode.spawnMinoToggle.open();
+    ['to-paint', 'to-mino', 'pick'].forEach((direction, index) => {
+        if (index > 0) {
+            operations.mode.spawnMinoToggle.click();
+        }
+        operations.mode.spawnMinoToggle.expectDirection(direction);
+        assertTrayFits();
+        if (toggleLabelShown) {
+            assertTrayLabelShown('tray-spawn-mino-toggle');
+        }
+    });
+    operations.mode.spawnMinoToggle.click();
+};
+
 const assertRailOrder = () => {
     const selectors = [
         'btn-editor-import',
@@ -1220,26 +1239,11 @@ describe('Editor rail and tray label fit', () => {
     it('labels the active paint tool and the spawn toggle on a 375px phone', () => {
         cy.viewport(375, 812);
         visit({ mode: 'edit' });
-        operations.mode.piece.open();
-        operations.mode.piece.spawn.T();
-        operations.mode.spawnMinoToggle.open();
-
-        assertTrayFits();
-        assertTrayLabelShown('tray-paint-pen');
-        ['tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row'].forEach(assertTrayLabelHidden);
 
         // 3つの状態それぞれで、トグルの名前が切れずに出る
-        operations.mode.spawnMinoToggle.expectDirection('to-paint');
-        assertTrayLabelShown('tray-spawn-mino-toggle');
-        operations.mode.spawnMinoToggle.click();
-        operations.mode.spawnMinoToggle.expectDirection('to-mino');
-        assertTrayLabelShown('tray-spawn-mino-toggle');
-        // 「やめる」の状態では open() がツール切替で選択待ちを解除するため、click() だけを使う
-        operations.mode.spawnMinoToggle.click();
-        operations.mode.spawnMinoToggle.expectDirection('pick');
-        assertTrayLabelShown('tray-spawn-mino-toggle');
-        assertTrayFits();
-        operations.mode.spawnMinoToggle.click();
+        assertTrayFitsThroughToggleStates({ toggleLabelShown: true });
+        assertTrayLabelShown('tray-paint-pen');
+        ['tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row'].forEach(assertTrayLabelHidden);
 
         // 選択中のツールが変わると、名前の表示もそのボタンへ移る
         cy.get(datatest('tray-paint-erase')).click();
@@ -1256,6 +1260,8 @@ describe('Editor rail and tray label fit', () => {
         assertTrayFits();
         assertTrayLabelShown('tray-paint-pen');
         assertTrayLabelHidden('tray-paint-erase');
+        // 日本語のトグル（ブロック化／ミノ化／やめる）でも、各状態で収まる
+        assertTrayFitsThroughToggleStates();
     });
 
     it('keeps the paint tray without horizontal scroll on a 320px phone', () => {
@@ -1269,6 +1275,8 @@ describe('Editor rail and tray label fit', () => {
         });
         cy.get(datatest('tray-paint-fill')).click();
         assertTrayFits();
+        cy.get(datatest('tray-paint-pen')).click();
+        assertTrayFitsThroughToggleStates();
     });
 
     it('shows the selection summary and icon-only select tools on a 375px phone', () => {
@@ -1305,9 +1313,19 @@ describe('Editor rail and tray label fit', () => {
         visit({ mode: 'edit', mobile: false });
 
         cy.get(datatest('tray-context')).should('be.visible');
-        ['tray-paint-pen', 'tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row']
+        ['tray-paint-pen', 'tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row', 'tray-spawn-mino-toggle']
             .forEach(assertTrayLabelShown);
         assertTrayFits();
+
+        // サイドパネルで盤面が狭くなっても、幅に合わせてラベルの出し方が切り替わる
+        cy.viewport(1280, 800);
+        operations.editorPanel.enable();
+        cy.get(datatest('tray-context')).should('be.visible');
+        assertTrayFits();
+        cy.get(datatest('tray-context')).should(([tray]) => {
+            expect(visibleTrayLabelCount(tray)).to.be.greaterThan(0);
+        });
+        operations.editorPanel.disable();
 
         cy.viewport(375, 812);
         assertTrayFits();

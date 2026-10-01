@@ -27,23 +27,31 @@ export const estimateTextWidth: MeasureText = (rawText, fontSizePx) => {
 const cache = new Map<string, number>();
 // undefined は未取得、null は取得できない環境
 let context: CanvasRenderingContext2D | null | undefined;
-let fontFamily: string | undefined;
+let fontLoadWatched = false;
 
+// フォント指定が変わっても古い幅を返さないよう、font-family は毎回読み直してキャッシュのキーに含める
 const resolveFontFamily = (): string => {
-    if (fontFamily !== undefined) {
-        return fontFamily;
-    }
     try {
         const family = document.body ? getComputedStyle(document.body).fontFamily : '';
         if (family) {
-            // body のフォント指定は固定なので、一度取れたら使い回す
-            fontFamily = family;
             return family;
         }
     } catch (e) {
         // 取得できない環境では既定値で測る
     }
     return FALLBACK_FONT_FAMILY;
+};
+
+// 同じ font-family でも、読み込み完了の前後で実際の字形（幅）が変わりうる
+const watchFontLoading = () => {
+    if (fontLoadWatched) {
+        return;
+    }
+    fontLoadWatched = true;
+    const fonts = (document as Document & { fonts?: { addEventListener?: Function } }).fonts;
+    if (fonts !== undefined && typeof fonts.addEventListener === 'function') {
+        fonts.addEventListener('loadingdone', () => cache.clear());
+    }
 };
 
 const resolveContext = (): CanvasRenderingContext2D | null => {
@@ -63,6 +71,7 @@ export const measureTextWidth: MeasureText = (rawText, fontSizePx, fontWeight) =
     if (typeof document === 'undefined') {
         return estimateTextWidth(text, fontSizePx, fontWeight);
     }
+    watchFontLoading();
     const family = resolveFontFamily();
     const key = `${family}|${fontSizePx}|${fontWeight}|${text}`;
     const cached = cache.get(key);
@@ -89,5 +98,5 @@ export const measureTextWidth: MeasureText = (rawText, fontSizePx, fontWeight) =
 export const resetTextMeasureForTest = () => {
     cache.clear();
     context = undefined;
-    fontFamily = undefined;
+    fontLoadWatched = false;
 };

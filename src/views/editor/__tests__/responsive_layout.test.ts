@@ -186,6 +186,15 @@ describe('editor responsive layout', () => {
             expect(at(6 * 9 * .6 * 1.1 - .1)).toBeUndefined();
         });
 
+        test('still tries 9px when the base size is fractional', () => {
+            const linear = (text: string, fontSize: number) => 4 * fontSize;
+            [9.2, 9.6, 10.4].forEach((baseFontSize) => {
+                expect(getRailLabelFontSize({
+                    baseFontSize, railWidth: 2 + 4 + 18 + 2 + 36, iconSize: 18, labels: ['X'], measure: linear,
+                })).toBe(9);
+            });
+        });
+
         test('checks the paired UTILS and FLAGS labels at 9px and weight 600', () => {
             const calls: [number, number][] = [];
             const spy = (text: string, fontSize: number, weight: number) => {

@@ -49,11 +49,39 @@ describe('text measure with a DOM', () => {
         measureTextWidth('PAINT', 10, 500);
         expect(measureText).toHaveBeenCalledTimes(3);
 
-        // フォントが変わった場合（言語切替でbodyの指定が変わるなど）は別の結果として測り直す
-        resetTextMeasureForTest();
+    });
+
+    test('measures again after the body font family changes', () => {
+        const measureText = jest.fn(function (this: { font: string }, text: string) {
+            return { width: text.length * (this.font.includes('OtherSans') ? 9 : 7) };
+        });
+        getContextSpy = jest.spyOn(HTMLCanvasElement.prototype, 'getContext')
+            .mockReturnValue({ measureText, font: '' } as unknown as CanvasRenderingContext2D);
+
+        expect(measureTextWidth('PAINT', 10, 600)).toBe(35);
+        // キャッシュを消さずにフォント指定だけを変えても、古い幅を返さない
         document.body.style.fontFamily = 'OtherSans';
-        measureTextWidth('PAINT', 10, 600);
-        expect(measureText).toHaveBeenCalledTimes(4);
+        expect(measureTextWidth('PAINT', 10, 600)).toBe(45);
+        expect(measureText).toHaveBeenCalledTimes(2);
+    });
+
+    test('measures again after fonts finish loading', () => {
+        const listeners: Record<string, () => void> = {};
+        Object.defineProperty(document, 'fonts', {
+            configurable: true,
+            value: { addEventListener: (type: string, listener: () => void) => { listeners[type] = listener; } },
+        });
+        const measureText = jest.fn((text: string) => ({ width: text.length }));
+        getContextSpy = jest.spyOn(HTMLCanvasElement.prototype, 'getContext')
+            .mockReturnValue({ measureText, font: '' } as unknown as CanvasRenderingContext2D);
+
+        measureTextWidth('CUT', 10, 600);
+        measureTextWidth('CUT', 10, 600);
+        expect(measureText).toHaveBeenCalledTimes(1);
+        listeners.loadingdone();
+        measureTextWidth('CUT', 10, 600);
+        expect(measureText).toHaveBeenCalledTimes(2);
+        delete (document as unknown as { fonts?: unknown }).fonts;
     });
 
     test('keeps the estimate when measureText throws', () => {

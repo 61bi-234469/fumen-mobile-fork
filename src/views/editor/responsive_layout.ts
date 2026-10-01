@@ -136,9 +136,12 @@ export const getRailLabelFontSize = ({ railWidth, iconSize, baseFontSize, labels
         return baseFontSize;
     }
     // 文字幅は文字サイズにほぼ比例するので、比率から当たりを付けてから実測で確かめる。
-    // 丸め誤差や比例からのずれに備えて、1段大きいところから試す
-    const estimated = Math.floor(baseFontSize * available / baseWidth / RAIL_LABEL_FONT_STEP) * RAIL_LABEL_FONT_STEP;
-    let fontSize = Math.min(estimated + RAIL_LABEL_FONT_STEP, baseFontSize - RAIL_LABEL_FONT_STEP);
+    // 候補は0.5px刻みに揃え（下限の9pxも必ず試す）、丸め誤差に備えて1段大きいところから試す
+    const toStep = (size: number) => Math.floor(size / RAIL_LABEL_FONT_STEP + 1e-9) * RAIL_LABEL_FONT_STEP;
+    const largestBelowBase = Math.ceil(baseFontSize / RAIL_LABEL_FONT_STEP - 1e-9) * RAIL_LABEL_FONT_STEP
+        - RAIL_LABEL_FONT_STEP;
+    const estimated = toStep(baseFontSize * available / baseWidth);
+    let fontSize = Math.min(estimated + RAIL_LABEL_FONT_STEP, largestBelowBase);
     while (fontSize >= RAIL_LABEL_MIN_FONT_SIZE) {
         if (widestAt(fontSize) <= available) {
             return fontSize;

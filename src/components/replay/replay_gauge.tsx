@@ -24,6 +24,7 @@ const NORMAL_COLOR = '#e53935';
 const OVER_CAP_COLOR = '#ef6c00';
 const RISE_FILL_COLOR = '#b0bec5';
 const RISE_HOLE_COLOR = '#fbfcfd';
+const RISE_EMPTY_COLOR = '#eceff1';
 
 export const gaugeColumnWidth = (size: ReplayGaugeSize): number =>
     size === 'full' ? GAUGE_COLUMN_WIDTH_FULL : GAUGE_COLUMN_WIDTH_COMPACT;
@@ -147,9 +148,6 @@ export const replayRisePreview = (
     { variant, size, garbage, boardWidth }: ReplayRisePreviewProps,
 ) => {
     const rise = garbage.rise;
-    if (rise === undefined) {
-        return undefined;
-    }
     const isSelf = variant === 'self';
     const previewKey = isSelf ? 'replay-rise-preview' : 'replay-rise-preview-opponent';
     const holeKey = isSelf ? 'replay-rise-hole' : 'replay-rise-hole-opponent';
@@ -158,14 +156,14 @@ export const replayRisePreview = (
     const cellHeight = size === 'full' ? 14 : 10;
     // 白い穴セルは次にせり上がる行を示す。表示する段数にはこの 1 行も含める。
     // `moreRows` は予告行を除いた残りなので、そのままだと 1 行だけのときに +0 になる。
-    const labelColumn = rise.column;
+    const labelColumn = rise !== undefined ? rise.column : undefined;
     const riseRows = garbage.moreRows + 1;
 
     // 幅は盤面画像と同じ規則で決まるよう flex で等分する。個別に px を振ると
     // 盤面側の枠線ぶんとずれる。
     const cells = [];
     for (let x = 0; x < FieldConstants.Width; x += 1) {
-        const isHole = rise.column <= x && x < rise.column + rise.size;
+        const isHole = rise !== undefined && rise.column <= x && x < rise.column + rise.size;
         cells.push(
             <div
                 key={`${previewKey}-cell-${x}`}
@@ -173,7 +171,8 @@ export const replayRisePreview = (
                 data-column={isHole ? String(x) : undefined}
                 style={style({
                     alignItems: 'center',
-                    backgroundColor: isHole ? RISE_HOLE_COLOR : RISE_FILL_COLOR,
+                    backgroundColor: rise === undefined ? RISE_EMPTY_COLOR
+                        : isHole ? RISE_HOLE_COLOR : RISE_FILL_COLOR,
                     borderRight: x < FieldConstants.Width - 1 ? '1px solid #90a4ae' : 'none',
                     color: '#37474f',
                     display: 'flex',
@@ -203,7 +202,7 @@ export const replayRisePreview = (
         <div
             key={previewKey}
             datatest={previewKey}
-            data-hole-column={String(rise.column)}
+            data-hole-column={rise !== undefined ? String(rise.column) : undefined}
             style={style({
                 alignItems: 'flex-start',
                 display: 'flex',

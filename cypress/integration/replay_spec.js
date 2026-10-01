@@ -549,8 +549,10 @@ describe('TETR.IO Replay', () => {
         cy.clearLocalStorage();
         startPlaying();
 
-        // 保留が無いあいだは予告を出さない
-        operations.replay.risePreview().should('not.exist');
+        // 保留が無くても予告欄は残し、穴と段数だけを消す。
+        operations.replay.risePreview().should('be.visible').and('not.have.attr', 'data-hole-column');
+        operations.replay.riseHole().should('not.exist');
+        cy.get(datatest('replay-rise-preview-label')).should('not.exist');
 
         operations.replay.seek(GAUGE_FRAME);
         operations.replay.risePreview().should('exist');
@@ -561,6 +563,37 @@ describe('TETR.IO Replay', () => {
         // 穴は 1 列だけ空き、それが実際に開いた列である
         operations.replay.riseHole().should('have.length', 1);
         operations.replay.riseHole().should('have.attr', 'data-column', GAUGE_HOLE_COLUMN);
+    });
+
+    ['mobile', 'PC'].forEach((platform) => {
+        it(`keeps the ${platform} layout stable when the rise preview clears and returns`, () => {
+            cy.clearLocalStorage();
+            if (platform === 'PC') startPlayingOnPC();
+            else startPlaying();
+
+            let previewHeight;
+            let transportOffset;
+            // 1808 は全量がせり上がる瞬間。戻す操作でも高さが変わらない。
+            [GAUGE_FRAME, 1808, GAUGE_FRAME, 0].forEach((frame) => {
+                operations.replay.seek(frame);
+                operations.replay.gauge('self')
+                    .should('have.attr', 'data-gauge', frame === GAUGE_FRAME ? GAUGE_ROWS : '0');
+                operations.replay.risePreview().should('be.visible').then(($preview) => {
+                    const height = $preview[0].getBoundingClientRect().height;
+                    if (previewHeight === undefined) previewHeight = height;
+                    expect(height, 'preview height').to.equal(previewHeight);
+                });
+                operations.replay.board('self').then(($board) => {
+                    cy.get(datatest('replay-transport')).then(($transport) => {
+                        const offset = $transport[0].getBoundingClientRect().top
+                            - $board[0].getBoundingClientRect().bottom;
+                        if (transportOffset === undefined) transportOffset = offset;
+                        expect(offset, 'transport position below board').to.be.closeTo(transportOffset, 0.5);
+                    });
+                });
+                operations.replay.risePreview('opponent').should('be.visible');
+            });
+        });
     });
 
     it('names the attack that ended the round and jumps to it (FR-45)', () => {
@@ -699,7 +732,8 @@ describe('TETR.IO Replay', () => {
         // 入れ替え後の自陣は元の相手なので、ゲージも入れ替わる
         operations.replay.gauge('self').should('have.attr', 'data-gauge', '0');
         operations.replay.gauge('opponent').should('have.attr', 'data-gauge', GAUGE_ROWS);
-        operations.replay.risePreview().should('not.exist');
+        operations.replay.risePreview().should('be.visible').and('not.have.attr', 'data-hole-column');
+        operations.replay.riseHole().should('not.exist');
     });
 
     // Cold Clear による手評価解析。探索は時間打ち切りで非決定的なので、

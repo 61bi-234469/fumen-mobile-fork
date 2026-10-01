@@ -26,7 +26,7 @@ describe('Sold Slear budget', () => {
 });
 
 describe('Sold Slear profile', () => {
-    // s2-bot-lab createChampionBaseProfile()（commit ff7210f）の出力。WASM を更新したら合わせて更新する
+    // s2-bot-lab createChampionBaseProfile()（commit 61c0efd）の出力。WASM を更新したら合わせて更新する
     test('matches the champion profile of the pinned s2-bot-lab commit', () => {
         expect(createSoldSlearProfile(soldSlearBudgetOf('standard'))).toEqual({
             profileId: 'f14-leaf-conversion-gated-b/1',

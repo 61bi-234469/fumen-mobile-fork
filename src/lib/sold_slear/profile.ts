@@ -3,7 +3,7 @@ import { SoldSlearBudget } from './budget';
 // Sold Slear（s2-bot-lab の development champion "Legacy backup consistency"）の F14 execution profile。
 // 転記元: s2-bot-lab src-js/champion-identity.mjs（CHAMPION_PROFILE_ARGS）と
 // src-js/s2-f14-compat-browser.mjs（createF14LeafConversionGatedProfile）、
-// https://github.com/61bi-234469/s2-bot-lab commit ff7210f。WASM を更新するときはここと third_party/sold-slear/README.md を合わせる。
+// https://github.com/61bi-234469/s2-bot-lab commit 61c0efd。WASM を更新するときはここと third_party/sold-slear/README.md を合わせる。
 
 export const F14_COMPAT_RULESET_ID =
     'tetrio-s2-v19-2c47b3df945f6714449b92d1b44346ef4bf0e1a20e95be8ed10c28be75c66a60-beta-1-5-0';

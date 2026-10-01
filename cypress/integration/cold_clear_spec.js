@@ -234,7 +234,7 @@ describe('Cold Clear menu', () => {
             cy.get('[datatest^="tree-node-"]', { timeout: 30000 }).should('have.length', 4);
         });
 
-        it('reports the placed piece rank without rewriting the comment', () => {
+        it('reports the placed piece rank and writes its score when it is a candidate', () => {
             cy.clearLocalStorage();
             visit({ mode: 'edit', lng: 'en' });
             operations.mode.comment.open();
@@ -250,9 +250,14 @@ describe('Cold Clear menu', () => {
             cy.get(datatest('btn-cold-clear-evaluate-placed-spawn-score')).click();
 
             cy.contains('.toast', /Sold Slear: (rank \d+ of \d+ candidates|not among the \d+ candidates)/,
-                { timeout: 30000 }).should('be.visible');
-            cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
-            cy.get(datatest('text-comment')).invoke('val').should('not.match', /score=|outsideTop=/);
+                { timeout: 30000 }).should('be.visible').invoke('text').then((toast) => {
+                cy.get(datatest('mdl-cold-clear-menu'), { timeout: 15000 }).should('not.exist');
+                // 候補内ならスコアを書き、候補外ならコメントを書き換えない
+                cy.get(datatest('text-comment'), { timeout: 15000 }).invoke('val').should(
+                    /rank \d+ of/.test(toast) ? 'match' : 'not.match',
+                    /rank \d+ of/.test(toast) ? /^score=-?\d+\.\d{2} \| #Q=\[\]\(T\)IOLJSZ$/ : /score=|outsideTop=/,
+                );
+            });
         });
 
         it('recomputes the INPUT guide after switching engines', () => {

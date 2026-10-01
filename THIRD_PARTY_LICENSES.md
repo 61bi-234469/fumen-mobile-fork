@@ -34,7 +34,7 @@ project. Production builds do not include it (`SOLD_SLEAR_ENABLED`, see `webpack
     `b20a92b0ed3230dd910d0674f7a09c552a34dd46` (non-T mini spin retention and the all-spin
     weight preset), under the same dual license files (`LICENSE-MIT`, `LICENSE-APACHE`)
   - [61bi-234469/s2-bot-lab](https://github.com/61bi-234469/s2-bot-lab) at
-    `ff7210f28977ce0851301a351f751c0a3ad1bd98` (the s2-bot-lab modifications and the build),
+    `61c0efdf438e7acc05abf7335a2397ebbab06872` (the s2-bot-lab modifications and the build),
     MIT, Copyright (c) 2026 61bi-234469
 - **License choice for this distribution**: MIT (texts in `third_party/sold-slear/`:
   `LICENSE-MIT-cold-clear-2`, `LICENSE-s2-bot-lab`; Apache-2.0 text in `third_party/licenses/`)

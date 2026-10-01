@@ -351,18 +351,9 @@ export const resources = {
             CurrentPending: '未解析',
             Aborted: '解析を中止しました',
             Failed: '解析に失敗しました',
-            // Cold Clear の評価値は局面ごとに尺度が変わるため、絶対値ではなく相対で読む
-            Note: '棒が高いほど最善手との差が大きい。損失はこの試合の中での相対表示で、探索は時間打ち切りのため参考値',
+            // AI の評価値は局面ごとに尺度が変わるため、絶対値ではなく相対で読む
+            Note: '棒が高いほど最善手との差が大きい。損失はこの試合の中での相対表示で、探索量に左右される参考値',
             BudgetLabel: '1手あたりの探索量',
-            MeanRank: '平均順位 {{rank}}',
-            MaxRank: '最低順位 {{rank}}',
-            NotReturned: '候補外 {{count}}',
-            WorstRank: '順位が低かった手',
-            WorstRankItem: '#{{index}} {{rank}}位',
-            CurrentRank: '候補{{total}}件中 {{rank}}位',
-            CurrentNotReturned: '返された候補{{total}}件の中に無い手',
-            // Sold Slear の候補スコアは最終順位と一致しないため、順位で評価する
-            NoteRank: '棒が高いほど Sold Slear の候補（最大16件）の中で順位が低い。候補外の手は集計に含めない。スコアではなく推奨手からの順位で比べる',
         },
         Error: {
             Title: 'リプレイを読み込めませんでした',

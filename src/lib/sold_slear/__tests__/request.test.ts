@@ -45,6 +45,7 @@ describe('buildF14DecideRequest', () => {
         expect(request!.start.back_to_back).toBe(true);
         expect(request!.selector.chain.b2b).toBe(3);
         expect(request!.selector.incoming).toEqual({ pendingRows: 0, dueThisLockRows: 0 });
+        expect(request!.diagnostics).toEqual({ rootValues: true });
         expect(request!.start.hold).toBe('T');
         expect(request!.selector.pieces.hold).toBe('T');
     });

@@ -8,9 +8,9 @@ import { createSoldSlearProfile } from '../profile';
 import { BOARD_CELL_COUNT, buildF14DecideRequest } from '../request';
 
 // 同梱 WASM を実際に動かす smoke test。512 selections は決定的なので、期待手は
-// 同じ要求を s2-bot-lab（commit ff7210f）の src-js/cc2-wasm-engine.mjs に与えた結果で固定する。
+// 同じ要求を s2-bot-lab（commit 61c0efd）の src-js/cc2-wasm-engine.mjs に与えた結果で固定する。
 const WASM_PATH = path.join(__dirname, '..', '..', 'sold_slear_wasm', 'cold_clear_2_s2.wasm');
-const WASM_SHA256 = '1449583088ec4481c7999ce3fe859bbb14c89a6b9c36d31e3a34186f59c9c274';
+const WASM_SHA256 = '28a2487f84a6ffec764d8151058ede23dcbbc6f0beb49c41e6f4432bce53a6aa';
 
 const cellsWithBottomRow = (row: string): string => row + '_'.repeat(BOARD_CELL_COUNT - row.length);
 
@@ -47,6 +47,9 @@ describe('Sold Slear WASM engine', () => {
             expect(outcome.moves.length).toBeGreaterThan(1);
             expect(outcome.moves.length).toBeLessThanOrEqual(16);
             expect(outcome.moves[0].s2!.identity).toBe(REFERENCE_SELECTED_IDENTITY);
+            // 要求の diagnostics.rootValues により、すべての候補に探索値が付く
+            expect(decision.diagnostics!.rootValues).toHaveLength(decision.ranking!.returnedIdentities!.length);
+            expect(outcome.moves.every(move => Number.isFinite(move.score))).toBe(true);
         }
     });
 

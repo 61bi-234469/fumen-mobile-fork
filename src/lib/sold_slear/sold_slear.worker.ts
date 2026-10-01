@@ -1,7 +1,7 @@
 import { findPlacedIndexByKey } from '../cold_clear/move_match';
 import { CCAnalyzePositionMessage, CCInitMessage, WorkerMessage, WorkerResponse } from '../cold_clear/types';
 import { soldSlearBudgetOf, SOLD_SLEAR_BUDGET_DEFAULT } from './budget';
-import { decisionToMoves, DecisionOutcome } from './convert';
+import { analysisScoresOf, decisionToMoves, DecisionOutcome } from './convert';
 import { createSoldSlearEngine, SoldSlearEngine } from './engine';
 import { createSoldSlearProfile } from './profile';
 import { buildF14DecideRequest, isPieceLetter, PieceLetter, SoldSlearPosition } from './request';
@@ -119,13 +119,15 @@ const decidePosition = async (target: SoldSlearPosition): Promise<DecisionOutcom
                 return;
             }
             const placedIndex = findPlacedIndexByKey(outcome.moves, msg.placedCellKey, msg.placedSpin);
-            // 順位で評価する。スコアは最終順位と一致しないため返さない（best/played は 0 固定）
+            const scores = analysisScoresOf(outcome.moves, placedIndex);
+            if (scores === null) {
+                postResponse({ type: 'error', message: 'Sold Slear: missing candidate values' });
+                return;
+            }
             postResponse({
+                ...scores,
                 type: 'analysisResult',
                 index: msg.index,
-                bestScore: 0,
-                playedScore: placedIndex < 0 ? null : 0,
-                rank: placedIndex < 0 ? null : placedIndex + 1,
                 candidateCount: outcome.returnedCount,
             });
         }

@@ -27,8 +27,14 @@ export interface F14Decision {
     selectedIdentity?: string;
     ranking?: {
         identities?: string[];
+        // CC2 の順位順（cc2Rank が添字）。identities は最終順位順
+        returnedIdentities?: string[];
         selectedCc2Rank?: number;
         rescueApplied?: boolean;
+    };
+    diagnostics?: {
+        // 各候補の探索値。returnedIdentities と同じ並び
+        rootValues?: number[];
     };
 }
 
@@ -148,13 +154,48 @@ export const identityToMove = (
     };
 };
 
+// リプレイ解析の集計値。最善は候補の探索値の最大（rescue で推奨手が最大でない局面もある）。
+// 順位は探索値の高い順で、同値は同順位。Cold Clear と同じく損失 0 の手が 1 位になる。
+// 値の欠けた候補があれば null（評価できない）
+export const analysisScoresOf = (
+    moves: CCMove[], placedIndex: number,
+): { bestScore: number; playedScore: number | null; rank: number | null } | null => {
+    const scores = moves.map(move => move.score);
+    if (scores.length === 0 || !scores.every((score): score is number => typeof score === 'number')) {
+        return null;
+    }
+    const playedScore = placedIndex < 0 ? null : scores[placedIndex];
+    return {
+        playedScore,
+        bestScore: Math.max(...scores),
+        rank: playedScore === null ? null : 1 + scores.filter(score => score > playedScore).length,
+    };
+};
+
 export type DecisionOutcome =
     | { kind: 'moves'; moves: SoldSlearMove[]; returnedCount: number }
     | { kind: 'noMove' }
     | { kind: 'error'; message: string };
 
+// identity → 探索値。並びや個数が合わない応答からは値を取らない
+const rootValuesByIdentity = (decision: F14Decision): Map<string, number> => {
+    const returned = decision.ranking?.returnedIdentities;
+    const values = decision.diagnostics?.rootValues;
+    const map = new Map<string, number>();
+    if (!Array.isArray(returned) || !Array.isArray(values) || returned.length !== values.length) {
+        return map;
+    }
+    returned.forEach((identity, index) => {
+        if (Number.isFinite(values[index])) {
+            map.set(identity, values[index]);
+        }
+    });
+    return map;
+};
+
 // 推奨手（rescue 適用後の最終選択）を先頭に、残りは CC2 順位順に並べる。
-// 盤面へ適用できない候補（23 行を超えるなど）は除外する。
+// 盤面へ適用できない候補（23 行を超えるなど）は除外する。score は各候補の探索値で、
+// rescue が働いた局面では推奨手が最大とは限らない。
 export const decisionToMoves = (decision: F14Decision, current: PieceLetter): DecisionOutcome => {
     if (decision.status === 'root-no-move') {
         return { kind: 'noMove' };
@@ -167,11 +208,13 @@ export const decisionToMoves = (decision: F14Decision, current: PieceLetter): De
     const ordered = selected !== undefined && identities.includes(selected)
         ? [selected, ...identities.filter(identity => identity !== selected)]
         : identities.slice();
+    const values = rootValuesByIdentity(decision);
     const moves: SoldSlearMove[] = [];
     for (const identity of ordered) {
         const move = identityToMove(identity, current);
         if (move !== null) {
-            moves.push(move);
+            const score = values.get(identity);
+            moves.push(score === undefined ? move : { ...move, score });
         }
     }
     if (moves.length === 0) {

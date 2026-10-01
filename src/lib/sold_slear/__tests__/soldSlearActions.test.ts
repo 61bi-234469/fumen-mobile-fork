@@ -218,7 +218,7 @@ describe('Sold Slear in the Cold Clear actions', () => {
         expect(lastWrapper().start.mock.calls[0][0].b2bLevel).toBe(3);
     });
 
-    test('writes the S2 B2B level and no score on result pages', () => {
+    test('writes the score and the S2 B2B level on result pages', () => {
         const comment = 'b2b=4 | #Q=[](T)SZ';
         const start = coldClearActions.startColdClearSearch()(makeState({ commentText: comment })) as any;
         const runId = start.coldClear.runId;
@@ -239,12 +239,38 @@ describe('Sold Slear in the Cold Clear actions', () => {
         coldClearActions.stopColdClearSearch()(running);
 
         const page = addColdClearBranches.mock.calls[0][0].pages[0];
-        expect(page.comment.text).toBe('b2b=4 | #Q=[](T)SZ');
+        expect(page.comment.text).toBe('score=12.00 | b2b=4 | #Q=[](T)SZ');
     });
 
-    test('reports the placed piece rank by toast without rewriting the comment', () => {
+    test('writes each top branch with its score and the S2 B2B level', () => {
+        const comment = 'b2b=2 | #Q=[](T)SZ';
+        const start = coldClearActions.startColdClearTopThreeSearch()(makeState({ commentText: comment })) as any;
+        const runId = start.coldClear.runId;
+        const addColdClearBranches = jest.fn();
+        initColdClearActions({
+            addColdClearBranches,
+            coldClearFinishSearch: jest.fn(),
+            changeToTreeViewScreen: jest.fn(),
+        } as any);
+        const running = makeState({ runId, commentText: comment, isRunning: true, runType: 'top3' });
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [
+                { hold: false, piece: 2, rotation: 0, x: 4, y: 0, score: -110.5 },
+                { hold: false, piece: 2, rotation: 0, x: 1, y: 0, score: -112.25 },
+            ],
+        })(running);
+
+        const pages = addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages.map((page: any) => page.comment.text)).toEqual([
+            'score=-110.50 | b2b=2 | #Q=[](T)SZ',
+            'score=-112.25 | b2b=2 | #Q=[](T)SZ',
+        ]);
+    });
+
+    test('reports the placed piece rank by toast and writes its score with the B2B level', () => {
         const piece = { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } };
-        const comment = '#Q=[](T)SZ';
+        const comment = 'b2b=3 | #Q=[](T)SZ';
         const start = coldClearActions.evaluatePlacedSpawnMinoScore()(makeState({
             piece, commentText: comment,
         })) as any;
@@ -264,11 +290,36 @@ describe('Sold Slear in the Cold Clear actions', () => {
         coldClearActions.onColdClearTopMovesResult({
             runId,
             results: [
-                { hold: false, piece: 2, rotation: 0, x: 1, y: 0 },
-                { hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+                { hold: false, piece: 2, rotation: 0, x: 1, y: 0, score: 3.25 },
+                { hold: false, piece: 2, rotation: 0, x: 4, y: 0, score: -1.5 },
             ],
         })(running);
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({ html: 'rank 2/2' }));
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'score=-1.50 | b2b=3 | #Q=[](T)SZ' });
+    });
+
+    test('leaves the comment alone when the placed piece is not among the candidates', () => {
+        const piece = { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } };
+        const comment = 'b2b=3 | #Q=[](T)SZ';
+        const start = coldClearActions.evaluatePlacedSpawnMinoScore()(makeState({
+            piece, commentText: comment,
+        })) as any;
+        const runId = start.coldClear.runId;
+        const setCommentText = jest.fn();
+        initColdClearActions({
+            setCommentText,
+            coldClearFinishSearch: jest.fn(),
+            changeToDrawerScreen: jest.fn(),
+            changeToDrawingToolMode: jest.fn(),
+        } as any);
+        const running = makeState({ piece, runId, commentText: comment, isRunning: true, runType: 'placed' });
+        coldClearActions.onColdClearInitDone({ runId })(running);
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 2, rotation: 0, x: 1, y: 0, score: 3.25 }],
+        })(running);
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({ html: 'outside 1' }));
         expect(setCommentText).not.toHaveBeenCalled();
     });
 

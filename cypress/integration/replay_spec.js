@@ -772,8 +772,8 @@ describe('TETR.IO Replay', () => {
             operations.replay.analysis.summary().should('not.exist');
         });
 
-        // Sold Slear は候補内の順位で評価する（標準予算は決定的）
-        it('analyzes with Sold Slear by rank and drops the graph when the engine changes', () => {
+        // Sold Slear も候補の探索値の差で評価する（標準予算は決定的）
+        it('analyzes with Sold Slear by score and drops the graph when the engine changes', () => {
             cy.clearLocalStorage();
             startPlaying();
 
@@ -785,8 +785,8 @@ describe('TETR.IO Replay', () => {
 
             operations.replay.analysis.graph().should('be.visible');
             operations.replay.analysis.summary()
-                .should('have.attr', 'data-mode', 'rank')
                 .then(($summary) => {
+                    expect(Number($summary.attr('data-mean-loss')), 'mean loss').to.be.at.least(0);
                     const analyzed = Number($summary.attr('data-analyzed'));
                     expect(analyzed, 'analyzed moves').to.be.greaterThan(0);
                     expect(analyzed + Number($summary.attr('data-unmatched'))

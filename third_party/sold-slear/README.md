@@ -8,7 +8,7 @@ It is published only in the develop preview; production builds leave it out
 ## Source
 
 - Repository: https://github.com/61bi-234469/s2-bot-lab (MIT, Copyright (c) 2026 61bi-234469)
-- Commit: `ff7210f28977ce0851301a351f751c0a3ad1bd98`
+- Commit: `61c0efdf438e7acc05abf7335a2397ebbab06872`
 - Crate: `bot/cold-clear-2-s2` (MIT OR Apache-2.0; MIT selected for this copy)
   - Base: https://github.com/MinusKelvin/cold-clear-2 at `ed8b19327b6bd1410ddd873d8611485bd45d8fae`
   - Non-T mini spin retention and the all-spin weight preset are based on
@@ -25,13 +25,16 @@ It is published only in the develop preview; production builds leave it out
 
 ## Artifact
 
-- `cold_clear_2_s2.wasm`: 1,169,575 bytes,
-  SHA-256 `1449583088ec4481c7999ce3fe859bbb14c89a6b9c36d31e3a34186f59c9c274`
+- `cold_clear_2_s2.wasm`: 1,182,586 bytes,
+  SHA-256 `28a2487f84a6ffec764d8151058ede23dcbbc6f0beb49c41e6f4432bce53a6aa`
 - Exports `memory`, `cc2_alloc`, `cc2_invoke`, `cc2_dealloc`; no imports.
   `src/lib/sold_slear/engine.ts` checks both at load time.
-- The owner's development build of the same champion produced identical responses (excluding
-  timing diagnostics) on 960 self-play positions (7-bag, HOLD, line clears, garbage rows), checked
-  on 2026-10-01 with s2-bot-lab's own request builder and `src-js/cc2-wasm-engine.mjs`.
+- Requests carry `"diagnostics": {"rootValues": true}`, so each move response also lists the
+  bot's search value for every returned candidate (`diagnostics.rootValues`, in
+  `ranking.returnedIdentities` order). The app shows it as the move score.
+- Checked on 2026-10-01 against the owner's native build of the same champion: identical
+  decisions on 768 saved positions without the flag, and identical values, selections and
+  rankings on 256 saved positions with it.
 
 ## Profile
 
@@ -48,16 +51,16 @@ built on Windows:
 ```powershell
 git clone https://github.com/61bi-234469/s2-bot-lab.git C:\build\s2-bot-lab
 cd C:\build\s2-bot-lab
-git checkout ff7210f28977ce0851301a351f751c0a3ad1bd98
+git checkout 61c0efdf438e7acc05abf7335a2397ebbab06872
 $env:RUSTFLAGS = "--remap-path-prefix=C:\build\s2-bot-lab=/s2-bot-lab --remap-path-prefix=$env:USERPROFILE\.cargo\registry\src=/cargo/registry/src"
 cargo build --release --target wasm32-unknown-unknown --manifest-path bot/cold-clear-2-s2/Cargo.toml --lib
 ```
 
-Copy `target/wasm32-unknown-unknown/release/cold_clear_2_s2.wasm` to `src/lib/sold_slear_wasm/`.
+Copy `bot/cold-clear-2-s2/target/wasm32-unknown-unknown/release/cold_clear_2_s2.wasm` to `src/lib/sold_slear_wasm/`.
 The path remapping keeps local paths out of the binary. The checkout path still affects cargo's
 package identity and therefore the code layout, so a byte-identical result needs the same
-checkout path (`C:\build\s2-bot-lab`). Two fresh clones built this way on 2026-10-01 both gave the
-checksum above.
+checkout path (`C:\build\s2-bot-lab`). A fresh clone built this way on 2026-10-01 gave the checksum above, and a clean
+rebuild in the same checkout gave it again.
 
 When updating the bot:
 

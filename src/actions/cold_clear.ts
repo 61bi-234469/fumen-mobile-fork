@@ -1317,7 +1317,7 @@ const buildScoredQueueComment = (
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-    b2b: boolean,
+    b2b: boolean | number,
     combo: number,
     suffix: string = '',
 ): string => {
@@ -1339,7 +1339,7 @@ const buildPlacedSpawnScoredQueueComment = (
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-    b2b: boolean,
+    b2b: boolean | number,
     combo: number,
     suffix: string = '',
 ): string | null => {
@@ -1550,25 +1550,35 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
     return true;
 }
 
-// Sold Slear のスコアは最終順位と一致しないため書かない。B2B は S2 のレベルを整数で書く。
+// Sold Slear のスコアは各候補の探索値。B2B は S2 のレベルを整数で書く。
 const buildSessionQueueComment = (
     session: SingleRunSession | Top3RunSession,
     score: number | undefined,
     hold: Piece | null,
     current: Piece | null,
     queue: Piece[],
-): string => (
-    session.engine === 'soldSlear'
-        ? buildQueueStateComment(hold, current, queue, session.b2bLevel, session.combo, session.queueSuffix)
-        : buildScoredQueueComment(score, hold, current, queue, session.b2b, session.combo, session.queueSuffix)
+): string => buildScoredQueueComment(
+    score, hold, current, queue,
+    session.engine === 'soldSlear' ? session.b2bLevel : session.b2b,
+    session.combo, session.queueSuffix,
 );
 
-// Sold Slear の置いたミノ評価。候補内の順位をトーストで示し、コメントは書き換えない。
+// Sold Slear の置いたミノ評価。候補内の順位をトーストで示し、候補内ならスコアをコメントに書く。
+// 候補外ではコメントを書き換えない（候補数は固定上限で、B2B レベルも残したいため）。
 function finishSoldSlearPlacedEvaluation(
     state: Readonly<State>, session: PlacedRunSession, results: CCMove[],
 ): NextState {
     const runId = session.runId;
     const placedIndex = findPlacedIndexByKey(results, toOccupiedCellKey(session.placedPiece));
+    const nextComment = placedIndex < 0 ? null : buildPlacedSpawnScoredQueueComment(
+        results[placedIndex].score,
+        session.hold,
+        session.current,
+        session.queue,
+        session.b2bLevel,
+        session.combo,
+        session.queueSuffix,
+    );
     terminateSession(session);
     currentSession = null;
 
@@ -1586,6 +1596,12 @@ function finishSoldSlearPlacedEvaluation(
     }
     const runtimeActions = appActions;
     return sequence(state, [
+        () => {
+            if (nextComment !== null) {
+                runtimeActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment });
+            }
+            return undefined;
+        },
         () => {
             runtimeActions.coldClearFinishSearch(runId);
             return undefined;

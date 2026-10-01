@@ -36,10 +36,6 @@ export interface AnalysisSettings {
     weightsPreset: number;
 }
 
-// Sold Slear は候補内の順位で評価する。損失の代わりに「推奨手からの順位差」を入れ、
-// グラフ・集計・ワースト一覧は Cold Clear と同じ相対スケールの仕組みで描く。
-export const rankLossOf = (rank: number): number => Math.max(0, rank - 1);
-
 export type AnalysisSkipReason =
     | 'noCurrent'
     | 'shortQueue'

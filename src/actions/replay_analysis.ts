@@ -15,7 +15,6 @@ import {
     buildAnalysisPosition,
     lossOf,
     normalizeAnalysisThinkMs,
-    rankLossOf,
 } from '../lib/cold_clear/replay_analysis';
 import { PlayerRoundIR } from '../lib/ttrm/types';
 import { resolveAiEngine } from '../lib/ai_engine';
@@ -309,24 +308,7 @@ export const replayAnalysisActions: Readonly<ReplayAnalysisActions> = {
         }
 
         const move = session.moves[result.index - 1];
-        if (move !== undefined && session.settings.engine === 'soldSlear') {
-            // 返却候補内に実手が無ければ順位は測れない（欠測）。架空の下限値は入れない
-            session.moves[result.index - 1] = result.rank === null
-                ? {
-                    index: result.index,
-                    frame: move.frame,
-                    status: 'unmatched',
-                    candidateCount: result.candidateCount,
-                }
-                : {
-                    index: result.index,
-                    frame: move.frame,
-                    status: 'ok',
-                    loss: rankLossOf(result.rank),
-                    rank: result.rank,
-                    candidateCount: result.candidateCount,
-                };
-        } else if (move !== undefined) {
+        if (move !== undefined) {
             session.moves[result.index - 1] = result.playedScore === null
                 ? {
                     index: result.index,

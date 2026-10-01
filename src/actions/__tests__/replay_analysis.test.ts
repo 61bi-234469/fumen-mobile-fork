@@ -328,7 +328,7 @@ describe('replayAnalysisActions', () => {
             expect(['none', 'mini', 'normal']).toContain(request.placedSpin);
         });
 
-        test('順位差を損失として入れ、候補外は欠測にする', () => {
+        test('Cold Clear と同じく探索値の差を損失として入れ、候補外は圏外にする', () => {
             let state = soldSlearState();
             state = { ...state, replay: { ...state.replay, analysis: analysisOf(
                 replayAnalysisActions.startReplayAnalysis()(state) as any) } } as State;
@@ -336,17 +336,18 @@ describe('replayAnalysisActions', () => {
             const first = __mockWrapper.analyzePosition.mock.calls[0][0];
             const ranked = replayAnalysisActions.onReplayAnalysisResult({
                 runId: state.replay.analysis.runId,
-                result: { ...resultFor(first.index, 0, 0, 3), candidateCount: 12 },
+                result: { ...resultFor(first.index, 5.5, 2, 3), candidateCount: 12 },
             })(state) as any;
             const move = analysisOf(ranked).moves[first.index - 1];
-            expect(move).toMatchObject({ status: 'ok', rank: 3, loss: 2, candidateCount: 12 });
-            expect(move.bestScore).toBeUndefined();
+            expect(move).toMatchObject({
+                status: 'ok', rank: 3, loss: 3.5, bestScore: 5.5, playedScore: 2, candidateCount: 12,
+            });
 
             const second = __mockWrapper.analyzePosition.mock.calls[1][0];
             state = { ...state, replay: { ...state.replay, analysis: analysisOf(ranked) } } as State;
             const unmatched = replayAnalysisActions.onReplayAnalysisResult({
                 runId: state.replay.analysis.runId,
-                result: { ...resultFor(second.index, 0, null, null), candidateCount: 16 },
+                result: { ...resultFor(second.index, 5.5, null, null), candidateCount: 16 },
             })(state) as any;
             const missing = analysisOf(unmatched).moves[second.index - 1];
             expect(missing.status).toEqual('unmatched');

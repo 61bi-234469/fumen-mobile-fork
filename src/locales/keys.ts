@@ -398,16 +398,6 @@ export const i18n = {
             Failed: () => t('Replay.Analysis.Failed'),
             Note: () => t('Replay.Analysis.Note'),
             BudgetLabel: () => t('Replay.Analysis.BudgetLabel'),
-            MeanRank: (rank: string) => t('Replay.Analysis.MeanRank', { rank }),
-            MaxRank: (rank: number) => t('Replay.Analysis.MaxRank', { rank }),
-            NotReturned: (count: number) => t('Replay.Analysis.NotReturned', { count }),
-            WorstRank: () => t('Replay.Analysis.WorstRank'),
-            WorstRankItem: (index: number, rank: number) =>
-                t('Replay.Analysis.WorstRankItem', { index, rank }),
-            CurrentRank: (rank: number, total: number) =>
-                t('Replay.Analysis.CurrentRank', { rank, total }),
-            CurrentNotReturned: (total: number) => t('Replay.Analysis.CurrentNotReturned', { total }),
-            NoteRank: () => t('Replay.Analysis.NoteRank'),
         },
         Error: {
             Title: () => t('Replay.Error.Title'),

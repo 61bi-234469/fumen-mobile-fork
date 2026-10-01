@@ -13,7 +13,7 @@ const destination = destIndex >= 0 && process.argv[destIndex + 1] !== undefined
     : path.resolve(__dirname, '..', 'dest');
 const expectPresent = process.argv.includes('--present');
 // Keep in sync with third_party/sold-slear/README.md.
-const WASM_SHA256 = '1449583088ec4481c7999ce3fe859bbb14c89a6b9c36d31e3a34186f59c9c274';
+const WASM_SHA256 = '28a2487f84a6ffec764d8151058ede23dcbbc6f0beb49c41e6f4432bce53a6aa';
 // The worker is the only code that issues these WASM operations.
 const WORKER_MARKER = 'f14_finish_early';
 

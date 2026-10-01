@@ -15,7 +15,7 @@ import {
     moveAtGraphX,
     renderReplayEvalGraph,
 } from './replay_eval_graph';
-import { AiEngineId, aiEngineCapabilities, availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
+import { AiEngineId, availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
 import {
     budgetMillisOf,
     estimatedMillisPerMove,
@@ -38,15 +38,13 @@ const currentMoveOf = (
     moves: ReplayMoveEval[], selfIndex: number,
 ): ReplayMoveEval | undefined => moves[selfIndex - 1];
 
-const currentText = (move: ReplayMoveEval | undefined, rankMode: boolean): string => {
+const currentText = (move: ReplayMoveEval | undefined): string => {
     if (move === undefined || move.status === 'pending') {
         return i18n.Replay.Analysis.CurrentPending();
     }
     switch (move.status) {
     case 'unmatched':
-        return rankMode
-            ? i18n.Replay.Analysis.CurrentNotReturned(move.candidateCount ?? 0)
-            : i18n.Replay.Analysis.CurrentUnmatched();
+        return i18n.Replay.Analysis.CurrentUnmatched();
     case 'skipped':
     case 'failed':
         return i18n.Replay.Analysis.CurrentSkipped();
@@ -55,9 +53,6 @@ const currentText = (move: ReplayMoveEval | undefined, rankMode: boolean): strin
     }
     if (move.rank === 1 || (move.loss ?? 0) <= 0) {
         return i18n.Replay.Analysis.CurrentBest();
-    }
-    if (rankMode) {
-        return i18n.Replay.Analysis.CurrentRank(move.rank ?? 0, move.candidateCount ?? 0);
     }
     return i18n.Replay.Analysis.CurrentLoss(formatLoss(move.loss ?? 0), move.rank ?? 0);
 };
@@ -81,8 +76,6 @@ export const replayAnalysisPanel = (
     const running = analysis !== undefined && analysis.status === 'running';
     const engine: AiEngineId = resolveAiEngine(state.coldClear.engine);
     const engineSwitchable = availableAiEngines().length > 1;
-    // Sold Slear は損失ではなく順位で評価する（loss には推奨手からの順位差が入る）
-    const rankMode = aiEngineCapabilities(engine).evaluation === 'rank';
     const soldSlearBudget = normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget);
     const millisPerMove = engine === 'soldSlear' ? estimatedMillisPerMove(soldSlearBudget) : thinkMs;
     const moves = analysis !== undefined ? analysis.moves : [];
@@ -313,7 +306,6 @@ export const replayAnalysisPanel = (
                     data-mean-loss={String(Math.round(summary.meanLoss))}
                     data-max-loss={String(Math.round(summary.maxLoss))}
                     data-analyzed={String(summary.analyzed)}
-                    data-mode={rankMode ? 'rank' : 'loss'}
                     data-unmatched={String(summary.unmatched)}
                     data-skipped={String(summary.skipped)}
                     style={style({
@@ -325,20 +317,14 @@ export const replayAnalysisPanel = (
                         {i18n.Replay.Analysis.MatchRate(Math.round(summary.matchRate * 100))}
                     </span>
                     <span key="analysis-mean">
-                        {rankMode
-                            ? i18n.Replay.Analysis.MeanRank((summary.meanLoss + 1).toFixed(1))
-                            : i18n.Replay.Analysis.MeanLoss(formatLoss(summary.meanLoss))}
+                        {i18n.Replay.Analysis.MeanLoss(formatLoss(summary.meanLoss))}
                     </span>
                     <span key="analysis-max">
-                        {rankMode
-                            ? i18n.Replay.Analysis.MaxRank(Math.round(summary.maxLoss) + 1)
-                            : i18n.Replay.Analysis.MaxLoss(formatLoss(summary.maxLoss))}
+                        {i18n.Replay.Analysis.MaxLoss(formatLoss(summary.maxLoss))}
                     </span>
                     {0 < summary.unmatched ? (
                         <span key="analysis-unmatched" style={style({ color: '#5e35b1' })}>
-                            {rankMode
-                                ? i18n.Replay.Analysis.NotReturned(summary.unmatched)
-                                : i18n.Replay.Analysis.Unmatched(summary.unmatched)}
+                            {i18n.Replay.Analysis.Unmatched(summary.unmatched)}
                         </span>
                     ) : undefined}
                     {0 < summary.skipped ? (
@@ -360,7 +346,7 @@ export const replayAnalysisPanel = (
                     style={style({ color: '#555', fontSize: px(11), margin: '2px 0' })}
                 >
                     {i18n.Replay.Playing.LockLabel()} {current !== undefined ? current.index : '—'}
-                    {' — '}{currentText(current, rankMode)}
+                    {' — '}{currentText(current)}
                 </div>
             ) : undefined}
 
@@ -373,7 +359,7 @@ export const replayAnalysisPanel = (
                     })}
                 >
                     <span key="analysis-worst-label" style={style({ color: MUTED })}>
-                        {rankMode ? i18n.Replay.Analysis.WorstRank() : i18n.Replay.Analysis.Worst()}
+                        {i18n.Replay.Analysis.Worst()}
                     </span>
                     {worst.map((move, order) => (
                         <a
@@ -392,9 +378,7 @@ export const replayAnalysisPanel = (
                                 actions.showReplayMove({ index: move.index });
                             }}
                         >
-                            {rankMode
-                                ? i18n.Replay.Analysis.WorstRankItem(move.index, move.rank ?? 0)
-                                : i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}
+                            {i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}
                         </a>
                     ))}
                 </div>
@@ -405,7 +389,7 @@ export const replayAnalysisPanel = (
                     key="replay-analysis-note"
                     style={style({ color: MUTED, fontSize: px(10), margin: '2px 0 0' })}
                 >
-                    {rankMode ? i18n.Replay.Analysis.NoteRank() : i18n.Replay.Analysis.Note()}
+                    {i18n.Replay.Analysis.Note()}
                 </div>
             ) : undefined}
         </div>

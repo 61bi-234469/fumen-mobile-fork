@@ -40,8 +40,6 @@ export interface AiEngineCapabilities {
     minNext: number;
     // 置いたミノ評価・リプレイ解析で照合する候補数の上限
     candidateLimit: number;
-    // リプレイ解析の評価軸。loss はスコア差、rank は候補内の順位
-    evaluation: 'loss' | 'rank';
     // 探索が b2b / combo を返すか。返さないエンジンはアプリ側で連鎖状態を進める
     reportsChain: boolean;
 }
@@ -56,7 +54,6 @@ const CAPABILITIES: Record<AiEngineId, AiEngineCapabilities> = {
         maxTopBranches: 20,
         minNext: 0,
         candidateLimit: 5000,
-        evaluation: 'loss',
         reportsChain: true,
     },
     soldSlear: {
@@ -66,7 +63,6 @@ const CAPABILITIES: Record<AiEngineId, AiEngineCapabilities> = {
         maxTopBranches: SOLD_SLEAR_CANDIDATE_LIMIT,
         minNext: 1,
         candidateLimit: SOLD_SLEAR_CANDIDATE_LIMIT,
-        evaluation: 'rank',
         reportsChain: false,
     },
 };

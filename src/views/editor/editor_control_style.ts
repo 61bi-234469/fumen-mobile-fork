@@ -5,6 +5,10 @@ export const EDITOR_ACTIVE_TEXT_COLOR = '#1565c0';
 export const EDITOR_ACTIVE_BACKGROUND = '#e8f1fb';
 export const EDITOR_PALETTE_BACKGROUND = '#f4f8fd';
 export const EDITOR_DANGER_COLOR = '#c62828';
+// 右レールの機能別フレーム。外枠は濃く、セル間の区切りは薄くして罫線のように見せない
+export const EDITOR_RAIL_FRAME_COLOR = '#333';
+export const EDITOR_RAIL_DIVIDER_COLOR = '#e0e0e0';
+export const EDITOR_RAIL_FRAME_RADIUS = 4;
 
 export type EditorControlState = 'idle' | 'active' | 'palette' | 'status' | 'danger';
 

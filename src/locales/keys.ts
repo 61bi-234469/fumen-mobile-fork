@@ -202,6 +202,13 @@ export const i18n = {
         InfiniteBag: () => t('EditorUi.InfiniteBag'),
         SevenBagGray: () => t('EditorUi.SevenBagGray'),
         PieceLayoutPlay: () => t('EditorUi.PieceLayoutPlay'),
+        RailLabel: {
+            Add: () => t('EditorUi.RailLabel.Add'), Insert: () => t('EditorUi.RailLabel.Insert'),
+            Copy: () => t('EditorUi.RailLabel.Copy'), Cut: () => t('EditorUi.RailLabel.Cut'),
+            Utils: () => t('EditorUi.RailLabel.Utils'), Flags: () => t('EditorUi.RailLabel.Flags'),
+            Piece: () => t('EditorUi.RailLabel.Piece'), Select: () => t('EditorUi.RailLabel.Select'),
+            Paint: () => t('EditorUi.RailLabel.Paint'),
+        },
         Settings: () => t('EditorUi.Settings'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),

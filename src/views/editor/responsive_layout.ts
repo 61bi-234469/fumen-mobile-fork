@@ -103,6 +103,59 @@ export const getPlayPieceRailMetrics = (
     return { nextMinoHeight, nextPanelHeight, railCellHeight, railExtensionHeight };
 };
 
+// 右レールの全幅セル。グループの左右の外枠1pxずつ、セル内の左右余白2pxずつ。
+export const RAIL_GROUP_BORDER_WIDTH = 2;
+export const RAIL_CELL_PADDING_WIDTH = 4;
+export const RAIL_LABEL_ICON_MAX_SIZE = 18;
+export const RAIL_LABEL_GAP = 2;
+export const RAIL_LABEL_MIN_FONT_SIZE = 9;
+// 選択中のセルは太字になるため、太い方で測って選択時の文字切れを防ぐ
+export const RAIL_LABEL_MEASURE_WEIGHT = 600;
+export const RAIL_PAIRED_LABEL_FONT_SIZE = 9;
+const RAIL_LABEL_FONT_STEP = .5;
+
+type MeasureLabel = (text: string, fontSizePx: number, fontWeight: number) => number;
+
+export const getRailLabelAvailableWidth = (railWidth: number, iconSize: number): number => (
+    railWidth - RAIL_GROUP_BORDER_WIDTH - RAIL_CELL_PADDING_WIDTH - iconSize - RAIL_LABEL_GAP
+);
+
+// 全幅セルのラベルに共通の文字サイズを返す。9pxでも入らなければ undefined（アイコンだけにする）。
+export const getRailLabelFontSize = ({ railWidth, iconSize, baseFontSize, labels, measure }: {
+    railWidth: number;
+    iconSize: number;
+    baseFontSize: number;
+    labels: string[];
+    measure: MeasureLabel;
+}): number | undefined => {
+    const available = getRailLabelAvailableWidth(railWidth, iconSize);
+    const widestAt = (fontSize: number) => labels.reduce(
+        (widest, label) => Math.max(widest, measure(label, fontSize, RAIL_LABEL_MEASURE_WEIGHT)), 0);
+    const baseWidth = widestAt(baseFontSize);
+    if (baseWidth <= available) {
+        return baseFontSize;
+    }
+    // 文字幅は文字サイズにほぼ比例するので、比率から当たりを付けてから実測で確かめる。
+    // 候補は0.5px刻みに揃え（下限の9pxも必ず試す）、丸め誤差に備えて1段大きいところから試す
+    const toStep = (size: number) => Math.floor(size / RAIL_LABEL_FONT_STEP + 1e-9) * RAIL_LABEL_FONT_STEP;
+    const largestBelowBase = Math.ceil(baseFontSize / RAIL_LABEL_FONT_STEP - 1e-9) * RAIL_LABEL_FONT_STEP
+        - RAIL_LABEL_FONT_STEP;
+    const estimated = toStep(baseFontSize * available / baseWidth);
+    let fontSize = Math.min(estimated + RAIL_LABEL_FONT_STEP, largestBelowBase);
+    while (fontSize >= RAIL_LABEL_MIN_FONT_SIZE) {
+        if (widestAt(fontSize) <= available) {
+            return fontSize;
+        }
+        fontSize -= RAIL_LABEL_FONT_STEP;
+    }
+    return undefined;
+};
+
+// 2分割セル（UTILS｜FLAGS）で、上下に積んだ9pxのラベルがすべて収まるか。
+export const fitsRailPairedLabels = (innerWidth: number, labels: string[], measure: MeasureLabel): boolean => (
+    labels.every(label => measure(label, RAIL_PAIRED_LABEL_FONT_SIZE, RAIL_LABEL_MEASURE_WEIGHT) <= innerWidth)
+);
+
 export const getResponsiveRailCellHeight = (fieldHeight: number, columns: 1 | 2): number => {
     const railRows = columns === 2 ? RAIL_ROWS_DUAL : RAIL_ROWS_SINGLE;
     const chromeHeight = columns === 2 ? 17 : 24;

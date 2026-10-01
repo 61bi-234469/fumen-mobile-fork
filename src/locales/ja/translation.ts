@@ -190,6 +190,11 @@ export const resources = {
         Rotate180: '180°回転', Hold: 'Hold', SoftDrop: 'ソフトドロップ', HardDrop: 'ハードドロップ',
         ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag', SevenBagGray: '7bag grey',
         PieceLayoutPlay: 'INPUT',
+        // 右レールの表示名。派生元に合わせて言語を問わず英語の大文字にする（読み上げ名は Add などの既存キー）
+        RailLabel: {
+            Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
+            Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
+        },
         Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
         Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る',

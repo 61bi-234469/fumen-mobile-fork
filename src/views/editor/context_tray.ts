@@ -19,14 +19,16 @@ import {
 } from '../../lib/piece_shortcut';
 import { displayShortcut } from '../../lib/shortcuts';
 import { spawnMinoToggleDirection } from '../../lib/editor_interaction';
+import { measureTextWidth } from '../../lib/text_measure';
+import {
+    decideTrayLabels, TRAY_BUTTON_BORDER_WIDTH, TRAY_BUTTON_PADDING_X, TRAY_ICON_GAP, TRAY_ICON_SIZE,
+    TRAY_LABEL_FONT_SIZE, TRAY_LABEL_FONT_WEIGHT,
+} from './tray_label_layout';
 
 export const CONTEXT_TRAY_HEIGHT = 40;
+const SELECTION_SUMMARY_WIDTH = 64;
 
-const trayButtonView = ({
-    key, datatest, label, iconName, active = false, disabled = false, iconOnly = false, touchActionNone = false,
-    shortcutLabel, dataDirection,
-    handlers,
-}: {
+interface TrayButtonProps {
     key: string;
     datatest: string;
     label: string;
@@ -38,12 +40,38 @@ const trayButtonView = ({
     shortcutLabel?: string;
     dataDirection?: string;
     handlers: object;
-}) => {
+}
+
+// ラベルの有無とボタン幅は decideTrayLabels で決める。ピース操作（iconOnly）は均等幅のまま
+interface TrayButtonSizing {
+    showLabel: boolean;
+    width: number;
+    scroll: boolean;
+}
+
+const trayButtonFlex = (iconOnly: boolean, sizing: TrayButtonSizing | undefined) => {
+    if (iconOnly || sizing === undefined) {
+        return { flex: '1 1 0', minWidth: '0' };
+    }
+    return {
+        flex: sizing.scroll ? `0 0 ${sizing.width}px` : `1 1 ${sizing.width}px`,
+        minWidth: px(sizing.width),
+    };
+};
+
+const trayButtonView = (props: TrayButtonProps, sizing?: TrayButtonSizing) => {
+    const {
+        key, datatest, label, iconName, active = false, disabled = false, iconOnly = false, touchActionNone = false,
+        shortcutLabel, dataDirection,
+        handlers,
+    } = props;
+    const showLabel = !iconOnly && sizing?.showLabel === true;
     return button({
         key,
         datatest,
         disabled,
         type: 'button',
+        title: label,
         'aria-label': label,
         'aria-pressed': active ? 'true' : 'false',
         'data-direction': dataDirection,
@@ -52,30 +80,32 @@ const trayButtonView = ({
             alignItems: 'center',
             background: active ? '#f44336' : '#fff',
             border: '0',
-            borderLeft: '1px solid #ddd',
+            borderLeft: `${TRAY_BUTTON_BORDER_WIDTH}px solid #ddd`,
             boxShadow: active ? 'inset 0 0 0 2px #fff, inset 0 0 0 3px #d32f2f' : 'none',
+            boxSizing: 'border-box',
             color: active ? '#fff' : disabled ? '#aaa' : '#333',
             cursor: disabled ? 'default' : 'pointer',
             display: 'flex',
-            flex: iconOnly ? '1 1 0' : '1 0 56px',
+            ...trayButtonFlex(iconOnly, sizing),
             fontFamily: 'inherit',
-            fontSize: px(10),
-            gap: px(3),
+            fontSize: px(TRAY_LABEL_FONT_SIZE),
+            fontWeight: String(TRAY_LABEL_FONT_WEIGHT),
+            gap: px(TRAY_ICON_GAP),
             height: '100%',
             justifyContent: 'center',
-            minWidth: iconOnly ? '0' : px(56),
             outlineOffset: '-3px',
-            padding: iconOnly ? '0' : '0 4px',
+            padding: iconOnly ? '0' : `0 ${TRAY_BUTTON_PADDING_X}px`,
             position: shortcutLabel ? 'relative' : undefined,
             touchAction: touchActionNone ? 'none' : undefined,
             transition: 'background-color 100ms ease, color 100ms ease, box-shadow 100ms ease',
         }),
     }, [
-        BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
+        BlockIcon({ key: `${key}-icon`, iconSize: TRAY_ICON_SIZE }, iconName),
         span({
             key: `${key}-label`,
+            'data-tray-label': 'true',
             style: style({
-                display: iconOnly ? 'none' : 'block',
+                display: showLabel ? 'block' : 'none',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }),
         }, label),
@@ -89,8 +119,13 @@ const trayButtonView = ({
     ]);
 };
 
+// ペイント／選択／スライド／コメントのトレイ要素。幅はまとめて決めてから描画する
+type TrayEntry =
+    | { kind: 'button'; props: TrayButtonProps; preferLabel?: boolean }
+    | { kind: 'fixed'; width: number; node: VNode<{}> };
+
 const trayButton = ({
-    key, datatest, label, iconName, active = false, disabled = false, onclick, iconOnly = false,
+    key, datatest, label, iconName, active = false, disabled = false, onclick,
 }: {
     key: string;
     datatest: string;
@@ -99,19 +134,44 @@ const trayButton = ({
     active?: boolean;
     disabled?: boolean;
     onclick: () => void;
-    iconOnly?: boolean;
-}) => trayButtonView({
-    key, datatest, label, iconName, active, disabled, iconOnly,
-    handlers: {
-        onclick: (event: MouseEvent) => {
-            if (!disabled) {
-                onclick();
-            }
-            event.preventDefault();
-            event.stopPropagation();
+}): TrayEntry => ({
+    kind: 'button',
+    props: {
+        key, datatest, label, iconName, active, disabled,
+        handlers: {
+            onclick: (event: MouseEvent) => {
+                if (!disabled) {
+                    onclick();
+                }
+                event.preventDefault();
+                event.stopPropagation();
+            },
         },
     },
 });
+
+const renderTrayEntries = (entries: TrayEntry[], trayWidth: number): VNode<{}>[] => {
+    const fixedWidth = entries.reduce((sum, entry) => sum + (entry.kind === 'fixed' ? entry.width : 0), 0);
+    const buttons = entries.filter(entry => entry.kind === 'button') as Extract<TrayEntry, { kind: 'button' }>[];
+    const layout = decideTrayLabels(buttons.map(entry => ({
+        label: entry.props.label,
+        active: entry.props.active === true,
+        preferLabel: entry.preferLabel === true,
+    })), trayWidth - fixedWidth, measureTextWidth);
+    let buttonIndex = 0;
+    return entries.map((entry) => {
+        if (entry.kind === 'fixed') {
+            return entry.node;
+        }
+        const index = buttonIndex;
+        buttonIndex += 1;
+        return trayButtonView(entry.props, {
+            showLabel: layout.labeled[index],
+            width: layout.widths[index],
+            scroll: layout.scroll,
+        });
+    });
+};
 
 // ピース操作用ボタン
 // - pointerdownで即時実行（pointerupを待たない）
@@ -219,7 +279,7 @@ const partTrayButton = (part: EditorPart, active: boolean, actions: Actions, gui
     span({ key: 'size' }, `${part.width}×${part.height}${part.pinned ? ' •' : ''}`),
 ]);
 
-const selectionSummary = (state: State): VNode<{}>[] => {
+const selectionSummary = (state: State): TrayEntry[] => {
     const rect = state.rectSelect.rect;
     if (rect === null) {
         return [];
@@ -232,7 +292,7 @@ const selectionSummary = (state: State): VNode<{}>[] => {
             }
         }
     }
-    return [div({
+    return [{ kind: 'fixed', width: SELECTION_SUMMARY_WIDTH, node: div({
         key: 'tray-selection-summary',
         datatest: 'tray-selection-summary',
         style: style({
@@ -240,23 +300,23 @@ const selectionSummary = (state: State): VNode<{}>[] => {
             background: '#333',
             color: '#fff',
             display: 'flex',
-            flex: '0 0 64px',
+            flex: `0 0 ${SELECTION_SUMMARY_WIDTH}px`,
             flexDirection: 'column',
             fontSize: px(9),
             justifyContent: 'center',
             lineHeight: '1.15',
-            minWidth: px(64),
+            minWidth: px(SELECTION_SUMMARY_WIDTH),
         }),
     }, [
         span({ key: 'size' }, `${rectWidth(rect)}×${rectHeight(rect)}`),
         span({ key: 'count' }, i18n.EditorUi.Blocks(blockCount)),
-    ])];
+    ]) }];
 };
 
 // SPAWNミノ⇄ペイントの相互変換。押す前に行き先が分かるよう、ラベルとアイコンを方向で切り替える。
 // 方向は data-direction 属性でも公開し、Cypressから検証できるようにする。
-// このボタンだけ trayButtonView を直接使う（trayButton のシグネチャは既存4ボタンのまま保つ）。
-const spawnMinoToggleTrayButton = (state: State, actions: Actions): VNode<{}> => {
+// 押したときの動作がラベルそのものなので、入る限りラベルを出す（preferLabel）。
+const spawnMinoToggleTrayButton = (state: State, actions: Actions): TrayEntry => {
     const direction = spawnMinoToggleDirection(state);
     const { label, iconName } = {
         'to-paint': { label: i18n.EditorUi.SpawnMinoToggle.ToPaint(), iconName: 'brush' },
@@ -266,27 +326,31 @@ const spawnMinoToggleTrayButton = (state: State, actions: Actions): VNode<{}> =>
         none: { label: i18n.EditorUi.SpawnMinoToggle.ToPaint(), iconName: 'brush' },
     }[direction];
     const disabled = direction === 'none';
-    return trayButtonView({
-        label,
-        iconName,
-        disabled,
-        key: 'tray-spawn-mino-toggle',
-        datatest: 'tray-spawn-mino-toggle',
-        active: direction === 'pick',
-        dataDirection: direction,
-        handlers: {
-            onclick: (event: MouseEvent) => {
-                if (!disabled) {
-                    actions.toggleSpawnMinoAndBlocks();
-                }
-                event.preventDefault();
-                event.stopPropagation();
+    return {
+        kind: 'button',
+        preferLabel: true,
+        props: {
+            label,
+            iconName,
+            disabled,
+            key: 'tray-spawn-mino-toggle',
+            datatest: 'tray-spawn-mino-toggle',
+            active: direction === 'pick',
+            dataDirection: direction,
+            handlers: {
+                onclick: (event: MouseEvent) => {
+                    if (!disabled) {
+                        actions.toggleSpawnMinoAndBlocks();
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                },
             },
         },
-    });
+    };
 };
 
-const paintTray = (state: State, actions: Actions): VNode<{}>[] => [
+const paintTray = (state: State, actions: Actions): TrayEntry[] => [
     trayButton({
         key: 'tray-paint-pen', datatest: 'tray-paint-pen', label: i18n.EditorUi.Pen(), iconName: 'edit',
         active: state.editorUi.paintTool === 'pen'
@@ -435,7 +499,7 @@ const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
     ])];
 };
 
-const selectTray = (state: State, actions: Actions): VNode<{}>[] => {
+const selectTray = (state: State, actions: Actions): TrayEntry[] => {
     const canOperate = (state.rectSelect.status === 'floating' && state.rectSelect.floating !== null)
         || (state.rectSelect.status === 'selected' && state.rectSelect.rect !== null);
     const operations = [
@@ -465,7 +529,7 @@ const selectTray = (state: State, actions: Actions): VNode<{}>[] => {
     ];
     return selectionSummary(state).concat(operations);
 };
-const slideTray = (actions: Actions): VNode<{}>[] => [
+const slideTray = (actions: Actions): TrayEntry[] => [
     trayButton({
         key: 'btn-slide-to-up-with-gray', datatest: 'btn-slide-to-up-with-gray', label: i18n.EditorUi.UpGray(),
         iconName: 'vertical_align_top', onclick: actions.shiftToUpWithGray,
@@ -495,7 +559,7 @@ const slideTray = (actions: Actions): VNode<{}>[] => [
     }),
 ];
 
-const commentTray = (state: State, actions: Actions): VNode<{}>[] => [
+const commentTray = (state: State, actions: Actions): TrayEntry[] => [
     trayButton({
         key: 'btn-comment-blank', datatest: 'btn-comment-blank',
         label: i18n.EditorUi.Blank(), iconName: 'format_strikethrough',
@@ -526,27 +590,29 @@ const handleTrayWheel = (event: WheelEvent) => {
     event.preventDefault();
 };
 
+// width はトレイの外寸（盤面幅）。トレイの枠線は上下だけなので、左右の枠線分は引かない
 export const contextTray = (
     state: State,
     actions: Actions,
     height: number = CONTEXT_TRAY_HEIGHT,
+    width: number = Number.POSITIVE_INFINITY,
 ) => {
     const trayHeight = height;
     let contents: VNode<{}>[];
     if (state.mode.type === ModeTypes.Slide) {
-        contents = slideTray(actions);
+        contents = renderTrayEntries(slideTray(actions), width);
     } else if (state.mode.type === ModeTypes.Comment) {
-        contents = commentTray(state, actions);
+        contents = renderTrayEntries(commentTray(state, actions), width);
     } else {
         switch (state.editorUi.primaryTool) {
         case 'piece':
             contents = pieceTray(state, actions);
             break;
         case 'select':
-            contents = selectTray(state, actions);
+            contents = renderTrayEntries(selectTray(state, actions), width);
             break;
         default:
-            contents = paintTray(state, actions);
+            contents = renderTrayEntries(paintTray(state, actions), width);
             break;
         }
     }

@@ -1,6 +1,124 @@
 import { block, Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
+// 右レールの全幅セルのラベル。ボタンの overflow: hidden で切れるので、ラベル自身ではなく
+// ボタンの内容領域（左右の余白2pxずつを除く）に収まっているかで確かめる。
+const RAIL_LABEL_SELECTORS = ['btn-insert-new-page', 'btn-insert-from-clipboard', 'btn-copy-to-clipboard',
+    'btn-cut-page', 'btn-piece-mode', 'btn-select-mode', 'btn-paint-mode'];
+const RAIL_LABEL_TEXTS = ['ADD', 'INSERT', 'COPY', 'CUT', 'UTILS', 'PIECE', 'SELECT', 'PAINT'];
+
+const assertRailLabelFits = (selector) => {
+    cy.get(datatest(selector)).then(([cell]) => {
+        const label = cell.querySelector('[data-rail-label]');
+        expect(label, `${selector} label`).not.to.equal(null);
+        const button = cell.getBoundingClientRect();
+        const rect = label.getBoundingClientRect();
+        expect(rect.left, `${selector} label left`).to.be.at.least(button.left + 2 - .5);
+        expect(rect.right, `${selector} label right`).to.be.at.most(button.right - 2 + .5);
+        expect(cell.scrollWidth, `${selector} scrollWidth`).to.be.at.most(cell.clientWidth);
+        const icon = cell.querySelector('.material-icons');
+        expect(parseFloat(getComputedStyle(icon).fontSize)).to.be.at.most(18);
+    });
+};
+
+// フォント次第（CIのLinuxは幅の広い代替フォント）でラベルを隠す場合がある。
+// 隠れているときは、本当に9px・太さ600でも入らない幅であることを実測で確かめる。
+const assertRailLabelsFitOrHidden = (selectors = RAIL_LABEL_SELECTORS, texts = RAIL_LABEL_TEXTS) => {
+    cy.get(datatest(selectors[0])).then(([cell]) => {
+        if (cell.querySelector('[data-rail-label]') !== null) {
+            selectors.forEach(assertRailLabelFits);
+            return;
+        }
+        const context = cell.ownerDocument.createElement('canvas').getContext('2d');
+        context.font = `600 9px ${getComputedStyle(cell).fontFamily}`;
+        const widest = Math.max(...texts.map(text => context.measureText(text).width));
+        const budget = cell.clientWidth - 4 - 18 - 2;
+        expect(widest, 'labels are hidden only when they cannot fit at 9px').to.be.greaterThan(budget);
+        selectors.forEach(selector => {
+            cy.get(datatest(selector)).should('have.attr', 'aria-label').and('not.be.empty');
+        });
+    });
+};
+
+// UTILS｜FLAGSの2分割セル。名前を出すときは両方に出し、出さないときは両方アイコンだけにする
+const assertPairedLabelsOrIcons = () => {
+    cy.get(`${datatest('btn-utils-mode')},${datatest('btn-flags-mode')}`).then((cells) => {
+        const utils = cells.filter(datatest('btn-utils-mode'))[0];
+        const flags = cells.filter(datatest('btn-flags-mode'))[0];
+        const labeled = utils.textContent.includes('UTILS');
+        expect(flags.textContent.includes('FLAGS'), 'UTILS and FLAGS share the label state').to.equal(labeled);
+        if (!labeled) {
+            const context = utils.ownerDocument.createElement('canvas').getContext('2d');
+            context.font = `600 9px ${getComputedStyle(utils).fontFamily}`;
+            const widest = Math.max(context.measureText('UTILS').width, context.measureText('FLAGS').width);
+            expect(widest, 'paired labels are hidden only when they cannot fit').to.be.greaterThan(utils.clientWidth - 4);
+        }
+        [utils, flags].forEach((cell) => {
+            expect(cell.getAttribute('aria-label')).not.to.be.empty;
+            const content = cell.firstElementChild.getBoundingClientRect();
+            const button = cell.getBoundingClientRect();
+            expect(content.width).to.be.at.most(button.width);
+            expect(content.height).to.be.at.most(button.height);
+            expect(cell.scrollWidth).to.be.at.most(cell.clientWidth);
+        });
+    });
+};
+
+const trayLabelOf = button => button.querySelector('[data-tray-label]');
+
+// 下部トレイのラベルは自身が ellipsis なので、ラベル自身の scrollWidth で「…」切れを確かめる
+const assertTrayLabelShown = (selector) => {
+    cy.get(datatest(selector)).should(([button]) => {
+        const label = trayLabelOf(button);
+        expect(getComputedStyle(label).display, `${selector} label display`).to.equal('block');
+        expect(label.getBoundingClientRect().width).to.be.greaterThan(0);
+        expect(label.scrollWidth, `${selector} label is not ellipsized`).to.be.at.most(label.clientWidth);
+        expect(parseFloat(getComputedStyle(button.querySelector('.material-icons')).fontSize)).to.equal(18);
+    });
+};
+
+const assertTrayLabelHidden = (selector) => {
+    cy.get(datatest(selector)).should(([button]) => {
+        expect(getComputedStyle(trayLabelOf(button)).display, `${selector} label display`).to.equal('none');
+        expect(button.getAttribute('aria-label')).not.to.be.empty;
+        expect(button.getAttribute('title')).to.equal(button.getAttribute('aria-label'));
+    });
+};
+
+// 表示中のラベルがすべて切れておらず、トレイに横スクロールがない
+const assertTrayFits = () => {
+    cy.get(datatest('tray-context')).should(([tray]) => {
+        expect(tray.scrollWidth, 'tray has no horizontal scroll').to.be.at.most(tray.clientWidth);
+        tray.querySelectorAll('[data-tray-label]').forEach((label) => {
+            if (getComputedStyle(label).display !== 'none') {
+                expect(label.scrollWidth, label.textContent).to.be.at.most(label.clientWidth);
+            }
+        });
+    });
+};
+
+const visibleTrayLabelCount = tray => Array.from(tray.querySelectorAll('[data-tray-label]'))
+    .filter(label => getComputedStyle(label).display !== 'none').length;
+
+// SPAWNミノを置き、トグルを「ブロック化 → ミノ化 → やめる」と進めながら、各状態でトレイが収まることを確かめる。
+// 「やめる」の状態では open() がツール切替で選択待ちを解除するため、click() だけを使う
+const assertTrayFitsThroughToggleStates = ({ toggleLabelShown = false } = {}) => {
+    operations.mode.piece.open();
+    operations.mode.piece.spawn.T();
+    operations.mode.spawnMinoToggle.open();
+    ['to-paint', 'to-mino', 'pick'].forEach((direction, index) => {
+        if (index > 0) {
+            operations.mode.spawnMinoToggle.click();
+        }
+        operations.mode.spawnMinoToggle.expectDirection(direction);
+        assertTrayFits();
+        if (toggleLabelShown) {
+            assertTrayLabelShown('tray-spawn-mino-toggle');
+        }
+    });
+    operations.mode.spawnMinoToggle.click();
+};
+
 const assertRailOrder = () => {
     const selectors = [
         'btn-editor-import',
@@ -386,20 +504,30 @@ describe('Editor UI final concept', () => {
             expect(field[0].getBoundingClientRect().width).to.be.closeTo(307.66, 1);
         });
         [
-            ['btn-insert-new-page', 'Add'],
-            ['btn-insert-from-clipboard', 'Insert'],
-            ['btn-copy-to-clipboard', 'Copy'],
-            ['btn-cut-page', 'Cut'],
-            ['btn-utils-mode', 'U'],
-            ['btn-flags-mode', 'F'],
-            ['btn-piece-mode', 'PIECE'],
+            ['btn-insert-new-page', 'ADD', 'Add'],
+            ['btn-insert-from-clipboard', 'INSERT', 'Insert'],
+            ['btn-copy-to-clipboard', 'COPY', 'Copy'],
+            ['btn-cut-page', 'CUT', 'Cut'],
+            ['btn-piece-mode', 'PIECE', 'PIECE'],
+            ['btn-select-mode', 'SELECT', 'SELECT'],
+            ['btn-paint-mode', 'PAINT', 'PAINT'],
+        ].forEach(([selector, label, ariaLabel]) => {
+            cy.get(datatest(selector)).should('have.attr', 'aria-label', ariaLabel);
+            cy.get(datatest(selector)).then(([cell]) => {
+                if (cell.querySelector('[data-rail-label]') !== null) {
+                    expect(cell.textContent).to.contain(label);
+                }
+            });
+        });
+        assertRailLabelsFitOrHidden();
+        [
             ['btn-piece-layout', 'INPUT'],
             ['btn-cold-clear', 'AI'],
-            ['btn-select-mode', 'SELECT'],
-            ['btn-paint-mode', 'PAINT'],
         ].forEach(([selector, label]) => {
             cy.get(datatest(selector)).should('contain.text', label);
         });
+        // UTILS｜FLAGSは INPUT｜AI と同じくアイコンの下に名前を積む。入らないフォントではアイコンだけ
+        assertPairedLabelsOrIcons();
         // INPUTはキーボードアイコンとラベルを縦に積み、分割セルからはみ出さない
         cy.get(`${datatest('btn-piece-layout')} .material-icons`).should('have.text', 'keyboard');
         cy.get(datatest('btn-piece-layout')).then(([cell]) => {
@@ -1044,5 +1172,163 @@ describe('Editor UI final concept', () => {
         cy.get(datatest('btn-select-mode')).click();
         cy.get(datatest('tray-select-copy')).should('be.visible');
         cy.get(datatest('tray-select-part-pin')).should('not.exist');
+    });
+});
+
+describe('Editor rail and tray label fit', () => {
+    it('keeps uppercase rail labels and Japanese accessible names', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit', lng: 'ja', flagsHidden: true });
+
+        // 言語が切り替わったことを読み上げ名で確かめてから、表示名を確認する
+        cy.get(datatest('btn-insert-new-page')).should('have.attr', 'aria-label', '追加');
+        [
+            ['btn-insert-new-page', 'ADD', '追加'],
+            ['btn-insert-from-clipboard', 'INSERT', '挿入'],
+            ['btn-copy-to-clipboard', 'COPY', 'コピー'],
+            ['btn-cut-page', 'CUT', '切り取り'],
+        ].forEach(([selector, label, ariaLabel]) => {
+            cy.get(datatest(selector)).should('have.attr', 'aria-label', ariaLabel)
+                .and('have.attr', 'title', ariaLabel);
+            cy.get(datatest(selector)).then(([cell]) => {
+                if (cell.querySelector('[data-rail-label]') !== null) {
+                    expect(cell.querySelector('[data-rail-label]').textContent).to.equal(label);
+                }
+            });
+        });
+        assertRailLabelsFitOrHidden([...RAIL_LABEL_SELECTORS, 'btn-utils-mode']);
+    });
+
+    it('keeps rail labels inside their cells on a 375px phone, including selected cells', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit', flagsHidden: true });
+
+        assertRailLabelsFitOrHidden([...RAIL_LABEL_SELECTORS, 'btn-utils-mode']);
+        cy.get(datatest('btn-select-mode')).click();
+        cy.get(datatest('btn-select-mode')).should('have.attr', 'aria-pressed', 'true')
+            .and('have.css', 'font-weight', '600');
+        assertRailLabelsFitOrHidden([...RAIL_LABEL_SELECTORS, 'btn-utils-mode']);
+        cy.get(datatest('btn-piece-mode')).click();
+        cy.get(datatest('btn-piece-mode')).should('have.attr', 'aria-pressed', 'true');
+        assertRailLabelsFitOrHidden([...RAIL_LABEL_SELECTORS, 'btn-utils-mode']);
+    });
+
+    it('keeps the paired UTILS and FLAGS labels inside their cells when opened', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit', flagsHidden: false });
+
+        assertPairedLabelsOrIcons();
+        [['btn-utils-mode', 'overlay-utils'], ['btn-flags-mode', 'overlay-flags']].forEach(([selector, overlay]) => {
+            cy.get(datatest(selector)).click();
+            cy.get(datatest(selector)).should('have.css', 'font-weight', '600');
+            assertPairedLabelsOrIcons();
+            cy.get(datatest(overlay)).find(datatest('btn-inspector-close')).click();
+        });
+    });
+
+    it('hides rail labels on a short phone but keeps accessible names', () => {
+        cy.viewport(320, 568);
+        visit({ mode: 'edit', flagsHidden: true });
+
+        cy.get('[data-rail-label]').should('not.exist');
+        RAIL_LABEL_SELECTORS.forEach((selector) => {
+            cy.get(datatest(selector)).should('have.attr', 'aria-label').and('not.be.empty');
+        });
+    });
+
+    it('labels the active paint tool and the spawn toggle on a 375px phone', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit' });
+
+        // 3つの状態それぞれで、トグルの名前が切れずに出る
+        assertTrayFitsThroughToggleStates({ toggleLabelShown: true });
+        assertTrayLabelShown('tray-paint-pen');
+        ['tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row'].forEach(assertTrayLabelHidden);
+
+        // 選択中のツールが変わると、名前の表示もそのボタンへ移る
+        cy.get(datatest('tray-paint-erase')).click();
+        assertTrayLabelShown('tray-paint-erase');
+        assertTrayLabelHidden('tray-paint-pen');
+        assertTrayFits();
+    });
+
+    it('fits the Japanese paint tray on a 375px phone', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit', lng: 'ja' });
+
+        cy.get(datatest('tray-paint-pen')).should('have.attr', 'aria-label', 'ペン');
+        assertTrayFits();
+        assertTrayLabelShown('tray-paint-pen');
+        assertTrayLabelHidden('tray-paint-erase');
+        // 日本語のトグル（ブロック化／ミノ化／やめる）でも、各状態で収まる
+        assertTrayFitsThroughToggleStates();
+    });
+
+    it('keeps the paint tray without horizontal scroll on a 320px phone', () => {
+        cy.viewport(320, 812);
+        visit({ mode: 'edit' });
+
+        // どの候補が選ばれるかはフォント次第なので、候補ごとの期待値は Jest で確かめる
+        assertTrayFits();
+        cy.get(datatest('tray-context')).should(([tray]) => {
+            expect(visibleTrayLabelCount(tray)).to.be.greaterThan(0);
+        });
+        cy.get(datatest('tray-paint-fill')).click();
+        assertTrayFits();
+        cy.get(datatest('tray-paint-pen')).click();
+        assertTrayFitsThroughToggleStates();
+    });
+
+    it('shows the selection summary and icon-only select tools on a 375px phone', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-piece-t')).click();
+        operations.mode.block.click(1, 1);
+        operations.mode.block.click(2, 1);
+        cy.get(datatest('btn-select-mode')).click();
+        operations.mode.block.drag({ x: 1, y: 1 }, { x: 2, y: 1 });
+
+        cy.get(datatest('tray-selection-summary')).should('contain', '2×1');
+        assertTrayFits();
+        ['tray-select-copy', 'tray-select-cut', 'tray-select-rotate-left', 'tray-select-rotate-right',
+            'tray-select-mirror'].forEach(assertTrayLabelHidden);
+    });
+
+    it('keeps the slide and comment trays without horizontal scroll', () => {
+        cy.viewport(375, 812);
+        visit({ mode: 'edit' });
+
+        operations.mode.slide.open();
+        cy.get(datatest('tray-slide-done')).should('be.visible');
+        assertTrayFits();
+        cy.get(datatest('tray-slide-done')).click();
+
+        operations.mode.comment.open();
+        cy.get(datatest('tray-comment-done')).should('be.visible');
+        assertTrayFits();
+    });
+
+    it('labels every tray button on a desktop and adapts after the window narrows', () => {
+        cy.viewport(1920, 1080);
+        visit({ mode: 'edit', mobile: false });
+
+        cy.get(datatest('tray-context')).should('be.visible');
+        ['tray-paint-pen', 'tray-paint-erase', 'tray-paint-fill', 'tray-paint-fill-row', 'tray-spawn-mino-toggle']
+            .forEach(assertTrayLabelShown);
+        assertTrayFits();
+
+        // サイドパネルで盤面が狭くなっても、幅に合わせてラベルの出し方が切り替わる
+        cy.viewport(1280, 800);
+        operations.editorPanel.enable();
+        cy.get(datatest('tray-context')).should('be.visible');
+        assertTrayFits();
+        cy.get(datatest('tray-context')).should(([tray]) => {
+            expect(visibleTrayLabelCount(tray)).to.be.greaterThan(0);
+        });
+        operations.editorPanel.disable();
+
+        cy.viewport(375, 812);
+        assertTrayFits();
+        assertTrayLabelShown('tray-paint-pen');
     });
 });

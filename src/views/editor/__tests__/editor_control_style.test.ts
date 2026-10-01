@@ -4,6 +4,9 @@ import {
     EDITOR_ACTIVE_TEXT_COLOR,
     EDITOR_DANGER_COLOR,
     EDITOR_PALETTE_BACKGROUND,
+    EDITOR_RAIL_DIVIDER_COLOR,
+    EDITOR_RAIL_FRAME_COLOR,
+    EDITOR_RAIL_FRAME_RADIUS,
     editorControlStateStyle,
 } from '../editor_control_style';
 
@@ -27,5 +30,11 @@ describe('editor control styles', () => {
     test('reserves red for dangerous actions', () => {
         expect(editorControlStateStyle('danger').color).toBe(EDITOR_DANGER_COLOR);
         expect(editorControlStateStyle('active').color).not.toBe(EDITOR_DANGER_COLOR);
+    });
+
+    test('draws the rail frame dark with light dividers and rounded corners', () => {
+        expect(EDITOR_RAIL_FRAME_COLOR).toBe('#333');
+        expect(EDITOR_RAIL_DIVIDER_COLOR).toBe('#e0e0e0');
+        expect(EDITOR_RAIL_FRAME_RADIUS).toBe(4);
     });
 });

@@ -190,6 +190,11 @@
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
         ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag', SevenBagGray: '7bag grey',
         PieceLayoutPlay: 'INPUT',
+        // 右レールの表示名。派生元に合わせて言語を問わず英語の大文字にする（読み上げ名は Add などの既存キー）
+        RailLabel: {
+            Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
+            Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
+        },
         Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row',

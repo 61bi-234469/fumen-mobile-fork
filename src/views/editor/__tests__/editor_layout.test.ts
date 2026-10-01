@@ -1,4 +1,4 @@
-import { shouldUseCompactEditorRail } from '../responsive_layout';
+import { getRailLabelAvailableWidth, shouldUseCompactEditorRail } from '../responsive_layout';
 import { getLayout } from '../editor';
 
 jest.mock('../../../env', () => ({
@@ -127,5 +127,25 @@ describe('editor layout', () => {
         expect(layout.buttons.columns).toBe(1);
         expect(layout.pieceQueue.railExtensionHeight).toBe(0);
         expect(layout.pieceQueue.nextMinoHeight).toBeGreaterThan(16);
+    });
+
+    // 下部トレイとレールのラベル判定に使う幅（設計書 §3-3・§3-6 の前提値）
+    test.each([
+        [375, 812, 272.4],
+        [320, 812, 220],
+        [320, 568, 200.4],
+    ])('uses the field width as the tray width at %ix%i', (width, height, trayWidth) => {
+        const layout = getLayout({
+            width, height, topLeftY: 0, sidePanelWidth: 0, rightInspectorWidth: 0, trayInBottom: true,
+        });
+        expect(layout.field.size.width).toBeCloseTo(trayWidth, 1);
+    });
+
+    test('leaves room for an 11px-class rail label budget on a 375px phone', () => {
+        const layout = getLayout({
+            topLeftY: 0, width: 375, height: 812, sidePanelWidth: 0, rightInspectorWidth: 0, trayInBottom: true,
+        });
+        expect(layout.buttons.size.width).toBeCloseTo(61.543, 3);
+        expect(getRailLabelAvailableWidth(layout.buttons.size.width, 18)).toBeCloseTo(35.543, 3);
     });
 });

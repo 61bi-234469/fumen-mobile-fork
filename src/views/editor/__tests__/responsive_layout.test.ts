@@ -1,10 +1,13 @@
 import {
+    fitsRailPairedLabels,
     getEditorBottomMetrics,
     getEditorRailConfig,
     getPlayfieldCeilingOffset,
     getPlayPieceQueueWidth,
     getPlayPieceRailMetrics,
     getPlayPieceUnitBound,
+    getRailLabelAvailableWidth,
+    getRailLabelFontSize,
     getResponsiveRailCellHeight,
     getInputStatsPanelTier,
     INFINITE_TOGGLE_HEIGHT,
@@ -15,6 +18,7 @@ import {
     NEXT_PANEL_CHROME_HEIGHT,
     PLAY_RAIL_CHROME_HEIGHT,
     PLAY_RAIL_ROWS,
+    RAIL_LABEL_MIN_FONT_SIZE,
 } from '../responsive_layout';
 
 describe('editor responsive layout', () => {
@@ -131,5 +135,66 @@ describe('editor responsive layout', () => {
             + NEXT_PANEL_CHROME_HEIGHT + PLAY_RAIL_ROWS * metrics.railCellHeight
             + metrics.nextMinoHeight * 5)
             .toBeLessThanOrEqual(availableHeight + metrics.railExtensionHeight);
+    });
+
+    describe('rail label sizing', () => {
+        // 1文字あたり 0.6em、太さ600なら1割増しで測る擬似フォント
+        const measure = (text: string, fontSize: number, weight: number) => (
+            text.length * fontSize * .6 * (weight >= 600 ? 1.1 : 1)
+        );
+
+        test('subtracts the group border, padding, icon, and gap from the rail width', () => {
+            expect(getRailLabelAvailableWidth(61.5, 18)).toBeCloseTo(61.5 - 2 - 4 - 18 - 2, 6);
+        });
+
+        test('keeps the base font size when the widest label fits at weight 600', () => {
+            const railWidth = 2 + 4 + 18 + 2 + 6 * 11 * .6 * 1.1;
+            expect(getRailLabelFontSize({
+                railWidth, measure, iconSize: 18, baseFontSize: 11, labels: ['ADD', 'INSERT'],
+            })).toBe(11);
+        });
+
+        test('measures with weight 600 so selected labels still fit', () => {
+            // 太さ500なら11pxで入るが、600では入らない幅
+            const railWidth = 2 + 4 + 18 + 2 + 6 * 11 * .6;
+            expect(getRailLabelFontSize({
+                railWidth, measure, iconSize: 18, baseFontSize: 11, labels: ['INSERT'],
+            })).toBeLessThan(11);
+        });
+
+        test('chooses the shared size from the widest measured label, not the longest text', () => {
+            const widthByLabel: Record<string, number> = { WWW: 40, INSERT: 30 };
+            const pseudo = (text: string, fontSize: number) => (widthByLabel[text] ?? 0) * fontSize / 10;
+            const railWidth = 2 + 4 + 18 + 2 + 36;
+            // 文字数の多いINSERTではなく、測ると広いWWWが基準になる
+            expect(getRailLabelFontSize({
+                railWidth, iconSize: 18, baseFontSize: 10, labels: ['INSERT', 'WWW'], measure: pseudo,
+            })).toBe(9);
+            expect(getRailLabelFontSize({
+                railWidth, iconSize: 18, baseFontSize: 10, labels: ['INSERT'], measure: pseudo,
+            })).toBe(10);
+        });
+
+        test('shrinks down to 9px and hides the labels below that', () => {
+            const at = (available: number) => getRailLabelFontSize({
+                measure, railWidth: 2 + 4 + 18 + 2 + available, iconSize: 18, baseFontSize: 11, labels: ['SELECT'],
+            });
+            const size = at(6 * 10 * .6 * 1.1);
+            expect(size).toBeGreaterThanOrEqual(RAIL_LABEL_MIN_FONT_SIZE);
+            expect(size).toBeLessThan(11);
+            expect(at(6 * 9 * .6 * 1.1)).toBe(9);
+            expect(at(6 * 9 * .6 * 1.1 - .1)).toBeUndefined();
+        });
+
+        test('checks the paired UTILS and FLAGS labels at 9px and weight 600', () => {
+            const calls: [number, number][] = [];
+            const spy = (text: string, fontSize: number, weight: number) => {
+                calls.push([fontSize, weight]);
+                return measure(text, fontSize, weight);
+            };
+            expect(fitsRailPairedLabels(5 * 9 * .6 * 1.1, ['UTILS', 'FLAGS'], spy)).toBe(true);
+            expect(fitsRailPairedLabels(5 * 9 * .6 * 1.1 - .1, ['UTILS', 'FLAGS'], spy)).toBe(false);
+            expect(calls.every(([fontSize, weight]) => fontSize === 9 && weight === 600)).toBe(true);
+        });
     });
 });

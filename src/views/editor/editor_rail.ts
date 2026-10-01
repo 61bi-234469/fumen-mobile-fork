@@ -13,9 +13,14 @@ import { executePieceShortcut } from '../../lib/piece_shortcut';
 import { i18n } from '../../locales/keys';
 import { EditorLayout } from './editor';
 import {
-    getResponsiveRailCellHeight, PIECE_RAIL_GROUP_GAP_DUAL, shouldUseCompactEditorRail,
+    fitsRailPairedLabels, getRailLabelFontSize, getResponsiveRailCellHeight, PIECE_RAIL_GROUP_GAP_DUAL,
+    RAIL_LABEL_GAP, RAIL_LABEL_ICON_MAX_SIZE, shouldUseCompactEditorRail,
 } from './responsive_layout';
-import { editorControlStateStyle, EditorControlState } from './editor_control_style';
+import {
+    EDITOR_RAIL_DIVIDER_COLOR, EDITOR_RAIL_FRAME_COLOR, EDITOR_RAIL_FRAME_RADIUS, editorControlStateStyle,
+    EditorControlState,
+} from './editor_control_style';
+import { measureTextWidth } from '../../lib/text_measure';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -77,6 +82,8 @@ interface CellOptions {
     onlongpress?: () => void;
     children: VNode<{}> | VNode<{}>[] | string;
 }
+
+const getToolCellFontSize = (height: number) => Math.max(9, Math.min(11, height * 0.4));
 
 const toolCell = ({
     key,
@@ -191,7 +198,7 @@ const toolCell = ({
             cursor: disabled ? 'default' : 'pointer',
             display: 'flex',
             fontFamily: 'inherit',
-            fontSize: px(Math.max(9, Math.min(11, height * 0.4))),
+            fontSize: px(getToolCellFontSize(height)),
             fontWeight: selected ? '600' : '500',
             height: px(height),
             justifyContent: 'center',
@@ -213,12 +220,13 @@ const toolCell = ({
     }, Array.isArray(children) ? children : [children]);
 };
 
+// セル間の1pxの隙間から背景色が見え、それが区切り線になる
 const toolGroup = (key: string, rows: VNode<{}>[], preventShrink = false) => div({
     key,
     style: style({
-        background: '#333',
-        border: '1px solid #333',
-        borderRadius: '0',
+        background: EDITOR_RAIL_DIVIDER_COLOR,
+        border: `1px solid ${EDITOR_RAIL_FRAME_COLOR}`,
+        borderRadius: px(EDITOR_RAIL_FRAME_RADIUS),
         boxSizing: 'border-box',
         display: 'grid',
         flexShrink: preventShrink ? 0 : undefined,
@@ -585,9 +593,40 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         }, shortcut)] : []),
     ];
 
+    // 全幅セルの表示名。読み上げ名（aria-label／title）とは別に持つ
+    const railLabels = i18n.EditorUi.RailLabel;
+    const fullWidthLabels = [
+        ...(twoColumns || playLayout ? [] : [
+            railLabels.Add(), railLabels.Insert(), railLabels.Copy(), railLabels.Cut(),
+        ]),
+        ...(state.mode.flagsHidden && !playLayout ? [railLabels.Utils()] : []),
+        railLabels.Piece(),
+        ...(playLayout ? [] : [railLabels.Select(), railLabels.Paint()]),
+    ];
+    const labeledIconSize = Math.min(iconSize, RAIL_LABEL_ICON_MAX_SIZE);
+    // ラベルを出さない（compact）か、9pxでも入らないときは undefined
+    const railLabelFontSize = compact ? undefined : getRailLabelFontSize({
+        railWidth: layout.buttons.size.width,
+        iconSize: labeledIconSize,
+        baseFontSize: getToolCellFontSize(cellHeight),
+        labels: fullWidthLabels,
+        measure: measureTextWidth,
+    });
+    const labeledCellContent = (key: string, iconName: string, label: string) => (
+        railLabelFontSize === undefined ? [icon(iconName, iconSize)] : [
+            icon(iconName, labeledIconSize),
+            span({
+                key,
+                'data-rail-label': 'true',
+                style: style({ fontSize: px(railLabelFontSize), marginLeft: px(RAIL_LABEL_GAP) }),
+            }, label),
+        ]
+    );
+
     const pageCell = (
         key: string,
         label: string,
+        displayLabel: string,
         iconName: string,
         shortcut: keyof State['mode']['editShortcuts'],
         onpress: () => void,
@@ -599,10 +638,7 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         onlongpress,
         height: cellHeight,
         datatest: key,
-        children: withShortcut([
-            icon(iconName, iconSize),
-            ...(compact ? [] : [span({ key: 'label', style: style({ marginLeft: '3px' }) }, label)]),
-        ], editShortcut(shortcut)),
+        children: withShortcut(labeledCellContent('label', iconName, displayLabel), editShortcut(shortcut)),
     });
 
     const systemCells = [
@@ -622,13 +658,13 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
     const systemGroup = toolGroup('rail-system', [row('rail-system-row', systemCells)]);
 
     const pageCells = [
-        pageCell('btn-insert-new-page', i18n.EditorUi.Add() || 'ADD', 'note_add', 'Add',
+        pageCell('btn-insert-new-page', i18n.EditorUi.Add(), railLabels.Add(), 'note_add', 'Add',
             () => actions.insertNewPage({ index: state.fumen.currentIndex + 1 })),
-        pageCell('btn-insert-from-clipboard', i18n.EditorUi.Insert() || 'INSERT', 'content_paste', 'Insert',
-            actions.insertPageFromClipboard, actions.replaceAllFromClipboard),
-        pageCell('btn-copy-to-clipboard', i18n.EditorUi.Copy() || 'COPY', 'content_copy', 'Copy',
+        pageCell('btn-insert-from-clipboard', i18n.EditorUi.Insert(), railLabels.Insert(), 'content_paste',
+            'Insert', actions.insertPageFromClipboard, actions.replaceAllFromClipboard),
+        pageCell('btn-copy-to-clipboard', i18n.EditorUi.Copy(), railLabels.Copy(), 'content_copy', 'Copy',
             actions.copyCurrentPageToClipboard, actions.copyAllPagesToClipboard),
-        pageCell('btn-cut-page', i18n.EditorUi.Cut() || 'CUT', 'content_cut', 'Cut',
+        pageCell('btn-cut-page', i18n.EditorUi.Cut(), railLabels.Cut(), 'content_cut', 'Cut',
             actions.cutCurrentPage, actions.cutAllPages),
     ];
     const pageGroup = toolGroup('rail-pages', twoColumns ? [
@@ -636,35 +672,39 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         row('rail-pages-row-2', pageCells.slice(2, 4)),
     ] : pageCells);
 
+    // UTILS｜FLAGSの2分割セルはINPUT｜AIと同じく上下に積む。片方でも入らなければ両方アイコンだけにする
+    const pairedInspectorLabels = !state.mode.flagsHidden && !compactPairedCell
+        && fitsRailPairedLabels(pairedCellInnerWidth, [railLabels.Utils(), railLabels.Flags()], measureTextWidth);
+    const pairedInspectorContent = (key: string, iconName: string, label: string) => (
+        pairedInspectorLabels ? [stackedCellContent(key, iconName, label, cellHeight)] : [icon(iconName, iconSize)]
+    );
     const auxiliaryGroup = toolGroup('rail-auxiliary', [
         row('rail-inspector-row', [
             toolCell({
                 key: 'btn-utils-mode', datatest: 'btn-utils-mode',
-                label: state.mode.flagsHidden ? 'UTILS' : i18n.EditorUi.Utilities(), height: cellHeight,
+                label: state.mode.flagsHidden ? railLabels.Utils() : i18n.EditorUi.Utilities(), height: cellHeight,
                 selected: state.editorUi.inspector === 'utils',
                 onpress: () => actions.openEditorInspector({ inspector: 'utils' }),
                 children: state.mode.flagsHidden
-                    ? [icon('widgets', iconSize), span({ key: 'utils-label' }, 'UTILS')]
-                    : compact ? icon('widgets', iconSize) : [icon('widgets', iconSize), span({ key: 'u' }, 'U')],
+                    ? labeledCellContent('utils-label', 'widgets', railLabels.Utils())
+                    : pairedInspectorContent('utils-stack', 'widgets', railLabels.Utils()),
             }),
             ...(state.mode.flagsHidden ? [] : [toolCell({
                 key: 'btn-flags-mode', datatest: 'btn-flags-mode', label: i18n.EditorUi.Flags(), height: cellHeight,
                 selected: state.editorUi.inspector === 'flags',
                 onpress: () => actions.openEditorInspector({ inspector: 'flags' }),
-                children: compact ? icon('flag', iconSize) : [icon('flag', iconSize), span({ key: 'f' }, 'F')],
+                children: pairedInspectorContent('flags-stack', 'flag', railLabels.Flags()),
             })]),
         ]),
     ]);
 
     // PIECEはSELECT/PAINTと同じ全幅セルなので、compact判定も同じ基準にする。
     const pieceModeCell = toolCell({
-        key: 'btn-piece-mode', datatest: 'btn-piece-mode', label: 'PIECE', height: cellHeight,
+        key: 'btn-piece-mode', datatest: 'btn-piece-mode', label: railLabels.Piece(), height: cellHeight,
         selected: state.editorUi.primaryTool === 'piece' && state.editorUi.pieceLayout === 'select',
         onpress: () => actions.selectPieceLayout({ layout: 'select' }),
         onlongpress: () => executePieceShortcut('Reset', actions),
-        children: [icon('extension', iconSize), ...(compact ? [] : [span({
-            key: 'piece', style: style({ marginLeft: '3px' }),
-        }, 'PIECE')])],
+        children: labeledCellContent('piece', 'extension', railLabels.Piece()),
     });
 
     // PIECEとINPUTは対等な直接入口。どちらのレイアウトにも常に並べる。
@@ -724,20 +764,20 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
         if (compactPairedCell) return [icon(iconName, iconSize)];
         return playLayout
             ? [stackedCellContent(`${key}-stack`, iconName, label, cellHeight)]
-            : [icon(iconName, iconSize), span({ key, style: style({ marginLeft: '3px' }) }, label)];
+            : labeledCellContent(key, iconName, label);
     };
     const modeCells = [
         toolCell({
-            key: 'btn-select-mode', datatest: 'btn-select-mode', label: 'SELECT', height: cellHeight,
+            key: 'btn-select-mode', datatest: 'btn-select-mode', label: railLabels.Select(), height: cellHeight,
             selected: state.editorUi.primaryTool === 'select',
             onpress: () => actions.changePrimaryTool({ tool: 'select' }),
-            children: modeCellChildren('select', 'select_all', 'SELECT'),
+            children: modeCellChildren('select', 'select_all', railLabels.Select()),
         }),
         toolCell({
-            key: 'btn-paint-mode', datatest: 'btn-paint-mode', label: 'PAINT', height: cellHeight,
+            key: 'btn-paint-mode', datatest: 'btn-paint-mode', label: railLabels.Paint(), height: cellHeight,
             selected: state.editorUi.primaryTool === 'paint',
             onpress: () => actions.changePrimaryTool({ tool: 'paint' }),
-            children: modeCellChildren('paint', 'brush', 'PAINT'),
+            children: modeCellChildren('paint', 'brush', railLabels.Paint()),
         }),
     ];
     // PIECE/SELECT/PAINTは排他的な編集モード3種なので、PIECEを先頭にした縦並びでまとめる。

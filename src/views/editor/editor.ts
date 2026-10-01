@@ -430,7 +430,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 top: px(bandTop),
                 zIndex: 5,
             }),
-        }, [contextTray(state, actions, trayHeight)])] : []),
+        }, [contextTray(state, actions, trayHeight, layout.field.size.width)])] : []),
     ]);
 
     // Playレイアウトのときだけ、NEXT枠・∞7bag・レールを右側の1列にまとめる

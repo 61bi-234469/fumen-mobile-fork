@@ -338,7 +338,14 @@ describe('User settings', () => {
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-flags-mode')).should('be.visible');
-        cy.get(datatest('btn-utils-mode')).should('contain.text', 'U');
+        // 2分割セルは名前を上下に積む。入らないフォントでは両方アイコンだけになる
+        cy.get(`${datatest('btn-utils-mode')},${datatest('btn-flags-mode')}`).should((cells) => {
+            const utils = cells.filter(datatest('btn-utils-mode'))[0];
+            const flags = cells.filter(datatest('btn-flags-mode'))[0];
+            expect(flags.textContent.includes('FLAGS')).to.equal(utils.textContent.includes('UTILS'));
+            expect(utils.getAttribute('aria-label')).to.equal('Utilities');
+            expect(flags.getAttribute('aria-label')).to.equal('Flags');
+        });
 
         // Cancel does not roll back a previously saved value or change the rail.
         cy.get(datatest('btn-editor-user-settings')).click();

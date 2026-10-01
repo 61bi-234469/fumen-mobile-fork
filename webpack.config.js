@@ -33,10 +33,9 @@ module.exports = (_env, argv = {}) => {
     const isDebug = process.env.DEBUG_ON === undefined
         ? mode === 'development'
         : process.env.DEBUG_ON === 'true';
-    // Sold Slear (development bot) ships only in development builds, the develop preview and the
-    // e2e builds. Production builds leave it out unless SOLD_SLEAR_ENABLED=true is set explicitly.
+    // Ship both AI engines by default; allow explicit opt-out builds with SOLD_SLEAR_ENABLED=false.
     const soldSlearEnabled = process.env.SOLD_SLEAR_ENABLED === undefined
-        ? mode === 'development'
+        ? true
         : process.env.SOLD_SLEAR_ENABLED === 'true';
     // help.html marks the Sold Slear credits with SOLD_SLEAR:BEGIN / END comments, either on their
     // own lines around a block or inline within a line.

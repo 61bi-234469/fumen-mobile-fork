@@ -18,11 +18,11 @@ a Tetris AI engine by MinusKelvin.
   crate with its license texts (MIT, Apache-2.0, BSD, Unlicense, Unicode-3.0 and similar
   permissive licenses; shared full texts in `third_party/licenses/`).
 
-## Sold Slear (Cold Clear 2 derivative, develop preview only)
+## Sold Slear (Cold Clear 2 derivative)
 
-The develop preview (`/preview/`) includes a WebAssembly build of Sold Slear, a development
+Production and the develop preview (`/preview/`) include a WebAssembly build of Sold Slear, a development
 Tetris bot for TETR.IO Season 2 rules made by the owner of this repository in the s2-bot-lab
-project. Production builds do not include it (`SOLD_SLEAR_ENABLED`, see `webpack.config.js`).
+project. Builds can opt out with `SOLD_SLEAR_ENABLED=false` (see `webpack.config.js`).
 
 - **Files**: `src/lib/sold_slear_wasm/cold_clear_2_s2.wasm`; the TypeScript port of the
   s2-bot-lab request/profile code in `src/lib/sold_slear/`

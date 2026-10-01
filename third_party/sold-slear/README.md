@@ -2,8 +2,9 @@
 
 `src/lib/sold_slear_wasm/cold_clear_2_s2.wasm` is Sold Slear, the development champion bot of the
 repository owner's s2-bot-lab project ("Legacy backup consistency", bot id `cc2-s2-champion`).
-It is published only in the develop preview; production builds leave it out
-(`SOLD_SLEAR_ENABLED`, `scripts/check-sold-slear-exclusion.js`).
+It is included in production and develop preview builds by default. Builds can explicitly opt out
+with `SOLD_SLEAR_ENABLED=false`; `scripts/check-sold-slear-exclusion.js --present` verifies its assets
+and credits in normal builds.
 
 ## Source
 

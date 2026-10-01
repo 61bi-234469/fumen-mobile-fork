@@ -1,7 +1,6 @@
-// Sold Slear is a development bot published only in the develop preview. This check runs after a
-// build and verifies whether dest/ contains it, so a production build cannot ship it by accident.
-//   node scripts/check-sold-slear-exclusion.js            -> Sold Slear must be absent (production)
-//   node scripts/check-sold-slear-exclusion.js --present  -> Sold Slear must be present (preview)
+// Verify the Sold Slear WASM, worker and credits in the build output.
+//   node scripts/check-sold-slear-exclusion.js            -> Sold Slear must be absent (opt-out build)
+//   node scripts/check-sold-slear-exclusion.js --present  -> Sold Slear must be present (normal build)
 //   --dest <dir> checks another build output (deploy.yml checks main's build with develop's copy).
 const crypto = require('crypto');
 const fs = require('fs');

@@ -60,13 +60,14 @@ export const play = (fumen, history, { fullUndoRedo = false } = {}) => {
     }
 
     // 新UIでは1つの論理操作（ピース配置など）が複数の履歴エントリになるため、
-    // 回数を数える代わりに、ToolButton が有効なときだけ描画するアイコンを見て
-    // 履歴が空になるまで押す。ToolButton は <a> で enable は見た目だけなので、
-    // disabled プロパティや固定 wait には依存しない。
+    // 回数を数える代わりに、ToolButton の aria-disabled を見て履歴が空になるまで押す。
+    // ToolButton は <a> で enable は見た目だけなので、disabled プロパティや固定 wait には依存しない。
     const clickWhileEnabled = (selector) => {
         const button = () => cy.get(datatest(selector)).filter('a').first();
-        button().find('i').invoke('text').then((text) => {
-            if (text.trim() !== '') {
+        button().invoke('attr', 'aria-disabled').then((disabled) => {
+            // 属性が欠けたときに履歴の確認が空振りしないよう、値は必ず true か false
+            expect(disabled, `${selector} aria-disabled`).to.be.oneOf(['true', 'false']);
+            if (disabled === 'false') {
                 button().click();
                 clickWhileEnabled(selector);
             }

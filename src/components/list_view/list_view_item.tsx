@@ -1,6 +1,7 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { lazyThumbnail } from '../lazy_thumbnail';
+import { i18n } from '../../locales/keys';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -100,13 +101,18 @@ export const ListViewItem: Component<Props> = ({
     });
 
     const pageNumberStyle = style({
-        fontSize: '12px',
-        color: '#1976D2',
+        alignSelf: 'center',
+        fontSize: '11px',
+        lineHeight: '16px',
+        color: '#455a64',
+        backgroundColor: '#e3e8ee',
+        borderRadius: '8px',
+        padding: '0 6px',
         textAlign: 'center',
         marginTop: '2px',
         fontWeight: 'bold',
         cursor: 'pointer',
-        textDecoration: 'underline',
+        textDecoration: 'none',
     });
 
     const hasComment = comment !== '';
@@ -116,11 +122,11 @@ export const ListViewItem: Component<Props> = ({
         width: '100%',
         minHeight: '40px',
         fontSize: '11px',
-        border: '1px solid #ccc',
+        border: '1px solid #ddd',
         borderRadius: '2px',
         padding: '2px 4px',
         boxSizing: 'border-box',
-        resize: 'vertical',
+        resize: 'none',
         fontFamily: 'inherit',
         backgroundColor: showGreenStyle ? '#43a047' : '#fff',
         color: showGreenStyle ? '#fff' : '#333',
@@ -270,7 +276,7 @@ export const ListViewItem: Component<Props> = ({
             <textarea
                 style={textareaStyle}
                 value={comment}
-                placeholder=""
+                placeholder={i18n.EditorUi.CommentPlaceholder()}
                 oninput={(e: Event) => {
                     const target = e.target as HTMLTextAreaElement;
                     actions.onCommentChange(pageIndex, target.value);

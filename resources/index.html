@@ -226,6 +226,19 @@
                 filter: brightness(1.08);
             }
         }
+
+        /* Settings modal: blue accent instead of Materialize teal; unchecked/disabled switches unchanged */
+        .settings-modal .switch input:checked:not(:disabled) + .lever { background-color: #90caf9; }
+        .settings-modal .switch input:checked:not(:disabled) + .lever:after { background-color: #1976d2; }
+        .settings-modal input:checked:not(:disabled) ~ .lever:active::before,
+        .settings-modal input:checked:not(:disabled).tabbed:focus ~ .lever::before { background-color: rgba(25, 118, 210, .15); }
+        .settings-modal .btn-settings-save { background-color: #1976d2; }
+        .settings-modal .btn-settings-save:hover, .settings-modal .btn-settings-save:focus { background-color: #1565c0; }
+        @media only screen and (max-width: 600px) { .settings-modal { width: 92%; } }
+
+        /* Comment band: beats Materialize's transparent input[type=text]; text color stays inline */
+        input[type=text].comment-band:not(.browser-default) { background-color: #2a2a2a; }
+        input[type=text].comment-band::placeholder { color: #888; }
     </style>
 </head>
 <body>

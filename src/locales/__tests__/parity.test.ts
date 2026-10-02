@@ -15,8 +15,8 @@ const flatten = (value: unknown, prefix = ''): string[] => {
 // Listed one by one so that a newly added Menu key still needs a Japanese translation.
 const LEGACY_MENU_BUTTONS = [
     'List', 'Tree', 'Readonly', 'Writable', 'Clipboard', 'FirstPage', 'LastPage', 'New', 'Open',
-    'Help', 'ShowComment', 'ReadonlyComment', 'WritableComment', 'PageSlider', 'ClearToEnd',
-    'ClearPast', 'Append', 'UserSettings', 'SavePlayfieldToImage', 'ForceReload',
+    'Help', 'ShowComment', 'ReadonlyComment', 'WritableComment', 'PageSlider', 'Append', 'UserSettings',
+    'SavePlayfieldToImage', 'ForceReload',
 ];
 const EN_ONLY = new Set(['Menu.Title', 'Menu.Build', ...LEGACY_MENU_BUTTONS.map(name => `Menu.Buttons.${name}`)]);
 

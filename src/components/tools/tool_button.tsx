@@ -16,11 +16,6 @@ const longPressState: {
 interface Props {
     width: number;
     iconName: string;
-    sticky?: boolean;
-    stickyLeft?: boolean;
-    stickyOffset?: number;
-    marginRight?: number;
-    marginLeft?: number;
     datatest?: string;
     title?: string;
     ariaLabel?: string;
@@ -40,22 +35,19 @@ interface Props {
 
 export const ToolButton: Component<Props & SizedIconProps> = (
     {
-        height, width, fontSize, key, iconName, sticky = false, stickyLeft = false,
-        stickyOffset = 10, marginLeft = undefined, marginRight = 0,
+        height, width, fontSize, key, iconName,
         datatest, title, ariaLabel, shortcutLabel, shortcutLabelColor, colors, enable = true, actions,
     },
 ) => {
-    const hasAbsolutePosition = sticky || stickyLeft;
     const aProperties = style({
         height: px(height),
         lineHeight: px(height),
         width: px(width),
-        marginLeft: sticky ? 'auto' : (marginLeft !== undefined ? px(marginLeft) : undefined),
-        position: hasAbsolutePosition ? 'absolute' : (shortcutLabel ? 'relative' : undefined),
-        right: sticky ? px(stickyOffset) : undefined,
-        left: stickyLeft ? px(stickyOffset) : undefined,
-        marginRight: px(marginRight),
+        flexShrink: 0,
+        position: shortcutLabel ? 'relative' : undefined,
     });
+    // enable は見た目だけで、無効でもクリックの処理は動く（各アクション側で何もしない）
+    const ariaDisabled = enable ? 'false' : 'true';
 
     const shortcutLabelElement = shortcutLabel ? (
         <span style={style({
@@ -145,6 +137,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
                datatest={datatest}
                title={title}
                aria-label={ariaLabel ?? title}
+               aria-disabled={ariaDisabled}
                style={aProperties}
                onpointerdown={onpointerdown}
                onpointerup={onpointerup}
@@ -169,6 +162,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
            datatest={datatest}
            title={title}
            aria-label={ariaLabel ?? title}
+           aria-disabled={ariaDisabled}
            style={aProperties}
            onclick={onclick !== undefined ? (event: MouseEvent) => {
                onclick(event);

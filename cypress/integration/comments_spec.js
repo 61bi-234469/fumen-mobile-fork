@@ -409,3 +409,71 @@ describe('Comments', () => {
         expectFumen('v115@vhDSQJXGJU8ITnH');
     });
 });
+
+describe('Comment band', () => {
+    const BAND = 'rgb(42, 42, 42)';
+    const WHITE = 'rgb(255, 255, 255)';
+
+    const assertCommentColors = (background, color) => {
+        cy.get(datatest('text-comment')).should(([input]) => {
+            expect(getComputedStyle(input).backgroundColor, 'background').to.equal(background);
+            expect(getComputedStyle(input).color, 'text').to.equal(color);
+        });
+    };
+
+    it('shows the editor comment as a dark band with a translated placeholder', () => {
+        visit({ mode: 'edit', lng: 'ja' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.attr', 'placeholder', 'コメント');
+        cy.get(datatest('text-comment')).should(([input]) => {
+            expect(getComputedStyle(input, '::placeholder').color).to.equal('rgb(136, 136, 136)');
+        });
+
+        // 自分のコメントがあるページは白、前のページから引き継いだだけのページは灰色
+        cy.get(datatest('text-comment')).type('hello').blur();
+        assertCommentColors(BAND, WHITE);
+        operations.mode.tools.nextPage();
+        cy.get(datatest('text-comment')).should('have.value', 'hello');
+        assertCommentColors(BAND, 'rgb(158, 158, 158)');
+
+        operations.menu.commentReadonly();
+        cy.get(datatest('text-comment')).should('have.attr', 'readonly');
+        assertCommentColors(BAND, 'rgb(158, 158, 158)');
+        operations.mode.tools.backPage();
+        assertCommentColors(BAND, WHITE);
+    });
+
+    it('uses the English placeholder', () => {
+        visit({ mode: 'edit' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.attr', 'placeholder', 'Comment');
+    });
+
+    it('keeps unchanged reader comments on the dark band and changed ones green', () => {
+        visit({ fumen: 'v115@vhAAgH' });
+        cy.get(datatest('text-comment')).should('have.value', '');
+        assertCommentColors(BAND, 'rgb(224, 224, 224)');
+
+        // 1ページ目 hello、2ページ目 world（変化あり）、3ページ目は world を引き継ぐ（変化なし）
+        visit({ reload: true, mode: 'edit' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).type('hello').blur();
+        operations.mode.tools.nextPage();
+        cy.get(datatest('text-comment')).clear().type('world').blur();
+        operations.mode.tools.nextPage();
+        cy.get(datatest('text-comment')).should('have.value', 'world');
+        operations.screen.readonly();
+
+        // Reader の緑は、直前に表示していたコメントから変わったときに付く
+        operations.menu.firstPage();
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('text-pages')).should('have.text', '2 / 3');
+        cy.get(datatest('text-comment')).should('have.value', 'world').and('have.class', 'green');
+        assertCommentColors('rgb(67, 160, 71)', WHITE);
+
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('text-pages')).should('have.text', '3 / 3');
+        cy.get(datatest('text-comment')).should('have.value', 'world').and('not.have.class', 'green');
+        assertCommentColors(BAND, 'rgb(224, 224, 224)');
+    });
+});

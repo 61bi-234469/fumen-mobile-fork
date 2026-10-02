@@ -438,3 +438,140 @@ describe('User settings', () => {
     });
 });
 
+
+describe('User settings appearance', () => {
+    const BLUE = 'rgb(25, 118, 210)';
+    const pseudo = (element, name, property) => getComputedStyle(element, name).getPropertyValue(property);
+
+    // :hover と :active は合成イベントでは付かないため、CDP で実際のマウスを動かす。
+    // 座標はランナーの画面基準なので、AUT の iframe の位置と縮小率で変換する
+    const dispatchMouse = (type, x, y) => Cypress.automation('remote:debugger:protocol', {
+        command: 'Input.dispatchMouseEvent',
+        params: {
+            type,
+            x,
+            y,
+            button: type === 'mouseMoved' ? 'none' : 'left',
+            clickCount: type === 'mouseMoved' ? 0 : 1,
+        },
+    });
+
+    // 押下の確認に失敗しても、左ボタンが押されたまま次のテストに残らないよう記録しておく
+    let pressedAt = null;
+
+    const realMouse = (selector, type) => cy.get(selector).scrollIntoView().then(([element]) => {
+        const frame = window.top.document.querySelector('iframe.aut-iframe');
+        const frameRect = frame.getBoundingClientRect();
+        const scale = frameRect.width / frame.clientWidth;
+        const rect = element.getBoundingClientRect();
+        const x = frameRect.left + (rect.left + rect.width / 2) * scale;
+        const y = frameRect.top + (rect.top + rect.height / 2) * scale;
+        pressedAt = type === 'mousePressed' ? { x, y } : type === 'mouseReleased' ? null : pressedAt;
+        return dispatchMouse(type, x, y);
+    });
+
+    afterEach(() => {
+        if (pressedAt !== null) {
+            const { x, y } = pressedAt;
+            pressedAt = null;
+            cy.wrap(dispatchMouse('mouseReleased', x, y));
+        }
+    });
+
+    beforeEach(() => cy.clearLocalStorage());
+
+    it('opens on the View tab from the Reader gear', () => {
+        visit({});
+        cy.get(datatest('tools')).find(datatest('btn-reader-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+
+    it('lays out switches as single rows with one blue accent', () => {
+        cy.viewport(375, 667);
+        visit({ lng: 'ja' });
+        cy.get(datatest('btn-reader-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+
+        // タブ名が切れず、ヘッダーに横スクロールが出ない
+        cy.get(datatest('tab-user-settings-keys')).should('have.text', 'キー設定')
+            .parent().should(([header]) => {
+                expect(header.scrollWidth).to.be.at.most(header.clientWidth);
+            });
+
+        // 見出しは小さく、注意書きはモーダルの一番下
+        cy.get(datatest('mdl-user-settings')).find('.modal-content').should(([content]) => {
+            expect(getComputedStyle(content.firstElementChild).fontSize).to.equal('20px');
+            expect(content.lastElementChild.getAttribute('datatest')).to.equal('user-settings-notice');
+            expect(getComputedStyle(content.lastElementChild).fontSize).to.equal('12px');
+        });
+
+        // 「無効／有効」はどのスイッチにも出さず、ソフトドロップ優先だけ左右の名前を残す
+        cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 5)
+            .each(([input]) => {
+                const text = input.closest('label').textContent.trim();
+                if (input.getAttribute('datatest') === 'switch-piece-softdrop-priority') {
+                    expect(text).to.contain('横移動優先').and.contain('ソフトドロップ優先');
+                } else {
+                    expect(text, input.getAttribute('datatest')).to.equal('');
+                }
+            });
+
+        // 名前を押しても切り替わる
+        cy.get(datatest('tab-user-settings-general')).click();
+        cy.get(datatest('switch-loop')).should('not.be.checked');
+        cy.get('label[for="user-settings-switch-loop"]').click();
+        cy.get(datatest('switch-loop')).should('be.checked');
+
+        // 強調色は青に揃え、チェックなし・無効のスイッチは Materialize の色のまま
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgb(144, 202, 249)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal(BLUE);
+        });
+        cy.get(datatest('tab-user-settings-general')).should(([tab]) => {
+            expect(getComputedStyle(tab).color).to.equal(BLUE);
+            expect(getComputedStyle(tab).borderBottomColor).to.equal(BLUE);
+        });
+        cy.get(datatest('btn-save')).should('not.have.class', 'red')
+            .and('have.css', 'background-color', BLUE);
+        realMouse(datatest('btn-save'), 'mouseMoved');
+        cy.get(datatest('btn-save')).should('have.css', 'background-color', 'rgb(21, 101, 192)');
+        realMouse(datatest('tab-user-settings-general'), 'mouseMoved');
+        cy.get(datatest('btn-save')).should('have.css', 'background-color', BLUE);
+        cy.get(datatest('btn-save')).focus().should('have.css', 'background-color', 'rgb(21, 101, 192)');
+        cy.get(datatest('btn-save')).blur();
+
+        // 操作中（押している間）とキーボードでのフォーカス時の波紋も青
+        realMouse(`${datatest('switch-loop')} ~ .lever`, 'mousePressed');
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(pseudo(lever, '::before', 'background-color')).to.equal('rgba(25, 118, 210, 0.15)');
+        });
+        realMouse(`${datatest('switch-loop')} ~ .lever`, 'mouseReleased');
+        cy.get(datatest('switch-loop')).check({ force: true });
+        cy.get(datatest('switch-loop')).then(([input]) => {
+            input.classList.add('tabbed');
+            input.focus();
+        });
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(pseudo(lever, '::before', 'background-color')).to.equal('rgba(25, 118, 210, 0.15)');
+        });
+        cy.get(datatest('switch-loop')).blur();
+
+        cy.get(datatest('switch-loop')).uncheck({ force: true });
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgba(0, 0, 0, 0.38)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal('rgb(241, 241, 241)');
+        });
+        cy.get(datatest('switch-loop')).check({ force: true }).invoke('prop', 'disabled', true);
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgb(132, 199, 193)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal('rgb(148, 148, 148)');
+        });
+
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+});

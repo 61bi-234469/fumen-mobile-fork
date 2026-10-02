@@ -17,6 +17,8 @@ interface Props {
     sortable: boolean;
     // 現在ページのハイライト（エディタのサイドパネル用。フル画面では undefined）
     currentIndex?: number;
+    // 浮きボタンに最後の行が隠れないよう、下に空ける余白
+    bottomPadding?: number;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -32,6 +34,18 @@ interface Props {
 const COLUMNS = 5;
 const ITEM_MIN_WIDTH = 100;
 const ITEM_MAX_WIDTH = 160;
+const CONTAINER_PADDING = 10;
+
+// カードが1枚以上入るときだけグリッド全体を中央に寄せる。入らないときに中央揃えにすると左側も切れる。
+// 縦スクロールバーの幅は環境で違うので、描画後の clientWidth で判定する
+export const alignGrid = (itemSize: number) => (container: HTMLElement) => {
+    const grid = container.firstElementChild as HTMLElement | null;
+    if (grid === null) {
+        return;
+    }
+    const innerWidth = container.clientWidth - CONTAINER_PADDING * 2;
+    grid.style.justifyContent = itemSize <= innerWidth ? 'center' : 'flex-start';
+};
 
 export const ListViewGrid: Component<Props> = ({
     pages,
@@ -44,6 +58,7 @@ export const ListViewGrid: Component<Props> = ({
     trimTopBlank,
     sortable,
     currentIndex,
+    bottomPadding = CONTAINER_PADDING,
     actions,
 }) => {
     const baseItemSize = Math.max(
@@ -60,16 +75,15 @@ export const ListViewGrid: Component<Props> = ({
         height: px(containerHeight),
         overflowY: 'auto',
         overflowX: 'hidden',
-        padding: '10px',
+        padding: `${px(CONTAINER_PADDING)} ${px(CONTAINER_PADDING)} ${px(bottomPadding)}`,
         boxSizing: 'border-box',
         backgroundColor: '#f5f5f5',
     });
 
+    // justifyContent は alignGrid が実際の幅から決める
     const gridStyle = style({
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
+        display: 'grid',
+        gridTemplateColumns: `repeat(auto-fill, ${px(itemSize)})`,
         alignItems: 'stretch',
         gap: '8px',
     });
@@ -130,6 +144,8 @@ export const ListViewGrid: Component<Props> = ({
         <div
             key="list-view-grid-container"
             style={containerStyle}
+            oncreate={alignGrid(itemSize)}
+            onupdate={alignGrid(itemSize)}
         >
             <div
                 key="list-view-grid"

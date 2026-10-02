@@ -58,14 +58,8 @@
             Keys: 'Keys',
             General: 'General',
         },
-        Switch: {
-            Off: 'Off',
-            On: 'On',
-        },
         Ghost: {
             Title: 'Show the ghost',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when an eraser drag passes over it',
@@ -93,13 +87,9 @@
         },
         Loop: {
             Title: 'Loop on page navigation',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         ShortcutLabel: {
             Title: 'Show shortcut labels',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         Gradient: {
             Title: 'Block surface marker',
@@ -195,13 +185,15 @@
             Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
             Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
         },
-        Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
+        Settings: 'Settings', More: 'More', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row',
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right',
         Rotate: 'Rotate', Mirror: 'Mirror',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete pages',
+        ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',
+        CommentPlaceholder: 'Comment',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
         ResetAllComments: 'Reset all comments',
         SpawnMinoToggle: {
@@ -250,7 +242,7 @@
             Mode: 'Mode',
             Page: 'Page',
             General: 'General',
-            Legacy: 'Legacy',
+            View: 'View',
         },
         Buttons: {
             List: 'List',
@@ -267,8 +259,6 @@
             ReadonlyComment: 'ReadText',
             WritableComment: 'WriteText',
             PageSlider: 'PageSlider',
-            ClearToEnd: 'Clear->',
-            ClearPast: '<-Clear',
             Append: 'Append',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',

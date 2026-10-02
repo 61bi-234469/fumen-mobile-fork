@@ -65,10 +65,11 @@ export const SizedIcon: Component<SizedIconProps> = (
         boxSizing: 'border-box',
         textAlign: 'center',
         cursor: 'pointer',
-        color: '#fff',
+        // 無効でもアイコンは描き、文字色だけ薄くする（opacity だと背景と枠線まで薄くなる）
+        color: enable ? '#fff' : 'rgba(255,255,255,.4)',
     });
 
     const className = ['notranslate', 'material-icons', `darken-${enable ? 3 : 1}`, colors.baseClass].join(' ');
 
-    return <i className={className} style={properties}>{enable ? children : ''}</i>;
+    return <i className={className} style={properties}>{children}</i>;
 };

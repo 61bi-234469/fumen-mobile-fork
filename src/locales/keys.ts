@@ -63,14 +63,8 @@ export const i18n = {
             Keys: () => t('UserSettings.Tabs.Keys'),
             General: () => t('UserSettings.Tabs.General'),
         },
-        Switch: {
-            Off: () => t('UserSettings.Switch.Off'),
-            On: () => t('UserSettings.Switch.On'),
-        },
         Ghost: {
             Title: () => t('UserSettings.Ghost.Title'),
-            Off: () => t('UserSettings.Ghost.Off'),
-            On: () => t('UserSettings.Ghost.On'),
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
@@ -98,13 +92,9 @@ export const i18n = {
         },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
-            Off: () => t('UserSettings.Loop.Off'),
-            On: () => t('UserSettings.Loop.On'),
         },
         ShortcutLabel: {
             Title: () => t('UserSettings.ShortcutLabel.Title'),
-            Off: () => t('UserSettings.ShortcutLabel.Off'),
-            On: () => t('UserSettings.ShortcutLabel.On'),
         },
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),
@@ -209,7 +199,7 @@ export const i18n = {
             Piece: () => t('EditorUi.RailLabel.Piece'), Select: () => t('EditorUi.RailLabel.Select'),
             Paint: () => t('EditorUi.RailLabel.Paint'),
         },
-        Settings: () => t('EditorUi.Settings'),
+        Settings: () => t('EditorUi.Settings'), More: () => t('EditorUi.More'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),
         Utilities: () => t('EditorUi.Utilities'), Flags: () => t('EditorUi.Flags'),
@@ -223,6 +213,8 @@ export const i18n = {
         UtilsAllPages: () => t('EditorUi.UtilsAllPages'),
         UtilsModes: () => t('EditorUi.UtilsModes'),
         UtilsPages: () => t('EditorUi.UtilsPages'),
+        ClearPast: () => t('EditorUi.ClearPast'), ClearToEnd: () => t('EditorUi.ClearToEnd'),
+        CommentPlaceholder: () => t('EditorUi.CommentPlaceholder'),
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         ToBlack: () => t('EditorUi.ToBlack'),
         ResetAllComments: () => t('EditorUi.ResetAllComments'),
@@ -269,7 +261,7 @@ export const i18n = {
             Mode: () => t('Menu.Sections.Mode'),
             Page: () => t('Menu.Sections.Page'),
             General: () => t('Menu.Sections.General'),
-            Legacy: () => t('Menu.Sections.Legacy'),
+            View: () => t('Menu.Sections.View'),
         },
         Buttons: {
             List: () => t('Menu.Buttons.List'),
@@ -286,8 +278,6 @@ export const i18n = {
             WritableComment: () => t('Menu.Buttons.WritableComment'),
             PageSlider: () => t('Menu.Buttons.PageSlider'),
             Help: () => t('Menu.Buttons.Help'),
-            ClearToEnd: () => t('Menu.Buttons.ClearToEnd'),
-            ClearPast: () => t('Menu.Buttons.ClearPast'),
             Append: () => t('Menu.Buttons.Append'),
             UserSettings: () => t('Menu.Buttons.UserSettings'),
             SavePlayfieldToImage: () => t('Menu.Buttons.SavePlayfieldToImage'),

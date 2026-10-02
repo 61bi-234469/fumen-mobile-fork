@@ -642,6 +642,7 @@ export const view: View<State, Actions> = (state, actions) => {
     }, [
         ListViewTools({
             palette,
+            width: state.display.width,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
             listShortcutLabel: showShortcutLabel && state.mode.editShortcuts.ListView
@@ -667,7 +668,6 @@ export const view: View<State, Actions> = (state, actions) => {
                     : actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
                 openMenuModal: () => actions.openMenuModal(),
-                executeNewFumen: () => actions.executeNewFumen(),
             },
             height: TOOLS_HEIGHT,
         }),
@@ -931,6 +931,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     scale: state.listView.scale,
                     sortable: !state.tree.enabled,
                     currentIndex: state.fumen.currentIndex,
+                    bottomPadding: floatingBottomOffset + undoRedoPillHeight + 8,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({

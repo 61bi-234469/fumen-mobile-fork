@@ -156,6 +156,35 @@ export const MenuModal: Component<MenuProps> = (
                        }}>
             {i18n.ListViewMenu.Tabs.Export()}
         </SettingButton>,
+
+        <SettingButton key="btn-copy-fumen" datatest="btn-copy-fumen" href="#"
+                       icons={[{ name: 'content_copy', size: 29.3 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.closeMenuModal();
+                           actions.openClipboardModal();
+                       }}>
+            {i18n.Menu.Buttons.Clipboard()}
+        </SettingButton>,
+
+        <SettingButton key="btn-open-fumen" datatest="btn-open-fumen" href="#"
+                       icons={[{ name: 'open_in_new', size: 32.3 }]}
+                       onclick={() => {
+                           actions.removeUnsettledItems();
+                           actions.closeMenuModal();
+                           actions.openFumenModal();
+                       }}>
+            {i18n.Menu.Buttons.Open()}
+        </SettingButton>,
+
+        <SettingButton key="btn-append-fumen" datatest="btn-append-fumen" href="#"
+                       icons={[{ name: 'library_add', size: 29 }]}
+                       onclick={() => {
+                           actions.closeMenuModal();
+                           actions.openAppendModal();
+                       }}>
+            {i18n.Menu.Buttons.Append()}
+        </SettingButton>,
     ];
 
     const generalButtons = [
@@ -247,36 +276,7 @@ export const MenuModal: Component<MenuProps> = (
         </SettingButton>,
     ];
 
-    const legacyButtons = [
-        <SettingButton key="btn-copy-fumen" datatest="btn-copy-fumen" href="#"
-                       icons={[{ name: 'content_copy', size: 29.3 }]}
-                       onclick={() => {
-                           actions.removeUnsettledItems();
-                           actions.closeMenuModal();
-                           actions.openClipboardModal();
-                       }}>
-            {i18n.Menu.Buttons.Clipboard()}
-        </SettingButton>,
-
-        <SettingButton key="btn-open-fumen" datatest="btn-open-fumen" href="#"
-                       icons={[{ name: 'open_in_new', size: 32.3 }]}
-                       onclick={() => {
-                           actions.removeUnsettledItems();
-                           actions.closeMenuModal();
-                           actions.openFumenModal();
-                       }}>
-            {i18n.Menu.Buttons.Open()}
-        </SettingButton>,
-
-        <SettingButton key="btn-append-fumen" datatest="btn-append-fumen" href="#"
-                       icons={[{ name: 'library_add', size: 29 }]}
-                       onclick={() => {
-                           actions.closeMenuModal();
-                           actions.openAppendModal();
-                       }}>
-            {i18n.Menu.Buttons.Append()}
-        </SettingButton>,
-
+    const viewButtons = [
         <SettingButton key="btn-first-page" datatest="btn-first-page" href="#"
                        icons={[{ name: 'fast_rewind', size: 32.3 }]}
                        onclick={() => {
@@ -350,10 +350,14 @@ export const MenuModal: Component<MenuProps> = (
                  className="modal bottom-sheet" oncreate={oncreate} ondestroy={ondestroy}>
                 <div key="modal-content" className="modal-content">
 
-                    <h4 key="memu-title">
-                        {i18n.Menu.Title()}&nbsp;
-                        <span style={style({ color: '#999', fontSize: '50%' })}>[{i18n.Menu.Build(version)}]</span>
-                    </h4>
+                    <div key="memu-title" style={style({
+                        fontSize: px(20),
+                        fontWeight: '500',
+                        lineHeight: px(28),
+                        margin: '0 0 4px',
+                    })}>
+                        {i18n.Menu.Title()}
+                    </div>
 
                     <MenuSection key="menu-section-mode" datatest="menu-section-mode"
                                  label={i18n.Menu.Sections.Mode()}>
@@ -370,12 +374,18 @@ export const MenuModal: Component<MenuProps> = (
                         {generalButtons}
                     </MenuSection>
 
-                    <MenuSection key="menu-section-legacy" datatest="menu-section-legacy"
-                                 label={i18n.Menu.Sections.Legacy()}>
-                        {legacyButtons}
+                    <MenuSection key="menu-section-view" datatest="menu-section-view"
+                                 label={i18n.Menu.Sections.View()}>
+                        {viewButtons}
                     </MenuSection>
 
-                    <div key="menu-bottom-space" style={style({ height: px(10), width: '100%' })}/>
+                    <div key="menu-build" datatest="menu-build" style={style({
+                        color: '#999',
+                        fontSize: px(12),
+                        margin: '8px 0 10px',
+                    })}>
+                        {i18n.Menu.Build(version)}
+                    </div>
                 </div>
             </div>
         </div>
@@ -446,7 +456,7 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
         flexShrink: 0,
     })}>
         <div key={`${key}-icon`} datatest={datatest}
-             className={`z-depth-1 ${enable ? ' ' : 'disabled'}`}
+             className={enable ? '' : 'disabled'}
              style={style({
                  width: px(50),
                  height: px(40),
@@ -456,7 +466,8 @@ export const SettingButton: ComponentWithText<SettingButtonProps> = (
                  justifyContent: 'center',
                  color: enable ? '#333' : '#bdbdbd',
                  margin: px(5),
-                 border: `solid 1px ${enable ? '#999' : '#bdbdbd'}`,
+                 border: `solid 1px ${enable ? '#bbb' : '#bdbdbd'}`,
+                 borderRadius: px(4),
                  boxSizing: 'border-box',
                  cursor: 'pointer',
              })}

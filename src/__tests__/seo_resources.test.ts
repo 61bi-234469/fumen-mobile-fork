@@ -25,9 +25,15 @@ const sectionIds = (html: string): string[] =>
     (html.match(/<section id="([^"]+)">/g) || [])
         .map(section => (section.match(/id="([^"]+)"/) as RegExpMatchArray)[1]);
 
-const navigationAnchors = (html: string): string[] =>
+const fragmentAnchors = (html: string): string[] =>
     (html.match(/href="#([^"]+)"/g) || [])
         .map(anchor => (anchor.match(/href="#([^"]+)"/) as RegExpMatchArray)[1]);
+
+const navigationAnchors = (html: string): string[] => {
+    const navigation = html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/);
+    expect(navigation).not.toBeNull();
+    return fragmentAnchors((navigation as RegExpMatchArray)[1]);
+};
 
 const expectLocalReference = (
     html: string,
@@ -143,7 +149,7 @@ describe('static SEO resources', () => {
 
     test('manual/en/index.html declares its own canonical and English metadata', () => {
         const manual = read('manual', 'en', 'index.html');
-        const description = 'Learn how to create fumen data, organize pages, manage branches, and analyze fields with Cold Clear in Fumen Mobile Fork.';
+        const description = 'Learn how to create fumen data, organize pages, manage branches, analyze fields with AI, and play back TETR.IO replays in Fumen Mobile Fork.';
 
         expect(count(manual, /<html lang="en">/g)).toBe(1);
         expect(count(manual, /<title>/g)).toBe(1);
@@ -192,8 +198,8 @@ describe('static SEO resources', () => {
         const englishImages = relativeReferences(english).filter(reference => reference.endsWith('.png'));
         const japaneseImagesDirectory = path.join(resources, 'manual', 'images');
         const englishImagesDirectory = path.join(resources, 'manual', 'images', 'en');
-        expect(japaneseImages.length).toBe(8);
-        expect(englishImages.length).toBe(8);
+        expect(japaneseImages.length).toBe(11);
+        expect(englishImages.length).toBe(11);
         expect(japaneseImages.every(reference =>
             path.dirname(path.resolve(path.dirname(japanesePath), reference)) === japaneseImagesDirectory,
         )).toBe(true);
@@ -209,6 +215,16 @@ describe('static SEO resources', () => {
         expect(sectionIds(english)).toEqual(sectionIds(japanese));
         expect(navigationAnchors(english)).toEqual(sectionIds(english));
         expect(navigationAnchors(japanese)).toEqual(sectionIds(japanese));
+    });
+
+    test('all manual fragment links have a destination', () => {
+        for (const manual of [read('manual', 'index.html'), read('manual', 'en', 'index.html')]) {
+            const ids = (manual.match(/\bid="([^"]+)"/g) || [])
+                .map(attribute => (attribute.match(/id="([^"]+)"/) as RegExpMatchArray)[1]);
+            for (const anchor of fragmentAnchors(manual)) {
+                expect(ids).toContain(anchor);
+            }
+        }
     });
 
     test('help.html links to both manuals', () => {

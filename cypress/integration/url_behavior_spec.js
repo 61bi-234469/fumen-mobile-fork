@@ -74,7 +74,7 @@ describe('URL behavior', () => {
         });
 
         closeModalAndAssertUrlStable({
-            open: () => cy.get(datatest('btn-list-view-export')).click(),
+            open: () => operations.listView.openExport(),
             modalDatatest: 'mdl-list-view-menu',
         });
     });
@@ -108,7 +108,7 @@ describe('URL behavior', () => {
         cy.get('[title="Show pages in tree view"]').click();
         cy.wait(300);
 
-        cy.get(datatest('btn-list-view-export')).click();
+        operations.listView.openExport();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
         cy.get(datatest('btn-scope-left')).click();
         cy.get(datatest('btn-export-url')).click();

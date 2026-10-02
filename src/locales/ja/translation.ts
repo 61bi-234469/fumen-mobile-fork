@@ -55,17 +55,11 @@ export const resources = {
             Edit: '編集',
             View: 'リスト/ツリー',
             Input: 'INPUT',
-            Keys: 'キー割り当て',
+            Keys: 'キー設定',
             General: '全般',
-        },
-        Switch: {
-            Off: '無効',
-            On: '有効',
         },
         Ghost: {
             Title: 'ゴースト表示',
-            Off: () => '無効',
-            On: () => '有効',
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
@@ -93,13 +87,9 @@ export const resources = {
         },
         Loop: {
             Title: 'ページ移動のループ',
-            Off: () => '無効',
-            On: () => '有効',
         },
         ShortcutLabel: {
             Title: 'ショートカットラベル表示',
-            Off: () => '無効',
-            On: () => '有効',
         },
         Gradient: {
             Title: 'ブロック表面のマーク',
@@ -195,13 +185,15 @@ export const resources = {
             Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
             Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
         },
-        Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
+        Settings: '設定', More: 'その他', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
         Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る',
         RotateLeft: '左回転', RotateRight: '右回転',
         Rotate: '回転', Mirror: '反転',
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         UtilsPages: 'ページ削除',
+        ClearPast: 'このページより前を削除', ClearToEnd: 'このページより後を削除',
+        CommentPlaceholder: 'コメント',
         AllMirror: '全ページ反転', ToGray: 'グレー化', ToBlack: 'グレー以外削除',
         ResetAllComments: '全ページコメントリセット',
         SpawnMinoToggle: {
@@ -248,7 +240,7 @@ export const resources = {
             Mode: 'モード切替',
             Page: 'ページ',
             General: 'その他',
-            Legacy: 'レガシー',
+            View: '表示',
         },
     },
     TreeView: {

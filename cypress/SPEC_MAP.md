@@ -48,7 +48,7 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 | `spawn_mino_toggle_spec.js` | SPAWNミノ⇄ペイント変換（候補ハイライト・タップで対象決定・継承ミノの持ち上げ・ボタン/キーボード/不可セルでのキャンセル・1回のUndoで復元・Undoでピック解除） | `src/lib/spawn_mino_convert.ts`, `src/lib/spawn_mino_toggle_toast.ts`, `src/actions/field_editor.ts`, `src/views/editor/context_tray.ts`, `src/views/editor/editor_overlay.ts`（UTILS） | `mode.spawnMinoToggle`, `mode.block/flags/piece/tools/utils`, `menu.copyToClipboard` | 0:25 | - |
 | `tree_mode_spec.js` | Tree（グラフ表示・ノードD&D・分岐/挿入・削除Undo・スコープ選択） | `src/actions/tree_operations.ts`, `src/components/tree/`, `src/lib/fumen/tree_utils.ts`, `src/lib/fumen/tree_types.ts` | `tree.setScope`（他は合成タッチイベント直接） | 0:16 | AGENTS.md「tree root仮想ノード/DFS pre-order」invariantに直結 |
 | `url_behavior_spec.js` | URL/hashパラメータの横断挙動（screen/tree/lng/mobile維持、モーダルキャンセル時のURL不変） | `src/actions.ts`, `src/memento.ts` | `menu.append/openPage/openUserSettings`, `mode.block` | 0:04 | 一部 `it.skip`（未実装のライブURL同期。e2e skill参照） |
-| `user_settings_spec.js` | ユーザー設定モーダル（DAS/ARR・ソフトドロップ優先・グラデーション折りたたみ・Ghost・Loop・ライン消去後グレー） | `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts` | `menu.lastPage/loopOn/openUserSettings/selectUserSettingsTab`, `mode.block/piece/tools` | 0:22 | - |
+| `user_settings_spec.js` | ユーザー設定モーダル（DAS/ARR・ソフトドロップ優先・グラデーション折りたたみ・Ghost・Loop・ライン消去後グレー・Readerの歯車・スイッチ行と強調色） | `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts`, `resources/index.html`（設定モーダルの色） | `menu.lastPage/loopOn/openUserSettings/selectUserSettingsTab`, `mode.block/piece/tools` | 0:22 | - |
 | `utils_spec.js` | Utilsモード（Paintツールとの分離・スコープ別グルーピング・Mirror） | `src/views/editor/editor_overlay.ts` | `mode.tools/utils` | 0:03 | - |
 
 ## 逆引き: src 領域 → 見るべき spec

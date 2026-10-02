@@ -438,3 +438,94 @@ describe('User settings', () => {
     });
 });
 
+
+describe('User settings appearance', () => {
+    const BLUE = 'rgb(25, 118, 210)';
+    const pseudo = (element, name, property) => getComputedStyle(element, name).getPropertyValue(property);
+
+    beforeEach(() => cy.clearLocalStorage());
+
+    it('opens on the View tab from the Reader gear', () => {
+        visit({});
+        cy.get(datatest('tools')).find(datatest('btn-reader-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+
+    it('lays out switches as single rows with one blue accent', () => {
+        cy.viewport(375, 667);
+        visit({ lng: 'ja' });
+        cy.get(datatest('btn-reader-user-settings')).click();
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+
+        // タブ名が切れず、ヘッダーに横スクロールが出ない
+        cy.get(datatest('tab-user-settings-keys')).should('have.text', 'キー設定')
+            .parent().should(([header]) => {
+                expect(header.scrollWidth).to.be.at.most(header.clientWidth);
+            });
+
+        // 見出しは小さく、注意書きはモーダルの一番下
+        cy.get(datatest('mdl-user-settings')).find('.modal-content').should(([content]) => {
+            expect(getComputedStyle(content.firstElementChild).fontSize).to.equal('20px');
+            expect(content.lastElementChild.getAttribute('datatest')).to.equal('user-settings-notice');
+            expect(getComputedStyle(content.lastElementChild).fontSize).to.equal('12px');
+        });
+
+        // 「無効／有効」はどのスイッチにも出さず、ソフトドロップ優先だけ左右の名前を残す
+        cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 5)
+            .each(([input]) => {
+                const text = input.closest('label').textContent.trim();
+                if (input.getAttribute('datatest') === 'switch-piece-softdrop-priority') {
+                    expect(text).to.contain('横移動優先').and.contain('ソフトドロップ優先');
+                } else {
+                    expect(text, input.getAttribute('datatest')).to.equal('');
+                }
+            });
+
+        // 名前を押しても切り替わる
+        cy.get(datatest('tab-user-settings-general')).click();
+        cy.get(datatest('switch-loop')).should('not.be.checked');
+        cy.get('label[for="user-settings-switch-loop"]').click();
+        cy.get(datatest('switch-loop')).should('be.checked');
+
+        // 強調色は青に揃え、チェックなし・無効のスイッチは Materialize の色のまま
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgb(144, 202, 249)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal(BLUE);
+        });
+        cy.get(datatest('tab-user-settings-general')).should(([tab]) => {
+            expect(getComputedStyle(tab).color).to.equal(BLUE);
+            expect(getComputedStyle(tab).borderBottomColor).to.equal(BLUE);
+        });
+        cy.get(datatest('btn-save')).should('not.have.class', 'red')
+            .and('have.css', 'background-color', BLUE);
+        cy.get(datatest('btn-save')).focus().should('have.css', 'background-color', 'rgb(21, 101, 192)');
+        cy.document().then((doc) => {
+            const hoverRules = Array.from(doc.styleSheets).flatMap((sheet) => {
+                try {
+                    return Array.from(sheet.cssRules);
+                } catch (error) {
+                    return [];
+                }
+            }).filter(rule => rule.selectorText !== undefined && rule.selectorText.includes('.btn-settings-save:hover'));
+            expect(hoverRules.map(rule => rule.style.backgroundColor)).to.deep.equal(['rgb(21, 101, 192)']);
+        });
+
+        cy.get(datatest('switch-loop')).uncheck({ force: true });
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgba(0, 0, 0, 0.38)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal('rgb(241, 241, 241)');
+        });
+        cy.get(datatest('switch-loop')).check({ force: true }).invoke('prop', 'disabled', true);
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(getComputedStyle(lever).backgroundColor).to.equal('rgb(132, 199, 193)');
+            expect(pseudo(lever, '::after', 'background-color')).to.equal('rgb(148, 148, 148)');
+        });
+
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+    });
+});

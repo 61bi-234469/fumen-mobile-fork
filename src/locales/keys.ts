@@ -63,14 +63,8 @@ export const i18n = {
             Keys: () => t('UserSettings.Tabs.Keys'),
             General: () => t('UserSettings.Tabs.General'),
         },
-        Switch: {
-            Off: () => t('UserSettings.Switch.Off'),
-            On: () => t('UserSettings.Switch.On'),
-        },
         Ghost: {
             Title: () => t('UserSettings.Ghost.Title'),
-            Off: () => t('UserSettings.Ghost.Off'),
-            On: () => t('UserSettings.Ghost.On'),
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
@@ -98,13 +92,9 @@ export const i18n = {
         },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
-            Off: () => t('UserSettings.Loop.Off'),
-            On: () => t('UserSettings.Loop.On'),
         },
         ShortcutLabel: {
             Title: () => t('UserSettings.ShortcutLabel.Title'),
-            Off: () => t('UserSettings.ShortcutLabel.Off'),
-            On: () => t('UserSettings.ShortcutLabel.On'),
         },
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),

@@ -226,6 +226,39 @@
                 filter: brightness(1.08);
             }
         }
+
+        /*
+         * Settings modal accent: blue (#1976d2) instead of Materialize's teal switches
+         * and the red save button. Unchecked and disabled switches keep Materialize's colors.
+         */
+        .modal[datatest="mdl-user-settings"] .switch label input[type=checkbox]:checked:not(:disabled) + .lever {
+            background-color: #90caf9;
+        }
+
+        .modal[datatest="mdl-user-settings"] .switch label input[type=checkbox]:checked:not(:disabled) + .lever:after {
+            background-color: #1976d2;
+        }
+
+        .modal[datatest="mdl-user-settings"] input[type=checkbox]:checked:not(:disabled) ~ .lever:active::before,
+        .modal[datatest="mdl-user-settings"] input[type=checkbox]:checked:not(:disabled).tabbed:focus ~ .lever::before {
+            background-color: rgba(25, 118, 210, .15);
+        }
+
+        .modal[datatest="mdl-user-settings"] .btn-settings-save {
+            background-color: #1976d2;
+        }
+
+        /* Materialize's 80% width leaves too little room for the five tabs on a phone */
+        @media only screen and (max-width: 600px) {
+            .modal[datatest="mdl-user-settings"] {
+                width: 92%;
+            }
+        }
+
+        .modal[datatest="mdl-user-settings"] .btn-settings-save:hover,
+        .modal[datatest="mdl-user-settings"] .btn-settings-save:focus {
+            background-color: #1565c0;
+        }
     </style>
 </head>
 <body>

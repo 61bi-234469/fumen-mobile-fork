@@ -58,14 +58,8 @@
             Keys: 'Keys',
             General: 'General',
         },
-        Switch: {
-            Off: 'Off',
-            On: 'On',
-        },
         Ghost: {
             Title: 'Show the ghost',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when an eraser drag passes over it',
@@ -93,13 +87,9 @@
         },
         Loop: {
             Title: 'Loop on page navigation',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         ShortcutLabel: {
             Title: 'Show shortcut labels',
-            Off: () => 'Off',
-            On: () => 'On',
         },
         Gradient: {
             Title: 'Block surface marker',

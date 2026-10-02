@@ -55,17 +55,11 @@ export const resources = {
             Edit: '編集',
             View: 'リスト/ツリー',
             Input: 'INPUT',
-            Keys: 'キー割り当て',
+            Keys: 'キー設定',
             General: '全般',
-        },
-        Switch: {
-            Off: '無効',
-            On: '有効',
         },
         Ghost: {
             Title: 'ゴースト表示',
-            Off: () => '無効',
-            On: () => '有効',
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
@@ -93,13 +87,9 @@ export const resources = {
         },
         Loop: {
             Title: 'ページ移動のループ',
-            Off: () => '無効',
-            On: () => '有効',
         },
         ShortcutLabel: {
             Title: 'ショートカットラベル表示',
-            Off: () => '無効',
-            On: () => '有効',
         },
         Gradient: {
             Title: 'ブロック表面のマーク',

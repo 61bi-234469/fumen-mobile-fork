@@ -11,6 +11,7 @@ import { GradientPattern, parsePieceName } from '../../lib/enums';
 import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
 import { SDF_MAX, SDF_MIN } from '../../lib/piece_das';
 import { tabLayout } from './user_settings_catalog';
+import { EDITOR_ACTIVE_COLOR } from '../../views/editor/editor_control_style';
 
 declare const M: any;
 
@@ -208,6 +209,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
+    // 名前を左、スイッチを右に置く。左右の名前は、無効／有効以外の意味を持つものだけ渡す
     const renderSwitch = ({
         key, datatest, title, description, checked, offLabel, onLabel, onChange, disabled = false,
     }: {
@@ -216,8 +218,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         title: string;
         description?: string;
         checked: boolean;
-        offLabel: string;
-        onLabel: string;
+        offLabel?: string;
+        onLabel?: string;
         onChange: (checked: boolean) => void;
         disabled?: boolean;
     }) => {
@@ -233,21 +235,40 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
             const target = e.target as HTMLInputElement;
             onChange(target.checked);
         };
+        const inputId = `user-settings-${datatest}`;
+        const sideLabelStyle = style({ color: '#666', fontSize: px(12) });
         return (
-            <div key={key} class="switch">
-                <h6>{title}</h6>
-                {description !== undefined && <div style={style({
-                    color: '#666', fontSize: px(12), marginBottom: px(5),
-                })}>
-                    {description}
-                </div>}
+            <div key={key} class="switch" style={style({
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: px(12),
+                margin: '10px 0',
+            })}>
+                <div key={`${key}-text`} style={style({ flex: '1 1 auto', minWidth: 0 })}>
+                    <label key={`${key}-title`} for={inputId} style={style({
+                        display: 'block',
+                        color: '#333',
+                        fontSize: px(15),
+                        lineHeight: 1.4,
+                        cursor: disabled ? 'default' : 'pointer',
+                    })}>
+                        {title}
+                    </label>
+                    {description !== undefined && <div key={`${key}-description`} style={style({
+                        color: '#666', fontSize: px(12), marginTop: px(2),
+                    })}>
+                        {description}
+                    </div>}
+                </div>
 
-                <label>
-                    {offLabel}
-                    <input type="checkbox" dataTest={datatest} checked={checked} disabled={disabled}
+                <label key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
+                    {offLabel !== undefined && <span key={`${key}-off`} style={sideLabelStyle}>{offLabel}</span>}
+                    <input type="checkbox" id={inputId} dataTest={datatest} checked={checked} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
-                    {onLabel}
+                    {onLabel !== undefined && <span key={`${key}-on`} style={sideLabelStyle}>{onLabel}</span>}
                 </label>
             </div>
         );
@@ -469,13 +490,13 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
     const tabItemStyle = (active: boolean) => style({
         flexGrow: 1,
-        padding: '8px 6px',
+        padding: '8px 4px',
         textAlign: 'center',
         fontSize: px(13),
         whiteSpace: 'nowrap',
-        color: active ? '#f44336' : '#666',
+        color: active ? EDITOR_ACTIVE_COLOR : '#666',
         fontWeight: active ? 'bold' : 'normal',
-        borderBottom: active ? 'solid 2px #f44336' : 'solid 2px transparent',
+        borderBottom: active ? `solid 2px ${EDITOR_ACTIVE_COLOR}` : 'solid 2px transparent',
         cursor: 'pointer',
     });
 
@@ -483,21 +504,19 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         display: currentTab === tab ? 'block' : 'none',
     });
 
-    const switchLabels = {
-        off: i18n.UserSettings.Switch.Off(),
-        on: i18n.UserSettings.Switch.On(),
-    };
-
     return (
         <div key="user-settings-modal-top">
             <div key="mdl-user-settings" datatest="mdl-user-settings"
                  className="modal" oncreate={oncreate} ondestroy={ondestroy}>
 
                 <div key="modal-content" className="modal-content">
-                    <h4>{i18n.UserSettings.Title()}</h4>
-
-                    <div style={style({ color: '#666' })}>
-                        {i18n.UserSettings.Notice()}
+                    <div key="user-settings-title" style={style({
+                        fontSize: px(20),
+                        fontWeight: '500',
+                        lineHeight: px(28),
+                        color: '#333',
+                    })}>
+                        {i18n.UserSettings.Title()}
                     </div>
 
                     <div key="user-settings-tabs" style={tabHeaderStyle}>
@@ -522,8 +541,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-delete-spawn-mino-on-paint-drag',
                                 title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
                                 checked: deleteSpawnMinoOnPaintDrag,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
                             })}
 
@@ -532,8 +549,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-paint-palette-mino-design',
                                 title: i18n.UserSettings.PaintPaletteMinoDesign.Title(),
                                 checked: paintPaletteMinoDesign,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepPaintPaletteMinoDesign({ enable: checked }),
                             })}
 
@@ -542,8 +557,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-flags-hidden',
                                 title: i18n.UserSettings.ShowFlags.Title(),
                                 checked: !flagsHidden,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepFlagsHidden({ hidden: !checked }),
                             })}
 
@@ -552,8 +565,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-gray-after-line-clear-edit',
                                 title: i18n.TreeView.GrayAfterLineClear(),
                                 checked: grayAfterLineClear,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
                             })}
 
@@ -597,8 +608,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-trim-top-blank',
                                 title: i18n.ListView.TrimTopBlank(),
                                 checked: trimTopBlank,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepTrimTopBlank({ enable: checked }),
                             })}
 
@@ -607,8 +616,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-gray-after-line-clear-view',
                                 title: i18n.TreeView.GrayAfterLineClear(),
                                 checked: grayAfterLineClear,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
                             })}
 
@@ -617,8 +624,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-editor-side-panel',
                                 title: i18n.UserSettings.EditorSidePanel(),
                                 checked: editorSidePanel,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepEditorSidePanel({ enable: checked }),
                             })}
 
@@ -631,8 +636,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-shortcut-label',
                                 title: i18n.UserSettings.ShortcutLabel.Title(),
                                 checked: shortcutLabelVisible,
-                                offLabel: i18n.UserSettings.ShortcutLabel.Off(),
-                                onLabel: i18n.UserSettings.ShortcutLabel.On(),
                                 onChange: checked => actions.keepShortcutLabelVisible({ visible: checked }),
                             })}
 
@@ -699,8 +702,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     datatest: 'switch-ghost-visible',
                                     title: i18n.UserSettings.Ghost.Title(),
                                     checked: ghostVisible,
-                                    offLabel: i18n.UserSettings.Ghost.Off(),
-                                    onLabel: i18n.UserSettings.Ghost.On(),
                                     onChange: checked => actions.keepGhostVisible({ visible: checked }),
                                 })}
 
@@ -809,8 +810,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     title: i18n.UserSettings.SevenBagGray.Title(),
                                     description: i18n.UserSettings.SevenBagGray.Description(),
                                     checked: sevenBagGrayEnabled,
-                                    offLabel: switchLabels.off,
-                                    onLabel: switchLabels.on,
                                     onChange: checked => actions.keepSevenBagGrayEnabled({ enable: checked }),
                                 })}
                             </div>
@@ -823,8 +822,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 datatest: 'switch-loop',
                                 title: i18n.UserSettings.Loop.Title(),
                                 checked: loop,
-                                offLabel: i18n.UserSettings.Loop.Off(),
-                                onLabel: i18n.UserSettings.Loop.On(),
                                 onChange: checked => actions.keepLoop({ enable: checked }),
                             })}
 
@@ -858,8 +855,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title(),
                                         description: i18n.UserSettings.OpenTreeScreenOnTreeData.Description(),
                                         checked: openTreeScreenOnTreeData,
-                                        offLabel: switchLabels.off,
-                                        onLabel: switchLabels.on,
                                         onChange: checked => actions.keepOpenTreeScreenOnTreeData({
                                             enable: checked,
                                         }),
@@ -888,12 +883,18 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 title: i18n.UserSettings.UtilsMenuPinned.Title(),
                                 description: i18n.UserSettings.UtilsMenuPinned.Description(),
                                 checked: utilsMenuPinned,
-                                offLabel: switchLabels.off,
-                                onLabel: switchLabels.on,
                                 onChange: checked => actions.keepUtilsMenuPinned({ enable: checked }),
                             })}
 
                         </div>
+                    </div>
+
+                    <div key="user-settings-notice" datatest="user-settings-notice" style={style({
+                        color: '#888',
+                        fontSize: px(12),
+                        marginTop: px(16),
+                    })}>
+                        {i18n.UserSettings.Notice()}
                     </div>
                 </div>
 
@@ -904,7 +905,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                     </a>
 
                     <a href="#" key="btn-save" datatest="btn-save" id="btn-save"
-                       className="waves-effect waves-light btn red" onclick={save}>
+                       className="waves-effect waves-light btn btn-settings-save" onclick={save}>
                         {i18n.UserSettings.Buttons.Save()}
                     </a>
                 </div>

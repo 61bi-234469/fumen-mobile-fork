@@ -193,6 +193,7 @@
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete pages',
         ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',
+        CommentPlaceholder: 'Comment',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
         ResetAllComments: 'Reset all comments',
         SpawnMinoToggle: {

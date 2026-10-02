@@ -259,6 +259,19 @@
         .modal[datatest="mdl-user-settings"] .btn-settings-save:focus {
             background-color: #1565c0;
         }
+
+        /*
+         * Dark comment band for the Editor/Reader comment input. Materialize's
+         * input[type=text]:not(.browser-default) makes the background transparent,
+         * so this needs a stronger selector. The text color stays inline.
+         */
+        input[type=text].comment-band:not(.browser-default) {
+            background-color: #2a2a2a;
+        }
+
+        input[type=text].comment-band::placeholder {
+            color: #888;
+        }
     </style>
 </head>
 <body>

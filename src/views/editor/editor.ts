@@ -32,6 +32,7 @@ import { inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
 import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
 import { InputAiGuideOverlay } from '../../components/input_ai_guide_overlay';
+import { i18n } from '../../locales/keys';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -570,11 +571,11 @@ export const getComment = (state: State, actions: Actions, layout: EditorLayout)
                 : `text-comment-editor-${state.comment.changeKey}`,
             dataTest: 'text-comment',
             id: 'text-comment',
-            textColor: isCommentKey ? '#333' : '#757575',
-            backgroundColorClass: 'white',
+            textColor: isCommentKey ? '#fff' : '#9e9e9e',
+            backgroundColorClass: 'comment-band',
             height: layout.comment.size.height,
             text: resources.comment !== undefined ? resources.comment.text : state.comment.text,
-            ...(readonly ? {} : { placeholder: 'comment' }),
+            ...(readonly ? {} : { placeholder: i18n.EditorUi.CommentPlaceholder() }),
             readonly,
         });
     }

@@ -106,29 +106,30 @@ export const chooseToolbarTier = (
     { screen, width, currentPage = 1, maxPage = 1, treeEnabled = false, measure = measureTextWidth }: ToolbarFitInput,
 ): ToolbarFit => {
     const fullText = `${currentPage} / ${maxPage}`;
+    const result = (
+        tier: ToolbarTier, requiredWidth: number, overrides: Partial<ToolbarFit> = {},
+    ): ToolbarFit => ({
+        tier,
+        requiredWidth,
+        metrics: TOOLBAR_METRICS[tier],
+        pageText: fullText,
+        pageFontSize: TOOLBAR_METRICS[tier].pageFontSize,
+        pageMinWidth: TOOLBAR_METRICS[tier].pageMinWidth,
+        hideListTransfer: false,
+        ...overrides,
+    });
 
     if (screen === 'list') {
         for (const tier of TIERS) {
-            const metrics = TOOLBAR_METRICS[tier];
-            const requiredWidth = fixedWidth(screen, metrics, treeEnabled, false);
+            const requiredWidth = fixedWidth(screen, TOOLBAR_METRICS[tier], treeEnabled, false);
             if (requiredWidth <= width) {
-                return {
-                    tier, metrics, requiredWidth, pageText: fullText, pageFontSize: metrics.pageFontSize,
-                    pageMinWidth: metrics.pageMinWidth, hideListTransfer: false,
-                };
+                return result(tier, requiredWidth);
             }
         }
         // narrow でも入らないときだけ、取り込み・書き出しを ⋮ のシートに任せる
-        const metrics = TOOLBAR_METRICS.narrow;
-        return {
-            metrics,
-            tier: 'narrow',
-            requiredWidth: fixedWidth(screen, metrics, treeEnabled, true),
-            pageText: fullText,
-            pageFontSize: metrics.pageFontSize,
-            pageMinWidth: metrics.pageMinWidth,
+        return result('narrow', fixedWidth(screen, TOOLBAR_METRICS.narrow, treeEnabled, true), {
             hideListTransfer: true,
-        };
+        });
     }
 
     for (const tier of TIERS) {
@@ -136,14 +137,11 @@ export const chooseToolbarTier = (
         const pageWidth = Math.max(metrics.pageMinWidth, measure(fullText, metrics.pageFontSize, PAGE_FONT_WEIGHT));
         const requiredWidth = fixedWidth(screen, metrics, false, false) + pageWidth;
         if (requiredWidth <= width) {
-            return {
-                tier, metrics, requiredWidth, pageText: fullText, pageFontSize: metrics.pageFontSize,
-                pageMinWidth: metrics.pageMinWidth, hideListTransfer: false,
-            };
+            return result(tier, requiredWidth);
         }
     }
 
-    // narrow でも入らないときは、ページ表示だけを縮める
+    // narrow でも入らないときは、ページ表示だけを縮める。全体の表記が入らなければ今のページ番号だけにする
     const metrics = TOOLBAR_METRICS.narrow;
     const fixed = fixedWidth(screen, metrics, false, false);
     const available = Math.max(0, width - fixed);
@@ -158,30 +156,15 @@ export const chooseToolbarTier = (
     };
 
     const fullSize = fitText(fullText);
-    if (fullSize !== undefined) {
-        return {
-            metrics,
-            pageMinWidth,
-            tier: 'narrow',
-            requiredWidth: fixed + Math.max(pageMinWidth, measure(fullText, fullSize, PAGE_FONT_WEIGHT)),
-            pageText: fullText,
-            pageFontSize: fullSize,
-            hideListTransfer: false,
-        };
-    }
-
-    const currentText = `${currentPage}`;
-    const currentSize = fitText(currentText) ?? MIN_PAGE_FONT_SIZE;
-    return {
-        metrics,
+    const pageText = fullSize !== undefined ? fullText : `${currentPage}`;
+    const pageFontSize = fullSize ?? fitText(pageText) ?? MIN_PAGE_FONT_SIZE;
+    const pageWidth = Math.max(pageMinWidth, measure(pageText, pageFontSize, PAGE_FONT_WEIGHT));
+    return result('narrow', fixed + pageWidth, {
+        pageText,
+        pageFontSize,
         pageMinWidth,
-        tier: 'narrow',
-        requiredWidth: fixed + Math.max(pageMinWidth, measure(currentText, currentSize, PAGE_FONT_WEIGHT)),
-        pageText: currentText,
-        pageTitle: fullText,
-        pageFontSize: currentSize,
-        hideListTransfer: false,
-    };
+        pageTitle: fullSize !== undefined ? undefined : fullText,
+    });
 };
 
 interface SeparatorProps {

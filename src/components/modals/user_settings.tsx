@@ -507,7 +507,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     return (
         <div key="user-settings-modal-top">
             <div key="mdl-user-settings" datatest="mdl-user-settings"
-                 className="modal" oncreate={oncreate} ondestroy={ondestroy}>
+                 className="modal settings-modal" oncreate={oncreate} ondestroy={ondestroy}>
 
                 <div key="modal-content" className="modal-content">
                     <div key="user-settings-title" style={style({

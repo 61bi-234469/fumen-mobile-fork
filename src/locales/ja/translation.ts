@@ -248,7 +248,7 @@ export const resources = {
             Mode: 'モード切替',
             Page: 'ページ',
             General: 'その他',
-            Legacy: 'レガシー',
+            View: '表示',
         },
     },
     TreeView: {

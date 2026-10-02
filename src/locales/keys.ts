@@ -269,7 +269,7 @@ export const i18n = {
             Mode: () => t('Menu.Sections.Mode'),
             Page: () => t('Menu.Sections.Page'),
             General: () => t('Menu.Sections.General'),
-            Legacy: () => t('Menu.Sections.Legacy'),
+            View: () => t('Menu.Sections.View'),
         },
         Buttons: {
             List: () => t('Menu.Buttons.List'),

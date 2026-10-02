@@ -250,7 +250,7 @@
             Mode: 'Mode',
             Page: 'Page',
             General: 'General',
-            Legacy: 'Legacy',
+            View: 'View',
         },
         Buttons: {
             List: 'List',

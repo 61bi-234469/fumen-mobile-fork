@@ -366,3 +366,63 @@ describe('Unified import/export menu', () => {
         cy.get(datatest('btn-list-view-export')).should('be.visible');
     });
 });
+
+describe('Menu sheet', () => {
+    const sectionOrder = ['menu-section-mode', 'menu-section-page', 'menu-section-general', 'menu-section-view'];
+
+    // Open のモーダルも mdl-open-fumen を使うので、確認は .bottom-sheet の中に限る
+    const assertMenuSheet = ({ image, comments }) => {
+        operations.menu.open();
+        cy.get('.bottom-sheet').should('be.visible').within(() => {
+            cy.get('.modal-content').children().first()
+                .should('have.text', 'Menu')
+                .and('not.contain.text', '[build');
+            cy.get('.modal-content').children().last()
+                .should('have.attr', 'datatest', 'menu-build')
+                .and('contain.text', 'build')
+                .and('have.css', 'font-size', '12px');
+            cy.get('.modal-content').children('[datatest]').then((children) => {
+                const sections = children.toArray().map(child => child.getAttribute('datatest'))
+                    .filter(name => sectionOrder.includes(name));
+                expect(sections).to.deep.equal(sectionOrder);
+            });
+            ['btn-new-fumen', 'btn-copy-fumen', 'btn-open-fumen', 'btn-append-fumen'].forEach((name) => {
+                cy.get(datatest('menu-section-page')).find(datatest(name)).should('exist');
+            });
+            ['btn-first-page', 'btn-last-page', 'btn-page-slider'].forEach((name) => {
+                cy.get(datatest('menu-section-view')).find(datatest(name)).should('exist');
+            });
+            cy.get(datatest('menu-section-general')).find(datatest('btn-save-playfield-to-image'))
+                .should(image ? 'exist' : 'not.exist');
+            comments.forEach(([name, visible]) => {
+                cy.get(datatest('menu-section-view')).find(datatest(name)).should(visible ? 'exist' : 'not.exist');
+            });
+            cy.get(datatest('btn-new-fumen')).should('not.have.class', 'z-depth-1')
+                .and('have.css', 'border-top-left-radius', '4px');
+        });
+        cy.get('.modal-overlay').last().click({ force: true });
+        cy.get('.bottom-sheet').should('not.exist');
+    };
+
+    it('groups the buttons into mode, page, general and view sections on every screen', () => {
+        visit({ reload: true, mode: 'edit', fumen: 'v115@vhAAgH' });
+        assertMenuSheet({
+            image: true,
+            comments: [['btn-show-comment', false], ['btn-comment-writable', false], ['btn-comment-readonly', true]],
+        });
+
+        visit({ reload: true, fumen: 'v115@vhAAgH' });
+        assertMenuSheet({
+            image: true,
+            comments: [['btn-show-comment', false], ['btn-comment-writable', false], ['btn-comment-readonly', false]],
+        });
+
+        visit({ reload: true, mode: 'edit', fumen: 'v115@vhAAgH' });
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).should('be.visible');
+        assertMenuSheet({
+            image: false,
+            comments: [['btn-show-comment', false], ['btn-comment-writable', false], ['btn-comment-readonly', false]],
+        });
+    });
+});

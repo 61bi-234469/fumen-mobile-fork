@@ -27,7 +27,7 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 | `draw_spec.js` | PAINT描画（ドラッグ補間・コンプリート補完・分割inference・sentブロック） | `src/actions/draw_block.ts`, `src/actions/field_editor.ts`, `src/lib/inference.ts` | `menu.copyToClipboard/newPage`, `mode.block/flags/tools`, `screen.readonly` | 0:34 | - |
 | `drawing_tool_spec.js` | 旧Utils/Flags/Slide機能群（複製・ロックフラグ更新・削除・Undo/Redo・自動保存・Flags・Slide・クリアボタン表示） | `src/views/editor/editor_overlay.ts`（UTILS/FLAGS）, `src/views/editor/context_tray.ts`（Slide）, `src/actions/memento.ts` | `menu.firstPage/lastPage/newPage`, `mode.block/flags/piece/slide/tools/utils`, `screen.writable` | 1:02 | 558行、広範囲を横断 |
 | `editor_side_panel_spec.js` | サイドパネル（List/Treeタブ、リサイズ、自動非表示、モバイル/PC切替） | `src/views/editor/side_panel.ts`, `src/components/list_view/`, `src/components/tree/` | `editorPanel.*`, `mode.comment/piece/tools` | 0:19 | 主にPC幅（`mobile:false`） |
-| `editor_ui_spec.js` | rail/tray UI本体（PIECE/PAINT/SELECT切替・インスペクタ・partsスタンプ・DAS等） | `src/views/editor/editor_rail.ts`, `src/views/editor/editor_overlay.ts`, `src/views/editor/context_tray.ts` | `mode.block/fill/piece/tools` | 0:45 | 628行、最も広範囲のUI回帰源 |
+| `editor_ui_spec.js` | rail/tray UI本体（PIECE/PAINT/SELECT切替・インスペクタ・partsスタンプ・DAS等）、全画面の下部バー（右端の［歯車｜⋮］・区画の重なり・長いページ数・無効ボタン・⋮の長押し） | `src/views/editor/editor_rail.ts`, `src/views/editor/editor_overlay.ts`, `src/views/editor/context_tray.ts`, `src/components/tools/` | `mode.block/fill/piece/tools` | 0:45 | 628行、最も広範囲のUI回帰源 |
 | `fill_row_spec.js` | Fill row（行単位塗り→Slide→再Fill row） | `src/actions/fill_row.ts`, `src/views/editor/context_tray.ts`（PAINTトレイ） | `mode.block/fillRow/slide/tools` | 0:06 | - |
 | `fill_spec.js` | Fillモード（フィールド塗り・送りライン描画） | `src/actions/fill.ts`, `src/views/editor/context_tray.ts`（PAINTトレイ） | `mode.block/fill` | 0:06 | - |
 | `history_comment_spec.js` | Undo/Redo履歴のうちコメント・Quiz・Append | `src/actions/memento.ts`, `src/actions/comment.ts`, `src/lib/fumen/quiz.ts` | `menu.append/firstPage`, `mode.comment/piece/tools`, `screen.writable` | 1:58 | `play()` は `cypress/support/history_play.js` を共有。history系では最重量 |
@@ -86,6 +86,8 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 - `src/actions/field_editor_right_click.ts` → `right_click`, `spawn_mino_toggle`
 - `src/lib/input_stats.ts`, `src/views/editor/input_stats_panel.ts`, `src/lib/seven_bag_gray.ts` →
   `editor_ui`, `piece_queue`, `replay`（INPUTのゲージ継続）
+- `src/components/tools/`（下部バー）, `src/components/atomics/icons.tsx` →
+  `editor_ui`, `history_*`（無効判定に `aria-disabled` を使う）, `url_behavior`, `list_view_menu`, `user_settings`
 - `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts` →
   `user_settings`, `put_piece`（DAS/ARR設定使用）, `editor_side_panel`（表示設定）
 - `src/actions.ts`, `src/memento.ts`（URL/localStorage/履歴の横断挙動） →

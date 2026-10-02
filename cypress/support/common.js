@@ -104,6 +104,17 @@ export const Rotation = {
 
 export const datatest = value => `[datatest="${value}"]`;
 
+// 空のページだけのテト譜。vh（変化なし）は1回で64ページまで繰り返せる
+export const emptyPagesFumen = (count) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let body = '';
+    for (let rest = count; rest > 0; rest -= 64) {
+        const size = Math.min(64, rest);
+        body += `vh${chars[size - 1]}${'AgH'.repeat(size)}`;
+    }
+    return `v115@${body}`;
+};
+
 export const block = (x, y) => datatest(`block-${x}-${y}`);
 export const sentBlock = (x) => datatest(`sent-block-${x}-0`);
 

@@ -209,7 +209,7 @@ export const i18n = {
             Piece: () => t('EditorUi.RailLabel.Piece'), Select: () => t('EditorUi.RailLabel.Select'),
             Paint: () => t('EditorUi.RailLabel.Paint'),
         },
-        Settings: () => t('EditorUi.Settings'),
+        Settings: () => t('EditorUi.Settings'), More: () => t('EditorUi.More'),
         Add: () => t('EditorUi.Add'), Insert: () => t('EditorUi.Insert'),
         Copy: () => t('EditorUi.Copy'), Cut: () => t('EditorUi.Cut'),
         Utilities: () => t('EditorUi.Utilities'), Flags: () => t('EditorUi.Flags'),

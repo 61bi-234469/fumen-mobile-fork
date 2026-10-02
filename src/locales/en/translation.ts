@@ -195,7 +195,7 @@
             Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
             Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
         },
-        Settings: 'Settings', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
+        Settings: 'Settings', More: 'More', Add: 'Add', Insert: 'Insert', Copy: 'Copy', Cut: 'Cut',
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row',
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right',

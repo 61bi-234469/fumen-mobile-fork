@@ -1,4 +1,4 @@
-import { block, Color, datatest, mino, Piece, Rotation, visit } from '../support/common';
+import { block, Color, datatest, emptyPagesFumen, mino, Piece, Rotation, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 // 右レールの全幅セルのラベル。ボタンの overflow: hidden で切れるので、ラベル自身ではなく
@@ -1330,5 +1330,188 @@ describe('Editor rail and tray label fit', () => {
         cy.viewport(375, 812);
         assertTrayFits();
         assertTrayLabelShown('tray-paint-pen');
+    });
+});
+
+// 下部バーの左・中央・右の区画の中身。入れ物（datatest なしで子が複数の div）は中のボタンに展開する
+const bottomBarItems = (wrapper) => {
+    const items = [];
+    Array.from(wrapper.children).forEach((region) => {
+        Array.from(region.children).forEach((item) => {
+            if (item.tagName === 'DIV' && !item.hasAttribute('datatest') && item.children.length > 1) {
+                items.push(...Array.from(item.children));
+            } else {
+                items.push(item);
+            }
+        });
+    });
+    return items;
+};
+
+const assertBottomBar = (toolsSelector, settingsSelector) => {
+    cy.get(datatest(toolsSelector)).should(([tools]) => {
+        const bar = tools.getBoundingClientRect();
+        const items = bottomBarItems(tools.querySelector('.nav-wrapper'))
+            .map(element => ({ element, rect: element.getBoundingClientRect() }));
+        expect(items.length).to.be.greaterThan(3);
+        items.forEach(({ element, rect }) => {
+            const name = element.getAttribute('datatest') || element.tagName;
+            expect(rect.left, `${name} left`).to.be.at.least(bar.left - .5);
+            expect(rect.right, `${name} right`).to.be.at.most(bar.right + .5);
+        });
+        items.forEach((a, i) => items.slice(i + 1).forEach((b) => {
+            const overlap = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+            const names = [a, b].map(({ element }) => element.getAttribute('datatest') || element.tagName);
+            expect(overlap, `overlap of ${names.join(' and ')}`).to.be.at.most(.5);
+        }));
+
+        const rectOf = name => tools.querySelector(`[datatest="${name}"]`).getBoundingClientRect();
+        const settings = rectOf(settingsSelector);
+        const menu = rectOf('btn-open-menu');
+        const separator = rectOf('tools-cluster-separator');
+        expect(settings.right).to.be.closeTo(menu.left, 1);
+        expect(menu.right).to.be.closeTo(bar.right - 3, 1);
+        expect(separator.right).to.be.at.most(settings.left + .5);
+        expect(tools.querySelector('[datatest="btn-open-menu"] i').textContent).to.equal('more_vert');
+    });
+};
+
+// 同じテストの中で hash だけ違う URL を開いても再読み込みされないため、visit は reload: true で呼ぶ
+const openListScreen = ({ tree }) => {
+    cy.get(datatest('btn-list-view')).click();
+    cy.get(datatest('list-view-tools')).should('be.visible');
+    if (tree) {
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Disable tree mode"]').should('exist');
+    }
+};
+
+const assertDisabledToolButton = (selector, disabled) => {
+    cy.get(datatest(selector)).should('have.attr', 'aria-disabled', disabled ? 'true' : 'false')
+        .find('i').should(([icon]) => {
+            expect(icon.textContent.trim()).not.to.equal('');
+            expect(getComputedStyle(icon).color).to.equal(disabled ? 'rgba(255, 255, 255, 0.4)' : 'rgb(255, 255, 255)');
+        });
+};
+
+describe('Bottom bar', () => {
+    beforeEach(() => cy.clearLocalStorage());
+
+    [[420, 800], [375, 667], [320, 568]].forEach(([width, height]) => {
+        it(`keeps the settings and more buttons at the right end of every screen at ${width}x${height}`, () => {
+            cy.viewport(width, height);
+
+            visit({ reload: true });
+            assertBottomBar('tools', 'btn-reader-user-settings');
+
+            visit({ reload: true, mode: 'edit' });
+            assertBottomBar('tools', 'btn-editor-user-settings');
+
+            openListScreen({ tree: false });
+            assertBottomBar('list-view-tools', 'btn-list-view-user-settings');
+            cy.get(datatest('btn-list-view-import')).should('be.visible');
+
+            visit({ reload: true, mode: 'edit' });
+            openListScreen({ tree: true });
+            assertBottomBar('list-view-tools', 'btn-list-view-user-settings');
+            if (width < 364) {
+                cy.get(datatest('btn-list-view-import')).should('not.exist');
+                cy.get(datatest('btn-list-view-export')).should('not.exist');
+            } else {
+                cy.get(datatest('btn-list-view-import')).should('be.visible');
+                cy.get(datatest('btn-list-view-export')).should('be.visible');
+            }
+        });
+    });
+
+    [[375, 667], [320, 568]].forEach(([width, height]) => {
+        it(`keeps long page counts inside the bottom bar at ${width}x${height}`, () => {
+            cy.viewport(width, height);
+
+            visit({ reload: true, fumen: emptyPagesFumen(150) });
+            cy.get(datatest('text-pages')).should('have.text', '1 / 150');
+            assertBottomBar('tools', 'btn-reader-user-settings');
+
+            visit({ reload: true, mode: 'edit', fumen: emptyPagesFumen(1826), sleepInMill: 1000 });
+            cy.get(datatest('text-pages')).should('contain.text', '1');
+            assertBottomBar('tools', 'btn-editor-user-settings');
+            operations.menu.lastPage();
+            cy.get(datatest('text-pages')).should('contain.text', '1826');
+            assertBottomBar('tools', 'btn-editor-user-settings');
+
+            visit({ reload: true, fumen: emptyPagesFumen(1826), sleepInMill: 1000 });
+            operations.menu.lastPage();
+            cy.get(datatest('text-pages')).should('contain.text', '1826');
+            assertBottomBar('tools', 'btn-reader-user-settings');
+        });
+    });
+
+    it('keeps the bottom bar apart with shortcut labels', () => {
+        cy.viewport(420, 800);
+        visit({ reload: true, mode: 'edit' });
+        operations.menu.openUserSettings();
+        operations.menu.selectUserSettingsTab('keys');
+        cy.get(datatest('switch-shortcut-label')).check({ force: true });
+        cy.get(datatest('btn-save')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+        assertBottomBar('tools', 'btn-editor-user-settings');
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-tools')).should('be.visible');
+        assertBottomBar('list-view-tools', 'btn-list-view-user-settings');
+    });
+
+    it('opens import and export from the more sheet when the bar hides them', () => {
+        cy.viewport(320, 568);
+        visit({ reload: true, mode: 'edit' });
+        openListScreen({ tree: true });
+        cy.get(datatest('btn-list-view-import')).should('not.exist');
+
+        operations.listView.openImport();
+        cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('btn-import')).should('exist');
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('mdl-list-view-menu')).should('not.exist');
+
+        operations.listView.openExport();
+        cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        cy.get(datatest('btn-export-url')).should('exist');
+    });
+
+    it('does not start a new fumen on a long press of the more button', () => {
+        visit({
+            mode: 'edit',
+            fumen: 'v115@vhGyOY3AFLDmClcJSAVjiSAVG88AYS88AZPUABCowA?BR4K6Bl/UtClfJSASE7SAyltSATzarDMjzCATEJm/I3LJtK?JUBJAgH',
+        });
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        cy.get(block(0, 0)).invoke('attr', 'color').then((color) => {
+            cy.get(datatest('btn-open-menu')).trigger('pointerdown', { button: 0 });
+            cy.wait(800);
+            cy.get(datatest('btn-open-menu')).trigger('pointerup', { button: 0 });
+            cy.wait(300);
+            cy.get(datatest('text-pages')).should('have.text', '1 / 7');
+            cy.get(block(0, 0)).should('have.attr', 'color', color);
+        });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).should('have.value', '#Q=[O](L)J;#Q=[S](Z)T;hello');
+
+        cy.get(datatest('btn-open-menu')).click();
+        cy.get('.bottom-sheet').should('be.visible');
+    });
+
+    it('draws disabled navigation buttons as faded icons', () => {
+        visit({ reload: true, mode: 'edit', fumen: emptyPagesFumen(3) });
+        assertDisabledToolButton('btn-undo', true);
+        assertDisabledToolButton('btn-back-page', true);
+        assertDisabledToolButton('btn-next-page', false);
+
+        visit({ reload: true, fumen: emptyPagesFumen(3) });
+        assertDisabledToolButton('btn-back-page', true);
+        assertDisabledToolButton('btn-next-page', false);
+        operations.menu.lastPage();
+        cy.get(datatest('text-pages')).should('have.text', '3 / 3');
+        assertDisabledToolButton('btn-back-page', false);
+        assertDisabledToolButton('btn-next-page', true);
     });
 });

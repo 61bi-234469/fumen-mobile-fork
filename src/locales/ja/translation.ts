@@ -195,7 +195,7 @@ export const resources = {
             Add: 'ADD', Insert: 'INSERT', Copy: 'COPY', Cut: 'CUT', Utils: 'UTILS', Flags: 'FLAGS',
             Piece: 'PIECE', Select: 'SELECT', Paint: 'PAINT',
         },
-        Settings: '設定', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
+        Settings: '設定', More: 'その他', Add: '追加', Insert: '挿入', Copy: 'コピー', Cut: '切り取り',
         Utilities: 'ユーティリティ', Flags: 'フラグ', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'ペン', Erase: '消しゴム', Fill: '塗りつぶし', FillRow: '行を塗る',
         RotateLeft: '左回転', RotateRight: '右回転',

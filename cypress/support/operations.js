@@ -906,11 +906,24 @@ export const operations = {
         },
     },
     listView: {
+        // 狭い画面では取り込み・書き出しがバーから外れ、⋮ のシートの「ページ」から開く
         openImport: () => {
-            cy.get(datatest('btn-list-view-import')).click();
+            cy.get(datatest('list-view-tools')).then((tools) => {
+                if (tools.find(datatest('btn-list-view-import')).length > 0) {
+                    cy.get(datatest('btn-list-view-import')).click();
+                } else {
+                    operations.menu.import();
+                }
+            });
         },
         openExport: () => {
-            cy.get(datatest('btn-list-view-export')).click();
+            cy.get(datatest('list-view-tools')).then((tools) => {
+                if (tools.find(datatest('btn-list-view-export')).length > 0) {
+                    cy.get(datatest('btn-list-view-export')).click();
+                } else {
+                    operations.menu.export();
+                }
+            });
         },
         setExportMetadata: ({ pageNumbers, comments }) => {
             const pageNumbersToggle = cy.get(datatest('toggle-export-page-numbers'));

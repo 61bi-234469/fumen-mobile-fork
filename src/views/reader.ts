@@ -273,6 +273,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
     return ReaderTools({
         height,
         palette,
+        width: state.display.width,
         editShortcuts: state.mode.editShortcuts,
         shortcutLabelVisible: state.mode.shortcutLabelVisible,
         actions: {
@@ -280,7 +281,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             changeToListViewScreen: actions.changeToListViewScreen,
             changeToTreeViewScreen: actions.changeToTreeViewScreen,
             openMenuModal: actions.openMenuModal,
-            executeNewFumen: actions.executeNewFumen,
+            openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
             startAnimation: actions.startAnimation,
             pauseAnimation: actions.pauseAnimation,
             backPage: actions.backPage,
@@ -291,7 +292,6 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
         animationState: state.play.status,
-        pages: `${state.fumen.currentIndex + 1} / ${state.fumen.maxPage}`,
         loop: state.mode.loop,
     });
 };

@@ -192,6 +192,7 @@ export const resources = {
         Rotate: '回転', Mirror: '反転',
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         UtilsPages: 'ページ削除',
+        ClearPast: 'このページより前を削除', ClearToEnd: 'このページより後を削除',
         AllMirror: '全ページ反転', ToGray: 'グレー化', ToBlack: 'グレー以外削除',
         ResetAllComments: '全ページコメントリセット',
         SpawnMinoToggle: {

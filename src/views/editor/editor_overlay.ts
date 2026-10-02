@@ -75,15 +75,17 @@ const overlayButton = ({
             fontFamily: 'inherit',
             fontSize: px(11),
             gap: px(5),
-            height: px(34),
+            // 長い名前は短くせず2行に折り返し、高さを内容に合わせる
+            minHeight: px(34),
             justifyContent: 'flex-start',
-            padding: '0 8px',
+            padding: '4px 8px',
             textAlign: 'left',
+            whiteSpace: 'normal',
             width: '100%',
         }),
     }, [
         BlockIcon({ key: `${key}-icon`, iconSize: 18 }, iconName),
-        span({ key: `${key}-label` }, label),
+        span({ key: `${key}-label`, style: style({ lineHeight: 1.25 }) }, label),
         ...(checkbox ? [checkboxIndicator!] : []),
     ]);
 };
@@ -298,14 +300,14 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             children: [
                 overlayButton({
                     key: 'btn-clear-past', datatest: 'btn-clear-past',
-                    label: i18n.Menu.Buttons.ClearPast(), iconName: 'arrow_back',
+                    label: i18n.EditorUi.ClearPast(), iconName: 'arrow_back',
                     danger: true,
                     disabled: state.fumen.currentIndex <= 0,
                     onclick: () => closeAndRun(actions.clearPast),
                 }),
                 overlayButton({
                     key: 'btn-clear-to-end', datatest: 'btn-clear-to-end',
-                    label: i18n.Menu.Buttons.ClearToEnd(), iconName: 'arrow_forward',
+                    label: i18n.EditorUi.ClearToEnd(), iconName: 'arrow_forward',
                     danger: true,
                     disabled: state.fumen.maxPage - 1 <= state.fumen.currentIndex,
                     onclick: () => closeAndRun(actions.clearToEnd),

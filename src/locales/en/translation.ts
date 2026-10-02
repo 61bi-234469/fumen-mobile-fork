@@ -192,6 +192,7 @@
         Rotate: 'Rotate', Mirror: 'Mirror',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete pages',
+        ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',
         AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
         ResetAllComments: 'Reset all comments',
         SpawnMinoToggle: {
@@ -257,8 +258,6 @@
             ReadonlyComment: 'ReadText',
             WritableComment: 'WriteText',
             PageSlider: 'PageSlider',
-            ClearToEnd: 'Clear->',
-            ClearPast: '<-Clear',
             Append: 'Append',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',

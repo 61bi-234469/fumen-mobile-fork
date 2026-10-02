@@ -502,6 +502,29 @@ describe('Drawing Tools', () => {
         expectFumen('v115@heB8GeD8FeD8GeB8hfB8GeD8FeD8GeB8reAgHvhBAg?HAgHheBAGeAABeAAPeA8BeA8GeB8XfBAGeAABeAAPeA8BeA?8GeB8heAgHvhAAgHheB8GeA8BeA8PeAABeAAGeBAXfB8GeA?8BeA8PeAABeAAGeBAheAgH');
     });
 
+    it('names the page deletion buttons in Japanese and wraps them inside the UTILS menu', () => {
+        cy.viewport(320, 568);
+        visit({
+            fumen: 'v115@vhF2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDsOBA?A3rBzkBsqBifBAAA',
+            mode: 'edit',
+            lng: 'ja',
+        });
+        operations.mode.tools.nextPage();
+        operations.mode.utils.open();
+
+        [['btn-clear-past', 'このページより前を削除'], ['btn-clear-to-end', 'このページより後を削除']]
+            .forEach(([name, label]) => {
+                cy.get(datatest(name)).should('have.attr', 'aria-label', label).should(([button]) => {
+                    const rect = button.getBoundingClientRect();
+                    const text = button.lastElementChild.getBoundingClientRect();
+                    expect(button.lastElementChild.textContent).to.equal(label);
+                    expect(text.right).to.be.at.most(rect.right + .5);
+                    expect(text.bottom).to.be.at.most(rect.bottom + .5);
+                    expect(button.scrollWidth).to.be.at.most(button.clientWidth);
+                });
+            });
+    });
+
     it('Clear button visibility', () => {
         visit({
             fumen: 'v115@vhF2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDsOBA?A3rBzkBsqBifBAAA',
@@ -513,8 +536,10 @@ describe('Drawing Tools', () => {
 
             operations.mode.utils.open();
 
-            cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled');
-            cy.get(datatest('btn-clear-past')).should('have.class', 'disabled');
+            cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled')
+                .children().last().should('have.text', 'Delete pages after this');
+            cy.get(datatest('btn-clear-past')).should('have.class', 'disabled')
+                .children().last().should('have.text', 'Delete pages before this');
 
             operations.mode.utils.close();
         }

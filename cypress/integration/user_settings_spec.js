@@ -445,21 +445,37 @@ describe('User settings appearance', () => {
 
     // :hover と :active は合成イベントでは付かないため、CDP で実際のマウスを動かす。
     // 座標はランナーの画面基準なので、AUT の iframe の位置と縮小率で変換する
+    const dispatchMouse = (type, x, y) => Cypress.automation('remote:debugger:protocol', {
+        command: 'Input.dispatchMouseEvent',
+        params: {
+            type,
+            x,
+            y,
+            button: type === 'mouseMoved' ? 'none' : 'left',
+            clickCount: type === 'mouseMoved' ? 0 : 1,
+        },
+    });
+
+    // 押下の確認に失敗しても、左ボタンが押されたまま次のテストに残らないよう記録しておく
+    let pressedAt = null;
+
     const realMouse = (selector, type) => cy.get(selector).scrollIntoView().then(([element]) => {
         const frame = window.top.document.querySelector('iframe.aut-iframe');
         const frameRect = frame.getBoundingClientRect();
         const scale = frameRect.width / frame.clientWidth;
         const rect = element.getBoundingClientRect();
-        return Cypress.automation('remote:debugger:protocol', {
-            command: 'Input.dispatchMouseEvent',
-            params: {
-                type,
-                x: frameRect.left + (rect.left + rect.width / 2) * scale,
-                y: frameRect.top + (rect.top + rect.height / 2) * scale,
-                button: type === 'mouseMoved' ? 'none' : 'left',
-                clickCount: type === 'mouseMoved' ? 0 : 1,
-            },
-        });
+        const x = frameRect.left + (rect.left + rect.width / 2) * scale;
+        const y = frameRect.top + (rect.top + rect.height / 2) * scale;
+        pressedAt = type === 'mousePressed' ? { x, y } : type === 'mouseReleased' ? null : pressedAt;
+        return dispatchMouse(type, x, y);
+    });
+
+    afterEach(() => {
+        if (pressedAt !== null) {
+            const { x, y } = pressedAt;
+            pressedAt = null;
+            cy.wrap(dispatchMouse('mouseReleased', x, y));
+        }
     });
 
     beforeEach(() => cy.clearLocalStorage());

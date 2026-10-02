@@ -931,6 +931,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     scale: state.listView.scale,
                     sortable: !state.tree.enabled,
                     currentIndex: state.fumen.currentIndex,
+                    bottomPadding: floatingBottomOffset + undoRedoPillHeight + 8,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({

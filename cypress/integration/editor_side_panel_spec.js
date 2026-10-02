@@ -1,4 +1,4 @@
-import { block, Color, datatest, visit } from '../support/common';
+import { block, Color, datatest, emptyPagesFumen, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 // エディットモード左サイドパネル（リスト/ツリー）
@@ -350,3 +350,92 @@ describe('Editor side panel', () => {
         cy.get(block(6, 5)).should('have.attr', 'color', Color.T.Normal);
     });
 });
+
+// List のグリッド：中央揃え、拡大時に左端が見えること、浮きボタンとの重なり、カードの見た目
+describe('List grid', () => {
+    // カード → グリッド → スクロールする入れ物
+    const gridContainer = () => cy.get(datatest('list-view-item-0')).parent().parent();
+
+    const setZoom = (percent) => {
+        cy.get(datatest('btn-view-settings')).click();
+        cy.get(datatest('range-view-zoom')).invoke('val', percent).trigger('input');
+        cy.get(datatest('btn-view-zoom-reset')).should('have.text', `${percent}%`);
+        cy.get(datatest('btn-view-settings')).click();
+    };
+
+    const assertCardsInside = ({ centered }) => {
+        gridContainer().should(([container]) => {
+            const rect = container.getBoundingClientRect();
+            const innerLeft = rect.left + 10;
+            const innerRight = rect.left + container.clientWidth - 10;
+            const cards = Array.from(container.querySelectorAll('[datatest^="list-view-item-"]'))
+                .map(card => card.getBoundingClientRect());
+            const firstRow = cards.filter(card => Math.abs(card.top - cards[0].top) < 1);
+            const left = Math.min(...firstRow.map(card => card.left));
+            const right = Math.max(...firstRow.map(card => card.right));
+            // 左端は必ず見える
+            expect(left).to.be.at.least(innerLeft - .5);
+            if (centered) {
+                expect(right).to.be.at.most(innerRight + .5);
+                expect(Math.abs((left - innerLeft) - (innerRight - right))).to.be.at.most(2);
+            }
+        });
+    };
+
+    it('centers the full-screen grid and keeps the last row above the undo button', () => {
+        cy.viewport(375, 667);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', fumen: emptyPagesFumen(21) });
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('list-view-item-20')).should('exist');
+
+        assertCardsInside({ centered: true });
+        setZoom(50);
+        assertCardsInside({ centered: true });
+        setZoom(100);
+        assertCardsInside({ centered: true });
+
+        cy.get(datatest('list-view-item-0')).contains('#1').should(([badge]) => {
+            expect(getComputedStyle(badge).textDecorationLine).to.equal('none');
+            expect(getComputedStyle(badge).backgroundColor).to.equal('rgb(227, 232, 238)');
+        });
+        cy.get(datatest('list-view-item-0')).find('textarea')
+            .should('have.css', 'resize', 'none')
+            .and('have.attr', 'placeholder', 'Comment');
+
+        gridContainer().scrollTo('bottom');
+        cy.get(datatest('btn-undo')).parent().then(([pill]) => {
+            cy.get(datatest('list-view-item-20')).should(([card]) => {
+                expect(card.getBoundingClientRect().bottom).to.be.at.most(pill.getBoundingClientRect().top);
+            });
+        });
+    });
+
+    it('keeps the left edge of oversized cards visible in the side panel', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, fumen: emptyPagesFumen(30) });
+        operations.editorPanel.enable();
+        cy.get(datatest('list-view-item-0')).should('exist');
+        assertCardsInside({ centered: true });
+
+        setZoom(300);
+        [280, 320].forEach((width) => {
+            cy.get(datatest('editor-side-panel')).then(([panel]) => {
+                const rect = panel.getBoundingClientRect();
+                cy.get(datatest('editor-side-panel-resize-handle'))
+                    .trigger('mousedown', { button: 0, clientX: rect.right, force: true });
+                cy.document().trigger('mousemove', { clientX: rect.left + width, force: true });
+                cy.document().trigger('mouseup', { clientX: rect.left + width, force: true });
+            });
+            cy.get(datatest('editor-side-panel')).should(([panel]) => {
+                expect(panel.getBoundingClientRect().width).to.be.closeTo(width, 1);
+            });
+            gridContainer().should(([container]) => {
+                expect(container.scrollHeight).to.be.greaterThan(container.clientHeight);
+            });
+            assertCardsInside({ centered: false });
+        });
+    });
+});
+

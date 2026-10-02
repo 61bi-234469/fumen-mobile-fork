@@ -2,7 +2,7 @@
   "source": {
     "run": "31088968213",
     "date": "2026-08-06",
-    "note": "Per-spec durations from the Cypress run summary of the five shards. replay_spec.js and spawn_mino_toggle_spec.js were re-measured locally on 2026-09-28, cold_clear_spec.js on 2026-10-01 (Sold Slear cases), and replay_spec.js again on 2026-10-01 (replay INPUT copy regression, 38 passing, 63 seconds) (local runs track CI within a few seconds). Refresh with the procedure in cypress/SPEC_MAP.md."
+    "note": "Per-spec durations from the Cypress run summary of the five shards. replay_spec.js and spawn_mino_toggle_spec.js were re-measured locally on 2026-09-28, cold_clear_spec.js on 2026-10-01 (Sold Slear cases), and replay_spec.js again on 2026-10-01 (replay INPUT copy regression, 38 passing, 63 seconds); editor_ui_spec.js on 2026-10-03 (bottom bar cases, 59 passing, 78 seconds) (local runs track CI within a few seconds). Refresh with the procedure in cypress/SPEC_MAP.md."
   },
   "defaultSeconds": 60,
   "specs": {
@@ -14,7 +14,7 @@
     "draw_spec.js": 34,
     "drawing_tool_spec.js": 62,
     "editor_side_panel_spec.js": 19,
-    "editor_ui_spec.js": 62,
+    "editor_ui_spec.js": 78,
     "fill_row_spec.js": 6,
     "fill_spec.js": 6,
     "history_comment_spec.js": 118,

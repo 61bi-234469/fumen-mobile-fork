@@ -443,6 +443,25 @@ describe('User settings appearance', () => {
     const BLUE = 'rgb(25, 118, 210)';
     const pseudo = (element, name, property) => getComputedStyle(element, name).getPropertyValue(property);
 
+    // :hover と :active は合成イベントでは付かないため、CDP で実際のマウスを動かす。
+    // 座標はランナーの画面基準なので、AUT の iframe の位置と縮小率で変換する
+    const realMouse = (selector, type) => cy.get(selector).scrollIntoView().then(([element]) => {
+        const frame = window.top.document.querySelector('iframe.aut-iframe');
+        const frameRect = frame.getBoundingClientRect();
+        const scale = frameRect.width / frame.clientWidth;
+        const rect = element.getBoundingClientRect();
+        return Cypress.automation('remote:debugger:protocol', {
+            command: 'Input.dispatchMouseEvent',
+            params: {
+                type,
+                x: frameRect.left + (rect.left + rect.width / 2) * scale,
+                y: frameRect.top + (rect.top + rect.height / 2) * scale,
+                button: type === 'mouseMoved' ? 'none' : 'left',
+                clickCount: type === 'mouseMoved' ? 0 : 1,
+            },
+        });
+    });
+
     beforeEach(() => cy.clearLocalStorage());
 
     it('opens on the View tab from the Reader gear', () => {
@@ -502,17 +521,28 @@ describe('User settings appearance', () => {
         });
         cy.get(datatest('btn-save')).should('not.have.class', 'red')
             .and('have.css', 'background-color', BLUE);
+        realMouse(datatest('btn-save'), 'mouseMoved');
+        cy.get(datatest('btn-save')).should('have.css', 'background-color', 'rgb(21, 101, 192)');
+        realMouse(datatest('tab-user-settings-general'), 'mouseMoved');
+        cy.get(datatest('btn-save')).should('have.css', 'background-color', BLUE);
         cy.get(datatest('btn-save')).focus().should('have.css', 'background-color', 'rgb(21, 101, 192)');
-        cy.document().then((doc) => {
-            const hoverRules = Array.from(doc.styleSheets).flatMap((sheet) => {
-                try {
-                    return Array.from(sheet.cssRules);
-                } catch (error) {
-                    return [];
-                }
-            }).filter(rule => rule.selectorText !== undefined && rule.selectorText.includes('.btn-settings-save:hover'));
-            expect(hoverRules.map(rule => rule.style.backgroundColor)).to.deep.equal(['rgb(21, 101, 192)']);
+        cy.get(datatest('btn-save')).blur();
+
+        // 操作中（押している間）とキーボードでのフォーカス時の波紋も青
+        realMouse(`${datatest('switch-loop')} ~ .lever`, 'mousePressed');
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(pseudo(lever, '::before', 'background-color')).to.equal('rgba(25, 118, 210, 0.15)');
         });
+        realMouse(`${datatest('switch-loop')} ~ .lever`, 'mouseReleased');
+        cy.get(datatest('switch-loop')).check({ force: true });
+        cy.get(datatest('switch-loop')).then(([input]) => {
+            input.classList.add('tabbed');
+            input.focus();
+        });
+        cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {
+            expect(pseudo(lever, '::before', 'background-color')).to.equal('rgba(25, 118, 210, 0.15)');
+        });
+        cy.get(datatest('switch-loop')).blur();
 
         cy.get(datatest('switch-loop')).uncheck({ force: true });
         cy.get(datatest('switch-loop')).siblings('.lever').should(([lever]) => {

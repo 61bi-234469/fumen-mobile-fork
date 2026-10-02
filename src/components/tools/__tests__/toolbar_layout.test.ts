@@ -1,4 +1,5 @@
 import { chooseToolbarTier, TOOLBAR_METRICS, ToolbarFitInput } from '../toolbar_layout';
+import { estimateTextWidth } from '../../../lib/text_measure';
 import { AppActionCluster } from '../app_action_cluster';
 
 // 1文字 = 文字サイズの半分の幅とみなす測定関数
@@ -89,6 +90,21 @@ describe('chooseToolbarTier', () => {
 
         expect(fit({ screen: 'list', width: 320, treeEnabled: true }).requiredWidth).toBeLessThanOrEqual(320);
         expect(fit({ screen: 'list', width: 320, treeEnabled: false }).hideListTransfer).toBe(false);
+    });
+});
+
+describe('chooseToolbarTier at the 320px minimum width', () => {
+    // 1文字の幅を多めに見積もる estimateTextWidth でも、最長の想定（1826ページ・ツリーON）が収まる
+    test.each([
+        ['editor', false],
+        ['reader', false],
+        ['list', true],
+    ] as const)('%s fits', (screen, treeEnabled) => {
+        const result = chooseToolbarTier({
+            screen, treeEnabled, width: 320, currentPage: 1826, maxPage: 1826, measure: estimateTextWidth,
+        });
+        // requiredWidth には、実際に表示するページ文字列をその文字サイズで測った幅が入る
+        expect(result.requiredWidth).toBeLessThanOrEqual(320);
     });
 });
 

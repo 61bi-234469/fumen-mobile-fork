@@ -65,6 +65,8 @@ export const play = (fumen, history, { fullUndoRedo = false } = {}) => {
     const clickWhileEnabled = (selector) => {
         const button = () => cy.get(datatest(selector)).filter('a').first();
         button().invoke('attr', 'aria-disabled').then((disabled) => {
+            // 属性が欠けたときに履歴の確認が空振りしないよう、値は必ず true か false
+            expect(disabled, `${selector} aria-disabled`).to.be.oneOf(['true', 'false']);
             if (disabled === 'false') {
                 button().click();
                 clickWhileEnabled(selector);

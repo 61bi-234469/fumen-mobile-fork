@@ -100,6 +100,8 @@ const fixedWidth = (screen: ToolbarScreen, metrics: ToolbarMetrics, treeEnabled:
     }
 };
 
+// 対応する最小の画面幅は320px。それより狭いと、最後の手段（List の取り込み・書き出しを隠す、
+// ページ表示を11pxや今のページ番号だけにする）でも収まらない場合がある
 export const chooseToolbarTier = (
     { screen, width, currentPage = 1, maxPage = 1, treeEnabled = false, measure = measureTextWidth }: ToolbarFitInput,
 ): ToolbarFit => {

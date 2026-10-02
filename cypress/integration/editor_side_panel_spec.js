@@ -378,6 +378,10 @@ describe('List grid', () => {
             if (centered) {
                 expect(right).to.be.at.most(innerRight + .5);
                 expect(Math.abs((left - innerLeft) - (innerRight - right))).to.be.at.most(2);
+            } else {
+                // 内側の幅より広いカードは左揃えのまま、右側だけが切れる
+                expect(cards[0].width).to.be.greaterThan(innerRight - innerLeft);
+                expect(left).to.be.closeTo(innerLeft, .5);
             }
         });
     };

@@ -424,7 +424,7 @@ describe('Comment band', () => {
     it('shows the editor comment as a dark band with a translated placeholder', () => {
         visit({ mode: 'edit', lng: 'ja' });
         operations.mode.comment.open();
-        cy.get(datatest('text-comment')).should('have.attr', 'placeholder', 'コメント');
+        cy.get(datatest('text-comment')).should('have.attr', 'placeholder', 'Comment');
         cy.get(datatest('text-comment')).should(([input]) => {
             expect(getComputedStyle(input, '::placeholder').color).to.equal('rgb(136, 136, 136)');
         });

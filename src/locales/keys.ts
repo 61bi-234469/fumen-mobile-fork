@@ -218,6 +218,7 @@ export const i18n = {
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         ToBlack: () => t('EditorUi.ToBlack'),
         ResetAllComments: () => t('EditorUi.ResetAllComments'),
+        ReplaceComments: () => t('EditorUi.ReplaceComments'),
         SpawnMinoToggle: {
             ToPaint: () => t('EditorUi.SpawnMinoToggle.ToPaint'),
             ToMino: () => t('EditorUi.SpawnMinoToggle.ToMino'),

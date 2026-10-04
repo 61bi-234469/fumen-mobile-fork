@@ -282,7 +282,7 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                     onclick: () => closeAndRun(actions.convertAllToMirror),
                 }),
                 overlayButton({
-                    key: 'btn-replace', datatest: 'btn-replace', label: i18n.ListViewReplace.Title(), iconName: 'find_replace',
+                    key: 'btn-replace', datatest: 'btn-replace', label: i18n.EditorUi.ReplaceComments(), iconName: 'find_replace',
                     onclick: () => closeAndRun(actions.openListViewReplaceModal),
                 }),
                 overlayButton({

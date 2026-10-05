@@ -49,7 +49,7 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
             .should('be.disabled')
             .and('have.attr', 'aria-pressed', 'false')
-            .and('contain.text', '7bag grey');
+            .and('contain.text', '7bag gray');
         cy.get(datatest('piece-queue-infinite')).then(toggle => {
             const toggleRect = toggle[0].getBoundingClientRect();
             const checkboxRect = toggle.find(datatest('piece-queue-infinite-checkbox'))[0].getBoundingClientRect();

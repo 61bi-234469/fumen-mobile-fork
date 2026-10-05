@@ -1252,15 +1252,15 @@ describe('Editor rail and tray label fit', () => {
         assertTrayFits();
     });
 
-    it('fits the Japanese paint tray on a 375px phone', () => {
+    it('keeps the English paint tray labels in the Japanese locale on a 375px phone', () => {
         cy.viewport(375, 812);
         visit({ mode: 'edit', lng: 'ja' });
 
-        cy.get(datatest('tray-paint-pen')).should('have.attr', 'aria-label', 'ペン');
+        // エディタ画面のボタン名は日本語ロケールでも英語に揃える（AGENTS.md の UI 用語方針）
+        cy.get(datatest('tray-paint-pen')).should('have.attr', 'aria-label', 'Pen');
         assertTrayFits();
         assertTrayLabelShown('tray-paint-pen');
         assertTrayLabelHidden('tray-paint-erase');
-        // 日本語のトグル（ブロック化／ミノ化／やめる）でも、各状態で収まる
         assertTrayFitsThroughToggleStates();
     });
 

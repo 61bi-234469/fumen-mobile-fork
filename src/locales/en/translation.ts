@@ -189,7 +189,7 @@
         Utilities: 'Utilities', Flags: 'Flags', Close: 'Close', ContextTools: 'Context tools',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row',
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right',
-        Rotate: 'Rotate', Mirror: 'Mirror',
+        Rotate: 'Rotate', Mirror: 'Mirror', UtilsMirror: 'Mirror',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete pages',
         ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',

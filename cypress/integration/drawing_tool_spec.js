@@ -502,7 +502,7 @@ describe('Drawing Tools', () => {
         expectFumen('v115@heB8GeD8FeD8GeB8hfB8GeD8FeD8GeB8reAgHvhBAg?HAgHheBAGeAABeAAPeA8BeA8GeB8XfBAGeAABeAAPeA8BeA?8GeB8heAgHvhAAgHheB8GeA8BeA8PeAABeAAGeBAXfB8GeA?8BeA8PeAABeAAGeBAheAgH');
     });
 
-    it('keeps the page deletion buttons in English under the Japanese locale and wraps them inside the UTILS menu', () => {
+    it('names the page deletion buttons in Japanese and wraps them inside the UTILS menu', () => {
         cy.viewport(320, 568);
         visit({
             fumen: 'v115@vhF2OYaAFLDmClcJSAVDEHBEooRBKoAVBTXNFDsOBA?A3rBzkBsqBifBAAA',
@@ -512,7 +512,7 @@ describe('Drawing Tools', () => {
         operations.mode.tools.nextPage();
         operations.mode.utils.open();
 
-        [['btn-clear-past', 'Delete pages before this'], ['btn-clear-to-end', 'Delete pages after this']]
+        [['btn-clear-past', 'このページより前を削除'], ['btn-clear-to-end', 'このページより後を削除']]
             .forEach(([name, label]) => {
                 cy.get(datatest(name)).should('have.attr', 'aria-label', label).should(([button]) => {
                     const rect = button.getBoundingClientRect();

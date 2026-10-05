@@ -178,7 +178,7 @@ export const resources = {
     },
     EditorUi: {
         // 編集画面に表示するボタン名は日本語ロケールでも en と同じ英語にする（AGENTS.md の UI 用語方針）。
-        // 日本語のままにするのは、トースト文と、アイコンだけのボタンの読み上げ名だけ
+        // 例外は、トースト文、アイコンだけのボタンの読み上げ名、UTILS メニューの説明的な操作名と見出し
         Rotate180: 'Rotate 180°', Hold: 'Hold', SoftDrop: 'Soft drop', HardDrop: 'Hard drop',
         ResetPiece: 'RESPAWN', ResetField: 'RESET', InfiniteBag: '∞ 7bag', SevenBagGray: '7bag gray',
         PieceLayoutPlay: 'INPUT',
@@ -191,20 +191,21 @@ export const resources = {
         Utilities: 'Utilities', Flags: 'Flags', Close: '閉じる', ContextTools: '操作ツール',
         Pen: 'Pen', Erase: 'Erase', Fill: 'Fill', FillRow: 'Fill row',
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right',
-        Rotate: '回転', Mirror: 'Mirror',
-        UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
-        UtilsPages: 'Delete pages',
-        ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',
+        Rotate: '回転', Mirror: 'Mirror', UtilsMirror: '左右反転',
+        // UTILS は説明的な操作名が並ぶ一覧なので、読み取りやすさを優先して日本語にする（モード名の Slide / Comment は英語のまま）
+        UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
+        UtilsPages: 'ページ削除',
+        ClearPast: 'このページより前を削除', ClearToEnd: 'このページより後を削除',
         CommentPlaceholder: 'Comment',
-        AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
-        ResetAllComments: 'Reset all comments', ReplaceComments: 'Replace comments',
+        AllMirror: '全ページ左右反転', ToGray: 'グレー化', ToBlack: 'グレー以外を削除',
+        ResetAllComments: '全ページのコメントをリセット', ReplaceComments: '全ページのコメントを置換',
         SpawnMinoToggle: {
             ToPaint: 'TO PAINT', ToMino: 'TO MINO', CancelPick: 'CANCEL',
-            UtilsLabel: 'Spawn mino / blocks',
+            UtilsLabel: 'SPAWNミノ ⇄ ブロック',
             PersistsToLaterPages: '以降のページにもブロックが残ります',
             QuizConsumptionChanged: 'NEXTの消費が変わりました',
         },
-        Clear: 'Clear', Slide: 'Slide', Comment: 'Comment',
+        Clear: 'フィールドをクリア', Slide: 'Slide', Comment: 'Comment',
         KeyPage: 'Key page', ReferencePage: 'Reference page', Lock: 'Lock', Rise: 'Rise', MirrorFlag: 'Mirror flag',
         UpGray: 'Up + gray', Up: 'Up', Left: 'Left', Right: 'Right', Down: 'Down', Done: 'Done',
         Blank: 'Blank', Inherit: 'Inherit', Parts: 'パーツ',
@@ -281,7 +282,7 @@ export const resources = {
     Replay: {
         Title: 'TETR.IO Replay',
         ShortLabel: 'Replay',
-        OpenMenu: 'Open TETR.IO replay',
+        OpenMenu: 'TETR.IO Replayを開く',
         DefaultPlayer: 'Player {{number}}',
         Import: {
             Prompt: 'TETR.IO の対戦リプレイ（.ttrm）を選択してください',

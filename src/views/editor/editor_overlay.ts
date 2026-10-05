@@ -244,7 +244,7 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             children: [
                 overlayButton({
                     key: 'btn-mirror', datatest: 'btn-mirror',
-                    label: i18n.EditorUi.Mirror(), iconName: 'compare_arrows',
+                    label: i18n.EditorUi.UtilsMirror(), iconName: 'compare_arrows',
                     onclick: () => closeAndRun(actions.convertToMirror),
                 }),
                 overlayButton({

@@ -1,4 +1,4 @@
-import { NextState } from './commons';
+import { NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
 import { AnimationState, Screens } from '../lib/enums';
 import {
@@ -244,8 +244,13 @@ export interface ReplayActions {
 }
 
 export const replayActions: Readonly<ReplayActions> = {
+    // Reader の自動再生は画面を離れても止まらない。ドロップで Reader から直接来る
+    // こともあるので、移る前に必ず止める（止めないと裏でページが進み続ける）。
     openReplayScreen: () => (state): NextState => {
-        return actions.changeScreen({ screen: Screens.Replay })(state);
+        return sequence(state, [
+            actions.pauseAnimation(),
+            actions.changeScreen({ screen: Screens.Replay }),
+        ]);
     },
     // P1 レビュー対応: 複数ファイルを連続選択した場合や resetReplayImport 後に、
     // 先に選択したファイルの File.text() / Worker 応答が後から届いても
@@ -390,14 +395,14 @@ export const replayActions: Readonly<ReplayActions> = {
         };
     },
     selectReplaySelfPlayer: ({ playerId }) => (state): NextState => {
-        const users = state.replay.ir?.meta.users ?? [];
-        const user = users.find(u => u.id === playerId);
         const round = getSelectedRound(state);
-        if (user === undefined || round === undefined || state.replay.phase !== 'playing'
-            || !round.players.some(player => player.id === playerId)) {
+        const player = round?.players.find(item => item.id === playerId);
+        if (player === undefined || state.replay.phase !== 'playing') {
             return undefined;
         }
-        persistViewSettings(state, { replaySelfPlayer: user.username });
+        // users はリプレイ側で省略され得る。その場合はラウンド内の名前で記憶する
+        const user = state.replay.ir?.meta.users.find(item => item.id === playerId);
+        persistViewSettings(state, { replaySelfPlayer: user !== undefined ? user.username : player.username });
         if (playerId === state.replay.selection.selfPlayerId) {
             return undefined;
         }

@@ -33,10 +33,20 @@ import {
 const ACCENT = '#00796b';
 
 // FR-14: 空ユーザ名や doesNotExist は Player N で代替する
+// users を省略したリプレイでは、ラウンド内のプレイヤー情報で代替する
 const displayName = (ir: ReplayIR, playerId: string): string => {
-    const index = ir.meta.users.findIndex(user => user.id === playerId);
-    const user = ir.meta.users[index];
-    const username = user !== undefined ? user.username : '';
+    let index = ir.meta.users.findIndex(user => user.id === playerId);
+    let username = index >= 0 ? ir.meta.users[index].username : '';
+    if (index < 0) {
+        for (const round of ir.rounds) {
+            const roundIndex = round.players.findIndex(player => player.id === playerId);
+            if (roundIndex >= 0) {
+                index = roundIndex;
+                username = round.players[roundIndex].username;
+                break;
+            }
+        }
+    }
     if (username === '' || username === 'doesNotExist') {
         return i18n.Replay.DefaultPlayer(index + 1);
     }

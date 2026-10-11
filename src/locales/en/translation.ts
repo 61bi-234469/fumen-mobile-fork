@@ -306,13 +306,13 @@
         Import: {
             Prompt: 'Select a TETR.IO multiplayer replay (.ttrm)',
             Button: 'Select file',
-            DropHint: 'Or drop the file here',
+            DropHint: 'Or drop a .ttrm file anywhere in the app',
+            Clear: 'Clear',
         },
         Parsing: 'Analyzing replay...',
         Select: {
             SelfPlayer: 'Your side',
             Rounds: 'Rounds',
-            Start: 'Play this round',
             Win: 'Win',
             Lose: 'Loss',
             Unplayable: 'Not reproducible',
@@ -326,7 +326,6 @@
             Next: 'NEXT',
             ClipNotice: 'Top {{count}} row(s) clipped',
             OpenInEditor: 'Open this point in Editor',
-            BackToSelect: 'Choose round / side again',
             Start: 'Start',
             Self: 'You',
             Opponent: 'Opponent',

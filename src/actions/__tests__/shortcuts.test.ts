@@ -381,7 +381,7 @@ describe('clipboard insert shortcut', () => {
         test('ignores repeats, modifiers, and non-playing replay phases', () => {
             dispatchReplayShortcut('ArrowLeft', { repeat: true });
             dispatchReplayShortcut('ArrowRight', { ctrlKey: true });
-            state.replay.phase = 'select';
+            state.replay.phase = 'parsing';
             dispatchReplayShortcut('Space');
 
             expect(stepReplayLock).not.toHaveBeenCalled();

@@ -163,7 +163,7 @@ import { InputRotationEvidence } from './lib/comment_metadata';
 import { PlacementResult } from './lib/input_stats';
 import { ReplayIR } from './lib/ttrm/types';
 
-export type ReplayPhase = 'empty' | 'parsing' | 'select' | 'playing' | 'failed';
+export type ReplayPhase = 'empty' | 'parsing' | 'playing' | 'failed';
 
 // 手番送りボタンがどちらのプレイヤーの lock を刻むか（FR-22）
 export type ReplayStepBasis = 'self' | 'opponent';

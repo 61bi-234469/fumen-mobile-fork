@@ -56,7 +56,7 @@ export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = 
 
 // どれか1つでもモーダルが開いていればグローバルショートカットを無効化する。
 // フラグを列挙すると追加時に漏れるため、modal の全フィールドを走査する。
-const isAnyModalOpen = (state: State): boolean => {
+export const isAnyModalOpen = (state: State): boolean => {
     return Object.values(state.modal).some(flag => flag);
 };
 

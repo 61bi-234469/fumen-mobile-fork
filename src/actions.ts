@@ -43,6 +43,7 @@ import { replayActions, ReplayActions } from './actions/replay';
 import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_analysis';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 import { restoreViewSettings } from './actions/restore_view_settings';
+import { initReplayFileDrop } from './actions/replay_file_drop';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -117,6 +118,10 @@ initShortcutHandlers(
     () => main,
 );
 registerPieceDragGuard(() => currentState.events.drawing);
+initReplayFileDrop(
+    () => currentState,
+    () => main,
+);
 
 // Initialize Cold Clear actions reference
 initColdClearActions(main as any);

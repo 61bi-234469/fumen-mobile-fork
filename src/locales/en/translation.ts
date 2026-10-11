@@ -306,7 +306,6 @@
         Import: {
             Prompt: 'Select a TETR.IO multiplayer replay (.ttrm)',
             Button: 'Select file',
-            DropHint: 'Or drop a .ttrm file anywhere in the app',
             Clear: 'Clear',
         },
         Parsing: 'Analyzing replay...',

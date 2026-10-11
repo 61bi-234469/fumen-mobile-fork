@@ -327,7 +327,6 @@ export const i18n = {
         Import: {
             Prompt: () => t('Replay.Import.Prompt'),
             Button: () => t('Replay.Import.Button'),
-            DropHint: () => t('Replay.Import.DropHint'),
             Clear: () => t('Replay.Import.Clear'),
         },
         Parsing: () => t('Replay.Parsing'),

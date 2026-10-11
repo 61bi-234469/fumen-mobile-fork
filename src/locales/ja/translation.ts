@@ -287,7 +287,6 @@ export const resources = {
         Import: {
             Prompt: 'TETR.IO の対戦リプレイ（.ttrm）を選択してください',
             Button: 'ファイルを選択',
-            DropHint: 'アプリのどこに .ttrm ファイルをドロップしても読み込めます',
             Clear: 'クリア',
         },
         Parsing: 'リプレイを解析中...',

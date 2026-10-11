@@ -362,7 +362,6 @@ const emptyStatus = (state: State) => {
     return (
         <div key="replay-import-hint" style={style({ color: '#777', fontSize: px(12), margin: '4px 0' })}>
             <div key="import-prompt">{i18n.Replay.Import.Prompt()}</div>
-            <div key="drop-hint">{i18n.Replay.Import.DropHint()}</div>
         </div>
     );
 };

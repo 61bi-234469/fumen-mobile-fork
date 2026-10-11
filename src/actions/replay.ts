@@ -77,19 +77,23 @@ export const getOpponentPlayerRound = (state: State): PlayerRoundIR | undefined 
 };
 
 const decideInitialSelfPlayer = (ir: ReplayIR): string | null => {
-    if (ir.meta.users.length === 0) {
+    // users を省略したリプレイでは、最初のラウンドのプレイヤーを候補にする
+    const candidates: { id: string, username: string }[] = ir.meta.users.length > 0
+        ? ir.meta.users
+        : ir.rounds[0]?.players ?? [];
+    if (candidates.length === 0) {
         return null;
     }
     const persisted = loadPersistedReplaySelfPlayer();
     if (persisted !== null) {
-        const matched = ir.meta.users.find(user => user.username === persisted);
+        const matched = candidates.find(user => user.username === persisted);
         if (matched !== undefined) {
             return matched.id;
         }
     }
     // 記憶がない（または今回のリプレイに居ない）ときは左側のプレイヤーを既定にする。
     // 未選択のままだとラウンド一覧の勝敗が出ず、再生も開始できないため。
-    return ir.meta.users[0].id;
+    return candidates[0].id;
 };
 
 export const getReplayEndFrame = (state: State): number => {

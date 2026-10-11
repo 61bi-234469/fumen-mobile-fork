@@ -299,6 +299,15 @@ describe('replayActions', () => {
             expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
         });
 
+        test('setReplayIR restores the remembered player from a replay without a users list', () => {
+            (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('player-b');
+            const base = buildIR(3);
+            const ir = { ...base, meta: { ...base.meta, users: [] } };
+            const result = replayActions.setReplayIR(
+                { ir, fileName: 'a.ttrm', requestId: 0 })(createState())!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
+        });
+
         test('setReplayIR falls back to the left player when the remembered name is absent', () => {
             (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('someone-else');
             const result = replayActions.setReplayIR(

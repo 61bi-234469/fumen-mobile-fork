@@ -415,6 +415,31 @@ describe('TETR.IO Replay', () => {
         });
     });
 
+    it('keeps the opponent rates below its board on a phone', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+        operations.replay.next();
+
+        // 盤面横に余白の無い compact では、統計が自陣の NEXT に重ならず画面内に収まる
+        cy.window().then((win) => {
+            const viewportWidth = win.document.documentElement.clientWidth;
+            cy.get(datatest('replay-side-self')).then(($self) => {
+                const selfRight = $self[0].getBoundingClientRect().right;
+                operations.replay.board('opponent').then(($board) => {
+                    const boardBottom = $board[0].getBoundingClientRect().bottom;
+                    ['opponent-side-stats', 'opponent-field-stats'].forEach((name) => {
+                        cy.get(datatest(`replay-${name}`)).then(($stats) => {
+                            const rect = $stats[0].getBoundingClientRect();
+                            expect(rect.left, `${name} left`).to.be.greaterThan(selfRight);
+                            expect(rect.right, `${name} right`).to.be.at.most(viewportWidth);
+                            expect(rect.top, `${name} top`).to.be.at.least(boardBottom);
+                        });
+                    });
+                });
+            });
+        });
+    });
+
     it('anchors replay rates to the bottom of the field', () => {
         cy.clearLocalStorage();
         startPlayingOnPC();

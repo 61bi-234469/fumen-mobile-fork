@@ -389,6 +389,20 @@ describe('simulator', () => {
         }
     });
 
+    // 同梱フィクスチャに IHS は無いので、spawn 前のキューから次のミノを 1 つ出すと LockPoint のキューに一致する
+    test('the pre-lock queue is the lock queue before the next piece spawns', () => {
+        const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
+        const result = simulatePlayerRound(winner);
+        expect(result.locks.length).toBeGreaterThan(0);
+        for (const lock of result.locks) {
+            const pre = lock.preLockQueue!;
+            expect(pre.hold).toEqual(lock.hold);
+            expect(pre.next[0]).toEqual(lock.current);
+            const overlap = Math.min(pre.next.length - 1, lock.next.length);
+            expect(lock.next.slice(0, overlap)).toEqual(pre.next.slice(1, 1 + overlap));
+        }
+    });
+
     test('visual board boundaries agree with lock and terminal points', () => {
         const winner = leagueWin.replay.rounds[0].find(p => p.id === 'player-a-id')!;
         const result = simulatePlayerRound(winner);

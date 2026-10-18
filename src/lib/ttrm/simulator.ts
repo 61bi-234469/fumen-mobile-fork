@@ -235,8 +235,8 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
     });
     recordGarbage(0);
 
-    // falling.lock fires after the piece merges, so the pre-lock board and
-    // piece pose are snapshotted on falling.lock.pre.
+    // falling.lock fires after the piece merges and the next piece spawns, so the pre-lock
+    // board, piece pose, and HOLD/NEXT are snapshotted on falling.lock.pre.
     let preLock: {
         fieldBefore: ReturnType<typeof convertEngineBoard>;
         piece: Piece;
@@ -244,6 +244,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
         x: number;
         y: number;
         cells: [number, number][];
+        queue: ReplayQueueFrame;
     } | null = null;
 
     engine.events.on('falling.lock.pre', () => {
@@ -256,6 +257,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             // AI 解析の実手同定に使う。エンジンの盤面は board.state[0] が最下段で
             // アプリ Field と同じ向きなので、この座標はそのまま流用できる。
             cells: engine.falling.absoluteBlocks.map(([x, y]) => [x, y] as [number, number]),
+            queue: readQueueFrame(engine, engine.frame),
         };
     });
 
@@ -293,6 +295,7 @@ export const simulatePlayerRound = (playerRound: TtrmPlayerRound): PlayerRoundIR
             hold: queue.hold,
             current: queue.current,
             next: queue.next,
+            preLockQueue: preLock ? { hold: preLock.queue.hold, next: preLock.queue.next } : undefined,
             clear: {
                 lines: res.lines || 0,
                 spin: res.spin || 'none',

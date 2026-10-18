@@ -269,40 +269,15 @@ const fitsOnBoard = (field: IRField, cells: [number, number][]): boolean => cell
 
 type PreLockQueue = Pick<ReplayQueueFrame, 'hold' | 'current' | 'next'>;
 
-// 設置フレームのバッグ補充は 1 フレーム前の記録にまだ入っていない。LockPoint の NEXT は同じ並びの続きなので、
-// その間に NEXT から出ていった数（spawn と、空の HOLD へ入れた分）だけずらして重なれば、足りない末尾を継ぎ足す。
-const withLockRefill = (next: Piece[], recorded: Piece[], lockNext: Piece[]): Piece[] => {
-    for (const taken of [1, 2]) {
-        const overlap = recorded.length - taken;
-        if (0 < overlap && overlap < lockNext.length
-            && recorded.slice(taken).every((piece, offset) => lockNext[offset] === piece)) {
-            return [...next, ...lockNext.slice(overlap)];
-        }
-    }
-    return next;
-};
-
 // 接地直前の HOLD / CURRENT / NEXT。LockPoint のキューは次のミノの spawn 後に採るので、
-// その spawn で IHS が起きると HOLD / NEXT が入れ替わっている。visual timeline があれば
-// 設置の 1 フレーム前に記録されたキューを使い、無い IR だけ LockPoint から戻す。
-const preLockQueueOf = (player: PlayerRoundIR, lock: LockPoint, frame: number): PreLockQueue => {
-    const recorded = changePointAtFrame(player.visual?.queues ?? [], frame);
-    if (recorded !== undefined && recorded.current !== null) {
-        const refill = (next: Piece[]) => withLockRefill(next, recorded.next, lock.next);
-        if (recorded.current === lock.piece) {
-            return { hold: recorded.hold, current: recorded.current, next: refill(recorded.next) };
-        }
-        // 設置と同じフレームで HOLD してから置いた手。キューは同じフレームの最終状態しか残さないので、
-        // 盤面に出す接地姿勢（HOLD 後）に合わせて HOLD 後の並びを組み立てる
-        if (recorded.hold === lock.piece) {
-            return { hold: recorded.current, current: lock.piece, next: refill(recorded.next) };
-        }
-        if (recorded.hold === null && recorded.next[0] === lock.piece) {
-            return { hold: recorded.current, current: lock.piece, next: refill(recorded.next.slice(1)) };
-        }
+// その spawn で IHS が起きると HOLD / NEXT が入れ替わっている。spawn 前に採った preLockQueue を優先し、
+// 無い IR だけ LockPoint から戻す。
+const preLockQueueOf = (lock: LockPoint): PreLockQueue => {
+    if (lock.preLockQueue !== undefined) {
+        return { hold: lock.preLockQueue.hold, current: lock.piece, next: lock.preLockQueue.next };
     }
     // HOLD は設置と spawn では動かないので lock の値を使い、NEXT は lock 後に spawn したミノを先頭へ戻す。
-    // 次のミノが IHS した手では HOLD / NEXT がずれるが、visual timeline の無い IR では他に手がかりが無い
+    // 次のミノが IHS した手では HOLD / NEXT がずれるが、preLockQueue の無い IR では他に手がかりが無い
     return {
         hold: lock.hold,
         current: lock.piece,
@@ -332,7 +307,7 @@ export const preLockPointAt = (
     if (!fitsOnBoard(board.field, active.cells)) {
         return undefined;
     }
-    const queue = preLockQueueOf(player, lock, frame);
+    const queue = preLockQueueOf(lock);
     return {
         index,
         frame,

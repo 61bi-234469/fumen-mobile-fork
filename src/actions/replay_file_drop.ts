@@ -27,6 +27,17 @@ export const initReplayFileDrop = (
     stateGetter: () => State,
     actionsGetter: () => Actions,
 ) => {
+    // ページ内の <img> を掴んだドラッグも、Chrome では画像そのものが Files として載る。
+    // dragstart はページ内から始まったドラッグでしか起きないので、その間のドロップは
+    // ファイルの取り込みとして扱わない（盤面などの PNG を JSON として読んでしまう）。
+    let draggingFromPage = false;
+    window.addEventListener('dragstart', (e: DragEvent) => {
+        // 取り消されたドラッグは始まらず、dragend も来ない
+        draggingFromPage = !e.defaultPrevented;
+    });
+    window.addEventListener('dragend', () => {
+        draggingFromPage = false;
+    });
     window.addEventListener('dragover', (e: DragEvent) => {
         if (!carriesFiles(e)) {
             return;
@@ -39,6 +50,10 @@ export const initReplayFileDrop = (
             return;
         }
         e.preventDefault();
+        if (draggingFromPage) {
+            draggingFromPage = false;
+            return;
+        }
         const state = stateGetter();
         if (isAnyModalOpen(state)) {
             return;

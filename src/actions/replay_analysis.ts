@@ -21,6 +21,7 @@ import { resolveAiEngine } from '../lib/ai_engine';
 import { normalizeSoldSlearBudgetId } from '../lib/sold_slear/budget';
 import { getSelfPlayerRound } from './replay';
 import { persistViewSettings } from './view_settings';
+import { stopInputAiGuideSession } from './cold_clear';
 
 // リプレイ 1 ラウンドを Cold Clear で通し解析する。1 局面ずつ Worker へ投げ、
 // 応答を受けてから次を投げる（中断は「次を投げない」だけで成立する）。
@@ -204,6 +205,7 @@ export const replayAnalysisActions: Readonly<ReplayAnalysisActions> = {
         }
 
         terminateSession();
+        stopInputAiGuideSession();
 
         const runId = nextRunId;
         nextRunId += 1;

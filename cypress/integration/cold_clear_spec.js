@@ -75,6 +75,38 @@ describe('Cold Clear menu', () => {
             .each(block => expect(block.attr('visible')).not.to.equal('true'));
     });
 
+    it('shows and switches the AI engine from the INPUT AI guide', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', lng: 'en' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('btn-input-ai-engine'))
+            .should('have.attr', 'data-engine', 'coldClear')
+            .and('have.attr', 'aria-label', 'Switch AI engine (current: Cold Clear)');
+        operations.mode.piece.toggleAiGuide();
+        operations.mode.piece.waitAiGuideReady();
+
+        operations.mode.piece.switchAiEngineTo('soldSlear');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.aiEngine).to.equal('soldSlear');
+        });
+        // 切り替えたエンジンで考え直す
+        operations.mode.piece.waitAiGuideReady();
+        cy.get('[datatest^="input-ai-guide-block-"]').should('have.length', 4)
+            .each(block => expect(block.attr('visible')).to.equal('true'));
+
+        operations.mode.piece.switchAiEngineTo('coldClear');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.aiEngine).to.equal('coldClear');
+        });
+    });
+
     it('shows why the INPUT AI guide cannot run', () => {
         visit({ mode: 'edit', lng: 'en' });
         operations.mode.piece.open();

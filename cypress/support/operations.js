@@ -487,6 +487,16 @@ export const operations = {
                 cy.get(datatest('btn-input-ai-guide'), { timeout: 15000 })
                     .should('have.attr', 'data-status', 'ready');
             },
+            // AI ガイド欄の下段。押すと Cold Clear / Sold Slear を切り替える
+            switchAiEngineTo: (engine) => {
+                ensurePieceLayout('play');
+                cy.get(datatest('btn-input-ai-engine')).then(($button) => {
+                    if ($button.attr('data-engine') !== engine) {
+                        cy.wrap($button).click();
+                    }
+                });
+                cy.get(datatest('btn-input-ai-engine')).should('have.attr', 'data-engine', engine);
+            },
             resetBoard: () => {
                 // 盤面RESETはPlayレイアウトの右下だけに表示する。
                 ensurePieceLayout('play');
@@ -1020,6 +1030,9 @@ export const operations = {
         swapSides: () => cy.get(datatest('btn-replay-swap-sides')).click(),
         // 相手盤面の表示／非表示（FR-34）
         toggleOpponent: () => cy.get(datatest('btn-replay-toggle-opponent')).click(),
+        // AI ゴースト（INPUT の AI ガイドと共通の ON/OFF）。ON の間は自陣の盤面に最善手を重ねる
+        toggleAiGhost: () => cy.get(datatest('btn-replay-ai-guide')).click(),
+        aiGhost: () => cy.get(datatest('replay-ai-guide')),
         // P3: ガベージ表示（FR-40〜45 / NFR-08）
         // ゲージバーはゲージ 0 でも枠を残すため、常に存在する。量は data-gauge で読む。
         gauge: (side = 'self') => cy.get(datatest(`replay-gauge-${side}`)),

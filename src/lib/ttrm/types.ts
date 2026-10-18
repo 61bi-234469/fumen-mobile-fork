@@ -134,6 +134,9 @@ export interface LockPoint {
     current: Piece | null;
     // エンジンが保持している NEXT を全件。表示は画面側で切る
     next: Piece[];
+    // falling.lock.pre（次のミノの spawn 前）の HOLD / NEXT。同じフレームの HOLD は反映済みで、
+    // spawn 時の IHS は含まない。optional は手作り test IR との後方互換のため。Worker が生成する IR は常に持つ。
+    preLockQueue?: { hold: Piece | null; next: Piece[] };
     clear: LockClear;
     attack: number;
     // この設置で相殺した（掘った）ガベージ行数。Engine の累積 cleared 差分。

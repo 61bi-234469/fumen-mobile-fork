@@ -2,7 +2,7 @@ jest.mock('../replay_board', () => ({
     renderReplayBoard: jest.fn(() => 'board.png'),
 }));
 
-import { FieldConstants, Piece } from '../../../lib/enums';
+import { FieldConstants, Piece, Rotation } from '../../../lib/enums';
 import { IRField, ReplayVisualState } from '../../../lib/ttrm/types';
 import { ReplayPoint, ReplayStats } from '../../../lib/ttrm/timeline';
 import { replaySide, visibleReplayActiveCells } from '../replay_side';
@@ -70,10 +70,10 @@ const textContents = (node: any): string[] => {
     return textContents(node.children);
 };
 
-const render = (value: ReplayVisualState) => replaySide({
+const renderProps = (value: ReplayVisualState) => ({
     stats,
-    variant: 'self',
-    size: 'full',
+    variant: 'self' as const,
+    size: 'full' as const,
     point: point(),
     visual: value,
     blockSize: 10,
@@ -82,6 +82,8 @@ const render = (value: ReplayVisualState) => replaySide({
     counterText: 'start',
     queueWidth: 40,
 });
+
+const render = (value: ReplayVisualState) => replaySide(renderProps(value));
 
 describe('replay rise preview', () => {
     test.each(['full', 'compact'] as const)('keeps the %s row when no rise is forecast', (size) => {
@@ -130,6 +132,23 @@ describe('replaySide realtime visual', () => {
         expect(findAllByDatatest(vnode, 'replay-hold-0')[0].attributes['data-piece']).toEqual('I');
         // 操作中のOはactiveとして描くため、NEXTの先頭へ重複表示しない。
         expect(findAllByDatatest(vnode, 'replay-next-0')[0].attributes['data-piece']).toEqual('J');
+    });
+
+    test('overlays the AI guide placement on the self board only', () => {
+        const aiGuide = { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } };
+        const vnode = replaySide({ ...renderProps(visual(undefined)), aiGuide });
+        const overlay = findAllByDatatest(vnode, 'replay-ai-guide')[0];
+        const cells = findAllByDatatest(vnode, 'replay-ai-guide-cell');
+
+        expect(overlay.attributes['data-piece']).toEqual('T');
+        expect(cells.map(cell => cell.attributes['data-cell']).sort()).toEqual(['3,0', '4,0', '4,1', '5,0']);
+        const left = cells.find(cell => cell.attributes['data-cell'] === '3,0');
+        expect(left.attributes.style.left).toEqual('30px');
+        expect(left.attributes.style.top).toEqual('220px');
+
+        expect(findAllByDatatest(render(visual(undefined)), 'replay-ai-guide')).toHaveLength(0);
+        const opponent = replaySide({ ...renderProps(visual(undefined)), aiGuide, variant: 'opponent' });
+        expect(findAllByDatatest(opponent, 'replay-ai-guide')).toHaveLength(0);
     });
 
     test('keeps the legacy current-first queue when no active pose exists', () => {

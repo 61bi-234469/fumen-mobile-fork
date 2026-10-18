@@ -1,8 +1,9 @@
 import { FieldConstants, Piece, isMinoPiece } from '../enums';
-import { createInputReplayContext, inputGarbageView } from '../input_replay';
+import { createInputReplayContext, inputNextTankRowCount } from '../input_replay';
 import { irFieldToField } from '../ttrm/board_converter';
-import { boardAtFrame, pointAt } from '../ttrm/timeline';
-import { IRField, PlayerRoundIR } from '../ttrm/types';
+import { boardAtFrame, lastPointIndex, pointAt } from '../ttrm/timeline';
+import { IRField, PlayerRoundIR, ReplayVisualState } from '../ttrm/types';
+import { Field } from '../fumen/field';
 import { fieldToCC, fieldToCells } from './fieldConverter';
 import { AiEngineId, aiEngineCapabilities } from '../ai_engine';
 import { SoldSlearBudgetId } from '../sold_slear/budget';
@@ -73,15 +74,19 @@ const hasCompleteLine = (field: IRField): boolean => {
 
 // 次の非消去 lock でせり上がる行数。INPUT 取り込みと同じ導出式を共有する
 // （直近 1 火力だけを見る。穴の位置や後続 parcel は Cold Clear へ渡せない）。
-const incomingAt = (player: PlayerRoundIR, index: number, lockFrame: number): number => {
+// confirmedIndex は確定済みの設置数（ポイント空間の index）、frame はその時点の再生フレーム。
+export const replayIncomingAt = (player: PlayerRoundIR, confirmedIndex: number, frame: number): number => {
     try {
-        const context = createInputReplayContext(player, index - 1, Math.max(0, lockFrame - 1));
-        return inputGarbageView(context).nextTankRows.length;
+        const context = createInputReplayContext(player, confirmedIndex, Math.max(0, frame));
+        return inputNextTankRowCount(context);
     } catch (e) {
         // ガベージ設定を復元できないリプレイでも解析自体は続ける
         return 0;
     }
 };
+
+const incomingAt = (player: PlayerRoundIR, index: number, lockFrame: number): number =>
+    replayIncomingAt(player, index - 1, lockFrame - 1);
 
 // 手番 index（1..L）の設置直前局面を Worker 入力へ変換する。
 export const buildAnalysisPosition = (
@@ -178,6 +183,85 @@ export const buildAnalysisPositions = (
         positions.push(buildAnalysisPosition(player, index, settings));
     }
     return positions;
+};
+
+// ---- AI ガイド ----
+
+export type ReplayGuideSkipReason = 'terminal' | 'clipped' | 'noCurrent' | 'pieceMismatch' | 'completeLine';
+
+export interface ReplayGuidePosition {
+    field: Field;
+    hold: Piece | null;
+    current: Piece;
+    next: Piece[];
+    b2b: boolean;
+    b2bLevel: number;
+    combo: number;
+    incoming: number;
+    // ルールで HOLD が無い（この手で HOLD 済みかどうかは問わない）
+    holdForbidden: boolean;
+}
+
+// 再生の 1 tick ごとに呼ばれるので、同じ時点の重いガベージ復元は使い回す。
+let incomingMemo: { player: PlayerRoundIR; confirmedIndex: number; frame: number; incoming: number } | null = null;
+
+const memoizedIncoming = (player: PlayerRoundIR, confirmedIndex: number, frame: number): number => {
+    if (incomingMemo !== null && incomingMemo.player === player
+        && incomingMemo.confirmedIndex === confirmedIndex && incomingMemo.frame === frame) {
+        return incomingMemo.incoming;
+    }
+    const incoming = replayIncomingAt(player, confirmedIndex, frame);
+    incomingMemo = { player, confirmedIndex, frame, incoming };
+    return incoming;
+};
+
+const minoOrNull = (piece: Piece | null): Piece | null => piece !== null && isMinoPiece(piece) ? piece : null;
+
+// ルールで HOLD が無い試合だけ HOLD を禁止する。手番の途中で HOLD を使った後も禁止しない。
+// HOLD した後の表示から HOLD を選ぶ手は「HOLD 前のミノを置く」手で、置けるミノの組み合わせは
+// 手番開始時と同じになる（リプレイ解析も手番開始時の局面を HOLD 可で評価する）。
+const isReplayHoldForbidden = (player: PlayerRoundIR): boolean => (
+    player.resolvedOptions.display_hold === false
+);
+
+// 表示中の局面（盤面・操作中ミノ・HOLD/NEXT）をそのまま AI ガイドの入力にする。
+// confirmedIndex は表示中の盤面に入っている設置数。統計とガベージはそこから INPUT 取り込みと同じ式で出す。
+export const buildReplayGuidePosition = (
+    player: PlayerRoundIR, visual: ReplayVisualState, confirmedIndex: number,
+): { position: ReplayGuidePosition } | { skipReason: ReplayGuideSkipReason } => {
+    if (lastPointIndex(player) <= confirmedIndex) {
+        return { skipReason: 'terminal' };
+    }
+    if (visual.clippedRowCount > 0) {
+        return { skipReason: 'clipped' };
+    }
+    const current = visual.current ?? visual.active?.piece ?? null;
+    if (current === null || !isMinoPiece(current)) {
+        return { skipReason: 'noCurrent' };
+    }
+    // キューと操作中ミノは別の記録から引くので、食い違えばどちらの局面か決められない
+    if (visual.active !== undefined && visual.active.piece !== current) {
+        return { skipReason: 'pieceMismatch' };
+    }
+    if (hasCompleteLine(visual.field)) {
+        return { skipReason: 'completeLine' };
+    }
+
+    const previousLock = player.locks[confirmedIndex - 1];
+    const hold = minoOrNull(visual.hold);
+    return {
+        position: {
+            hold,
+            current,
+            holdForbidden: isReplayHoldForbidden(player),
+            field: irFieldToField(visual.field),
+            next: visual.next.filter(isMinoPiece),
+            b2b: previousLock !== undefined && previousLock.clear.b2b >= 0,
+            b2bLevel: previousLock !== undefined ? Math.max(0, previousLock.clear.b2b + 1) : 0,
+            combo: previousLock !== undefined ? Math.max(0, previousLock.clear.ren + 1) : 0,
+            incoming: memoizedIncoming(player, confirmedIndex, visual.frame),
+        },
+    };
 };
 
 // ---- 指標 ----

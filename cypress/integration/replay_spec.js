@@ -257,6 +257,47 @@ describe('TETR.IO Replay', () => {
         operations.replay.board('opponent').should('exist');
     });
 
+    it('turns the AI ghost on and off on your own board', () => {
+        cy.clearLocalStorage();
+        startPlaying();
+
+        cy.get(datatest('btn-replay-ai-guide')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('replay-ai-guide')).should('not.exist');
+
+        operations.replay.toggleAiGhost();
+        cy.get(datatest('btn-replay-ai-guide'))
+            .should('have.attr', 'aria-pressed', 'true')
+            .and('have.attr', 'data-engine', 'coldClear');
+        operations.replay.next();
+        // 自陣の盤面にだけ 4 マスのゴーストが出る
+        cy.get(datatest('btn-replay-ai-guide'), { timeout: 15000 }).should('have.attr', 'data-status', 'ready');
+        cy.get(datatest('replay-side-self')).find(datatest('replay-ai-guide-cell')).should('have.length', 4);
+        cy.get(datatest('replay-side-opponent')).find(datatest('replay-ai-guide')).should('not.exist');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.coldClearInputGuideEnabled).to.equal(true);
+        });
+
+        // 手番 1 は O、手番 2 は I。送った先では前の手（O）ではなく、その手で置ける
+        // ミノ（操作中の I か、HOLD して使う HOLD / NEXT 先頭）のゴーストに置き換わる
+        operations.replay.next();
+        operations.replay.active('self').should('have.attr', 'data-active-piece', 'I');
+        cy.get(datatest('btn-replay-ai-guide'), { timeout: 15000 }).should('have.attr', 'data-status', 'ready');
+        cy.get([datatest('replay-hold-0'), datatest('replay-next-0')].join(',')).then(($slots) => {
+            const usable = ['I', ...[...$slots].map(slot => slot.getAttribute('data-piece'))];
+            cy.get(datatest('replay-ai-guide')).invoke('attr', 'data-piece').should('be.oneOf', usable);
+            cy.get(datatest('replay-ai-guide')).invoke('attr', 'data-piece').should('not.equal', 'O');
+        });
+
+        operations.replay.toggleAiGhost();
+        cy.get(datatest('btn-replay-ai-guide')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('replay-ai-guide')).should('not.exist');
+        cy.window().then(win => {
+            const settings = JSON.parse(win.localStorage.getItem('view-settings@1'));
+            expect(settings.coldClearInputGuideEnabled).to.equal(false);
+        });
+    });
+
     it('swaps the two sides while holding the playback position (FR-11/12)', () => {
         cy.clearLocalStorage();
         startPlaying();

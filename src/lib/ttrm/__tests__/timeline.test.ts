@@ -406,6 +406,38 @@ describe('timeline point space', () => {
             expect(point.visual.next).toEqual([Piece.I, Piece.O, Piece.Z]);
         });
 
+        // LockPoint のキューは次のミノの spawn 後。そこで IHS が起きると HOLD / NEXT が入れ替わっている
+        test('the queue taken before the next spawn wins over a lock queue after an IHS', () => {
+            const player = playerWith([withCells(100, {
+                piece: Piece.T, hold: Piece.S, current: Piece.L, next: [Piece.Z, Piece.O, Piece.I],
+                preLockQueue: { hold: null, next: [Piece.S, Piece.L, Piece.Z, Piece.O, Piece.I] },
+            })], 300);
+
+            const point = preLockPointAt(player, 1)!;
+            expect(point.visual.hold).toBeNull();
+            expect(point.visual.current).toEqual(Piece.T);
+            expect(point.visual.next).toEqual([Piece.S, Piece.L, Piece.Z, Piece.O, Piece.I]);
+            expect(point.visual.active!.piece).toEqual(Piece.T);
+        });
+
+        // 空の HOLD へ同じ種類のミノを入れて同じフレームで置いた手。キューの見た目だけでは HOLD の有無を区別できない
+        test('a HOLD of the same piece type in the lock frame keeps the held piece', () => {
+            const player = playerWith([withCells(100, {
+                piece: Piece.I, hold: Piece.I, current: Piece.T, next: [Piece.S, Piece.Z],
+                preLockQueue: { hold: Piece.I, next: [Piece.T, Piece.S, Piece.Z] },
+            })], 300);
+            player.visual = {
+                active: [],
+                boards: [],
+                queues: [{ frame: 0, hold: null, current: Piece.I, next: [Piece.I, Piece.T, Piece.S] }],
+                garbage: [],
+            };
+
+            expect(preLockPointAt(player, 1)!.visual).toMatchObject({
+                hold: Piece.I, current: Piece.I, next: [Piece.T, Piece.S, Piece.Z],
+            });
+        });
+
         test('the start and terminal points have no pre-lock state', () => {
             const player = playerWith([withCells(100)], 300);
             expect(preLockPointAt(player, 0)).toBeUndefined();

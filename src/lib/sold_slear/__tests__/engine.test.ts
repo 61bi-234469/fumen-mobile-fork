@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { soldSlearBudgetOf } from '../budget';
-import { decisionToMoves } from '../convert';
+import { decisionToMoves, selectableMoves } from '../convert';
 import { createSoldSlearEngine, SoldSlearEngine } from '../engine';
 import { createSoldSlearProfile } from '../profile';
 import { BOARD_CELL_COUNT, buildF14DecideRequest } from '../request';
@@ -61,6 +61,25 @@ describe('Sold Slear WASM engine', () => {
             chain: { combo: 0, b2b: 0 },
         }, createSoldSlearProfile(soldSlearBudgetOf('t100')), 'engine-test-2');
         expect(engine.decide(request!).status).toBe('move');
+    });
+
+    // 右端 1 列だけ空いた 8 段の上で HOLD に I がある。512 selections では推奨手が HOLD する手になる
+    test('the best non-HOLD candidate is still found when the recommendation uses HOLD', () => {
+        const { request } = buildF14DecideRequest({
+            cells: cellsWithBottomRow('GGGGGGGGG_'.repeat(8)),
+            hold: 'I',
+            queue: ['S', 'Z', 'O', 'L', 'J', 'T'],
+            chain: { combo: 0, b2b: 0 },
+        }, createSoldSlearProfile(soldSlearBudgetOf('standard')), 'engine-test-3');
+        const outcome = decisionToMoves(engine.decide(request!), 'S');
+        expect(outcome.kind).toBe('moves');
+        if (outcome.kind === 'moves') {
+            expect(outcome.moves[0].hold).toBe(true);
+            const withoutHold = selectableMoves(outcome.moves, false);
+            expect(withoutHold.length).toBeGreaterThan(0);
+            expect(withoutHold[0].hold).toBe(false);
+            expect(withoutHold[0].piece).toBe(outcome.moves.find(move => !move.hold)!.piece);
+        }
     });
 });
 

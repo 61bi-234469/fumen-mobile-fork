@@ -267,6 +267,24 @@ const fitsOnBoard = (field: IRField, cells: [number, number][]): boolean => cell
     return field[y * FieldConstants.Width + x] === Piece.Empty;
 });
 
+type PreLockQueue = Pick<ReplayQueueFrame, 'hold' | 'current' | 'next'>;
+
+// 接地直前の HOLD / CURRENT / NEXT。LockPoint のキューは次のミノの spawn 後に採るので、
+// その spawn で IHS が起きると HOLD / NEXT が入れ替わっている。spawn 前に採った preLockQueue を優先し、
+// 無い IR だけ LockPoint から戻す。
+const preLockQueueOf = (lock: LockPoint): PreLockQueue => {
+    if (lock.preLockQueue !== undefined) {
+        return { hold: lock.preLockQueue.hold, current: lock.piece, next: lock.preLockQueue.next };
+    }
+    // HOLD は設置と spawn では動かないので lock の値を使い、NEXT は lock 後に spawn したミノを先頭へ戻す。
+    // 次のミノが IHS した手では HOLD / NEXT がずれるが、preLockQueue の無い IR では他に手がかりが無い
+    return {
+        hold: lock.hold,
+        current: lock.piece,
+        next: lock.current !== null ? [lock.current, ...lock.next] : lock.next,
+    };
+};
+
 // 復元できない手番では undefined を返し、呼び出し側は従来の確定地点表示へ落とす。
 export const preLockPointAt = (
     player: PlayerRoundIR, index: number,
@@ -289,6 +307,7 @@ export const preLockPointAt = (
     if (!fitsOnBoard(board.field, active.cells)) {
         return undefined;
     }
+    const queue = preLockQueueOf(lock);
     return {
         index,
         frame,
@@ -299,11 +318,9 @@ export const preLockPointAt = (
             field: board.field,
             sourceHeight: board.sourceHeight,
             clippedRowCount: board.clippedRowCount,
-            // HOLD は設置と spawn では動かないので lock の値がそのまま接地直前の値になる。
-            // NEXT は lock 後に spawn したミノを先頭へ戻すと接地直前の並びになる。
-            hold: lock.hold,
-            current: lock.piece,
-            next: lock.current !== null ? [lock.current, ...lock.next] : lock.next,
+            hold: queue.hold,
+            current: queue.current,
+            next: queue.next,
             garbage: garbageAtFrame(player, frame),
         },
     };

@@ -3,6 +3,7 @@ import { getBlockPositions } from '../../piece';
 import { ccMoveToMove, findPlacedIndexByKey, toCellKey } from '../../cold_clear/move_match';
 import {
     analysisScoresOf, decisionToMoves, f14LocationCells, F14Decision, identityToMove, parseF14Identity,
+    selectableMoves,
 } from '../convert';
 
 const identity = (type: string, orientation: string, x: number, y: number, spin = 'none'): string => (
@@ -114,5 +115,26 @@ describe('Sold Slear move conversion', () => {
         expect(findPlacedIndexByKey(outcome.moves, key, 'none')).toBe(0);
         expect(findPlacedIndexByKey(outcome.moves, key, 'mini')).toBe(0);
         expect(findPlacedIndexByKey(outcome.moves, key)).toBe(0);
+    });
+});
+
+describe('Sold Slear candidates without HOLD', () => {
+    // HOLD の中身が L、current が T。L の候補は HOLD する手になる
+    const outcome = decisionToMoves(decision([
+        identity('L', 'north', 4, 0),
+        identity('T', 'north', 1, 0),
+        identity('L', 'east', 0, 1),
+        identity('T', 'south', 7, 1),
+    ]), 'T');
+    const moves = outcome.kind === 'moves' ? outcome.moves : [];
+
+    test('keeps every candidate in order while HOLD is allowed', () => {
+        expect(moves.map(move => move.hold)).toEqual([true, false, true, false]);
+        expect(selectableMoves(moves, true)).toEqual(moves);
+    });
+
+    test('drops the HOLD candidates in order when HOLD is not allowed', () => {
+        expect(selectableMoves(moves, false)).toEqual([moves[1], moves[3]]);
+        expect(selectableMoves(moves.filter(move => move.hold), false)).toEqual([]);
     });
 });

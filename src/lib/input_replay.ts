@@ -318,6 +318,10 @@ const tankNext = (
     return { frame, rows };
 };
 
+// 次の非消去 lock でせり上がる行数だけが要るとき用。inputGarbageView の nextTankRows と同じ値
+export const inputNextTankRowCount = (context: InputReplayContext): number =>
+    tankNext(context, restoreQueue(context)).rows.length;
+
 const previewReservedTanks = (context: InputReplayContext): InputGarbageRow[][] => {
     const queue = restoreQueue(context);
     let working = cloneInputReplayContext(context);

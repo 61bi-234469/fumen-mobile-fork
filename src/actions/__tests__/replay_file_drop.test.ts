@@ -73,6 +73,27 @@ describe('initReplayFileDrop', () => {
         expect(calls).toEqual([]);
     });
 
+    test('ignores images dragged from inside the page, which also carry Files', () => {
+        screen = Screens.Replay;
+        window.dispatchEvent(new Event('dragstart', { cancelable: true }));
+        const event = drop(['Files', 'text/uri-list'], [file('image.png')]);
+        expect(event.defaultPrevented).toBe(true);
+        expect(calls).toEqual([]);
+
+        window.dispatchEvent(new Event('dragend'));
+        drop(['Files'], [file('replay.json')]);
+        expect(calls).toEqual(['import:replay.json']);
+    });
+
+    test('still imports after an in-page drag was cancelled at dragstart', () => {
+        screen = Screens.Replay;
+        const start = new Event('dragstart', { cancelable: true });
+        start.preventDefault();
+        window.dispatchEvent(start);
+        drop(['Files'], [file('replay.json')]);
+        expect(calls).toEqual(['import:replay.json']);
+    });
+
     test('ignores drops while a modal is open', () => {
         modalOpen = true;
         const event = drop(['Files'], [file('match.ttrm')]);

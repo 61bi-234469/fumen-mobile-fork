@@ -21,7 +21,7 @@ import {
 } from '../actions/replay';
 import { canStartReplayAnalysis, getReplayAnalysis } from '../actions/replay_analysis';
 import { replayInputGuideMove } from '../actions/cold_clear';
-import { resolveAiEngine } from '../lib/ai_engine';
+import { availableAiEngines, resolveAiEngine } from '../lib/ai_engine';
 import { aiEngineDisplayName } from '../lib/ai_engine_label';
 import { analysisMoveCount } from '../lib/cold_clear/replay_analysis';
 import { replayAnalysisPanel } from '../components/replay/replay_analysis_panel';
@@ -150,12 +150,31 @@ const aiGhostStatusText = (guide: State['coldClear']['inputGuide']): string => {
     }
 };
 
+// 状態表示に出うる文言をすべて列挙する。ON/OFF や計算中→表示中で幅が変わると、
+// 中央寄せのツールバー全体が横に揺れるので、候補を同じグリッドセルに不可視で重ね、
+// 最長の文言の幅を常に確保する。
+const aiGhostStatusCandidates = (): string[] => {
+    const statuses = [
+        i18n.ColdClear.InputGuideStatus.Waiting(),
+        i18n.ColdClear.InputGuideStatus.Thinking(),
+        i18n.ColdClear.InputGuideStatus.Ready(),
+        i18n.ColdClear.InputGuideStatus.EngineError(),
+        i18n.ColdClear.InputGuideStatus.NoMove(),
+        i18n.Replay.Playing.AiGhostUnavailable(),
+    ];
+    const enabledTexts = availableAiEngines().map(aiEngineDisplayName)
+        .reduce<string[]>((texts, engineName) => texts.concat(
+            statuses.map(status => `${engineName} · ${status}`)), []);
+    return [i18n.ColdClear.InputGuideStatus.Off(), ...enabledTexts];
+};
+
 // INPUT の AI ガイドと同じ設定を切り替える。ON の間は自陣（左側）の盤面に最善手を重ねる
 const aiGhostToggle = (state: State, actions: Actions) => {
     const guide = state.coldClear.inputGuide;
     const enabled = guide.enabled;
     const engineName = aiEngineDisplayName(resolveAiEngine(state.coldClear.engine));
     const title = enabled ? i18n.Replay.Playing.AiGhostOff() : i18n.Replay.Playing.AiGhostOn();
+    const statusText = enabled ? `${engineName} · ${aiGhostStatusText(guide)}` : aiGhostStatusText(guide);
     return (
         <a
             href="#"
@@ -209,11 +228,27 @@ const aiGhostToggle = (state: State, actions: Actions) => {
             </span>
             {i18n.Replay.Playing.AiGhost()}
             <span
-                key="btn-replay-ai-guide-status"
-                datatest="replay-ai-guide-status"
-                style={style({ color: enabled ? '#00796b' : '#9e9e9e', fontSize: px(10) })}
+                key="btn-replay-ai-guide-status-slot"
+                style={style({ display: 'inline-grid', fontSize: px(10), textAlign: 'left' })}
             >
-                {enabled ? `${engineName} · ${aiGhostStatusText(guide)}` : aiGhostStatusText(guide)}
+                {aiGhostStatusCandidates().map((candidate, index) => (
+                    <span
+                        key={`btn-replay-ai-guide-status-sizer-${index}`}
+                        aria-hidden="true"
+                        style={style({ gridArea: '1 / 1', visibility: 'hidden', whiteSpace: 'nowrap' })}
+                    >
+                        {candidate}
+                    </span>
+                ))}
+                <span
+                    key="btn-replay-ai-guide-status"
+                    datatest="replay-ai-guide-status"
+                    style={style({
+                        color: enabled ? '#00796b' : '#9e9e9e', gridArea: '1 / 1', whiteSpace: 'nowrap',
+                    })}
+                >
+                    {statusText}
+                </span>
             </span>
         </a>
     );
@@ -792,6 +827,10 @@ export const view: View<State, Actions> = (state, actions) => {
             oncreate={() => actions.syncInputAiGuide()}
             onupdate={() => actions.syncInputAiGuide()}
             ondestroy={() => actions.cancelInputAiGuide()}
+            // 盤面・マーカー帯・評価グラフはどれも PNG 画像。掴むと画像ドラッグが始まり、
+            // 離した位置でリプレイファイルのドロップとして読まれてしまう。
+            // この画面にアプリ内のドラッグ操作は無いので、まとめて止める。
+            ondragstart={(e: DragEvent) => e.preventDefault()}
             style={style({
                 display: 'flex',
                 flexDirection: 'column',

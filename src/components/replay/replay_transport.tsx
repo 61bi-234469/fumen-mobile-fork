@@ -8,6 +8,11 @@ import { formatFrameTime, ReplayStats } from '../../lib/ttrm/timeline';
 import { PlayerRoundIR } from '../../lib/ttrm/types';
 import { MARKER_BAND_HEIGHT, renderReplayTimelineMarkers } from './replay_timeline_markers';
 
+// タイムラインの当たり判定の高さ。トラックは range の縦中央に描かれるので、
+// マーカー帯はその直下に重ねる。
+const TIMELINE_HIT_HEIGHT = 22;
+const MARKER_BAND_TOP = 13;
+
 const transportButton = (
     keyName: string, icon: string, disabled: boolean, onclick: () => void, locked: boolean = false,
 ) => (
@@ -74,34 +79,53 @@ export const replayTransport = (
                 <span key="stat-tanked" datatest="replay-stat-tanked">☢↓ {stats.tanked}</span>
             </div>
 
-            <input
-                key="replay-timeline"
-                datatest="replay-timeline"
-                type="range"
-                min="0"
-                max={String(Math.max(1, endFrame))}
-                step="1"
-                value={String(Math.round(cursor.frame))}
-                aria-label={i18n.Replay.Playing.Timeline()}
-                style={style({ display: 'block', margin: '0', width: '100%' })}
-                oninput={(e: Event) => {
-                    actions.seekReplayFrame({ frame: Number((e.target as HTMLInputElement).value) });
-                }}
-            />
-
-            {/* 被弾＝赤 / 相殺＝緑。受信は描かない（§7-4）。設置マーカーは 1.7px 間隔に
-                なって帯にしか見えないため対象外（§2） */}
-            <img
-                key="replay-garbage-markers"
-                datatest="replay-garbage-markers"
-                src={renderReplayTimelineMarkers(garbagePlayer, markerWidth, endFrame)}
-                alt=""
-                style={style({
-                    display: 'block',
-                    height: px(MARKER_BAND_HEIGHT),
-                    width: '100%',
-                })}
-            />
+            {/* 素の range は高さ 5px しかなく、すぐ下のマーカー帯（PNG 画像）を掴んで
+                画像ドラッグになりやすい。range を帯ごと覆う高さにし、帯は下に敷いて
+                ポインタを素通しさせる */}
+            <div
+                key="replay-timeline-area"
+                style={style({ height: px(TIMELINE_HIT_HEIGHT), position: 'relative' })}
+            >
+                {/* 被弾＝赤 / 相殺＝緑。受信は描かない（§7-4）。設置マーカーは 1.7px 間隔に
+                    なって帯にしか見えないため対象外（§2） */}
+                <img
+                    key="replay-garbage-markers"
+                    datatest="replay-garbage-markers"
+                    src={renderReplayTimelineMarkers(garbagePlayer, markerWidth, endFrame)}
+                    alt=""
+                    draggable={false}
+                    style={style({
+                        display: 'block',
+                        height: px(MARKER_BAND_HEIGHT),
+                        left: px(0),
+                        pointerEvents: 'none',
+                        position: 'absolute',
+                        top: px(MARKER_BAND_TOP),
+                        width: '100%',
+                    })}
+                />
+                <input
+                    key="replay-timeline"
+                    datatest="replay-timeline"
+                    type="range"
+                    min="0"
+                    max={String(Math.max(1, endFrame))}
+                    step="1"
+                    value={String(Math.round(cursor.frame))}
+                    aria-label={i18n.Replay.Playing.Timeline()}
+                    style={style({
+                        // materialize が Firefox 向けに付ける白枠は、高さを持たせると箱に見える
+                        border: 'none',
+                        display: 'block',
+                        height: px(TIMELINE_HIT_HEIGHT),
+                        margin: '0',
+                        width: '100%',
+                    })}
+                    oninput={(e: Event) => {
+                        actions.seekReplayFrame({ frame: Number((e.target as HTMLInputElement).value) });
+                    }}
+                />
+            </div>
 
             <div
                 key="replay-time-label"

@@ -3,6 +3,7 @@ import { FieldConstants, parsePieceName, Piece } from '../../lib/enums';
 import { decidePieceColor } from '../../lib/colors';
 import { paletteMinoImageSrc } from '../../lib/editor_interaction';
 import { px, style } from '../../lib/types';
+import { CSSProperties } from 'typestyle/lib/types';
 import { i18n } from '../../locales/keys';
 import { HighlightType } from '../../state_types';
 import { GRID_GAP, renderReplayBoard } from './replay_board';
@@ -404,25 +405,35 @@ export const replaySide = (
 
     // 相手の手番カウンタ。full / compact のどちらでも盤面の下に 1 つだけ置く。
     // 相手の列は自陣より高くなり得るので、折り返しや切り捨て表示の出入りで高さを変えない。
+    // 終端の「終了 (garbagesmash)」や切り捨て表示は compact の列幅より長い。折り返さずに
+    // はみ出すと画面ごと横スクロールになるので、列幅で省略して全文は title に残す。
+    const footerLineStyle: CSSProperties = {
+        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    };
+    const counterLine = `${label} ${counterText}`;
+    const clipNotice = visual.clippedRowCount > 0
+        ? i18n.Replay.Playing.ClipNotice(visual.clippedRowCount) : undefined;
     const opponentFooter = !isSelf ? [
         <div
             key="replay-opponent-counter"
             datatest="replay-opponent-counter"
-            style={style({ color: '#777', fontSize: px(11), lineHeight: px(15), whiteSpace: 'nowrap' })}
+            title={counterLine}
+            style={style({ ...footerLineStyle, color: '#777', fontSize: px(11), lineHeight: px(15) })}
         >
-            {label} {counterText}
+            {counterLine}
         </div>,
         <div
             key="replay-opponent-clip-slot"
-            style={style({ fontSize: px(10), lineHeight: px(13), minHeight: px(13), whiteSpace: 'nowrap' })}
+            title={clipNotice}
+            style={style({ ...footerLineStyle, fontSize: px(10), lineHeight: px(13), minHeight: px(13) })}
         >
-            {visual.clippedRowCount > 0 ? (
+            {clipNotice !== undefined ? (
                 <span
                     key="replay-opponent-clip"
                     datatest="replay-opponent-clip"
                     style={style({ color: '#e65100' })}
                 >
-                    {i18n.Replay.Playing.ClipNotice(visual.clippedRowCount)}
+                    {clipNotice}
                 </span>
             ) : undefined}
         </div>,

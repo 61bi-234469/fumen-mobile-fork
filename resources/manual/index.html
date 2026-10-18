@@ -138,7 +138,7 @@
       <li><strong>全ページに適用：</strong>全ページ反転、全ページコメント置換、全ページコメントリセット。コメントリセットはツリーデータを維持し、Undoできます。</li>
       <li><strong>ページ削除：</strong><strong>&lt;-Clear</strong>で現在ページより前、<strong>Clear-&gt;</strong>で現在ページより後のページを削除します。</li>
       <li><strong>編集モード：</strong><strong>スライド</strong>は盤面を上下左右へ動かすトレイ（上へ + グレー、上、左、右、下、完了）を、<strong>コメント</strong>は空にする・引き継ぐのトレイを開きます。</li>
-      <li><strong>TETR.IO リプレイ：</strong><strong>TETR.IO リプレイを開く</strong>でリプレイ画面へ移動します。</li>
+      <li><strong>TETR.IO リプレイ：</strong><strong>TETR.IO Replayを開く</strong>でリプレイ画面へ移動します。</li>
       <li><strong>FLAGS：</strong>キーページ／参照ページ、固定、せり上がり、反転フラグを切り替えます。固定がオンのページでは、次ページへ進むときにライン消去を反映します。</li>
       <li><strong>パネル：</strong>見出しをドラッグして移動できます。項目を選ぶと閉じます。ユーザー設定の<strong>UTILSメニューを開いたままにする</strong>を有効にすると、盤面を操作しながら続けて項目を選べます。</li>
     </ul>
@@ -320,18 +320,19 @@
 
     <h3 id="replay">TETR.IO リプレイを再生する</h3>
     <ol class="steps">
-      <li>UTILSの<strong>TETR.IO リプレイを開く</strong>、またはINPUTの<strong>リプレイ</strong>ボタンを選ぶ。</li>
-      <li><strong>ファイルを選択</strong>で.ttrmファイルを選ぶ（ドロップでも読み込めます）。</li>
-      <li><strong>自陣プレイヤー</strong>と<strong>ラウンド</strong>を選び、<strong>このラウンドを再生</strong>を押す。</li>
+      <li>UTILSの<strong>TETR.IO Replayを開く</strong>、またはINPUTの<strong>Replay</strong>ボタンを選ぶ。</li>
+      <li><strong>ファイルを選択</strong>で.ttrmファイルを選ぶ。.ttrmファイルは、どの画面でもアプリ上にドロップすればリプレイ画面で開きます。</li>
+      <li>読み込みが終わると、1ラウンド目の開始地点が表示されます。▶ で再生します。</li>
     </ol>
-    <figure class="shot"><img src="./images/replay-select.png" alt="スマートフォン幅のTETR.IO リプレイ画面。自陣プレイヤーにplayer-bとplayer-a、ラウンドにR1 敗北 78手、このラウンドを再生ボタンがあります。"><figcaption>リプレイの選択。勝敗は選んだ自陣プレイヤーから見た結果で表示されます。</figcaption></figure>
-    <figure class="shot"><img src="./images/replay.png" alt="PCのリプレイ再生画面。自陣と相手の盤面、HOLD・NEXT、左端のガベージゲージ、手番とタイムライン、再生ボタン、AI解析のグラフと集計、この地点を Editor で開くボタンがあります。"><figcaption>リプレイの再生。盤面の左にガベージゲージ、下にせり上がり予告行があり、AI解析のグラフで損失の大きい手を確認できます。</figcaption></figure>
+    <figure class="shot"><img src="./images/replay-select.png" alt="スマートフォン幅のTETR.IO Replay画面。上部にファイルを選択ボタン、R1 敗北 · 78手 / 42.9sのラウンドメニュー、自陣: player-aのメニュー、入替、相手を表示、クリアが並び、その下に開始地点の盤面があります。"><figcaption>読み込み直後の画面。ラウンドと自陣は上部のメニューで切り替えます。</figcaption></figure>
+    <figure class="shot"><img src="./images/replay.png" alt="PCのリプレイ再生画面。上部のファイル選択・ラウンド・自陣のメニュー、自陣と相手の盤面、HOLD・NEXT、左端のガベージゲージ、手番とタイムライン、再生ボタン、AI解析のグラフと集計、この地点をEdit画面で開くボタンがあります。"><figcaption>リプレイの再生。盤面の左にガベージゲージ、下にせり上がり予告行があり、AI解析のグラフで損失の大きい手を確認できます。</figcaption></figure>
     <ul>
       <li><strong>再生：</strong>前後ボタンで自陣の手番ごとに、固定する直前の局面で止まります。再生／一時停止、先頭・末尾、速度（x0.25〜x4）、タイムラインで任意の時点へ移動できます。PCでは<kbd>←</kbd>/<kbd>→</kbd>で手番送り、<kbd>Space</kbd>で再生／一時停止します。錠前ボタンをオンにすると先頭・末尾への移動を無効にします。</li>
+      <li><strong>ラウンドと自陣：</strong>上部のメニューでラウンドと自陣プレイヤーを切り替えます。ラウンドの勝敗は選んだ自陣から見た結果で、切り替えると開始地点で一時停止します。<strong>クリア</strong>で読み込んだリプレイを閉じます。</li>
       <li><strong>表示：</strong>両者のHOLD・NEXT、B2B・Combo、直前の消去、pps・apm・app・vs・areaを表示します。<strong>相手を隠す</strong>で相手の盤面を隠し、<strong>⇄ 入替</strong>で自陣と相手を入れ替えます。</li>
       <li><strong>ガベージ：</strong>盤面左のゲージに受けた攻撃、盤面下にせり上がる行と穴の位置を表示します。タイムラインの印は赤が被弾、緑が相殺です。負けたラウンドでは死因と<strong>その地点へ</strong>のリンクを表示します。</li>
       <li><strong>AI解析：</strong>思考時間を選んで<strong>この試合を解析する</strong>を押すと、自陣の各手をAIが評価します。グラフは棒が長いほど最善手との差が大きく、クリックするとその手へ移動します。一致率、平均損失、最大損失と<strong>大きく損した手</strong>も表示します。見出しのエンジン名でCold ClearとSold Slearを切り替えられます。</li>
-      <li><strong>Editへ取り出す：</strong><strong>この地点を Editor で開く</strong>を押すと、現在の局面を現在ページの直後に新しいページとして挿入し、INPUTで開きます。HOLD・CURRENT・NEXTはコメントのキューへ、B2B・Combo・受けている攻撃は対戦状態として引き継がれ、INPUTで続きを操作できます。</li>
+      <li><strong>Editへ取り出す：</strong><strong>この地点をEdit画面で開く</strong>を押すと、現在の局面を現在ページの直後に新しいページとして挿入し、INPUTで開きます。HOLD・CURRENT・NEXTはコメントのキューへ、B2B・Combo・受けている攻撃は対戦状態として引き継がれ、INPUTで続きを操作できます。</li>
       <li><strong>対応範囲：</strong>2人対戦の.ttrm（リーグ、プライベートルーム）に対応します。1ファイル8MBまでで、1ラウンドずつ再生します。再現できないラウンドは「再現不可」と表示され、選択できません。</li>
     </ul>
     <p class="note">AI解析の結果と引き継いだ対戦状態は保存されず、共有URLにも含まれません。</p>

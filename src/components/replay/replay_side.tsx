@@ -35,6 +35,7 @@ export type ReplaySideSize = 'full' | 'compact';
 const FULL_NEXT_COUNT = 5;
 const COMPACT_NEXT_COUNT = 3;
 const REPLAY_STAT_SIDE_GAP = 6;
+const FULL_STAT_FONT_MIN_QUEUE_WIDTH = 60;
 
 const pieceSlot = (
     piece: Piece | null, keyName: string, guideLineColor: boolean, slotWidth: number,
@@ -88,17 +89,22 @@ const queueColumn = (
 );
 
 // HOLD 列に添える行。B2B / Combo / ライン消去とレート系を同じ幅で縦に積む。
-const infoLine = (keyName: string, text: string, color: string, fontSize: number) => (
-    <div
-        key={keyName}
-        datatest={keyName}
-        style={style({
-            color, fontSize: px(fontSize), lineHeight: px(fontSize + 4), whiteSpace: 'nowrap',
-        })}
-    >
-        {text}
-    </div>
-);
+// 文字が空の行（ライン消去なし）も高さを残す。行が出入りすると盤面下の要素が上下にずれる。
+const infoLine = (keyName: string, text: string, color: string, fontSize: number) => {
+    const lineHeight = fontSize + (fontSize <= 10 ? 2 : 4);
+    return (
+        <div
+            key={keyName}
+            datatest={keyName}
+            style={style({
+                color, fontSize: px(fontSize), lineHeight: px(lineHeight), minHeight: px(lineHeight),
+                whiteSpace: 'nowrap',
+            })}
+        >
+            {text}
+        </div>
+    );
+};
 
 const clearLines = (
     keyPrefix: string, stats: ReplayStats, clearText: string | undefined, font: number,
@@ -263,7 +269,33 @@ export const replaySide = (
     // 予告行は盤面 canvas ではなく DOM の別要素として置く（§3-5 の警告）。
     const gaugeWidth = garbage !== undefined ? gaugeColumnWidth(size) + 2 : 0;
     const boardFrameWidth = boardWidth + gaugeWidth;
-    const statFont = size === 'full' ? 12 : 10;
+    // 盤面横の統計は HOLD / NEXT 列の下に置くので、列が細いモバイルでは字を詰めないと隣へはみ出す
+    const statFont = size === 'full' && FULL_STAT_FONT_MIN_QUEUE_WIDTH <= queueWidth ? 12 : 10;
+    // full では盤面の左下・右下に寄せる。compact では盤面下に縦に積む。
+    const sideStatsBlock = (
+        <div
+            key={`${statsKey}-block`}
+            datatest={statsKey}
+            style={style(size === 'full' ? {
+                alignItems: 'flex-end', bottom: px(0), display: 'flex', flexDirection: 'column',
+                position: 'absolute', right: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP),
+            } : { display: 'flex', flexDirection: 'column' })}
+        >
+            {statsLines(statsKey, stats, statFont)}
+        </div>
+    );
+    const fieldStatsBlock = (
+        <div
+            key={`${fieldStatsKey}-block`}
+            datatest={fieldStatsKey}
+            style={style(size === 'full' ? {
+                alignItems: 'flex-start', bottom: px(0), display: 'flex', flexDirection: 'column',
+                left: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP), position: 'absolute',
+            } : { display: 'flex', flexDirection: 'column' })}
+        >
+            {fieldStatsLines(fieldStatsKey, stats, statFont)}
+        </div>
+    );
     const boardBlock = (
         <div
             key={`replay-board-block-${variant}`}
@@ -284,26 +316,9 @@ export const replaySide = (
                         : undefined}
                     {board}
                 </div>
-                <div
-                    key={`${statsKey}-block`}
-                    datatest={statsKey}
-                    style={style({
-                        alignItems: 'flex-end', bottom: px(0), display: 'flex', flexDirection: 'column',
-                        position: 'absolute', right: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP),
-                    })}
-                >
-                    {statsLines(statsKey, stats, statFont)}
-                </div>
-                <div
-                    key={`${fieldStatsKey}-block`}
-                    datatest={fieldStatsKey}
-                    style={style({
-                        alignItems: 'flex-start', bottom: px(0), display: 'flex', flexDirection: 'column',
-                        left: px(boardFrameWidth + REPLAY_STAT_SIDE_GAP), position: 'absolute',
-                    })}
-                >
-                    {fieldStatsLines(fieldStatsKey, stats, statFont)}
-                </div>
+                {/* compact では盤面の左右に余白を確保していないので、盤面下へ流し込む */}
+                {size === 'full' ? sideStatsBlock : undefined}
+                {size === 'full' ? fieldStatsBlock : undefined}
             </div>
             {garbage !== undefined
                 ? (
@@ -328,23 +343,29 @@ export const replaySide = (
     ) : undefined;
 
     // 相手の手番カウンタ。full / compact のどちらでも盤面の下に 1 つだけ置く。
+    // 相手の列は自陣より高くなり得るので、折り返しや切り捨て表示の出入りで高さを変えない。
     const opponentFooter = !isSelf ? [
         <div
             key="replay-opponent-counter"
             datatest="replay-opponent-counter"
-            style={style({ color: '#777', fontSize: px(11) })}
+            style={style({ color: '#777', fontSize: px(11), lineHeight: px(15), whiteSpace: 'nowrap' })}
         >
             {label} {counterText}
         </div>,
-        visual.clippedRowCount > 0 ? (
-            <div
-                key="replay-opponent-clip"
-                datatest="replay-opponent-clip"
-                style={style({ color: '#e65100', fontSize: px(10) })}
-            >
-                {i18n.Replay.Playing.ClipNotice(visual.clippedRowCount)}
-            </div>
-        ) : undefined,
+        <div
+            key="replay-opponent-clip-slot"
+            style={style({ fontSize: px(10), lineHeight: px(13), minHeight: px(13), whiteSpace: 'nowrap' })}
+        >
+            {visual.clippedRowCount > 0 ? (
+                <span
+                    key="replay-opponent-clip"
+                    datatest="replay-opponent-clip"
+                    style={style({ color: '#e65100' })}
+                >
+                    {i18n.Replay.Playing.ClipNotice(visual.clippedRowCount)}
+                </span>
+            ) : undefined}
+        </div>,
     ] : undefined;
 
     // ライン消去と pps / apm / app は盤面の左（HOLD 列）に置く。HOLD の直下が
@@ -407,7 +428,7 @@ export const replaySide = (
                 {queueRow(nextKey, nextPieces, guideLineColor, slotWidth)}
             </div>
             {boardBlock}
-            {/* compact には HOLD 縦列が無いので、左側のレート系を盤面下に置く */}
+            {/* compact には HOLD 縦列も盤面横の余白も無いので、統計はすべて盤面下に積む */}
             <div
                 key={`${infoKey}-row`}
                 datatest={infoKey}
@@ -415,8 +436,10 @@ export const replaySide = (
                     display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
                 })}
             >
-                {clearLines(infoKey, stats, clearText, 10)}
+                {clearLines(infoKey, stats, clearText, statFont)}
             </div>
+            {sideStatsBlock}
+            {fieldStatsBlock}
             {opponentFooter}
         </div>
     );

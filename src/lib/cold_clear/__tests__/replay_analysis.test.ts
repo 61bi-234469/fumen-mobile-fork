@@ -261,22 +261,19 @@ describe('replay_analysis: AI ガイドの局面', () => {
         expect('position' in built && built.position.holdLocked).toBe(true);
     });
 
-    // preLockPointAt は HOLD を設置確定時（次のミノの spawn・IHS 後）の値から戻す。
-    // 表示の HOLD が実際と違っても、ガイドはそのフレームに記録されたキューで考える
-    test('接地直前の表示に次の手の IHS が混ざっても、記録されたキューで考える', () => {
+    // 接地直前の HOLD / NEXT は preLockPointAt が記録されたキューから出すので、ガイドは表示をそのまま使う
+    test('接地直前は表示中の HOLD / NEXT で考える', () => {
         const preLock = loser.locks
             .map((_, offset) => preLockPointAt(loser, offset + 1))
             .find(point => point !== undefined && point.confirmedIndex > 0)!;
         const recorded = queueAtFrame(loser, preLock.frame);
-        const contaminated = [Piece.I, Piece.T, Piece.O].find(piece => piece !== recorded.hold)!;
-        const built = buildReplayGuidePosition(
-            loser, { ...preLock.visual, hold: contaminated }, preLock.confirmedIndex);
+        expect(preLock.visual.hold).toEqual(recorded.hold);
+        const built = buildReplayGuidePosition(loser, preLock.visual, preLock.confirmedIndex);
         expect('position' in built && built.position.hold).toEqual(recorded.hold);
         expect('position' in built && built.position.next).toEqual(recorded.next);
     });
 
-    // 設置と同じフレームで HOLD してから置いた手：キューは HOLD 前、表示の操作中ミノは HOLD 後
-    test('記録されたキューと表示中の操作中ミノが食い違う接地直前ではガイドを出さない', () => {
+    test('表示中のキューと操作中ミノが食い違う接地直前ではガイドを出さない', () => {
         const preLock = loser.locks
             .map((_, offset) => preLockPointAt(loser, offset + 1))
             .find(point => point !== undefined && point.visual.active !== undefined)!;

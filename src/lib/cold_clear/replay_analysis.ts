@@ -259,15 +259,11 @@ export const buildReplayGuidePosition = (
     if (visual.clippedRowCount > 0) {
         return { skipReason: 'clipped' };
     }
-    // 手番送りの接地直前（preLockPointAt）は HOLD / NEXT を設置確定時の値から戻すため、次のミノの spawn 時の
-    // IHS が混ざることがある。visual timeline があれば、そのフレームに実際に記録されたキューを使う。
-    const queue = player.visual !== undefined ? queueAtFrame(player, visual.frame) : visual;
-    const current = queue.current ?? visual.active?.piece ?? null;
+    const current = visual.current ?? visual.active?.piece ?? null;
     if (current === null || !isMinoPiece(current)) {
         return { skipReason: 'noCurrent' };
     }
-    // 設置と同じフレームで HOLD してから置いた手に止めると、記録されたキューは HOLD 前、
-    // 盤面に出している操作中ミノは HOLD 後になる。どちらの局面か決められないのでガイドを出さない
+    // キューと操作中ミノは別の記録から引くので、食い違えばどちらの局面か決められない
     if (visual.active !== undefined && visual.active.piece !== current) {
         return { skipReason: 'pieceMismatch' };
     }
@@ -276,14 +272,14 @@ export const buildReplayGuidePosition = (
     }
 
     const previousLock = player.locks[confirmedIndex - 1];
-    const hold = minoOrNull(queue.hold);
+    const hold = minoOrNull(visual.hold);
     return {
         position: {
             hold,
             current,
             holdLocked: isReplayHoldLocked(player, confirmedIndex, hold, current),
             field: irFieldToField(visual.field),
-            next: queue.next.filter(isMinoPiece),
+            next: visual.next.filter(isMinoPiece),
             b2b: previousLock !== undefined && previousLock.clear.b2b >= 0,
             b2bLevel: previousLock !== undefined ? Math.max(0, previousLock.clear.b2b + 1) : 0,
             combo: previousLock !== undefined ? Math.max(0, previousLock.clear.ren + 1) : 0,

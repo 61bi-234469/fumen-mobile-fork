@@ -406,6 +406,80 @@ describe('timeline point space', () => {
             expect(point.visual.next).toEqual([Piece.I, Piece.O, Piece.Z]);
         });
 
+        // LockPoint のキューは次のミノの spawn 後。そこで IHS が起きると HOLD / NEXT が入れ替わっている。
+        // 設置フレームのバッグ補充（O, I）は 1 フレーム前の記録に無いので、LockPoint から継ぎ足す
+        test('the recorded queue wins over a lock queue taken after the next spawn used IHS', () => {
+            const player = playerWith([withCells(100, {
+                piece: Piece.T, hold: Piece.S, current: Piece.L, next: [Piece.Z, Piece.O, Piece.I],
+            })], 300);
+            player.visual = {
+                active: [],
+                boards: [],
+                queues: [
+                    { frame: 0, hold: null, current: Piece.T, next: [Piece.S, Piece.L, Piece.Z] },
+                    { frame: 100, hold: Piece.S, current: Piece.L, next: [Piece.Z, Piece.O, Piece.I] },
+                ],
+                garbage: [],
+            };
+
+            const point = preLockPointAt(player, 1)!;
+            expect(point.visual.hold).toBeNull();
+            expect(point.visual.current).toEqual(Piece.T);
+            expect(point.visual.next).toEqual([Piece.S, Piece.L, Piece.Z, Piece.O, Piece.I]);
+            expect(point.visual.active!.piece).toEqual(Piece.T);
+        });
+
+        test('the bag refill of the lock frame is appended without IHS as well', () => {
+            const player = playerWith([withCells(100, {
+                piece: Piece.T, hold: Piece.J, current: Piece.S, next: [Piece.L, Piece.O, Piece.I],
+            })], 300);
+            player.visual = {
+                active: [],
+                boards: [],
+                queues: [{ frame: 0, hold: Piece.J, current: Piece.T, next: [Piece.S, Piece.L] }],
+                garbage: [],
+            };
+            expect(preLockPointAt(player, 1)!.visual.next).toEqual([Piece.S, Piece.L, Piece.O, Piece.I]);
+        });
+
+        // HOLD と設置が同じフレームだと、1 フレーム前の記録は HOLD 前。接地姿勢に合わせて HOLD 後へ進める
+        test('a HOLD in the lock frame is applied to the recorded queue', () => {
+            const queuesBefore = (hold: Piece | null, next: Piece[]) => [
+                { hold, next, frame: 0, current: Piece.I },
+                { frame: 100, hold: Piece.I, current: Piece.O, next: [Piece.Z] },
+            ];
+            const swapped = playerWith([withCells(100, { piece: Piece.T })], 300);
+            swapped.visual = {
+                active: [], boards: [], garbage: [], queues: queuesBefore(Piece.T, [Piece.O, Piece.Z]),
+            };
+            expect(preLockPointAt(swapped, 1)!.visual).toMatchObject({
+                hold: Piece.I, current: Piece.T, next: [Piece.O, Piece.Z],
+            });
+
+            const firstHold = playerWith([withCells(100, { piece: Piece.T })], 300);
+            firstHold.visual = {
+                active: [], boards: [], garbage: [], queues: queuesBefore(null, [Piece.T, Piece.O, Piece.Z]),
+            };
+            expect(preLockPointAt(firstHold, 1)!.visual).toMatchObject({
+                hold: Piece.I, current: Piece.T, next: [Piece.O, Piece.Z],
+            });
+        });
+
+        test('a recorded queue that cannot reach the placed piece falls back to the lock queue', () => {
+            const player = playerWith([withCells(100, {
+                piece: Piece.T, hold: Piece.L, current: Piece.I, next: [Piece.O],
+            })], 300);
+            player.visual = {
+                active: [],
+                boards: [],
+                queues: [{ frame: 0, hold: Piece.S, current: Piece.J, next: [Piece.Z] }],
+                garbage: [],
+            };
+            expect(preLockPointAt(player, 1)!.visual).toMatchObject({
+                hold: Piece.L, current: Piece.T, next: [Piece.I, Piece.O],
+            });
+        });
+
         test('the start and terminal points have no pre-lock state', () => {
             const player = playerWith([withCells(100)], 300);
             expect(preLockPointAt(player, 0)).toBeUndefined();

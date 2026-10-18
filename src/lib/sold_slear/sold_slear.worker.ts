@@ -1,7 +1,7 @@
 import { findPlacedIndexByKey } from '../cold_clear/move_match';
 import { CCAnalyzePositionMessage, CCInitMessage, WorkerMessage, WorkerResponse } from '../cold_clear/types';
 import { soldSlearBudgetOf, SOLD_SLEAR_BUDGET_DEFAULT } from './budget';
-import { analysisScoresOf, decisionToMoves, DecisionOutcome } from './convert';
+import { analysisScoresOf, decisionToMoves, DecisionOutcome, selectableMoves } from './convert';
 import { createSoldSlearEngine, SoldSlearEngine } from './engine';
 import { createSoldSlearProfile } from './profile';
 import { buildF14DecideRequest, isPieceLetter, PieceLetter, SoldSlearPosition } from './request';
@@ -13,6 +13,8 @@ import { buildF14DecideRequest, isPieceLetter, PieceLetter, SoldSlearPosition } 
 let engine: SoldSlearEngine | null = null;
 let position: SoldSlearPosition | null = null;
 let budgetId = SOLD_SLEAR_BUDGET_DEFAULT;
+// init の holdAllowed。false なら requestMove / requestTopMoves で HOLD する候補を返さない
+let holdAllowed = true;
 let nextRequestId = 1;
 
 const postResponse = (msg: WorkerResponse) => {
@@ -78,6 +80,7 @@ const decidePosition = async (target: SoldSlearPosition): Promise<DecisionOutcom
             await ensureEngine();
             position = toPosition(msg);
             budgetId = msg.soldSlearBudget ?? SOLD_SLEAR_BUDGET_DEFAULT;
+            holdAllowed = msg.holdAllowed;
             if (position === null) {
                 postResponse({ type: 'error', message: 'Sold Slear: invalid position' });
                 return;
@@ -90,15 +93,16 @@ const decidePosition = async (target: SoldSlearPosition): Promise<DecisionOutcom
             }
             // incoming（せり上がり予告）は Sold Slear の profile が受け付けないため使わない
             const outcome = await decidePosition(position);
+            const moves = outcome.kind === 'moves' ? selectableMoves(outcome.moves, holdAllowed) : [];
             if (outcome.kind === 'error') {
                 postResponse({ type: 'error', message: outcome.message });
-            } else if (outcome.kind === 'noMove') {
+            } else if (moves.length === 0) {
                 postResponse({ type: 'noMove' });
             } else if (msg.type === 'requestMove') {
-                postResponse({ type: 'moveResult', ...outcome.moves[0] });
+                postResponse({ type: 'moveResult', ...moves[0] });
             } else {
                 const count = Math.max(0, Math.floor(msg.count));
-                postResponse({ type: 'topMovesResult', moves: outcome.moves.slice(0, count) });
+                postResponse({ type: 'topMovesResult', moves: moves.slice(0, count) });
             }
         } else if (msg.type === 'requestSequence') {
             postResponse({ type: 'error', message: 'Sold Slear does not support requestSequence' });

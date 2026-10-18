@@ -512,6 +512,30 @@ describe('coldClearActions run isolation', () => {
         return state;
     };
 
+    // frame 10 で T を HOLD し、frame 20 で S を操作している
+    const makeReplayGuideStateAfterHold = () => {
+        const emptyField = Array.from({ length: 230 }).map(() => Piece.Empty);
+        const state = makeReplayGuideState({
+            visual: {
+                active: [],
+                boards: [{ frame: 0, field: emptyField, sourceHeight: 0, clippedRowCount: 0 }],
+                queues: [
+                    {
+                        frame: 0, hold: null, current: Piece.T,
+                        next: [Piece.S, Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
+                    },
+                    {
+                        frame: 10, hold: Piece.T, current: Piece.S,
+                        next: [Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
+                    },
+                ],
+                garbage: [],
+            },
+        });
+        state.replay.cursor.frame = 20;
+        return state;
+    };
+
     test('Replay AI guide searches the self board shown on the left', () => {
         const state = makeReplayGuideState();
         const started = coldClearActions.syncInputAiGuide()(state) as any;
@@ -614,34 +638,36 @@ describe('coldClearActions run isolation', () => {
         });
     });
 
-    test('Replay AI guide does not suggest a second HOLD within the same piece', () => {
-        const emptyField = Array.from({ length: 230 }).map(() => Piece.Empty);
-        // frame 10 で T を HOLD し、S を操作している
-        const state = makeReplayGuideState({
-            visual: {
-                active: [],
-                boards: [{ frame: 0, field: emptyField, sourceHeight: 0, clippedRowCount: 0 }],
-                queues: [
-                    {
-                        frame: 0, hold: null, current: Piece.T,
-                        next: [Piece.S, Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
-                    },
-                    {
-                        frame: 10, hold: Piece.T, current: Piece.S,
-                        next: [Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
-                    },
-                ],
-                garbage: [],
-            },
-        });
-        state.replay.cursor.frame = 20;
+    // リプレイ解析と同じく HOLD を使える前提で探す。HOLD 済みの手で HOLD を選ぶのは「HOLD 前のミノを置く」手
+    test('Replay AI guide still allows HOLD after the piece has used it', () => {
+        const state = makeReplayGuideStateAfterHold();
         const started = coldClearActions.syncInputAiGuide()(state) as any;
         const initMsg = (ColdClearWrapper as any as jest.Mock).mock.results[0].value.start.mock.calls[0][0];
         expect(initMsg.queue[0]).toBe(PIECE_TO_CC[Piece.S]);
         expect(initMsg.hold).toBe(PIECE_TO_CC[Piece.T]);
+        expect(initMsg.holdAllowed).toBe(true);
+
+        const answered = coldClearActions.onInputAiGuideMoveResult({
+            runId: started.coldClear.inputGuide.runId,
+            result: { type: 'moveResult', hold: true, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(({ ...state, coldClear: started.coldClear })) as any;
+        expect(answered.coldClear.inputGuide.status).toBe('ready');
+        expect(answered.coldClear.inputGuide.usedHold).toBe(true);
+        expect(replayInputGuideMove({ ...state, coldClear: answered.coldClear })).toEqual({
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        });
+    });
+
+    test('Replay AI guide does not suggest HOLD when the rules have no HOLD', () => {
+        const state = makeReplayGuideStateAfterHold();
+        (state.replay.ir as any).rounds[0].players[0].resolvedOptions.display_hold = false;
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        const initMsg = (ColdClearWrapper as any as jest.Mock).mock.results[0].value.start.mock.calls[0][0];
         expect(initMsg.holdAllowed).toBe(false);
 
-        // HOLD を使う答え（Sold Slear は HOLD 不可を受け取れない）は表示しない
+        // Sold Slear Worker も HOLD する手を除くが、届いてしまった HOLD の答えは表示しない
         const rejected = coldClearActions.onInputAiGuideMoveResult({
             runId: started.coldClear.inputGuide.runId,
             result: { type: 'moveResult', hold: true, piece: 2, rotation: 0, x: 4, y: 0 },

@@ -195,11 +195,12 @@ describe('replay_analysis: AI ガイドの局面', () => {
             expect(position.b2b).toEqual(request.b2b);
             expect(position.combo).toEqual(request.combo);
             expect(position.incoming).toEqual(request.incoming);
-            expect(position.holdLocked).toBe(false);
+            expect(position.holdForbidden).toBe(false);
         }
     });
 
-    test('その手で HOLD を使った後は HOLD 使用済みとして渡す', () => {
+    // リプレイ解析と同じく HOLD を使える前提で探す。HOLD 済みの表示から HOLD を選ぶ手は「HOLD 前のミノを置く」手になる
+    test('その手で HOLD を使った後も HOLD を禁止しない', () => {
         const held = loser.locks
             .map((_, offset) => preLockPointAt(loser, offset + 1))
             .filter((preLock): preLock is NonNullable<typeof preLock> => preLock !== undefined)
@@ -207,58 +208,21 @@ describe('replay_analysis: AI ガイドの局面', () => {
         expect(held.length).toBeGreaterThan(0);
         for (const preLock of held) {
             const built = buildReplayGuidePosition(loser, preLock.visual, preLock.confirmedIndex);
-            expect('position' in built && built.position.holdLocked).toBe(true);
+            expect('position' in built && built.position.holdForbidden).toBe(false);
         }
 
-        const sample = held[0];
-        const infinite = clone(loser);
-        infinite.resolvedOptions.infinite_hold = true;
-        const unlimited = buildReplayGuidePosition(infinite, sample.visual, sample.confirmedIndex);
-        expect('position' in unlimited && unlimited.position.holdLocked).toBe(false);
-
-        // HOLD 禁止のルールと、手の途中の HOLD を追えない visual timeline の無い IR では HOLD を勧めない
-        const noHold = clone(loser);
-        noHold.resolvedOptions.display_hold = false;
-        const start = visualAtFrame(loser, 0);
-        const banned = buildReplayGuidePosition(noHold, start, 0);
-        expect('position' in banned && banned.position.holdLocked).toBe(true);
+        // 手の途中の HOLD を追えない visual timeline の無い IR でも同じ
         const legacy = clone(loser);
         delete legacy.visual;
-        const unknown = buildReplayGuidePosition(legacy, start, 0);
-        expect('position' in unknown && unknown.position.holdLocked).toBe(true);
-        // 無制限 HOLD でも、HOLD の中身が設置確定時の値かもしれない IR では勧めない
-        legacy.resolvedOptions.infinite_hold = true;
-        const legacyInfinite = buildReplayGuidePosition(legacy, start, 0);
-        expect('position' in legacyInfinite && legacyInfinite.position.holdLocked).toBe(true);
+        const unknown = buildReplayGuidePosition(legacy, visualAtFrame(loser, 0), 0);
+        expect('position' in unknown && unknown.position.holdForbidden).toBe(false);
     });
 
-    // 同じフレームで「HOLD → 設置 → spawn 時の IHS」と進み、HOLD が元の種類へ戻った場合。
-    // キューは同じフレームを最終状態へまとめるので、HOLD の中身は手の始まりと変わらない
-    test('HOLD が元の種類へ戻っても、NEXT から出たはずのミノでなければ HOLD 使用済みとして渡す', () => {
-        const player = clone(loser);
-        const lock = player.locks[0];
-        const before = player.visual!.queues.filter(queue => queue.frame < lock.frame).slice(-1)[0];
-        const natural = before.next[0];
-        const swapped = [Piece.I, Piece.T, Piece.O].find(piece => piece !== natural)!;
-        player.visual!.queues = player.visual!.queues.map(queue => (
-            queue.frame >= lock.frame && queue.frame < player.locks[1].frame
-                ? { ...queue, hold: before.hold, current: swapped }
-                : queue
-        ));
-        // 操作中ミノも IHS で入れ替わった側にそろえる
-        const shown = visualAtFrame(player, lock.frame);
-        const visual = { ...shown, active: shown.active && { ...shown.active, piece: swapped } };
-        expect(visual.hold).toEqual(before.hold);
-        const built = buildReplayGuidePosition(player, visual, 1);
-        expect('position' in built && built.position.holdLocked).toBe(true);
-    });
-
-    test('比べる元が取れない設置の境界では HOLD を勧めない', () => {
-        const sameFrame = clone(loser);
-        sameFrame.locks[1].frame = sameFrame.locks[0].frame;
-        const visual = visualAtFrame(sameFrame, sameFrame.locks[1].frame);
-        const built = buildReplayGuidePosition(sameFrame, visual, 2);
-        expect('position' in built && built.position.holdLocked).toBe(true);
+    test('ルールで HOLD が無い試合だけ HOLD を禁止する', () => {
+        const noHold = clone(loser);
+        noHold.resolvedOptions.display_hold = false;
+        const banned = buildReplayGuidePosition(noHold, visualAtFrame(loser, 0), 0);
+        expect('position' in banned && banned.position.holdForbidden).toBe(true);
     });
 
     // 接地直前の HOLD / NEXT は preLockPointAt が記録されたキューから出すので、ガイドは表示をそのまま使う
@@ -283,22 +247,6 @@ describe('replay_analysis: AI ガイドの局面', () => {
         const visual = { ...preLock.visual, active: { ...preLock.visual.active!, piece: other } };
         expect(buildReplayGuidePosition(loser, visual, preLock.confirmedIndex))
             .toEqual({ skipReason: 'pieceMismatch' });
-    });
-
-    // 設置確定時のキューは次のミノの spawn（IHS を含む）後の値。手の始まりは設置の直前で見る
-    test('spawn 時の IHS で HOLD を使った手も HOLD 使用済みとして渡す', () => {
-        const player = clone(loser);
-        const lock = player.locks[0];
-        const before = player.visual!.queues.filter(queue => queue.frame < lock.frame).slice(-1)[0];
-        const ihsHold = before.hold === Piece.T ? Piece.I : Piece.T;
-        // lock と同じフレームの spawn で IHS が起き、HOLD が入れ替わったことにする
-        player.visual!.queues = player.visual!.queues.map(queue => (
-            queue.frame >= lock.frame && queue.frame < player.locks[1].frame ? { ...queue, hold: ihsHold } : queue
-        ));
-        lock.hold = ihsHold;
-        const visual = visualAtFrame(player, lock.frame);
-        const built = buildReplayGuidePosition(player, visual, 1);
-        expect('position' in built && built.position.holdLocked).toBe(true);
     });
 
     test('操作中ミノのある再生中フレームでは、そのミノを CURRENT にする', () => {

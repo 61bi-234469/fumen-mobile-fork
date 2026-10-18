@@ -1,7 +1,7 @@
 import { FieldConstants, Piece, isMinoPiece } from '../enums';
 import { createInputReplayContext, inputNextTankRowCount } from '../input_replay';
 import { irFieldToField } from '../ttrm/board_converter';
-import { boardAtFrame, lastPointIndex, pointAt, queueAtFrame } from '../ttrm/timeline';
+import { boardAtFrame, lastPointIndex, pointAt } from '../ttrm/timeline';
 import { IRField, PlayerRoundIR, ReplayVisualState } from '../ttrm/types';
 import { Field } from '../fumen/field';
 import { fieldToCC, fieldToCells } from './fieldConverter';
@@ -198,8 +198,8 @@ export interface ReplayGuidePosition {
     b2bLevel: number;
     combo: number;
     incoming: number;
-    // この手ではもう HOLD できない（使用済み・ルールで禁止・使用済みか判別できない）
-    holdLocked: boolean;
+    // ルールで HOLD が無い（この手で HOLD 済みかどうかは問わない）
+    holdForbidden: boolean;
 }
 
 // 再生の 1 tick ごとに呼ばれるので、同じ時点の重いガベージ復元は使い回す。
@@ -217,36 +217,12 @@ const memoizedIncoming = (player: PlayerRoundIR, confirmedIndex: number, frame: 
 
 const minoOrNull = (piece: Piece | null): Piece | null => piece !== null && isMinoPiece(piece) ? piece : null;
 
-// 表示中の手で HOLD がもう使えないか。キューは同じフレーム内の操作を最終状態にまとめて記録するので、
-// HOLD の中身だけでは「HOLD → 設置 → spawn 時の IHS」で元の種類へ戻った場合を見分けられない。
-// そこで、手の始まりに NEXT から出てくるはずのミノと、いま操作しているミノを比べる（HOLD すれば入れ替わる）。
-// 比べる元が取れない境界（visual timeline の無い IR、frame 0 の設置、同じフレームに続く設置）は
-// HOLD を勧めない側に倒す。
-const isReplayHoldLocked = (
-    player: PlayerRoundIR, confirmedIndex: number, hold: Piece | null, current: Piece,
-): boolean => {
-    if (player.resolvedOptions.display_hold === false) {
-        return true;
-    }
-    // visual timeline が無いと HOLD の中身自体が設置確定時の値（次手の IHS 後）になり得るので、無制限 HOLD でも勧めない
-    if (player.visual === undefined) {
-        return true;
-    }
-    if (player.resolvedOptions.infinite_hold === true) {
-        return false;
-    }
-    const previousLock = player.locks[confirmedIndex - 1];
-    if (previousLock === undefined) {
-        return hold !== minoOrNull(player.initial.hold) || current !== player.initial.current;
-    }
-    const lockBefore = player.locks[confirmedIndex - 2];
-    if (previousLock.frame <= 0 || (lockBefore !== undefined && lockBefore.frame >= previousLock.frame)) {
-        return true;
-    }
-    // 直前の設置の 1 フレーム前：まだその手を操作していて、次の手のミノは NEXT の先頭にある
-    const beforeLock = queueAtFrame(player, previousLock.frame - 1);
-    return hold !== minoOrNull(beforeLock.hold) || current !== beforeLock.next[0];
-};
+// ルールで HOLD が無い試合だけ HOLD を禁止する。手番の途中で HOLD を使った後も禁止しない。
+// HOLD した後の表示から HOLD を選ぶ手は「HOLD 前のミノを置く」手で、置けるミノの組み合わせは
+// 手番開始時と同じになる（リプレイ解析も手番開始時の局面を HOLD 可で評価する）。
+const isReplayHoldForbidden = (player: PlayerRoundIR): boolean => (
+    player.resolvedOptions.display_hold === false
+);
 
 // 表示中の局面（盤面・操作中ミノ・HOLD/NEXT）をそのまま AI ガイドの入力にする。
 // confirmedIndex は表示中の盤面に入っている設置数。統計とガベージはそこから INPUT 取り込みと同じ式で出す。
@@ -277,7 +253,7 @@ export const buildReplayGuidePosition = (
         position: {
             hold,
             current,
-            holdLocked: isReplayHoldLocked(player, confirmedIndex, hold, current),
+            holdForbidden: isReplayHoldForbidden(player),
             field: irFieldToField(visual.field),
             next: visual.next.filter(isMinoPiece),
             b2b: previousLock !== undefined && previousLock.clear.b2b >= 0,

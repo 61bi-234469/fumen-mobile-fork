@@ -940,8 +940,8 @@ interface InputGuideInput {
     incoming: number;
     initQueue: Piece[];
     positionKey: string;
-    // HOLD を使えない局面。Sold Slear は HOLD 不可を受け取れないので、HOLD を使う答えはここで捨てる
-    holdLocked?: boolean;
+    // ルールで HOLD が無いリプレイの局面。Sold Slear Worker も HOLD する手を除くが、念のためここでも捨てる
+    holdForbidden?: boolean;
 }
 
 type InputGuideInputResult = { input: InputGuideInput } | { reason: InputGuideUnavailableReason };
@@ -974,8 +974,8 @@ const resolveReplayInputGuideInputResult = (state: Readonly<State>): InputGuideI
     const baseSettings = effectiveAiSettings(state);
     const settings: EffectiveAiSettings = {
         ...baseSettings,
-        // この手で HOLD を使った後は、HOLD する手を勧めない
-        holdAllowed: baseSettings.holdAllowed && !position.holdLocked,
+        // リプレイ解析と同じく、この手で HOLD 済みでも HOLD を使える前提で探す（ルールで HOLD が無いときだけ禁止）
+        holdAllowed: baseSettings.holdAllowed && !position.holdForbidden,
         thinkMs: normalizeAnalysisThinkMs(state.replay.analysis.thinkMs),
         soldSlearBudget: normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget),
     };
@@ -1017,7 +1017,7 @@ const resolveReplayInputGuideInputResult = (state: Readonly<State>): InputGuideI
             b2bLevel: position.b2bLevel,
             combo: position.combo,
             incoming: position.incoming,
-            holdLocked: position.holdLocked,
+            holdForbidden: position.holdForbidden,
         },
     };
 };
@@ -1969,7 +1969,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const move = toMove(result);
         if (!input || input.positionKey !== session.positionKey || guide.positionKey !== session.positionKey
             || move === null
-            || (input.holdLocked === true && result.hold)
+            || (input.holdForbidden === true && result.hold)
             || !input.field.canPut(move.type, move.rotation, move.coordinate.x, move.coordinate.y)
             || !input.field.isOnGround(move.type, move.rotation, move.coordinate.x, move.coordinate.y)) {
             terminateInputGuideSession();

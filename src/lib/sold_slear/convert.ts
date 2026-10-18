@@ -222,3 +222,9 @@ export const decisionToMoves = (decision: F14Decision, current: PieceLetter): De
     }
     return { moves, kind: 'moves', returnedCount: ordered.length };
 };
+
+// Sold Slear は HOLD 禁止を探索に渡せないので、HOLD を使えない局面では HOLD する候補を除いて選ぶ。
+// HOLD 可として探索した順位の中で HOLD しない最上位を採るので、HOLD 禁止で探し直した最善とは一致しないことがある。
+export const selectableMoves = <T extends CCMove>(moves: T[], holdAllowed: boolean): T[] => (
+    holdAllowed ? moves : moves.filter(move => !move.hold)
+);

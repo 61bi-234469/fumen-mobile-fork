@@ -30,16 +30,38 @@ const LOCK1_CELLS = '[[0,1],[1,1],[0,0],[1,0]]';
 
 const importLeagueLoss = () => {
     operations.replay.importFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
-    cy.get(datatest('replay-select-phase')).should('exist');
+    operations.replay.waitForPlayback();
 };
 
 describe('TETR.IO Replay', () => {
+    it('shows empty boards before a file is loaded', () => {
+        visit({ mode: 'edit' });
+
+        operations.replay.open();
+        cy.get(datatest('replay-import-phase')).should('exist');
+        operations.replay.board('self').should('be.visible');
+        cy.get(datatest('replay-toolbar')).find(datatest('replay-file-input')).should('exist');
+        cy.get(datatest('replay-playing-phase')).should('not.exist');
+    });
+
+    it('opens the first round right after a .ttrm is dropped on the editor', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        operations.replay.dropFile({ contents: FIXTURE, fileName: 'league_loss.ttrm' });
+        cy.get(datatest('replay-screen')).should('exist');
+        operations.replay.waitForPlayback();
+        cy.get(datatest('replay-round-select')).should('have.value', '0');
+        cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
+        operations.replay.board('self').should('exist');
+    });
+
     it('imports a .ttrm and shows the round summary from the selected side', () => {
         // 自陣の記憶（FR-13）が残っていると既定選択が変わるため、明示的に消す
         cy.clearLocalStorage();
         visit({ mode: 'edit' });
 
-        // 1. Utils メニューから起動してファイルを投入
+        // 1. Utils メニューから起動してファイルを投入。選択画面を挟まず再生画面になる
         operations.replay.open();
         importLeagueLoss();
 
@@ -63,10 +85,8 @@ describe('TETR.IO Replay', () => {
         operations.replay.open();
         importLeagueLoss();
         operations.replay.selectSelfPlayer('player-a-id');
-        operations.replay.selectRound(0);
 
-        // 3. 再生フェーズへ。初手の操作・自由落下を見せるためframe 0から始まる
-        operations.replay.start();
+        // 3. 初手の操作・自由落下を見せるためframe 0から始まる
         cy.get(datatest('replay-lock-counter')).should('contain', 'Start');
         operations.replay.board('self').should('exist');
 
@@ -136,7 +156,6 @@ describe('TETR.IO Replay', () => {
         operations.replay.open();
         importLeagueLoss();
         operations.replay.selectSelfPlayer('player-a-id');
-        operations.replay.start();
         operations.replay.openInEditor();
 
         // 確認を挟まず遷移し、INPUT レイアウト（HOLD/NEXT キュー）で開く
@@ -164,7 +183,6 @@ describe('TETR.IO Replay', () => {
         });
 
         cy.get(datatest('replay-error')).should('be.visible');
-        cy.get(datatest('replay-select-phase')).should('not.exist');
         cy.get(datatest('replay-playing-phase')).should('not.exist');
     });
 
@@ -178,8 +196,6 @@ describe('TETR.IO Replay', () => {
         operations.replay.open();
         importLeagueLoss();
         operations.replay.selectSelfPlayer(selfId);
-        operations.replay.selectRound(0);
-        operations.replay.start();
     };
 
     // カウンタ文字列からポイント index を読む。'Piece 12 / 78' → 12、
@@ -384,8 +400,6 @@ describe('TETR.IO Replay', () => {
         operations.replay.open();
         importLeagueLoss();
         operations.replay.selectSelfPlayer('player-a-id');
-        operations.replay.selectRound(0);
-        operations.replay.start();
     };
 
     const boardWidth = (side) => operations.replay.board(side).then(($el) => $el.width());

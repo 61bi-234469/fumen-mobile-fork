@@ -287,13 +287,12 @@ export const resources = {
         Import: {
             Prompt: 'TETR.IO の対戦リプレイ（.ttrm）を選択してください',
             Button: 'ファイルを選択',
-            DropHint: 'ここにファイルをドロップでも読み込めます',
+            Clear: 'クリア',
         },
         Parsing: 'リプレイを解析中...',
         Select: {
             SelfPlayer: '自陣プレイヤー',
             Rounds: 'ラウンド',
-            Start: 'このラウンドを再生',
             Win: '勝利',
             Lose: '敗北',
             Unplayable: '再現不可',
@@ -307,7 +306,6 @@ export const resources = {
             Next: 'NEXT',
             ClipNotice: '上部 {{count}} 行を切り捨て',
             OpenInEditor: 'この地点をEdit画面で開く',
-            BackToSelect: 'ラウンド / 自陣を選び直す',
             Start: '開始',
             Self: '自陣',
             Opponent: '相手',

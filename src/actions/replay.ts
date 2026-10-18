@@ -1,4 +1,4 @@
-import { NextState } from './commons';
+import { NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
 import { AnimationState, Screens } from '../lib/enums';
 import {
@@ -35,7 +35,6 @@ import {
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_settings';
 import {
     clearedReplayAnalysisState,
-    haltedReplayAnalysisState,
     stopReplayAnalysisSession,
 } from './replay_analysis';
 
@@ -78,19 +77,23 @@ export const getOpponentPlayerRound = (state: State): PlayerRoundIR | undefined 
 };
 
 const decideInitialSelfPlayer = (ir: ReplayIR): string | null => {
-    if (ir.meta.users.length === 0) {
+    // users を省略したリプレイでは、最初のラウンドのプレイヤーを候補にする
+    const candidates: { id: string, username: string }[] = ir.meta.users.length > 0
+        ? ir.meta.users
+        : ir.rounds[0]?.players ?? [];
+    if (candidates.length === 0) {
         return null;
     }
     const persisted = loadPersistedReplaySelfPlayer();
     if (persisted !== null) {
-        const matched = ir.meta.users.find(user => user.username === persisted);
+        const matched = candidates.find(user => user.username === persisted);
         if (matched !== undefined) {
             return matched.id;
         }
     }
     // 記憶がない（または今回のリプレイに居ない）ときは左側のプレイヤーを既定にする。
     // 未選択のままだとラウンド一覧の勝敗が出ず、再生も開始できないため。
-    return ir.meta.users[0].id;
+    return candidates[0].id;
 };
 
 export const getReplayEndFrame = (state: State): number => {
@@ -189,6 +192,35 @@ const stopReplayClock = (state: State): NextState => {
     };
 };
 
+// 指定ラウンドの開始地点（frame 0）で再生画面に入った状態を作る。取り込み直後と
+// ラウンド切り替えの両方がここを通る。再生できない組み合わせなら undefined。
+const enterReplayRound = (
+    state: State, replay: ReplayState, roundIndex: number,
+): ReplayState | undefined => {
+    const round = replay.ir?.rounds[roundIndex];
+    if (round === undefined || round.status !== 'ok' || round.players.length === 0) {
+        return undefined;
+    }
+    // 自陣はプレイヤー id で引き継ぐ。このラウンドに居なければ左側へ寄せる
+    const selfPlayerId = round.players.some(player => player.id === replay.selection.selfPlayerId)
+        ? replay.selection.selfPlayerId
+        : round.players[0].id;
+    const next: ReplayState = {
+        ...replay,
+        phase: 'playing',
+        selection: { roundIndex, selfPlayerId },
+        cursor: { ...initialReplayState.cursor, stepBasis: replay.cursor.stepBasis },
+    };
+    const entered = { ...state, replay: next };
+    const player = getSelfPlayerRound(entered)!;
+    // 確定盤面の手番送りは従来のpoint空間を保つ一方、自動再生は初手の操作と
+    // 自由落下を含めるためframe 0（initial point）から始める。
+    return {
+        ...next,
+        cursor: cursorAtFrame(entered, frameAt(player, 0), { self: 0 }),
+    };
+};
+
 export interface ReplayActions {
     openReplayScreen: () => action;
     importTtrmFile: (data: { file: File }) => action;
@@ -197,8 +229,6 @@ export interface ReplayActions {
     setReplayError: (data: { stage: string, message: string, requestId: number }) => action;
     selectReplayRound: (data: { roundIndex: number }) => action;
     selectReplaySelfPlayer: (data: { playerId: string }) => action;
-    startReplayPlayback: () => action;
-    backToReplaySelect: () => action;
     resetReplayImport: () => action;
     toggleReplayEndpointJumpLock: () => action;
     stepReplayLock: (data: { step: number }) => action;
@@ -218,8 +248,13 @@ export interface ReplayActions {
 }
 
 export const replayActions: Readonly<ReplayActions> = {
+    // Reader の自動再生は画面を離れても止まらない。ドロップで Reader から直接来る
+    // こともあるので、移る前に必ず止める（止めないと裏でページが進み続ける）。
     openReplayScreen: () => (state): NextState => {
-        return actions.changeScreen({ screen: Screens.Replay })(state);
+        return sequence(state, [
+            actions.pauseAnimation(),
+            actions.changeScreen({ screen: Screens.Replay }),
+        ]);
     },
     // P1 レビュー対応: 複数ファイルを連続選択した場合や resetReplayImport 後に、
     // 先に選択したファイルの File.text() / Worker 応答が後から届いても
@@ -295,21 +330,36 @@ export const replayActions: Readonly<ReplayActions> = {
             return undefined;
         }
         stopReplayAnalysisSession();
-        return {
-            replay: {
-                ...initialReplayState,
-                ir,
-                fileName,
-                requestId,
-                view: state.replay.view,
-                analysis: clearedReplayAnalysisState(state),
-                phase: 'select',
-                selection: {
-                    roundIndex: 0,
-                    selfPlayerId: decideInitialSelfPlayer(ir),
-                },
+        const loaded: ReplayState = {
+            ...initialReplayState,
+            ir,
+            fileName,
+            requestId,
+            view: state.replay.view,
+            analysis: clearedReplayAnalysisState(state),
+            selection: {
+                roundIndex: 0,
+                selfPlayerId: decideInitialSelfPlayer(ir),
             },
         };
+        // 選択画面を挟まず、再現できた最初のラウンドの開始地点をそのまま開く
+        const firstPlayable = ir.rounds.findIndex(round => round.status === 'ok');
+        const entered = firstPlayable < 0 ? undefined : enterReplayRound(state, loaded, firstPlayable);
+        if (entered === undefined) {
+            const failure = ir.rounds.find(round => round.failure !== undefined)?.failure;
+            return {
+                replay: {
+                    ...loaded,
+                    ir: undefined,
+                    phase: 'failed',
+                    error: {
+                        stage: 'rounds',
+                        message: failure !== undefined ? failure.message : 'no reproducible round',
+                    },
+                },
+            };
+        }
+        return { replay: entered };
     },
     setReplayError: ({ stage, message, requestId }) => (state): NextState => {
         if (state.replay.requestId !== requestId) {
@@ -329,75 +379,55 @@ export const replayActions: Readonly<ReplayActions> = {
         };
     },
     selectReplayRound: ({ roundIndex }) => (state): NextState => {
-        const rounds = state.replay.ir?.rounds ?? [];
-        if (roundIndex < 0 || rounds.length <= roundIndex) {
+        if (state.replay.phase !== 'playing' || roundIndex === state.replay.selection.roundIndex) {
+            return undefined;
+        }
+        const entered = enterReplayRound(state, state.replay, roundIndex);
+        if (entered === undefined) {
             return undefined;
         }
         // 解析はラウンド単位。別ラウンドへ移ったら結果も実行中の Worker も捨てる。
         stopReplayAnalysisSession();
+        const stopped = stopReplayClock(state);
         return {
+            ...stopped,
             replay: {
-                ...state.replay,
+                ...entered,
+                playback: { ...entered.playback, status: AnimationState.Pause },
                 analysis: clearedReplayAnalysisState(state),
-                selection: {
-                    ...state.replay.selection,
-                    roundIndex,
-                },
             },
         };
     },
     selectReplaySelfPlayer: ({ playerId }) => (state): NextState => {
-        const users = state.replay.ir?.meta.users ?? [];
-        const user = users.find(u => u.id === playerId);
-        if (user === undefined) {
+        const round = getSelectedRound(state);
+        const player = round?.players.find(item => item.id === playerId);
+        if (player === undefined || state.replay.phase !== 'playing') {
             return undefined;
         }
-        persistViewSettings(state, { replaySelfPlayer: user.username });
+        // users はリプレイ側で省略され得る。その場合はラウンド内の名前で記憶する
+        const user = state.replay.ir?.meta.users.find(item => item.id === playerId);
+        persistViewSettings(state, { replaySelfPlayer: user !== undefined ? user.username : player.username });
+        if (playerId === state.replay.selection.selfPlayerId) {
+            return undefined;
+        }
         // 解析対象はプレイヤー単位。自陣が変われば結果は無効になる。
         stopReplayAnalysisSession();
-        return {
+        const selected = {
+            ...state,
             replay: {
                 ...state.replay,
+                selection: { ...state.replay.selection, selfPlayerId: playerId },
+            },
+        };
+        // frame は共通軸なので、入れ替えても同じ瞬間を映し続ける（FR-12）
+        return {
+            replay: {
+                ...selected.replay,
                 analysis: clearedReplayAnalysisState(state),
-                selection: {
-                    ...state.replay.selection,
-                    selfPlayerId: playerId,
+                cursor: {
+                    ...cursorAtFrame(selected, state.replay.cursor.frame),
+                    stepBasis: 'self',
                 },
-            },
-        };
-    },
-    startReplayPlayback: () => (state): NextState => {
-        const round = getSelectedRound(state);
-        const player = getSelfPlayerRound(state);
-        // 自陣未選択のままでは再生できない（FR-10）。失敗ラウンドも再生不可。
-        if (round === undefined || round.status !== 'ok' || player === undefined) {
-            return undefined;
-        }
-        // 確定盤面の手番送りは従来のpoint空間を保つ一方、自動再生は初手の操作と
-        // 自由落下を含めるためframe 0（initial point）から始める。
-        const selfIndex = 0;
-        return {
-            replay: {
-                ...state.replay,
-                phase: 'playing',
-                cursor: cursorAtFrame(state, frameAt(player, selfIndex), { self: selfIndex }),
-            },
-        };
-    },
-    backToReplaySelect: () => (state): NextState => {
-        if (state.replay.ir === undefined) {
-            return undefined;
-        }
-        const stopped = stopReplayClock(state);
-        // 結果は残すが、画面を離れる以上は探索を続けさせない
-        stopReplayAnalysisSession();
-        return {
-            ...stopped,
-            replay: {
-                ...(stopped?.replay ?? state.replay),
-                analysis: haltedReplayAnalysisState(state),
-                phase: 'select',
-                cursor: initialReplayState.cursor,
             },
         };
     },
@@ -487,7 +517,7 @@ export const replayActions: Readonly<ReplayActions> = {
         };
     },
     // FR-11: 自陣と相手を入れ替える。frame は不変なので再生位置は保たれる（FR-12）。
-    // 記憶の対象は選択フェーズでの明示的な選択のみなので localStorage は更新しない（§7-4）。
+    // 記憶の対象は自陣セレクタでの明示的な選択のみなので localStorage は更新しない（§7-4）。
     swapReplaySides: () => (state): NextState => {
         const opponent = getOpponentPlayerRound(state);
         if (state.replay.phase !== 'playing' || opponent === undefined) {

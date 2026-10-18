@@ -112,13 +112,6 @@ export const clearedReplayAnalysisState = (state: State): ReplayAnalysisState =>
     soldSlearBudget: state.replay.analysis.soldSlearBudget,
 });
 
-// 画面を離れるときなど、結果は残して実行だけ止めたい場合の状態。
-export const haltedReplayAnalysisState = (state: State): ReplayAnalysisState => (
-    state.replay.analysis.status === 'running'
-        ? { ...state.replay.analysis, status: 'aborted' }
-        : state.replay.analysis
-);
-
 const pendingMoves = (player: PlayerRoundIR): ReplayMoveEval[] => {
     const moves: ReplayMoveEval[] = [];
     for (let index = 1; index <= analysisMoveCount(player); index += 1) {

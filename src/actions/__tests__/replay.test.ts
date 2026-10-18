@@ -7,6 +7,10 @@ jest.mock('../../actions', () => ({
         changeScreen: ({ screen }: { screen: string }) => (state: any) => ({
             mode: { ...state.mode, screen },
         }),
+        pauseAnimation: () => (state: any) => (state.handlers.animation === undefined ? undefined : {
+            play: { ...state.play, status: 'pause' },
+            handlers: { ...state.handlers, animation: undefined },
+        }),
     },
     main: {
         appendPages: jest.fn(),
@@ -95,7 +99,7 @@ import {
 } from '../replay';
 import { main } from '../../actions';
 import { initialReplayState, State } from '../../states';
-import { FieldConstants, Piece, Rotation } from '../../lib/enums';
+import { AnimationState, FieldConstants, Piece, Rotation } from '../../lib/enums';
 import { GarbageEvent, IRField, LockPoint, ReplayIR } from '../../lib/ttrm/types';
 import { clampPointIndex, frameAt, indexAtFrame } from '../../lib/ttrm/timeline';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from '../view_settings';
@@ -189,6 +193,14 @@ const buildIR = (lockCount: number, roundStatus: 'ok' | 'failed' = 'ok'): Replay
     };
 };
 
+const buildMultiRoundIR = (statuses: ('ok' | 'failed')[]): ReplayIR => {
+    const base = buildIR(3);
+    return {
+        ...base,
+        rounds: statuses.map((status, index) => ({ ...buildIR(3, status).rounds[0], index })),
+    };
+};
+
 const createState = (overrides: Partial<State['replay']> = {}, undoCount: number = 0): State => ({
     replay: {
         ...initialReplayState,
@@ -244,18 +256,55 @@ describe('replayActions', () => {
             expect(REPLAY_CLOCK_INTERVAL_MS).toEqual(16);
         });
 
-        test('setReplayIR moves to select phase with the left player selected', () => {
+        test('setReplayIR opens the first round at frame 0 with the left player selected', () => {
             const result = replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 })(createState())!;
-            expect(result.replay!.phase).toEqual('select');
+            expect(result.replay!.phase).toEqual('playing');
             expect(result.replay!.fileName).toEqual('a.ttrm');
-            expect(result.replay!.selection.selfPlayerId).toEqual('player-a-id');
+            expect(result.replay!.selection).toEqual({ roundIndex: 0, selfPlayerId: 'player-a-id' });
+            expect(result.replay!.cursor.selfIndex).toEqual(0);
+            expect(result.replay!.cursor.frame).toEqual(0);
+            expect(result.replay!.cursor.opponentIndex).toEqual(0);
+        });
+
+        test('setReplayIR skips rounds that could not be reproduced', () => {
+            const ir = buildMultiRoundIR(['failed', 'ok', 'ok']);
+            const result = replayActions.setReplayIR(
+                { ir, fileName: 'a.ttrm', requestId: 0 })(createState())!;
+            expect(result.replay!.phase).toEqual('playing');
+            expect(result.replay!.selection.roundIndex).toEqual(1);
+        });
+
+        test('setReplayIR fails when no round can be reproduced', () => {
+            const result = replayActions.setReplayIR(
+                { ir: buildIR(3, 'failed'), fileName: 'a.ttrm', requestId: 0 })(createState())!;
+            expect(result.replay!.phase).toEqual('failed');
+            expect(result.replay!.ir).toBeUndefined();
+            expect(result.replay!.error!.stage).toEqual('rounds');
+        });
+
+        test('setReplayIR starts at frame 0 when the self player has zero locks', () => {
+            const state = createState();
+            const result = replayActions.setReplayIR(
+                { ir: buildIR(0), fileName: 'a.ttrm', requestId: 0 })(state)!;
+            expect(result.replay!.phase).toEqual('playing');
+            expect(result.replay!.cursor.frame).toEqual(0);
+            expect(getReplaySelfPoint(applyResult(state, result))!.kind).toEqual('initial');
         });
 
         test('setReplayIR prefers the remembered player over the left one (FR-13)', () => {
             (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('player-b');
             const result = replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 })(createState())!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
+        });
+
+        test('setReplayIR restores the remembered player from a replay without a users list', () => {
+            (loadPersistedReplaySelfPlayer as jest.Mock).mockReturnValueOnce('player-b');
+            const base = buildIR(3);
+            const ir = { ...base, meta: { ...base.meta, users: [] } };
+            const result = replayActions.setReplayIR(
+                { ir, fileName: 'a.ttrm', requestId: 0 })(createState())!;
             expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
         });
 
@@ -347,89 +396,113 @@ describe('replayActions', () => {
             dispatch(replayActions.importTtrmFile({ file: slowFile })(liveState));
             dispatch(replayActions.importTtrmFile({ file: fastFile })(liveState));
 
-            // 速い方が先に解決し、select フェーズへ進む
+            // 速い方が先に解決し、そのまま再生画面へ進む
             await flushPromises();
-            expect(liveState.replay.phase).toEqual('select');
+            expect(liveState.replay.phase).toEqual('playing');
             expect(liveState.replay.fileName).toEqual('fast.ttrm');
 
             // 遅い方がその後に解決しても、requestId が古いため無視される
             resolveSlow('slow-text');
             await flushPromises();
-            expect(liveState.replay.phase).toEqual('select');
+            expect(liveState.replay.phase).toEqual('playing');
             expect(liveState.replay.fileName).toEqual('fast.ttrm');
 
             (main.beginTtrmParse as jest.Mock).mockReset();
             (main.setReplayIR as jest.Mock).mockReset();
             __mockWorker.start.mockReset();
         });
-
-        test('startReplayPlayback requires a self player (FR-10)', () => {
-            const state = createState({
-                ir: buildIR(3),
-                phase: 'select',
-                selection: { roundIndex: 0, selfPlayerId: null },
-            });
-            expect(replayActions.startReplayPlayback()(state)).toBeUndefined();
-        });
-
-        test('startReplayPlayback refuses failed rounds', () => {
-            const state = createState({
-                ir: buildIR(3, 'failed'),
-                phase: 'select',
-                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
-            });
-            expect(replayActions.startReplayPlayback()(state)).toBeUndefined();
-        });
-
-        test('startReplayPlayback enters playing at frame 0 with both sides in sync', () => {
-            const state = createState({
-                ir: buildIR(3),
-                phase: 'select',
-                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
-            });
-            const result = replayActions.startReplayPlayback()(state)!;
-            expect(result.replay!.phase).toEqual('playing');
-            expect(result.replay!.cursor.selfIndex).toEqual(0);
-            expect(result.replay!.cursor.frame).toEqual(0);
-            expect(result.replay!.cursor.opponentIndex).toEqual(0);
-        });
-
-        test('backToReplaySelect returns to select phase', () => {
-            const result = replayActions.backToReplaySelect()(playingState(3))!;
-            expect(result.replay!.phase).toEqual('select');
-        });
-
-        test('startReplayPlayback also starts at frame 0 when the self player has zero locks', () => {
-            const state = createState({
-                ir: buildIR(0),
-                phase: 'select',
-                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
-            });
-            const result = replayActions.startReplayPlayback()(state)!;
-            expect(result.replay!.phase).toEqual('playing');
-            expect(result.replay!.cursor.selfIndex).toEqual(0);
-            expect(result.replay!.cursor.frame).toEqual(0);
-            expect(getReplaySelfPoint(applyResult(state, result))!.kind).toEqual('initial');
-        });
     });
 
     describe('selection', () => {
         test('selectReplayRound ignores out-of-range indices', () => {
-            const state = createState({ ir: buildIR(3), phase: 'select' });
+            const state = playingState(3);
             expect(replayActions.selectReplayRound({ roundIndex: 5 })(state)).toBeUndefined();
             expect(replayActions.selectReplayRound({ roundIndex: -1 })(state)).toBeUndefined();
         });
 
-        test('selectReplaySelfPlayer persists the username (FR-13)', () => {
-            const state = createState({ ir: buildIR(3), phase: 'select' });
+        test('selectReplayRound opens the round at its start and pauses playback', () => {
+            const ir = buildMultiRoundIR(['ok', 'ok']);
+            const state = createState({
+                ir,
+                phase: 'playing',
+                selection: { roundIndex: 0, selfPlayerId: 'player-b-id' },
+                cursor: cursorFor(ir, 2),
+                playback: { status: AnimationState.Play, speed: 1 },
+            });
+            const result = replayActions.selectReplayRound({ roundIndex: 1 })(state)!;
+            expect(result.replay!.phase).toEqual('playing');
+            expect(result.replay!.selection).toEqual({ roundIndex: 1, selfPlayerId: 'player-b-id' });
+            expect(result.replay!.cursor.frame).toEqual(0);
+            expect(result.replay!.cursor.selfIndex).toEqual(0);
+            expect(result.replay!.playback.status).toEqual(AnimationState.Pause);
+        });
+
+        test('selectReplayRound refuses rounds that could not be reproduced', () => {
+            const ir = buildMultiRoundIR(['ok', 'failed']);
+            const state = createState({
+                ir,
+                phase: 'playing',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+                cursor: cursorFor(ir, 1),
+            });
+            expect(replayActions.selectReplayRound({ roundIndex: 1 })(state)).toBeUndefined();
+        });
+
+        test('selectReplaySelfPlayer persists the username and keeps the frame (FR-13)', () => {
+            const state = playingState(3, 2);
+            const result = replayActions.selectReplaySelfPlayer({ playerId: 'player-b-id' })(state)!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
+            expect(result.replay!.cursor.frame).toEqual(state.replay.cursor.frame);
+            expect(result.replay!.cursor.turnStop).toBe(false);
+            expect(persistViewSettings).toHaveBeenCalledWith(state, { replaySelfPlayer: 'player-b' });
+        });
+
+        test('selectReplaySelfPlayer works for replays without a users list', () => {
+            const base = playingState(3, 2);
+            const ir = { ...base.replay.ir!, meta: { ...base.replay.ir!.meta, users: [] } };
+            const state = { ...base, replay: { ...base.replay, ir } } as State;
             const result = replayActions.selectReplaySelfPlayer({ playerId: 'player-b-id' })(state)!;
             expect(result.replay!.selection.selfPlayerId).toEqual('player-b-id');
             expect(persistViewSettings).toHaveBeenCalledWith(state, { replaySelfPlayer: 'player-b' });
         });
 
+        test('selectReplayRound falls back to the left player when yours is absent', () => {
+            const ir = buildMultiRoundIR(['ok', 'ok']);
+            const second = ir.rounds[1];
+            const renamed = second.players.map(player => ({ ...player, id: `${player.id}-2` }));
+            const twoRounds = { ...ir, rounds: [ir.rounds[0], { ...second, players: renamed }] };
+            const state = createState({
+                ir: twoRounds,
+                phase: 'playing',
+                selection: { roundIndex: 0, selfPlayerId: 'player-b-id' },
+                cursor: cursorFor(twoRounds, 1),
+            });
+            const result = replayActions.selectReplayRound({ roundIndex: 1 })(state)!;
+            expect(result.replay!.selection.selfPlayerId).toEqual('player-a-id-2');
+        });
+
+        test('openReplayScreen stops the Reader autoplay before switching', () => {
+            const timer = setInterval(() => undefined, 1000);
+            const base = createState();
+            const state = {
+                ...base,
+                handlers: { animation: timer },
+                play: { status: 'play' },
+            } as unknown as State;
+            const result = replayActions.openReplayScreen()(state)!;
+            expect(result.handlers!.animation).toBeUndefined();
+            expect(result.play!.status).toEqual('pause');
+            expect(result.mode!.screen).toEqual('Replay');
+            clearInterval(timer);
+        });
+
         test('selectReplaySelfPlayer ignores unknown ids', () => {
-            const state = createState({ ir: buildIR(3), phase: 'select' });
-            expect(replayActions.selectReplaySelfPlayer({ playerId: 'nobody' })(state)).toBeUndefined();
+            expect(replayActions.selectReplaySelfPlayer({ playerId: 'nobody' })(playingState(3))).toBeUndefined();
+        });
+
+        test('selectReplaySelfPlayer does nothing outside playback', () => {
+            const state = createState({ ir: buildIR(3), phase: 'parsing' });
+            expect(replayActions.selectReplaySelfPlayer({ playerId: 'player-b-id' })(state)).toBeUndefined();
         });
     });
 
@@ -514,7 +587,7 @@ describe('replayActions', () => {
         test('is undefined outside the playing phase', () => {
             const state = createState({
                 ir: buildIR(3),
-                phase: 'select',
+                phase: 'empty',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
             });
             expect(getCurrentReplayQueue(state)).toBeUndefined();
@@ -577,7 +650,7 @@ describe('replayActions', () => {
         test('does nothing outside the playing phase', () => {
             const state = createState({
                 ir: buildIR(3),
-                phase: 'select',
+                phase: 'empty',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
             });
             expect(replayActions.openReplayInEditor()(state)).toBeUndefined();
@@ -802,7 +875,7 @@ describe('replayActions', () => {
         test('showReplayMove is inert outside the playing phase', () => {
             const state = createState({
                 ir: buildIR(3),
-                phase: 'select',
+                phase: 'empty',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
             });
             expect(replayActions.showReplayMove({ index: 2 })(state)).toBeUndefined();
@@ -929,18 +1002,25 @@ describe('replayActions', () => {
         // §3-5 の二重防御: 画面遷移の取りこぼしがあっても tick 自身が止まる
         test('a tick outside the playing phase stops the clock itself', () => {
             const started = startedState(playingState(3, 1));
-            const left = { ...started, replay: { ...started.replay, phase: 'select' } } as State;
+            const left = { ...started, replay: { ...started.replay, phase: 'empty' } } as State;
 
             const result = replayActions.tickReplayClock()(left)!;
             expect(result.handlers!.replayClock).toBeUndefined();
             expect(result.replay!.playback.status).toEqual('pause');
         });
 
-        test('leaving for the select phase stops the clock', () => {
-            const started = startedState(playingState(3, 1));
-            const result = replayActions.backToReplaySelect()(started)!;
-            expect(result.handlers!.replayClock).toBeUndefined();
-            expect(result.replay!.playback.status).toEqual('pause');
+        test('switching rounds stops the clock and starts the round from frame 0', () => {
+            const ir = buildMultiRoundIR(['ok', 'ok']);
+            const started = startedState(createState({
+                ir,
+                phase: 'playing',
+                selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
+                cursor: cursorFor(ir, 1),
+            }));
+            const switched = applyResult(started, replayActions.selectReplayRound({ roundIndex: 1 })(started));
+            expect(switched.handlers.replayClock).toBeUndefined();
+            expect(switched.replay.playback.status).toEqual('pause');
+            expect(switched.replay.cursor.frame).toEqual(0);
         });
 
         test('resetting the import stops the clock', () => {
@@ -1064,7 +1144,7 @@ describe('replayActions', () => {
         test('the garbage selectors are undefined outside the playing phase', () => {
             const state = createState({
                 ir: buildIR(3),
-                phase: 'select',
+                phase: 'empty',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
             });
             expect(getReplaySelfGarbage(state)).toBeUndefined();
@@ -1162,7 +1242,7 @@ describe('replayActions', () => {
             expect(locked.replay.endpointJumpLocked).toBeTruthy();
             expect(replayActions.toggleReplayEndpointJumpLock()(locked)!
                 .replay!.endpointJumpLocked).toBeFalsy();
-            expect(replayActions.toggleReplayEndpointJumpLock()(createState({ phase: 'select' })))
+            expect(replayActions.toggleReplayEndpointJumpLock()(createState({ phase: 'empty' })))
                 .toBeUndefined();
         });
 
@@ -1174,9 +1254,8 @@ describe('replayActions', () => {
                 .replay!.cursor.selfIndex).toEqual(2);
         });
 
-        test('survives returning to selection but resets with a new import or reset', () => {
+        test('resets with a new import or reset', () => {
             const locked = playingState(3, 1, {}, { endpointJumpLocked: true });
-            expect(replayActions.backToReplaySelect()(locked)!.replay!.endpointJumpLocked).toBeTruthy();
             expect(replayActions.resetReplayImport()(locked)!.replay!.endpointJumpLocked).toBeFalsy();
             expect(replayActions.setReplayIR(
                 { ir: buildIR(3), fileName: 'a.ttrm', requestId: 0 },
@@ -1215,7 +1294,7 @@ describe('replayActions', () => {
         test('the selectors are undefined outside the playing phase', () => {
             const state = createState({
                 ir: buildIR(3),
-                phase: 'select',
+                phase: 'empty',
                 selection: { roundIndex: 0, selfPlayerId: 'player-a-id' },
             });
             expect(getReplaySelfPoint(state)).toBeUndefined();

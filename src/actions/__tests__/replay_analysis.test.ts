@@ -262,7 +262,7 @@ describe('replayAnalysisActions', () => {
     });
 
     test('再生フェーズ以外では開始できない', () => {
-        const state = idleState({ replay: { phase: 'select' } });
+        const state = idleState({ replay: { phase: 'parsing' } });
         expect(canStartReplayAnalysis(state)).toBe(false);
     });
 

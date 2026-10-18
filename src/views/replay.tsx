@@ -2,7 +2,7 @@ import { h, View } from 'hyperapp';
 import { Actions } from '../actions';
 import { State } from '../states';
 import { i18n } from '../locales/keys';
-import { Piece } from '../lib/enums';
+import { FieldConstants, Piece } from '../lib/enums';
 import { px, style } from '../lib/types';
 import {
     getOpponentPlayerRound,
@@ -24,17 +24,29 @@ import { analysisMoveCount } from '../lib/cold_clear/replay_analysis';
 import { replayAnalysisPanel } from '../components/replay/replay_analysis_panel';
 import { replaySide } from '../components/replay/replay_side';
 import { replayTransport } from '../components/replay/replay_transport';
-import { getReplayLayout } from './replay_layout';
-import { formatFrameTime, lastPointIndex, ReplayPoint } from '../lib/ttrm/timeline';
-import { GarbageEvent, LockPoint, PlayerRoundIR, ReplayIR, RoundIR } from '../lib/ttrm/types';
+import { getReplayLayout, REPLAY_WIDE_MAX_WIDTH } from './replay_layout';
+import { formatFrameTime, lastPointIndex, ReplayPoint, ReplayStats } from '../lib/ttrm/timeline';
+import {
+    GarbageEvent, IRField, LockPoint, PlayerRoundIR, ReplayIR, ReplayVisualState, RoundIR,
+} from '../lib/ttrm/types';
 
 const ACCENT = '#00796b';
 
 // FR-14: 空ユーザ名や doesNotExist は Player N で代替する
+// users を省略したリプレイでは、ラウンド内のプレイヤー情報で代替する
 const displayName = (ir: ReplayIR, playerId: string): string => {
-    const index = ir.meta.users.findIndex(user => user.id === playerId);
-    const user = ir.meta.users[index];
-    const username = user !== undefined ? user.username : '';
+    let index = ir.meta.users.findIndex(user => user.id === playerId);
+    let username = index >= 0 ? ir.meta.users[index].username : '';
+    if (index < 0) {
+        for (const round of ir.rounds) {
+            const roundIndex = round.players.findIndex(player => player.id === playerId);
+            if (roundIndex >= 0) {
+                index = roundIndex;
+                username = round.players[roundIndex].username;
+                break;
+            }
+        }
+    }
     if (username === '' || username === 'doesNotExist') {
         return i18n.Replay.DefaultPlayer(index + 1);
     }
@@ -89,51 +101,65 @@ const headerBar = (state: State, actions: Actions) => (
     </div>
 );
 
-const importPhase = (state: State, actions: Actions) => {
-    const onFiles = (files: FileList | null) => {
-        if (files !== null && files.length > 0) {
-            actions.importTtrmFile({ file: files[0] });
-        }
-    };
+const toolbarButtonStyle = style({
+    color: '#555', fontSize: px(11), padding: '0 6px', textTransform: 'none', whiteSpace: 'nowrap',
+});
+
+const toolbarSelectStyle = style({
+    border: '1px solid #ccc',
+    borderRadius: px(4),
+    display: 'block',
+    fontSize: px(12),
+    height: px(28),
+    maxWidth: px(220),
+    padding: '0 4px',
+    width: 'auto',
+});
+
+const roundOptionLabel = (round: RoundIR, selfId: string | null): string => {
+    if (round.status !== 'ok') {
+        return `R${round.index + 1} ${i18n.Replay.Select.Unplayable()}`;
+    }
+    const result = selfId === null || round.result.winnerId === null ? '—'
+        : round.result.winnerId === selfId ? i18n.Replay.Select.Win() : i18n.Replay.Select.Lose();
+    const selfPlayer = round.players.find(player => player.id === selfId);
+    const stats = selfPlayer !== undefined
+        ? ` · ${i18n.Replay.Select.RoundStats(selfPlayer.locks.length, framesToSeconds(selfPlayer.terminal.frame))}`
+        : '';
+    return `R${round.index + 1} ${result}${stats}`;
+};
+
+// ファイル選択・ラウンド・自陣・表示切替を 1 行にまとめる。選択画面を挟まず、
+// 読み込み前から同じ位置に置いておくことで、取り込み直後にそのまま再生できる。
+const replayToolbar = (state: State, actions: Actions) => {
+    const ir = state.replay.ir;
+    const playing = state.replay.phase === 'playing' && ir !== undefined;
+    const round = playing ? getSelectedRound(state) : undefined;
+    const selfId = state.replay.selection.selfPlayerId;
+    const opponent = playing ? getOpponentPlayerRound(state) : undefined;
+
     return (
         <div
-            key="replay-import-phase"
-            datatest="replay-import-phase"
-            style={style({ padding: '24px 16px', textAlign: 'center' })}
-            ondragover={(e: DragEvent) => e.preventDefault()}
-            ondrop={(e: DragEvent) => {
-                e.preventDefault();
-                onFiles(e.dataTransfer !== null ? e.dataTransfer.files : null);
-            }}
+            key="replay-toolbar"
+            datatest="replay-toolbar"
+            style={style({
+                alignItems: 'center',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: px(6),
+                justifyContent: 'center',
+                margin: '0 auto',
+                maxWidth: px(REPLAY_WIDE_MAX_WIDTH),
+                padding: '8px 16px 0',
+                width: '100%',
+            })}
         >
-            {state.replay.phase === 'failed' && state.replay.error !== undefined ? (
-                <div
-                    key="replay-error"
-                    datatest="replay-error"
-                    style={style({
-                        border: '1px solid #b3261e',
-                        borderRadius: px(6),
-                        color: '#b3261e',
-                        margin: '0 auto 20px',
-                        maxWidth: px(480),
-                        padding: '10px 14px',
-                        textAlign: 'left',
-                    })}
-                >
-                    <div style={style({ fontWeight: 'bold' })}>{i18n.Replay.Error.Title()}</div>
-                    <div style={style({ fontSize: px(12), marginTop: px(4) })}>
-                        [{state.replay.error.stage}] {state.replay.error.message}
-                    </div>
-                </div>
-            ) : undefined}
-
-            <p key="import-prompt">{i18n.Replay.Import.Prompt()}</p>
             <label
                 key="replay-file-label"
-                className="btn"
-                style={style({ backgroundColor: ACCENT, margin: '12px 0' })}
+                className="btn-small"
+                style={style({ backgroundColor: ACCENT, textTransform: 'none' })}
             >
-                {state.replay.phase === 'failed' ? i18n.Replay.Error.Retry() : i18n.Replay.Import.Button()}
+                {i18n.Replay.Import.Button()}
                 <input
                     key="replay-file-input"
                     datatest="replay-file-input"
@@ -142,168 +168,264 @@ const importPhase = (state: State, actions: Actions) => {
                     style={style({ display: 'none' })}
                     onchange={(e: Event) => {
                         const target = e.target as HTMLInputElement;
-                        onFiles(target.files);
+                        if (target.files !== null && target.files.length > 0) {
+                            actions.importTtrmFile({ file: target.files[0] });
+                        }
                         target.value = '';
                     }}
                 />
             </label>
-            <p key="drop-hint" style={style({ color: '#777', fontSize: px(12) })}>
-                {i18n.Replay.Import.DropHint()}
-            </p>
+
+            {ir !== undefined && round !== undefined ? (
+                <select
+                    key="replay-round-select"
+                    datatest="replay-round-select"
+                    aria-label={i18n.Replay.Select.Rounds()}
+                    value={String(round.index)}
+                    style={toolbarSelectStyle}
+                    onchange={(e: Event) => {
+                        const target = e.target as HTMLSelectElement;
+                        // フォーカスが残ると矢印キー・Space が手番送りではなく選択の変更になる
+                        target.blur();
+                        actions.selectReplayRound({ roundIndex: Number(target.value) });
+                    }}
+                >
+                    {ir.rounds.map(item => (
+                        <option
+                            key={`replay-round-${item.index}`}
+                            datatest={`replay-round-${item.index}`}
+                            value={String(item.index)}
+                            disabled={item.status !== 'ok'}
+                        >
+                            {roundOptionLabel(item, selfId)}
+                        </option>
+                    ))}
+                </select>
+            ) : undefined}
+
+            {ir !== undefined && round !== undefined ? (
+                <select
+                    key="replay-self-select"
+                    datatest="replay-self-select"
+                    aria-label={i18n.Replay.Select.SelfPlayer()}
+                    value={selfId ?? ''}
+                    style={toolbarSelectStyle}
+                    onchange={(e: Event) => {
+                        const target = e.target as HTMLSelectElement;
+                        target.blur();
+                        actions.selectReplaySelfPlayer({ playerId: target.value });
+                    }}
+                >
+                    {round.players.map(player => (
+                        <option
+                            key={`replay-self-player-${player.id}`}
+                            datatest={`replay-self-player-${player.id}`}
+                            value={player.id}
+                        >
+                            {i18n.Replay.Playing.Self()}: {displayName(ir, player.id)}
+                        </option>
+                    ))}
+                </select>
+            ) : undefined}
+
+            {opponent !== undefined ? (
+                <a
+                    href="#"
+                    key="btn-replay-swap-sides"
+                    datatest="btn-replay-swap-sides"
+                    className="btn-flat"
+                    style={toolbarButtonStyle}
+                    onclick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        actions.swapReplaySides();
+                    }}
+                >
+                    ⇄ {i18n.Replay.Playing.Swap()}
+                </a>
+            ) : undefined}
+            <a
+                href="#"
+                key="btn-replay-toggle-opponent"
+                datatest="btn-replay-toggle-opponent"
+                className="btn-flat"
+                style={toolbarButtonStyle}
+                onclick={(e: MouseEvent) => {
+                    e.preventDefault();
+                    actions.toggleReplayOpponent();
+                }}
+            >
+                {state.replay.view.showOpponent
+                    ? i18n.Replay.Playing.HideOpponent()
+                    : i18n.Replay.Playing.ShowOpponent()}
+            </a>
+            {ir !== undefined ? (
+                <a
+                    href="#"
+                    key="btn-replay-reset"
+                    datatest="btn-replay-reset"
+                    className="btn-flat"
+                    title={i18n.Replay.Select.ParseTime(ir.meta.parseMs)}
+                    style={toolbarButtonStyle}
+                    onclick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        actions.resetReplayImport();
+                    }}
+                >
+                    {i18n.Replay.Import.Clear()}
+                </a>
+            ) : undefined}
         </div>
     );
 };
 
-const parsingPhase = () => (
-    <div
-        key="replay-parsing-phase"
-        datatest="replay-parsing-phase"
-        style={style({ padding: '40px 16px', textAlign: 'center' })}
-    >
-        <div key="spinner" className="preloader-wrapper small active">
-            <div className="spinner-layer spinner-teal-only">
-                <div className="circle-clipper left"><div className="circle" /></div>
-                <div className="gap-patch"><div className="circle" /></div>
-                <div className="circle-clipper right"><div className="circle" /></div>
+// 読み込み前・解析中・失敗時も盤面は出しておく。ファイルを渡せばこの場所が
+// そのまま 1 ラウンド目の再生画面に置き換わる。
+const EMPTY_FIELD: IRField = Array.from(
+    { length: FieldConstants.Width * FieldConstants.Height }, () => Piece.Empty);
+
+const EMPTY_POINT: ReplayPoint = {
+    kind: 'initial',
+    index: 0,
+    frame: 0,
+    field: EMPTY_FIELD,
+    hold: null,
+    current: null,
+    next: [],
+    clippedRowCount: 0,
+};
+
+const EMPTY_VISUAL: ReplayVisualState = {
+    frame: 0,
+    field: EMPTY_FIELD,
+    sourceHeight: FieldConstants.Height,
+    clippedRowCount: 0,
+    hold: null,
+    current: null,
+    next: [],
+};
+
+const EMPTY_STATS: ReplayStats = {
+    placed: 0,
+    totalLocks: 0,
+    frame: 0,
+    seconds: 0,
+    pps: 0,
+    apm: 0,
+    app: 0,
+    vs: 0,
+    area: 0,
+    b2b: 0,
+    ren: 0,
+    attack: 0,
+    garbageCleared: 0,
+    gauge: 0,
+    tanked: 0,
+};
+
+const emptyStatus = (state: State) => {
+    if (state.replay.phase === 'parsing') {
+        return (
+            <div
+                key="replay-parsing-phase"
+                datatest="replay-parsing-phase"
+                style={style({
+                    alignItems: 'center', display: 'flex', gap: px(8), justifyContent: 'center', margin: '4px 0',
+                })}
+            >
+                <div
+                    key="spinner"
+                    className="preloader-wrapper small active"
+                    style={style({ height: px(20), width: px(20) })}
+                >
+                    <div className="spinner-layer spinner-teal-only">
+                        <div className="circle-clipper left"><div className="circle" /></div>
+                        <div className="gap-patch"><div className="circle" /></div>
+                        <div className="circle-clipper right"><div className="circle" /></div>
+                    </div>
+                </div>
+                <span key="parsing-text">{i18n.Replay.Parsing()}</span>
             </div>
-        </div>
-        <p key="parsing-text">{i18n.Replay.Parsing()}</p>
-    </div>
-);
-
-const roundRow = (
-    state: State, actions: Actions, ir: ReplayIR, round: RoundIR, selfId: string | null,
-) => {
-    const selected = state.replay.selection.roundIndex === round.index;
-    const playable = round.status === 'ok';
-    const selfPlayer = selfId !== null
-        ? round.players.find(player => player.id === selfId)
-        : undefined;
-    const resultLabel = !playable
-        ? i18n.Replay.Select.Unplayable()
-        : selfId === null || round.result.winnerId === null
-            ? '—'
-            : round.result.winnerId === selfId ? i18n.Replay.Select.Win() : i18n.Replay.Select.Lose();
-    const resultColor = !playable || selfId === null || round.result.winnerId === null
-        ? '#777'
-        : round.result.winnerId === selfId ? '#1b7f4b' : '#b3261e';
-    const stats = selfPlayer !== undefined
-        ? i18n.Replay.Select.RoundStats(
-            selfPlayer.locks.length, framesToSeconds(selfPlayer.terminal.frame))
-        : round.failure !== undefined ? round.failure.message : '';
-
+        );
+    }
+    if (state.replay.phase === 'failed' && state.replay.error !== undefined) {
+        return (
+            <div
+                key="replay-error"
+                datatest="replay-error"
+                style={style({
+                    border: '1px solid #b3261e',
+                    borderRadius: px(6),
+                    color: '#b3261e',
+                    margin: '0 auto 8px',
+                    maxWidth: px(480),
+                    padding: '6px 12px',
+                    textAlign: 'left',
+                })}
+            >
+                <div style={style({ fontWeight: 'bold' })}>{i18n.Replay.Error.Title()}</div>
+                <div style={style({ fontSize: px(12), marginTop: px(2) })}>
+                    [{state.replay.error.stage}] {state.replay.error.message}
+                </div>
+            </div>
+        );
+    }
     return (
-        <a
-            href="#"
-            key={`replay-round-${round.index}`}
-            datatest={`replay-round-${round.index}`}
-            className="collection-item"
-            style={style({
-                alignItems: 'center',
-                backgroundColor: selected ? '#e0f2f1' : 'transparent',
-                color: '#333',
-                display: 'flex',
-                justifyContent: 'space-between',
-                opacity: playable ? 1 : 0.55,
-                padding: '8px 12px',
-            })}
-            onclick={(e: MouseEvent) => {
-                e.preventDefault();
-                if (playable) {
-                    actions.selectReplayRound({ roundIndex: round.index });
-                }
-            }}
-        >
-            <span style={style({ color: resultColor, fontWeight: selected ? 'bold' : 'normal' })}>
-                R{round.index + 1} {resultLabel}
-            </span>
-            <span style={style({ color: '#777', fontSize: px(12) })}>{stats}</span>
-        </a>
+        <div key="replay-import-hint" style={style({ color: '#777', fontSize: px(12), margin: '4px 0' })}>
+            <div key="import-prompt">{i18n.Replay.Import.Prompt()}</div>
+        </div>
     );
 };
 
-const selectPhase = (state: State, actions: Actions) => {
-    const ir = state.replay.ir!;
-    const selfId = state.replay.selection.selfPlayerId;
-    const round = getSelectedRound(state);
-    const canStart = round !== undefined && round.status === 'ok' && getSelfPlayerRound(state) !== undefined;
-
+const emptyStage = (state: State) => {
+    const layout = getReplayLayout(state, state.replay.view.showOpponent);
+    const isWide = layout.mode === 'wide';
+    const guideLineColor = state.fumen.guideLineColor;
     return (
         <div
-            key="replay-select-phase"
-            datatest="replay-select-phase"
-            style={style({ margin: '0 auto', maxWidth: px(480), padding: '16px' })}
+            key="replay-import-phase"
+            datatest="replay-import-phase"
+            style={style({
+                margin: '0 auto',
+                maxWidth: px(layout.containerMaxWidth),
+                padding: '8px 16px 12px',
+                textAlign: 'center',
+            })}
         >
-            <div key="meta" style={style({ color: '#777', fontSize: px(12), marginBottom: px(12) })}>
-                {ir.meta.gamemode.toUpperCase()} / {ir.meta.ts.slice(0, 10)} / {ir.rounds.length} rounds
-                {/* NFR-02: 実機での解析所要時間を出す */}
-                <span key="replay-parse-time" datatest="replay-parse-time" style={style({ marginLeft: px(8) })}>
-                    {i18n.Replay.Select.ParseTime(ir.meta.parseMs)}
-                </span>
-            </div>
-
-            <div key="self-player-label" style={style({ fontWeight: 'bold', marginBottom: px(4) })}>
-                {i18n.Replay.Select.SelfPlayer()}
-            </div>
-            <div key="self-player-list" style={style({ display: 'flex', gap: px(8), marginBottom: px(16) })}>
-                {ir.meta.users.map(user => (
-                    <a
-                        href="#"
-                        key={`replay-self-player-${user.id}`}
-                        datatest={`replay-self-player-${user.id}`}
-                        className="btn-flat"
-                        style={style({
-                            border: selfId === user.id ? `2px solid ${ACCENT}` : '1px solid #ccc',
-                            borderRadius: px(4),
-                            color: selfId === user.id ? ACCENT : '#555',
-                            fontWeight: selfId === user.id ? 'bold' : 'normal',
-                            textTransform: 'none',
-                        })}
-                        onclick={(e: MouseEvent) => {
-                            e.preventDefault();
-                            actions.selectReplaySelfPlayer({ playerId: user.id });
-                        }}
-                    >
-                        {displayName(ir, user.id)}
-                    </a>
-                ))}
-            </div>
-
-            <div key="rounds-label" style={style({ fontWeight: 'bold', marginBottom: px(4) })}>
-                {i18n.Replay.Select.Rounds()}
-            </div>
-            <div key="round-list" className="collection" style={style({ margin: '0 0 16px' })}>
-                {ir.rounds.map(round => roundRow(state, actions, ir, round, selfId))}
-            </div>
-
-            <a
-                href="#"
-                key="btn-replay-start"
-                datatest="btn-replay-start"
-                className={`btn ${canStart ? '' : 'disabled'}`}
-                style={style({ backgroundColor: ACCENT, width: '100%' })}
-                onclick={(e: MouseEvent) => {
-                    e.preventDefault();
-                    actions.startReplayPlayback();
-                }}
-            >
-                {i18n.Replay.Select.Start()}
-            </a>
-
-            <a
-                href="#"
-                key="btn-replay-reset"
-                datatest="btn-replay-reset"
+            {emptyStatus(state)}
+            <div
+                key="board-row"
                 style={style({
-                    color: '#777', display: 'block', fontSize: px(12), marginTop: px(12), textAlign: 'center',
+                    alignItems: 'flex-start',
+                    display: 'flex',
+                    gap: px(isWide ? 24 : 8),
+                    justifyContent: 'center',
                 })}
-                onclick={(e: MouseEvent) => {
-                    e.preventDefault();
-                    actions.resetReplayImport();
-                }}
             >
-                {i18n.Replay.Error.Retry()}
-            </a>
+                {replaySide({
+                    guideLineColor,
+                    variant: 'self',
+                    size: 'full',
+                    point: EMPTY_POINT,
+                    visual: EMPTY_VISUAL,
+                    blockSize: layout.blockSize,
+                    label: i18n.Replay.Playing.Self(),
+                    counterText: '—',
+                    queueWidth: layout.queueWidth,
+                    stats: EMPTY_STATS,
+                })}
+                {layout.showOpponent ? replaySide({
+                    guideLineColor,
+                    variant: 'opponent',
+                    size: isWide ? 'full' : 'compact',
+                    point: EMPTY_POINT,
+                    visual: EMPTY_VISUAL,
+                    blockSize: layout.opponentBlockSize,
+                    label: i18n.Replay.Playing.Opponent(),
+                    counterText: '—',
+                    queueWidth: layout.queueWidth,
+                    stats: EMPTY_STATS,
+                }) : undefined}
+            </div>
         </div>
     );
 };
@@ -385,68 +507,10 @@ const playingPhase = (state: State, actions: Actions) => {
             style={style({
                 margin: '0 auto',
                 maxWidth: px(layout.containerMaxWidth),
-                padding: '12px 16px',
+                padding: '8px 16px 12px',
                 textAlign: 'center',
             })}
         >
-            <div
-                key="playing-meta"
-                style={style({
-                    alignItems: 'center', color: '#777', display: 'flex', fontSize: px(12),
-                    // P3 でトグルが 3 つになった。375px では 1 行に収まらないので折り返す
-                    flexWrap: 'wrap', gap: px(4),
-                    justifyContent: 'space-between', marginBottom: px(8),
-                })}
-            >
-                <span key="playing-meta-text">
-                    R{round.index + 1} — {displayName(ir, player.id)}
-                    {opponent !== undefined ? ` vs ${displayName(ir, opponent.id)}` : ''}
-                </span>
-                <span
-                    key="playing-meta-buttons"
-                    style={style({ display: 'flex', gap: px(4), marginLeft: 'auto' })}
-                >
-                    {opponent !== undefined ? (
-                        <a
-                            href="#"
-                            key="btn-replay-toggle-opponent"
-                            datatest="btn-replay-toggle-opponent"
-                            className="btn-flat"
-                            style={style({
-                                color: '#555', fontSize: px(11), padding: '0 6px',
-                                textTransform: 'none', whiteSpace: 'nowrap',
-                            })}
-                            onclick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                actions.toggleReplayOpponent();
-                            }}
-                        >
-                            {state.replay.view.showOpponent
-                                ? i18n.Replay.Playing.HideOpponent()
-                                : i18n.Replay.Playing.ShowOpponent()}
-                        </a>
-                    ) : undefined}
-                    {opponent !== undefined ? (
-                        <a
-                            href="#"
-                            key="btn-replay-swap-sides"
-                            datatest="btn-replay-swap-sides"
-                            className="btn-flat"
-                            style={style({
-                                color: '#555', fontSize: px(11), padding: '0 6px',
-                                textTransform: 'none', whiteSpace: 'nowrap',
-                            })}
-                            onclick={(e: MouseEvent) => {
-                                e.preventDefault();
-                                actions.swapReplaySides();
-                            }}
-                        >
-                            ⇄ {i18n.Replay.Playing.Swap()}
-                        </a>
-                    ) : undefined}
-                </span>
-            </div>
-
             <div
                 key="board-row"
                 style={style({
@@ -620,30 +684,14 @@ const playingPhase = (state: State, actions: Actions) => {
                 {i18n.Replay.Playing.OpenInEditor()}
             </a>
 
-            <a
-                href="#"
-                key="btn-replay-back-select"
-                datatest="btn-replay-back-select"
-                style={style({
-                    color: '#777', display: 'block', fontSize: px(12), marginTop: px(10),
-                })}
-                onclick={(e: MouseEvent) => {
-                    e.preventDefault();
-                    actions.backToReplaySelect();
-                }}
-            >
-                {i18n.Replay.Playing.BackToSelect()}
-            </a>
         </div>
     );
 };
 
 export const view: View<State, Actions> = (state, actions) => {
-    const phase = state.replay.phase;
-    const body = phase === 'parsing' ? parsingPhase()
-        : phase === 'select' && state.replay.ir !== undefined ? selectPhase(state, actions)
-        : phase === 'playing' && getSelfPlayerRound(state) !== undefined ? playingPhase(state, actions)
-        : importPhase(state, actions);
+    const body = state.replay.phase === 'playing' && getSelfPlayerRound(state) !== undefined
+        ? playingPhase(state, actions)
+        : emptyStage(state);
 
     return (
         <div
@@ -657,6 +705,7 @@ export const view: View<State, Actions> = (state, actions) => {
             })}
         >
             {headerBar(state, actions)}
+            {replayToolbar(state, actions)}
             {body}
         </div>
     );

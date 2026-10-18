@@ -979,15 +979,19 @@ export const operations = {
         importFile: (fileOrOptions) => {
             cy.get(datatest('replay-file-input')).selectFile(fileOrOptions, { force: true });
         },
+        // .ttrm をアプリ上へドロップする（どの画面からでも Replay 画面へ移って読み込む）
+        dropFile: (fileOrOptions) => {
+            cy.get('body').selectFile(fileOrOptions, { action: 'drag-drop', force: true });
+        },
+        // 取り込みが終わると選択画面を挟まず、そのまま再生画面になる
+        waitForPlayback: () => {
+            cy.get(datatest('replay-playing-phase')).should('exist');
+        },
         selectSelfPlayer: (playerId) => {
-            cy.get(datatest(`replay-self-player-${playerId}`)).click();
+            cy.get(datatest('replay-self-select')).select(playerId);
         },
         selectRound: (index) => {
-            cy.get(datatest(`replay-round-${index}`)).click();
-        },
-        start: () => {
-            cy.get(datatest('btn-replay-start')).click();
-            cy.get(datatest('replay-playing-phase')).should('exist');
+            cy.get(datatest('replay-round-select')).select(String(index));
         },
         next: () => cy.get(datatest('btn-replay-next-lock')).click(),
         prev: () => cy.get(datatest('btn-replay-prev-lock')).click(),

@@ -19,6 +19,7 @@ import {
     pieceQueueToText,
 } from '../../lib/piece_queue';
 import { AiEngineId, aiEngineCapabilities } from '../../lib/ai_engine';
+import { aiEngineDisplayName } from '../../lib/ai_engine_label';
 import { budgetMillisOf, SOLD_SLEAR_BUDGET_IDS, SoldSlearBudgetId } from '../../lib/sold_slear/budget';
 
 declare const M: any;
@@ -103,9 +104,7 @@ const parseHoldText = parsePieceHoldText;
 type QueueFocusTarget = 'hold' | 'current' | 'next';
 let queueFocusTarget: QueueFocusTarget = 'next';
 
-export const engineDisplayName = (engine: AiEngineId): string => (
-    engine === 'soldSlear' ? i18n.ColdClear.EngineSoldSlear() : i18n.ColdClear.EngineColdClear()
-);
+export const engineDisplayName = aiEngineDisplayName;
 
 export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
     {

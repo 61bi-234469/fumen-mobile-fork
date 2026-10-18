@@ -10,7 +10,7 @@ import {
 import { IRQueue, irPointToPage } from '../lib/ttrm/ir_to_page';
 import { ReplayWorkerWrapper } from '../lib/ttrm/ReplayWorkerWrapper';
 import { MAX_TTRM_TEXT_LENGTH } from '../lib/ttrm/parser';
-import { PlayerRoundIR, ReplayIR, ReplayVisualState, RoundIR } from '../lib/ttrm/types';
+import { PlayerRoundIR, ReplayIR, ReplayVisualState } from '../lib/ttrm/types';
 import { createInputReplayContext, inputGarbageView } from '../lib/input_replay';
 import {
     clampPointIndex,
@@ -18,9 +18,7 @@ import {
     indexAtFrame,
     lastPointIndex,
     pointAt,
-    preLockPointAt,
     ReplayPoint,
-    ReplayPreLockPoint,
     ReplayStats,
     statsAt,
     stopFrameAt,
@@ -34,9 +32,25 @@ import {
 } from '../lib/ttrm/garbage';
 import { loadPersistedReplaySelfPlayer, persistViewSettings } from './view_settings';
 import {
+    getOpponentPlayerRound,
+    getReplayConfirmedIndex,
+    getReplaySelfVisual,
+    getSelectedRound,
+    getSelfPlayerRound,
+    preLockPointOf,
+} from './replay_selectors';
+import {
     clearedReplayAnalysisState,
     stopReplayAnalysisSession,
 } from './replay_analysis';
+
+export {
+    getOpponentPlayerRound,
+    getReplayConfirmedIndex,
+    getReplaySelfVisual,
+    getSelectedRound,
+    getSelfPlayerRound,
+};
 
 const worker = new ReplayWorkerWrapper();
 
@@ -51,30 +65,6 @@ export const REPLAY_CLOCK_INTERVAL_MS = 16;
 // 進行量は interval の呼び出し回数ではなく実時間差から出す。
 // nextReplayRequestId と同じ流儀でモジュールスコープに置く。
 let replayClockLastTickAt = 0;
-
-export const getSelectedRound = (state: State): RoundIR | undefined => {
-    return state.replay.ir?.rounds[state.replay.selection.roundIndex];
-};
-
-export const getSelfPlayerRound = (state: State): PlayerRoundIR | undefined => {
-    const round = getSelectedRound(state);
-    const selfId = state.replay.selection.selfPlayerId;
-    if (round === undefined || selfId === null) {
-        return undefined;
-    }
-    // rounds[i] 内の並び順はラウンドごとに入れ替わり得るため、必ず id で対応付ける（FR-15）
-    return round.players.find(player => player.id === selfId);
-};
-
-// FR-16 は対象外だが、players[] から探す実装にして 3 人以上でも構造上は破綻させない。
-export const getOpponentPlayerRound = (state: State): PlayerRoundIR | undefined => {
-    const round = getSelectedRound(state);
-    const selfId = state.replay.selection.selfPlayerId;
-    if (round === undefined || selfId === null) {
-        return undefined;
-    }
-    return round.players.find(player => player.id !== selfId);
-};
 
 const decideInitialSelfPlayer = (ir: ReplayIR): string | null => {
     // users を省略したリプレイでは、最初のラウンドのプレイヤーを候補にする
@@ -149,32 +139,6 @@ const moveToPointIndex = (state: State, index: number): NextState => {
             },
         },
     };
-};
-
-// 手番送りで止まっている側だけ、接地直前の地点を返す。基準でない側と自動再生中は undefined。
-const preLockPointOf = (
-    state: State, variant: 'self' | 'opponent',
-): ReplayPreLockPoint | undefined => {
-    if (state.replay.phase !== 'playing' || !state.replay.cursor.turnStop) {
-        return undefined;
-    }
-    if (variant !== 'self') {
-        return undefined;
-    }
-    const player = variant === 'self' ? getSelfPlayerRound(state) : getOpponentPlayerRound(state);
-    if (player === undefined) {
-        return undefined;
-    }
-    const index = variant === 'self'
-        ? state.replay.cursor.selfIndex
-        : state.replay.cursor.opponentIndex;
-    return preLockPointAt(player, index);
-};
-
-// 手番停止中は未確定の設置を数えない。切り出す盤面と INPUT の統計をそろえるために使う。
-export const getReplayConfirmedIndex = (state: State): number => {
-    const preLock = preLockPointOf(state, 'self');
-    return preLock !== undefined ? preLock.confirmedIndex : state.replay.cursor.selfIndex;
 };
 
 const stopReplayClock = (state: State): NextState => {
@@ -701,21 +665,6 @@ export const getReplayOpponentPoint = (state: State): ReplayPoint | undefined =>
         return undefined;
     }
     return pointAt(player, state.replay.cursor.opponentIndex);
-};
-
-// 確定ReplayPointは手番・統計用に残し、盤面・操作中ミノ・HOLD/NEXTだけを
-// 共通フレーム軸のvisual timelineから引く。fractional cursorは次frameを先取りしない。
-// 手番送りで止めた側だけは、設置済み・未確定の接地直前地点を出す。
-export const getReplaySelfVisual = (state: State): ReplayVisualState | undefined => {
-    const player = getSelfPlayerRound(state);
-    if (player === undefined || state.replay.phase !== 'playing') {
-        return undefined;
-    }
-    const preLock = preLockPointOf(state, 'self');
-    if (preLock !== undefined) {
-        return preLock.visual;
-    }
-    return visualAtFrame(player, Math.floor(state.replay.cursor.frame));
 };
 
 export const getReplayOpponentVisual = (state: State): ReplayVisualState | undefined => {

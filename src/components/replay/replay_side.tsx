@@ -10,6 +10,8 @@ import { gaugeColumnWidth, replayGauge, replayRisePreview } from './replay_gauge
 import { ReplayPoint, ReplayStats } from '../../lib/ttrm/timeline';
 import { ReplayGarbageView } from '../../lib/ttrm/garbage';
 import { ReplayActiveFrame, ReplayVisualState } from '../../lib/ttrm/types';
+import { Move } from '../../lib/fumen/types';
+import { getBlockPositions } from '../../lib/piece';
 
 // HOLD / NEXT はエディタのパレットと同じミノ SVG（約2:1の横長）で表示する。
 // 列幅は Editor の INPUT レイアウトと同じ「盤面 3.4 マス」基準（responsive_layout.ts の
@@ -157,6 +159,8 @@ interface ReplaySideProps {
     stats: ReplayStats;
     // 直近の設置で消えたライン（Quad / TSD など）。消していないときは undefined
     clearText?: string;
+    // AI ガイドの最善手。自陣でガイドが計算済みのときだけ渡す
+    aiGuide?: Move | null;
 }
 
 export const visibleReplayActiveCells = (
@@ -214,12 +218,67 @@ const replayActiveOverlay = (
     );
 };
 
+// Editor の INPUT ガイド（input_ai_guide_overlay.tsx）と同じ見た目：Highlight1 の半透明に
+// 白い点線の枠。実際の操作中ミノと重なっても両方見えるよう、その上に重ねる。
+const replayAiGuideOverlay = (
+    move: Move | null | undefined,
+    blockSize: number,
+    guideLineColor: boolean,
+) => {
+    if (move === null || move === undefined) {
+        return undefined;
+    }
+    const cells = getBlockPositions(move.type, move.rotation, move.coordinate.x, move.coordinate.y);
+    const valid = cells.length === 4 && cells.every(
+        ([x, y]) => 0 <= x && x < FieldConstants.Width && 0 <= y && y < FieldConstants.Height,
+    );
+    if (!valid) {
+        return undefined;
+    }
+    return (
+        <div
+            key="replay-ai-guide"
+            datatest="replay-ai-guide"
+            data-piece={parsePieceName(move.type)}
+            data-cells={JSON.stringify(cells)}
+            style={style({
+                height: px(blockSize * FieldConstants.Height),
+                left: px(0),
+                pointerEvents: 'none',
+                position: 'absolute',
+                top: px(0),
+                width: px(blockSize * FieldConstants.Width),
+                zIndex: 2,
+            })}
+        >
+            {cells.map(([x, y], index) => (
+                <span
+                    key={`replay-ai-guide-${index}`}
+                    datatest="replay-ai-guide-cell"
+                    data-cell={`${x},${y}`}
+                    style={style({
+                        backgroundColor: decidePieceColor(move.type, HighlightType.Highlight1, guideLineColor),
+                        border: '2px dashed #ffffff',
+                        boxSizing: 'border-box',
+                        height: px(blockSize - GRID_GAP),
+                        left: px(x * blockSize),
+                        opacity: .48,
+                        position: 'absolute',
+                        top: px((FieldConstants.Height - 1 - y) * blockSize),
+                        width: px(blockSize - GRID_GAP),
+                    })}
+                />
+            ))}
+        </div>
+    );
+};
+
 // 1 プレイヤーぶんの「盤面＋HOLD/NEXT＋手番ラベル」。
 // 相手側には切り捨てチップも Editor ボタンも出さない（FR-31）。切り捨ては行数だけ添える。
 export const replaySide = (
     {
         variant, size, point, visual, blockSize, guideLineColor, label, counterText, heading, garbage,
-        queueWidth, stats, clearText,
+        queueWidth, stats, clearText, aiGuide,
     }: ReplaySideProps,
 ) => {
     const isSelf = variant === 'self';
@@ -262,6 +321,7 @@ export const replaySide = (
                 })}
             />
             {replayActiveOverlay(variant, visual.active, blockSize, guideLineColor)}
+            {isSelf ? replayAiGuideOverlay(aiGuide, blockSize, guideLineColor) : undefined}
         </div>
     );
 

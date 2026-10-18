@@ -20,6 +20,9 @@ import {
     getSelfPlayerRound,
 } from '../actions/replay';
 import { canStartReplayAnalysis, getReplayAnalysis } from '../actions/replay_analysis';
+import { replayInputGuideMove } from '../actions/cold_clear';
+import { resolveAiEngine } from '../lib/ai_engine';
+import { aiEngineDisplayName } from '../lib/ai_engine_label';
 import { analysisMoveCount } from '../lib/cold_clear/replay_analysis';
 import { replayAnalysisPanel } from '../components/replay/replay_analysis_panel';
 import { replaySide } from '../components/replay/replay_side';
@@ -127,6 +130,93 @@ const roundOptionLabel = (round: RoundIR, selfId: string | null): string => {
         ? ` · ${i18n.Replay.Select.RoundStats(selfPlayer.locks.length, framesToSeconds(selfPlayer.terminal.frame))}`
         : '';
     return `R${round.index + 1} ${result}${stats}`;
+};
+
+const aiGhostStatusText = (guide: State['coldClear']['inputGuide']): string => {
+    if (!guide.enabled) {
+        return i18n.ColdClear.InputGuideStatus.Off();
+    }
+    switch (guide.status) {
+    case 'thinking':
+        return i18n.ColdClear.InputGuideStatus.Thinking();
+    case 'ready':
+        return i18n.ColdClear.InputGuideStatus.Ready();
+    case 'unavailable':
+        return guide.reason === 'engineError' ? i18n.ColdClear.InputGuideStatus.EngineError()
+            : guide.reason === 'noMove' ? i18n.ColdClear.InputGuideStatus.NoMove()
+                : i18n.Replay.Playing.AiGhostUnavailable();
+    default:
+        return i18n.ColdClear.InputGuideStatus.Waiting();
+    }
+};
+
+// INPUT の AI ガイドと同じ設定を切り替える。ON の間は自陣（左側）の盤面に最善手を重ねる
+const aiGhostToggle = (state: State, actions: Actions) => {
+    const guide = state.coldClear.inputGuide;
+    const enabled = guide.enabled;
+    const engineName = aiEngineDisplayName(resolveAiEngine(state.coldClear.engine));
+    const title = enabled ? i18n.Replay.Playing.AiGhostOff() : i18n.Replay.Playing.AiGhostOn();
+    return (
+        <a
+            href="#"
+            key="btn-replay-ai-guide"
+            datatest="btn-replay-ai-guide"
+            className="btn-flat"
+            role="button"
+            title={title}
+            aria-label={title}
+            aria-pressed={enabled ? 'true' : 'false'}
+            aria-busy={guide.status === 'thinking' ? 'true' : 'false'}
+            data-status={guide.status}
+            data-engine={resolveAiEngine(state.coldClear.engine)}
+            style={style({
+                ...toolbarButtonStyle,
+                alignItems: 'center',
+                background: enabled ? '#e0f2f1' : 'transparent',
+                borderRadius: px(4),
+                color: enabled ? '#00695c' : '#555',
+                display: 'inline-flex',
+                gap: px(4),
+            })}
+            onclick={(e: MouseEvent) => {
+                e.preventDefault();
+                actions.toggleInputAiGuide();
+            }}
+        >
+            <span
+                key="btn-replay-ai-guide-switch"
+                style={style({
+                    background: enabled ? ACCENT : '#9e9e9e',
+                    borderRadius: px(5),
+                    display: 'inline-block',
+                    height: px(10),
+                    position: 'relative',
+                    width: px(16),
+                })}
+            >
+                <span
+                    key="btn-replay-ai-guide-knob"
+                    style={style({
+                        background: '#fff',
+                        borderRadius: '50%',
+                        height: px(6),
+                        left: px(enabled ? 8 : 2),
+                        position: 'absolute',
+                        top: px(2),
+                        width: px(6),
+                    })}
+                />
+            </span>
+            {i18n.Replay.Playing.AiGhost()}
+            <span
+                key="btn-replay-ai-guide-status"
+                datatest="replay-ai-guide-status"
+                style={style({ color: enabled ? '#00796b' : '#9e9e9e', fontSize: px(10) })}
+            >
+                {enabled ? `${engineName} · ${aiGhostStatusText(guide)}` : aiGhostStatusText(guide)}
+            </span>
+        </a>
+    );
 };
 
 // ファイル選択・ラウンド・自陣・表示切替を 1 行にまとめる。選択画面を挟まず、
@@ -258,6 +348,7 @@ const replayToolbar = (state: State, actions: Actions) => {
                     ? i18n.Replay.Playing.HideOpponent()
                     : i18n.Replay.Playing.ShowOpponent()}
             </a>
+            {aiGhostToggle(state, actions)}
             {ir !== undefined ? (
                 <a
                     href="#"
@@ -536,6 +627,7 @@ const playingPhase = (state: State, actions: Actions) => {
                     queueWidth: layout.queueWidth,
                     clearText: lock !== undefined && clearLabel(lock) !== ''
                         ? clearLabel(lock) : undefined,
+                    aiGuide: replayInputGuideMove(state),
                 })}
                 {showOpponent && opponentPoint !== undefined && opponentVisual !== undefined
                     && opponentStats !== undefined ? replaySide({
@@ -697,6 +789,9 @@ export const view: View<State, Actions> = (state, actions) => {
         <div
             key="replay-screen"
             datatest="replay-screen"
+            oncreate={() => actions.syncInputAiGuide()}
+            onupdate={() => actions.syncInputAiGuide()}
+            ondestroy={() => actions.cancelInputAiGuide()}
             style={style({
                 display: 'flex',
                 flexDirection: 'column',

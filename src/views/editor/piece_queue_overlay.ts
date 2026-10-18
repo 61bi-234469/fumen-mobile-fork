@@ -16,6 +16,8 @@ import {
     EDITOR_DANGER_COLOR,
 } from './editor_control_style';
 import { INFINITE_TOGGLE_HEIGHT } from './responsive_layout';
+import { AiEngineId } from '../../lib/ai_engine';
+import { aiEngineDisplayName, aiEngineShortName } from '../../lib/ai_engine_label';
 
 const NEXT_COUNT = 5;
 
@@ -24,6 +26,19 @@ interface InputAiGuideView {
     status: 'idle' | 'thinking' | 'ready' | 'unavailable';
     reason?: InputGuideUnavailableReason;
 }
+
+export interface InputAiEngineView {
+    engine: AiEngineId;
+    // このビルドで選べるエンジンが 2 つ以上あるとき
+    switchable: boolean;
+    // 探索中・リプレイ解析中は切り替えられない
+    busy: boolean;
+}
+
+// AI ガイド欄の下段（エンジン名の行）の高さ。上段は残りで状態を出す
+const INPUT_AI_ENGINE_ROW_HEIGHT = 13;
+// 「Cold Clear ⇄」が 1 行に収まる列幅。これより細い列では CC / SS と略す
+const INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH = 66;
 
 const inputGuideReasonText = (reason: InputGuideUnavailableReason | undefined): string => {
     switch (reason) {
@@ -211,6 +226,8 @@ export const pieceQueueOverlays = ({
     openReplay,
     inputAiGuide,
     toggleInputAiGuide,
+    inputAiEngine,
+    toggleAiEngine,
     statsPanel,
 }: {
     queueState: ColdClearMenuQueueState | null;
@@ -228,6 +245,8 @@ export const pieceQueueOverlays = ({
     openReplay: () => void;
     inputAiGuide: InputAiGuideView;
     toggleInputAiGuide: () => void;
+    inputAiEngine: InputAiEngineView;
+    toggleAiEngine: () => void;
     statsPanel?: VNode<{}>;
 }) => {
     const hold = queueState?.hold ?? undefined;
@@ -287,9 +306,13 @@ export const pieceQueueOverlays = ({
                 : inputAiGuide.status === 'unavailable'
                     ? `${i18n.ColdClear.InputGuideUnavailable()}: ${inputGuideStatusText}`
                     : `${i18n.ColdClear.InputGuideLabel()}: ${inputGuideStatusText}`;
-    const inputGuideHeight = Math.max(24, ceilingOffset - 4);
-    // 低いときはアイコンを外し、スイッチ付きラベルと状態文字の2段だけにする
-    const inputGuideCompact = inputGuideHeight < 34;
+    const inputGuideSlotHeight = Math.max(24, ceilingOffset - 4);
+    // 下段にエンジン名を出すぶん、ON/OFF ボタンは残りの高さに収める
+    const inputGuideHeight = inputGuideSlotHeight - INPUT_AI_ENGINE_ROW_HEIGHT + 1;
+    // 低いときはアイコンを外し、スイッチ付きラベルと状態文字の2段だけにする。さらに低ければ状態文字も外す
+    // アイコン・スイッチ行・状態文字の 3 段は 42px 未満だと状態文字が欠ける（スマホ縦で約 37px）
+    const inputGuideCompact = inputGuideHeight < 42;
+    const inputGuideStatusVisible = inputGuideHeight >= 22;
     const inputGuideStatusColor = !inputAiGuide.enabled
         ? '#757575'
         : inputAiGuide.status === 'unavailable' ? EDITOR_DANGER_COLOR : EDITOR_ACTIVE_TEXT_COLOR;
@@ -317,12 +340,55 @@ export const pieceQueueOverlays = ({
             width: '6px',
         }),
     })]);
+    // 下段：いま動いているエンジン。押すと切り替える（AI メニュー・リプレイ解析と共通の設定）
+    const engineName = aiEngineDisplayName(inputAiEngine.engine);
+    const engineLabel = width >= INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH
+        ? engineName : aiEngineShortName(inputAiEngine.engine);
+    const engineTitle = inputAiEngine.switchable
+        ? i18n.ColdClear.EngineSwitchAria(engineName) : i18n.ColdClear.EngineCurrent(engineName);
+    const engineInactive = !inputAiEngine.switchable || inputAiEngine.busy;
+    const inputEngineRow = button({
+        key: 'btn-input-ai-engine',
+        datatest: 'btn-input-ai-engine',
+        type: 'button',
+        title: engineTitle,
+        'aria-label': engineTitle,
+        'aria-disabled': engineInactive ? 'true' : 'false',
+        'data-engine': inputAiEngine.engine,
+        onclick: (event: MouseEvent) => {
+            if (inputAiEngine.switchable) {
+                toggleAiEngine();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        },
+        onpointerdown: (event: PointerEvent) => event.stopPropagation(),
+        style: style({
+            alignItems: 'center', background: '#fafafa', border: '1px solid #333', borderTop: '1px dashed #9e9e9e',
+            boxSizing: 'border-box', color: engineInactive ? '#757575' : '#333',
+            cursor: inputAiEngine.switchable ? 'pointer' : 'default', display: 'flex', fontFamily: 'inherit',
+            fontSize: px(9), fontWeight: '700', gap: '2px', height: px(INPUT_AI_ENGINE_ROW_HEIGHT),
+            justifyContent: 'center', lineHeight: '1', margin: '-1px 0 0', minWidth: '0', overflow: 'hidden',
+            padding: '0 2px', width: px(width),
+        }),
+    }, [
+        span({
+            key: 'btn-input-ai-engine-label',
+            style: style({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+        }, engineLabel),
+        ...(inputAiEngine.switchable ? [span({
+            key: 'btn-input-ai-engine-icon', className: 'notranslate material-icons',
+            style: style({
+                color: engineInactive ? '#bdbdbd' : EDITOR_ACTIVE_COLOR, fontSize: px(11), lineHeight: '1',
+            }),
+        }, 'swap_horiz')] : []),
+    ]);
     const inputGuideSlot = div({
         key: 'input-ai-guide-slot',
         datatest: 'input-ai-guide-slot',
         style: style({
-            alignItems: 'center', display: 'flex', flexShrink: 0, height: px(ceilingOffset),
-            justifyContent: 'center', width: px(width),
+            alignItems: 'center', display: 'flex', flexDirection: 'column', flexShrink: 0,
+            height: px(ceilingOffset), justifyContent: 'center', width: px(width),
         }),
     }, [button({
         key: 'btn-input-ai-guide',
@@ -371,12 +437,13 @@ export const pieceQueueOverlays = ({
             key: 'btn-input-ai-guide-status',
             datatest: 'input-ai-guide-status',
             style: style({
+                display: inputGuideStatusVisible ? 'block' : 'none',
                 color: inputGuideStatusColor, fontSize: px(Math.max(8, Math.min(10, width * .14))),
                 fontWeight: inputAiGuide.enabled ? '700' : '400', maxWidth: '100%', overflow: 'hidden',
                 textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }),
         }, inputGuideStatusText),
-    ])]);
+    ]), inputEngineRow]);
 
     const holdPanel = div({
         key: 'piece-queue-hold-column',

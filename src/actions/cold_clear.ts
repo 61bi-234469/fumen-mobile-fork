@@ -31,11 +31,18 @@ import {
 } from '../lib/cold_clear/move_match';
 import { ColdClearWrapper } from '../lib/cold_clear/ColdClearWrapper';
 import {
+    buildReplayGuidePosition,
+    normalizeAnalysisThinkMs,
+    ReplayGuideSkipReason,
+} from '../lib/cold_clear/replay_analysis';
+import { getReplaySelfVisual, getReplaySelfVisualConfirmedIndex, getSelfPlayerRound } from './replay_selectors';
+import {
     COLD_CLEAR_THINK_MS_DEFAULT,
     COLD_CLEAR_THINK_MS_PRESETS as SHARED_COLD_CLEAR_THINK_MS_PRESETS,
 } from '../lib/cold_clear/think_time';
 import { i18n } from '../locales/keys';
 import { showToast } from '../lib/toast';
+import { aiEngineDisplayName } from '../lib/ai_engine_label';
 import {
     createTreeFromPages,
     ensureVirtualRoot,
@@ -192,6 +199,7 @@ export interface ColdClearActions {
     setColdClearThinkMs: (data: { thinkMs: number; persist?: boolean }) => action;
     setAiEngine: (data: { engine: string; persist?: boolean }) => action;
     toggleAiEngine: () => action;
+    toggleAiEngineWithToast: () => action;
     setSoldSlearBudget: (data: { budget: string; persist?: boolean }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
@@ -369,10 +377,16 @@ const idleInputGuide = (state: Readonly<State>): State['coldClear']['inputGuide'
     usedHold: false,
 });
 
+// Replay では自陣（左側）の表示局面に同じガイドを重ねる。
+const isReplayInputGuideMode = (state: Readonly<State>): boolean => (
+    state.mode.screen === Screens.Replay && state.replay.phase === 'playing'
+);
+
 const isInputGuideMode = (state: Readonly<State>): boolean => (
-    state.mode.screen === Screens.Editor
-    && state.editorUi.primaryTool === 'piece'
-    && state.editorUi.pieceLayout === 'play'
+    (state.mode.screen === Screens.Editor
+        && state.editorUi.primaryTool === 'piece'
+        && state.editorUi.pieceLayout === 'play')
+    || isReplayInputGuideMode(state)
 );
 
 const terminateInputGuideSession = () => {
@@ -382,6 +396,12 @@ const terminateInputGuideSession = () => {
     clearTimeout(inputGuideSession.initTimeoutId);
     inputGuideSession.wrapper.terminate();
     inputGuideSession = null;
+};
+
+// リプレイ AI 解析の開始時に呼ぶ。描画後の同期を待たずにガイドの Worker を止め、2 本同時に回さない。
+// 状態は次の syncInputAiGuide が idle へ戻す（遅れて届いた応答は runId が合わず捨てられる）。
+export const stopInputAiGuideSession = () => {
+    terminateInputGuideSession();
 };
 
 const clearQueuePreviewIfNeeded = (state: Readonly<State>): NextState => {
@@ -920,11 +940,102 @@ interface InputGuideInput {
     incoming: number;
     initQueue: Piece[];
     positionKey: string;
+    // HOLD を使えない局面。Sold Slear は HOLD 不可を受け取れないので、HOLD を使う答えはここで捨てる
+    holdLocked?: boolean;
 }
 
 type InputGuideInputResult = { input: InputGuideInput } | { reason: InputGuideUnavailableReason };
 
+const replayGuideReason = (reason: ReplayGuideSkipReason): InputGuideUnavailableReason => {
+    switch (reason) {
+    case 'noCurrent':
+        return 'noQueue';
+    case 'pieceMismatch':
+        return 'pieceMismatch';
+    case 'completeLine':
+        return 'lineClear';
+    default:
+        return 'unsupportedPage';
+    }
+};
+
+const resolveReplayInputGuideInputResult = (state: Readonly<State>): InputGuideInputResult => {
+    const player = getSelfPlayerRound(state);
+    const visual = getReplaySelfVisual(state);
+    if (player === undefined || visual === undefined) {
+        return { reason: 'unsupportedPage' };
+    }
+    const built = buildReplayGuidePosition(player, visual, getReplaySelfVisualConfirmedIndex(state));
+    if ('skipReason' in built) {
+        return { reason: replayGuideReason(built.skipReason) };
+    }
+    const position = built.position;
+    // 再生中も 1 手の間に答えが出るよう、探索予算はリプレイ解析の設定（既定 100ms）にそろえる
+    const baseSettings = effectiveAiSettings(state);
+    const settings: EffectiveAiSettings = {
+        ...baseSettings,
+        // この手で HOLD を使った後は、HOLD する手を勧めない
+        holdAllowed: baseSettings.holdAllowed && !position.holdLocked,
+        thinkMs: normalizeAnalysisThinkMs(state.replay.analysis.thinkMs),
+        soldSlearBudget: normalizeSoldSlearBudgetId(state.replay.analysis.soldSlearBudget),
+    };
+    if (settings.holdAllowed && settings.nextLimit === 0 && position.hold === null) {
+        return { reason: 'shortQueue' };
+    }
+    const fullQueue = [position.current, ...position.next];
+    const initQueue = settings.nextLimit === null
+        ? fullQueue
+        : fullQueue.slice(0, settings.nextLimit + 1);
+    if (initQueue.length < 1 + aiEngineCapabilities(settings.engine).minNext) {
+        return { reason: 'shortQueue' };
+    }
+    const field = position.field;
+    const fieldKey = settings.engine === 'soldSlear' ? fieldToCells(field) : Array.from(fieldToCC(field)).join('');
+    const positionKey = [
+        'replay',
+        settings.engine,
+        fieldKey,
+        position.hold ?? 0,
+        initQueue.join(','),
+        position.b2bLevel,
+        position.combo,
+        position.incoming,
+        settings.holdAllowed ? 1 : 0,
+        settings.speculate ? 1 : 0,
+        settings.nextLimit === null ? 'all' : settings.nextLimit,
+        settings.weightsPreset,
+        settings.engine === 'soldSlear' ? settings.soldSlearBudget : settings.thinkMs,
+    ].join('|');
+    return {
+        input: {
+            settings,
+            field,
+            initQueue,
+            positionKey,
+            searchQueue: { hold: position.hold, current: position.current, queue: position.next },
+            b2b: position.b2b,
+            b2bLevel: position.b2bLevel,
+            combo: position.combo,
+            incoming: position.incoming,
+            holdLocked: position.holdLocked,
+        },
+    };
+};
+
+// 表示中の局面に対して計算済みのときだけ返す。局面が変わった直後の描画で古い手を重ねない。
+export const replayInputGuideMove = (state: Readonly<State>): Move | null => {
+    const guide = state.coldClear.inputGuide;
+    if (!guide.enabled || guide.status !== 'ready' || guide.move === null || !isReplayInputGuideMode(state)) {
+        return null;
+    }
+    const resolved = resolveReplayInputGuideInputResult(state);
+    return 'input' in resolved && resolved.input.positionKey === guide.positionKey ? guide.move : null;
+};
+
 const resolveInputGuideInputResult = (state: Readonly<State>): InputGuideInputResult => {
+    if (isReplayInputGuideMode(state)) {
+        return resolveReplayInputGuideInputResult(state);
+    }
     if (!isInputGuideMode(state) || state.coldClear.queuePreview !== null) {
         return { reason: 'preview' };
     }
@@ -1777,8 +1888,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             };
         }
         const input = resolved.input;
+        // thinking は探索がまだ生きているときだけ待つ。リプレイ解析の開始などで止められていたら探し直す
+        const searching = guide.status === 'thinking' && inputGuideSession?.runId === guide.runId;
         if (guide.positionKey === input.positionKey
-            && (guide.status === 'thinking' || guide.status === 'ready' || guide.status === 'unavailable')) {
+            && (searching || guide.status === 'ready' || guide.status === 'unavailable')) {
             return undefined;
         }
 
@@ -1856,6 +1969,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const move = toMove(result);
         if (!input || input.positionKey !== session.positionKey || guide.positionKey !== session.positionKey
             || move === null
+            || (input.holdLocked === true && result.hold)
             || !input.field.canPut(move.type, move.rotation, move.coordinate.x, move.coordinate.y)
             || !input.field.isOnGround(move.type, move.rotation, move.coordinate.x, move.coordinate.y)) {
             terminateInputGuideSession();
@@ -2262,6 +2376,21 @@ export const coldClearActions: Readonly<ColdClearActions> = {
     toggleAiEngine: () => (state): NextState => (
         coldClearActions.setAiEngine({ engine: nextAiEngine(resolveAiEngine(state.coldClear.engine)) })(state)
     ),
+
+    // INPUT ガイド欄・リプレイのゴーストから切り替えたときは、盤面から目を離さずに済むよう結果を一言添える
+    toggleAiEngineWithToast: () => (state): NextState => {
+        const engine = resolveAiEngine(state.coldClear.engine);
+        const next = nextAiEngine(engine);
+        if (next === engine) {
+            return undefined;
+        }
+        if (state.coldClear.isRunning || state.replay.analysis.status === 'running') {
+            showToast(i18n.ColdClear.EngineSwitchBusy());
+            return undefined;
+        }
+        showToast(i18n.ColdClear.EngineCurrent(aiEngineDisplayName(next)));
+        return coldClearActions.setAiEngine({ engine: next })(state);
+    },
 
     setSoldSlearBudget: ({ budget, persist = true }) => (state): NextState => {
         if (state.coldClear.isRunning) {

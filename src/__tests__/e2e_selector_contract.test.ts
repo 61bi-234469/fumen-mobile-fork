@@ -176,6 +176,8 @@ const ALLOWLIST: ReadonlyArray<string> = [
     // generated at src/components/replay/replay_side.tsx: replaySide builds the
     // HOLD/NEXT datatest values through queueColumn/queueRow and pieceSlot helpers;
     // the selector contract cannot infer the interpolated queue indexes.
+    'replay-hold-0',
+    'replay-next-0',
     'replay-next-4',
     'replay-opponent-hold-0',
     'replay-opponent-next-2',

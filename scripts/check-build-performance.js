@@ -24,8 +24,10 @@ if (urls.length > 75) {
 // the engine switch UI and strings in main, plus its 13 KB worker chunk; its WASM is runtime-cached).
 // Raised from 1.87 MiB for the bottom bar and UI polish (local build measured 1,961,518 bytes: the
 // tiered bottom bar layout and the settings/comment-band styles in index.html added about 5 KB).
-if (totalBytes > 1.88 * 1024 * 1024) {
-    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.88 MiB`);
+// Raised from 1.88 MiB for the Replay AI ghost (local build measured 1,974,471 bytes: the replay guide
+// input, the INPUT engine switch row, the Replay ghost toggle and their strings added about 11 KB to main).
+if (totalBytes > 1.89 * 1024 * 1024) {
+    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.89 MiB`);
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);

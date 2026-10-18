@@ -32,6 +32,7 @@ import { inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
 import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
 import { InputAiGuideOverlay } from '../../components/input_ai_guide_overlay';
+import { availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
 import { i18n } from '../../locales/keys';
 
 interface FieldLayout {
@@ -342,6 +343,12 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         openReplay: () => actions.openReplayScreen(),
         inputAiGuide: state.coldClear.inputGuide,
         toggleInputAiGuide: actions.toggleInputAiGuide,
+        inputAiEngine: {
+            engine: resolveAiEngine(state.coldClear.engine),
+            switchable: availableAiEngines().length > 1,
+            busy: state.coldClear.isRunning || state.replay.analysis.status === 'running',
+        },
+        toggleAiEngine: actions.toggleAiEngineWithToast,
     }) : null;
 
     const fieldColumn = div({

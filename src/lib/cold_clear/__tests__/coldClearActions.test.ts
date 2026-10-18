@@ -8,8 +8,11 @@ import {
     fillInfiniteQueueToMinimum,
     initColdClearActions,
     resolveCurrentColdClearMenuQueueState,
+    replayInputGuideMove,
     resetForTesting,
+    stopInputAiGuideSession,
 } from '../../../actions/cold_clear';
+import { CC_HOLD_NONE, PIECE_TO_CC } from '../types';
 import { Piece, Rotation, Screens } from '../../enums';
 import { Field } from '../../fumen/field';
 import { Pages, PageFieldOperation } from '../../pages';
@@ -78,6 +81,10 @@ jest.mock('../../../locales/keys', () => ({
             CannotEvaluatePlacedSpawn: () => 'Cannot evaluate current placement',
             PlacedSpawnRetrying: () => 'Deepening search',
             InsufficientQueueForHold: () => 'Insufficient queue for hold',
+            EngineColdClear: () => 'Cold Clear',
+            EngineSoldSlear: () => 'Sold Slear',
+            EngineCurrent: (name: string) => `Engine: ${name}`,
+            EngineSwitchBusy: () => 'Engine busy',
         },
     },
 }));
@@ -461,6 +468,230 @@ describe('coldClearActions run isolation', () => {
 
         const heldState = { ...state, ...result };
         expect(coldClearActions.syncInputAiGuide()(heldState)).toBeUndefined();
+        expect(ColdClearWrapper).not.toHaveBeenCalled();
+    });
+
+    const makeReplayGuideState = (overrides: { locks?: any[]; visual?: any } = {}) => {
+        const emptyField = Array.from({ length: 230 }).map(() => Piece.Empty);
+        const player = {
+            visual: overrides.visual,
+            id: 'self-id',
+            username: 'self',
+            resolvedOptions: {},
+            optionWarnings: [],
+            initial: {
+                frame: 0,
+                field: emptyField,
+                hold: null,
+                current: Piece.T,
+                next: [Piece.S, Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
+            },
+            locks: overrides.locks ?? [],
+            terminal: {
+                frame: 600,
+                field: emptyField,
+                hold: null,
+                current: null,
+                next: [],
+                sourceHeight: 0,
+                clippedRowCount: 0,
+                reason: 'winner',
+            },
+            garbageEvents: [],
+        };
+        const state = makeColdClearState();
+        state.mode.screen = Screens.Replay;
+        state.replay = {
+            phase: 'playing',
+            analysis: { status: 'idle' },
+            ir: { rounds: [{ players: [player] }] },
+            selection: { roundIndex: 0, selfPlayerId: 'self-id' },
+            cursor: { frame: 0, selfIndex: 0, opponentIndex: 0, turnStop: false },
+        };
+        state.coldClear.inputGuide.enabled = true;
+        return state;
+    };
+
+    test('Replay AI guide searches the self board shown on the left', () => {
+        const state = makeReplayGuideState();
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        expect(started.coldClear.inputGuide.status).toBe('thinking');
+
+        const wrapper = (ColdClearWrapper as any as jest.Mock).mock.results[0].value;
+        const initMsg = wrapper.start.mock.calls[0][0];
+        expect(Array.from(initMsg.field as Uint8Array).reduce((sum, cell) => sum + cell, 0)).toBe(0);
+        expect(initMsg.queue[0]).toBe(PIECE_TO_CC[Piece.T]);
+        expect(initMsg.hold).toBe(CC_HOLD_NONE);
+        // 再生中も 1 手の間に答えが出るよう、エディタの 1000ms ではなくリプレイ解析の予算で考える
+        expect(initMsg.thinkMs).toBe(100);
+
+        const running = { ...state, coldClear: started.coldClear };
+        // 同じ局面のまま描画が進んでも探索をやり直さない
+        expect(coldClearActions.syncInputAiGuide()(running)).toBeUndefined();
+        expect(ColdClearWrapper).toHaveBeenCalledTimes(1);
+
+        const ready = coldClearActions.onInputAiGuideMoveResult({
+            runId: started.coldClear.inputGuide.runId,
+            result: { type: 'moveResult', hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(running) as any;
+        const readyState = { ...running, coldClear: ready.coldClear };
+        expect(replayInputGuideMove(readyState)).toEqual({
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        });
+
+        // 局面が変わった直後（再探索前）の描画には古い手を重ねない
+        const moved = {
+            ...readyState,
+            replay: { ...readyState.replay, cursor: { ...readyState.replay.cursor, frame: 600, selfIndex: 1 } },
+        };
+        expect(replayInputGuideMove(moved)).toBeNull();
+    });
+
+    // 手番 1（T を左下に置いた後、CURRENT は S）。終端ではない探索可能な局面
+    const lockedT = () => {
+        const fieldAfter = Array.from({ length: 230 }).map(() => Piece.Empty);
+        [[3, 0], [4, 0], [5, 0], [4, 1]].forEach(([x, y]) => { fieldAfter[x + y * 10] = Piece.T; });
+        return {
+            fieldAfter,
+            frame: 100,
+            piece: Piece.T,
+            rotation: 0,
+            x: 4,
+            y: 0,
+            cells: [[3, 0], [4, 0], [5, 0], [4, 1]],
+            fieldBefore: fieldAfter,
+            hold: null,
+            current: Piece.S,
+            next: [Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O, Piece.T],
+            clear: { lines: 0, spin: 'none', b2b: -1, ren: -1, perfectClear: false },
+            clippedRowCount: 0,
+            sourceHeight: 2,
+            attack: 0,
+            garbageCleared: 0,
+            pieceIndex: 0,
+        };
+    };
+
+    test('Replay AI guide drops the previous ghost and late answers when the position changes', () => {
+        const state = makeReplayGuideState({ locks: [lockedT()] });
+        const first = coldClearActions.syncInputAiGuide()(state) as any;
+        const firstRunId = first.coldClear.inputGuide.runId;
+        const ready = coldClearActions.onInputAiGuideMoveResult({
+            runId: firstRunId,
+            result: { type: 'moveResult', hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(({ ...state, coldClear: first.coldClear })) as any;
+        const readyState = { ...state, coldClear: ready.coldClear };
+        expect(replayInputGuideMove(readyState)).not.toBeNull();
+
+        // 手番 1 へ送った直後、まだ同期していない描画では手番 0 の手を出さない
+        const moved = {
+            ...readyState,
+            replay: { ...readyState.replay, cursor: { ...readyState.replay.cursor, frame: 100, selfIndex: 1 } },
+        };
+        expect(replayInputGuideMove(moved)).toBeNull();
+
+        const second = coldClearActions.syncInputAiGuide()(moved) as any;
+        expect(second.coldClear.inputGuide.status).toBe('thinking');
+        const secondState = { ...moved, coldClear: second.coldClear };
+        const wrapper = (ColdClearWrapper as any as jest.Mock).mock.results[1].value;
+        expect(wrapper.start.mock.calls[0][0].queue[0]).toBe(PIECE_TO_CC[Piece.S]);
+        // 手番 0 の探索から遅れて届いた答えは採らない
+        expect(coldClearActions.onInputAiGuideMoveResult({
+            runId: firstRunId,
+            result: { type: 'moveResult', hold: false, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(secondState)).toBeUndefined();
+
+        const answered = coldClearActions.onInputAiGuideMoveResult({
+            runId: second.coldClear.inputGuide.runId,
+            result: { type: 'moveResult', hold: false, piece: 5, rotation: 0, x: 1, y: 0 },
+        })(secondState) as any;
+        expect(replayInputGuideMove({ ...secondState, coldClear: answered.coldClear })).toEqual({
+            type: Piece.S,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 1, y: 0 },
+        });
+    });
+
+    test('Replay AI guide does not suggest a second HOLD within the same piece', () => {
+        const emptyField = Array.from({ length: 230 }).map(() => Piece.Empty);
+        // frame 10 で T を HOLD し、S を操作している
+        const state = makeReplayGuideState({
+            visual: {
+                active: [],
+                boards: [{ frame: 0, field: emptyField, sourceHeight: 0, clippedRowCount: 0 }],
+                queues: [
+                    {
+                        frame: 0, hold: null, current: Piece.T,
+                        next: [Piece.S, Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
+                    },
+                    {
+                        frame: 10, hold: Piece.T, current: Piece.S,
+                        next: [Piece.I, Piece.L, Piece.Z, Piece.J, Piece.O],
+                    },
+                ],
+                garbage: [],
+            },
+        });
+        state.replay.cursor.frame = 20;
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        const initMsg = (ColdClearWrapper as any as jest.Mock).mock.results[0].value.start.mock.calls[0][0];
+        expect(initMsg.queue[0]).toBe(PIECE_TO_CC[Piece.S]);
+        expect(initMsg.hold).toBe(PIECE_TO_CC[Piece.T]);
+        expect(initMsg.holdAllowed).toBe(false);
+
+        // HOLD を使う答え（Sold Slear は HOLD 不可を受け取れない）は表示しない
+        const rejected = coldClearActions.onInputAiGuideMoveResult({
+            runId: started.coldClear.inputGuide.runId,
+            result: { type: 'moveResult', hold: true, piece: 2, rotation: 0, x: 4, y: 0 },
+        })(({ ...state, coldClear: started.coldClear })) as any;
+        expect(rejected.coldClear.inputGuide.status).toBe('unavailable');
+        expect(rejected.coldClear.inputGuide.move).toBeNull();
+    });
+
+    test('starting the replay analysis stops a running guide search at once', () => {
+        const state = makeReplayGuideState();
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        const wrapper = (ColdClearWrapper as any as jest.Mock).mock.results[0].value;
+        stopInputAiGuideSession();
+        expect(wrapper.terminate).toHaveBeenCalled();
+
+        // 解析がすぐ終わった（全手除外）などで同じ局面のまま戻ったら、止めた探索を待たずに探し直す
+        const restarted = coldClearActions.syncInputAiGuide()({ ...state, coldClear: started.coldClear }) as any;
+        expect(restarted.coldClear.inputGuide.status).toBe('thinking');
+        expect(restarted.coldClear.inputGuide.runId).not.toBe(started.coldClear.inputGuide.runId);
+        expect(ColdClearWrapper).toHaveBeenCalledTimes(2);
+    });
+
+    test('switching the engine from the guide announces the new engine and restarts the guide', () => {
+        const state = makeReplayGuideState();
+        state.coldClear.engine = 'coldClear';
+        const started = coldClearActions.syncInputAiGuide()(state) as any;
+        expect(started.coldClear.inputGuide.status).toBe('thinking');
+        const running = { ...state, coldClear: started.coldClear };
+
+        const switched = coldClearActions.toggleAiEngineWithToast()(running) as any;
+        expect(switched.coldClear.engine).toBe('soldSlear');
+        expect(switched.coldClear.inputGuide.status).toBe('idle');
+        expect((global as any).M.toast)
+            .toHaveBeenLastCalledWith(expect.objectContaining({ html: 'Engine: Sold Slear' }));
+        const wrapper = (ColdClearWrapper as any as jest.Mock).mock.results[0].value;
+        expect(wrapper.terminate).toHaveBeenCalled();
+
+        const busy = { ...running, coldClear: { ...running.coldClear, isRunning: true } };
+        expect(coldClearActions.toggleAiEngineWithToast()(busy)).toBeUndefined();
+        expect((global as any).M.toast).toHaveBeenLastCalledWith(expect.objectContaining({ html: 'Engine busy' }));
+    });
+
+    test('Replay AI guide stays idle while the replay analysis runs or the guide is off', () => {
+        const analyzing = makeReplayGuideState();
+        analyzing.replay.analysis.status = 'running';
+        expect(coldClearActions.syncInputAiGuide()(analyzing)).toBeUndefined();
+
+        const off = makeReplayGuideState();
+        off.coldClear.inputGuide.enabled = false;
+        expect(coldClearActions.syncInputAiGuide()(off)).toBeUndefined();
         expect(ColdClearWrapper).not.toHaveBeenCalled();
     });
 

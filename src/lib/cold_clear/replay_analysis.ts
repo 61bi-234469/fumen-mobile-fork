@@ -1,8 +1,9 @@
 import { FieldConstants, Piece, isMinoPiece } from '../enums';
-import { createInputReplayContext, inputGarbageView } from '../input_replay';
+import { createInputReplayContext, inputNextTankRowCount } from '../input_replay';
 import { irFieldToField } from '../ttrm/board_converter';
-import { boardAtFrame, pointAt } from '../ttrm/timeline';
-import { IRField, PlayerRoundIR } from '../ttrm/types';
+import { boardAtFrame, lastPointIndex, pointAt, queueAtFrame } from '../ttrm/timeline';
+import { IRField, PlayerRoundIR, ReplayVisualState } from '../ttrm/types';
+import { Field } from '../fumen/field';
 import { fieldToCC, fieldToCells } from './fieldConverter';
 import { AiEngineId, aiEngineCapabilities } from '../ai_engine';
 import { SoldSlearBudgetId } from '../sold_slear/budget';
@@ -73,15 +74,19 @@ const hasCompleteLine = (field: IRField): boolean => {
 
 // 次の非消去 lock でせり上がる行数。INPUT 取り込みと同じ導出式を共有する
 // （直近 1 火力だけを見る。穴の位置や後続 parcel は Cold Clear へ渡せない）。
-const incomingAt = (player: PlayerRoundIR, index: number, lockFrame: number): number => {
+// confirmedIndex は確定済みの設置数（ポイント空間の index）、frame はその時点の再生フレーム。
+export const replayIncomingAt = (player: PlayerRoundIR, confirmedIndex: number, frame: number): number => {
     try {
-        const context = createInputReplayContext(player, index - 1, Math.max(0, lockFrame - 1));
-        return inputGarbageView(context).nextTankRows.length;
+        const context = createInputReplayContext(player, confirmedIndex, Math.max(0, frame));
+        return inputNextTankRowCount(context);
     } catch (e) {
         // ガベージ設定を復元できないリプレイでも解析自体は続ける
         return 0;
     }
 };
+
+const incomingAt = (player: PlayerRoundIR, index: number, lockFrame: number): number =>
+    replayIncomingAt(player, index - 1, lockFrame - 1);
 
 // 手番 index（1..L）の設置直前局面を Worker 入力へ変換する。
 export const buildAnalysisPosition = (
@@ -178,6 +183,113 @@ export const buildAnalysisPositions = (
         positions.push(buildAnalysisPosition(player, index, settings));
     }
     return positions;
+};
+
+// ---- AI ガイド ----
+
+export type ReplayGuideSkipReason = 'terminal' | 'clipped' | 'noCurrent' | 'pieceMismatch' | 'completeLine';
+
+export interface ReplayGuidePosition {
+    field: Field;
+    hold: Piece | null;
+    current: Piece;
+    next: Piece[];
+    b2b: boolean;
+    b2bLevel: number;
+    combo: number;
+    incoming: number;
+    // この手ではもう HOLD できない（使用済み・ルールで禁止・使用済みか判別できない）
+    holdLocked: boolean;
+}
+
+// 再生の 1 tick ごとに呼ばれるので、同じ時点の重いガベージ復元は使い回す。
+let incomingMemo: { player: PlayerRoundIR; confirmedIndex: number; frame: number; incoming: number } | null = null;
+
+const memoizedIncoming = (player: PlayerRoundIR, confirmedIndex: number, frame: number): number => {
+    if (incomingMemo !== null && incomingMemo.player === player
+        && incomingMemo.confirmedIndex === confirmedIndex && incomingMemo.frame === frame) {
+        return incomingMemo.incoming;
+    }
+    const incoming = replayIncomingAt(player, confirmedIndex, frame);
+    incomingMemo = { player, confirmedIndex, frame, incoming };
+    return incoming;
+};
+
+const minoOrNull = (piece: Piece | null): Piece | null => piece !== null && isMinoPiece(piece) ? piece : null;
+
+// 表示中の手で HOLD がもう使えないか。キューは同じフレーム内の操作を最終状態にまとめて記録するので、
+// HOLD の中身だけでは「HOLD → 設置 → spawn 時の IHS」で元の種類へ戻った場合を見分けられない。
+// そこで、手の始まりに NEXT から出てくるはずのミノと、いま操作しているミノを比べる（HOLD すれば入れ替わる）。
+// 比べる元が取れない境界（visual timeline の無い IR、frame 0 の設置、同じフレームに続く設置）は
+// HOLD を勧めない側に倒す。
+const isReplayHoldLocked = (
+    player: PlayerRoundIR, confirmedIndex: number, hold: Piece | null, current: Piece,
+): boolean => {
+    if (player.resolvedOptions.display_hold === false) {
+        return true;
+    }
+    // visual timeline が無いと HOLD の中身自体が設置確定時の値（次手の IHS 後）になり得るので、無制限 HOLD でも勧めない
+    if (player.visual === undefined) {
+        return true;
+    }
+    if (player.resolvedOptions.infinite_hold === true) {
+        return false;
+    }
+    const previousLock = player.locks[confirmedIndex - 1];
+    if (previousLock === undefined) {
+        return hold !== minoOrNull(player.initial.hold) || current !== player.initial.current;
+    }
+    const lockBefore = player.locks[confirmedIndex - 2];
+    if (previousLock.frame <= 0 || (lockBefore !== undefined && lockBefore.frame >= previousLock.frame)) {
+        return true;
+    }
+    // 直前の設置の 1 フレーム前：まだその手を操作していて、次の手のミノは NEXT の先頭にある
+    const beforeLock = queueAtFrame(player, previousLock.frame - 1);
+    return hold !== minoOrNull(beforeLock.hold) || current !== beforeLock.next[0];
+};
+
+// 表示中の局面（盤面・操作中ミノ・HOLD/NEXT）をそのまま AI ガイドの入力にする。
+// confirmedIndex は表示中の盤面に入っている設置数。統計とガベージはそこから INPUT 取り込みと同じ式で出す。
+export const buildReplayGuidePosition = (
+    player: PlayerRoundIR, visual: ReplayVisualState, confirmedIndex: number,
+): { position: ReplayGuidePosition } | { skipReason: ReplayGuideSkipReason } => {
+    if (lastPointIndex(player) <= confirmedIndex) {
+        return { skipReason: 'terminal' };
+    }
+    if (visual.clippedRowCount > 0) {
+        return { skipReason: 'clipped' };
+    }
+    // 手番送りの接地直前（preLockPointAt）は HOLD / NEXT を設置確定時の値から戻すため、次のミノの spawn 時の
+    // IHS が混ざることがある。visual timeline があれば、そのフレームに実際に記録されたキューを使う。
+    const queue = player.visual !== undefined ? queueAtFrame(player, visual.frame) : visual;
+    const current = queue.current ?? visual.active?.piece ?? null;
+    if (current === null || !isMinoPiece(current)) {
+        return { skipReason: 'noCurrent' };
+    }
+    // 設置と同じフレームで HOLD してから置いた手に止めると、記録されたキューは HOLD 前、
+    // 盤面に出している操作中ミノは HOLD 後になる。どちらの局面か決められないのでガイドを出さない
+    if (visual.active !== undefined && visual.active.piece !== current) {
+        return { skipReason: 'pieceMismatch' };
+    }
+    if (hasCompleteLine(visual.field)) {
+        return { skipReason: 'completeLine' };
+    }
+
+    const previousLock = player.locks[confirmedIndex - 1];
+    const hold = minoOrNull(queue.hold);
+    return {
+        position: {
+            hold,
+            current,
+            holdLocked: isReplayHoldLocked(player, confirmedIndex, hold, current),
+            field: irFieldToField(visual.field),
+            next: queue.next.filter(isMinoPiece),
+            b2b: previousLock !== undefined && previousLock.clear.b2b >= 0,
+            b2bLevel: previousLock !== undefined ? Math.max(0, previousLock.clear.b2b + 1) : 0,
+            combo: previousLock !== undefined ? Math.max(0, previousLock.clear.ren + 1) : 0,
+            incoming: memoizedIncoming(player, confirmedIndex, visual.frame),
+        },
+    };
 };
 
 // ---- 指標 ----

@@ -101,7 +101,7 @@
 - Lint: `yarn lint`. Type check: `yarn typecheck`.
 - Unit tests: `yarn test`; target a file/pattern with `yarn test <pattern>`. Coverage is opt-in with `yarn test --coverage`.
 - Cypress: `yarn cy-run --spec <specs>` (see the e2e skill); `yarn cy-open` for the interactive runner.
-- CI uses Node.js 20. Local Node may be newer; if a failure only reproduces on one version, say which.
+- CI uses Node.js 24. Local Node may be newer; if a failure only reproduces on one version, say which.
 - `.github/workflows/dev-workflow.yaml` runs on non-`main` pushes and manual dispatch. The unit job runs lint, type check, and Jest. Five e2e shards each run a production build, `check-build-performance`, and their share of Cypress specs.
 - `.github/workflows/deploy.yml` runs on pushes to either `main` or `develop`. It checks out both branch heads on every run, runs Jest for `main`, builds both, and publishes `main` at the Pages site root and `develop` at `/preview/` (with `noindex`). A failed `develop` build therefore also blocks republishing production.
 - Before running `gh` commands, apply any `gh` environment notes from `AGENTS.local.md` if present.

@@ -27,6 +27,7 @@ import {
     isColdClearSearchBlockedByHoldQueue,
     resolveCurrentColdClearMenuQueueState,
     canClearCommentForColdClearQueue,
+    resolveColdClearSearchSetupNeeds,
 } from './actions/cold_clear';
 import { availableAiEngines, resolveAiEngine } from './lib/ai_engine';
 
@@ -171,6 +172,7 @@ export const view: View<State, Actions> = (state, actions) => {
             nextLimit: state.coldClear.nextLimit,
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
+            setupNeeds: resolveColdClearSearchSetupNeeds(state),
         }) : undefined as any,
 
         state.modal.pieceQueue ? PieceQueueModal({

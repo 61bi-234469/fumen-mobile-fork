@@ -10,6 +10,7 @@ import {
     COLD_CLEAR_TOP_BRANCH_COUNT_MAX,
     COLD_CLEAR_TOP_BRANCH_COUNT_MIN,
     COLD_CLEAR_THINK_MS_PRESETS,
+    ColdClearSearchSetupNeeds,
 } from '../../actions/cold_clear';
 import {
     parsePieceHoldText,
@@ -53,9 +54,13 @@ interface ColdClearMenuModalProps {
     canTopBranchesSearch: boolean;
     canPlacedSpawnScore: boolean;
     searchBlockedByHoldQueue: boolean;
+    // 探索できない理由のうち、メニュー内のボタンで直せるもの
+    setupNeeds: ColdClearSearchSetupNeeds;
     canClearComment: boolean;
     actions: {
         closeColdClearMenuModal: () => void;
+        openPieceQueueModal: () => void;
+        changeLockFlag: (data: { index: number; enable: boolean }) => void;
         startColdClearSearch: () => void;
         startColdClearTopThreeSearch: () => void;
         setColdClearTopBranchCount: (data: { count: number }) => void;
@@ -87,7 +92,7 @@ type MenuItem = {
     datatest: string;
     iconName: string;
     title: string;
-    description: string;
+    badge?: { datatest: string; text: string };
     warning?: string;
     enabled: boolean;
     danger?: boolean;
@@ -125,6 +130,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         canTopBranchesSearch,
         canPlacedSpawnScore,
         searchBlockedByHoldQueue,
+        setupNeeds,
         canClearComment,
         actions,
     },
@@ -245,6 +251,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
     });
     const numberInputStyle = style({
         width: px(84),
+        margin: '0px',
+        textAlign: 'center',
+        height: px(32),
+    });
+    const nextLimitInputStyle = style({
+        width: px(64),
         margin: '0px',
         textAlign: 'center',
         height: px(32),
@@ -388,12 +400,52 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         fontWeight: 700,
         lineHeight: '1.2',
     });
-    const itemDescriptionStyle = (enabled: boolean) => style({
-        margin: `${px(2)} 0px 0px 0px`,
+    const badgeStyle = (enabled: boolean) => style({
+        marginLeft: 'auto',
+        padding: `${px(1)} ${px(8)}`,
+        borderRadius: px(10),
         fontSize: px(12),
-        color: enabled ? '#6b7280' : '#9e9e9e',
-        lineHeight: '1.25',
+        fontWeight: 700,
+        color: enabled ? '#1565c0' : '#9e9e9e',
+        backgroundColor: enabled ? '#e3f2fd' : '#e5e7eb',
     });
+    const noticeChipStyle = style({
+        display: 'inline-block',
+        margin: `${px(8)} 0px`,
+        padding: `${px(2)} ${px(10)}`,
+        borderRadius: px(10),
+        fontSize: px(12),
+        fontWeight: 700,
+        color: '#92400e',
+        backgroundColor: '#fef3c7',
+    });
+    const setupRowStyle = style({
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: px(8),
+        padding: `0px ${px(4)}`,
+    });
+    const setupButtonStyle = style({
+        flex: '1 1 0',
+        minWidth: px(120),
+        height: px(34),
+        border: '1px solid #cbd5e1',
+        borderRadius: '6px',
+        background: '#fff',
+        color: '#2563eb',
+        fontSize: px(13),
+        fontWeight: 700,
+        cursor: 'pointer',
+    });
+    const setupQueue = () => {
+        closeMenu();
+        actions.openPieceQueueModal();
+    };
+    const setupLock = () => {
+        actions.changeLockFlag({ index: setupNeeds.pageIndex, enable: true });
+    };
+    const showSetupRow = !isRunning && (setupNeeds.queue || setupNeeds.lock);
+    const effectiveTopBranchCount = Math.min(topBranchCount, capabilities.maxTopBranches);
 
     const items: MenuItem[] = [
         ...(isRunning ? [{
@@ -401,7 +453,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             datatest: 'btn-cold-clear-stop-action',
             iconName: 'stop_circle',
             title: i18n.ColdClear.StopSearchLabel(),
-            description: i18n.ColdClear.StopSearchDescription(),
             enabled: true,
             danger: true,
             onclick: () => {
@@ -413,7 +464,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             datatest: 'btn-cold-clear-sequence-search',
             iconName: 'timeline',
             title: i18n.ColdClear.SequenceSearchLabel(),
-            description: i18n.ColdClear.SequenceSearchDescription(),
             warning: (thinkMs >= 5000 && speculate && nextLimit === null)
                 ? i18n.ColdClear.SequenceSearchCrashWarning() : undefined,
             enabled: !isRunning && canSequenceSearch,
@@ -436,7 +486,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             datatest: 'btn-cold-clear-top-branches-search',
             iconName: 'account_tree',
             title: i18n.ColdClear.TopBranchesSearchLabel(),
-            description: i18n.ColdClear.TopBranchesSearchDescription(topBranchCount),
+            badge: { datatest: 'badge-cold-clear-top-branch-count', text: `×${effectiveTopBranchCount}` },
             enabled: !isRunning && canTopBranchesSearch,
             onclick: () => {
                 actions.startColdClearTopThreeSearch();
@@ -457,7 +507,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             datatest: 'btn-cold-clear-evaluate-placed-spawn-score',
             iconName: 'grade',
             title: i18n.ColdClear.EvaluatePlacedSpawnScoreLabel(),
-            description: i18n.ColdClear.EvaluatePlacedSpawnScoreDescription(),
             enabled: !isRunning && canPlacedSpawnScore,
             onclick: () => {
                 actions.evaluatePlacedSpawnMinoScore();
@@ -511,6 +560,36 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         : undefined}
 
                     <div key="cold-clear-menu-list" style={menuListStyle}>
+                        {showSetupRow
+                            ? <div key="cold-clear-setup-row" style={setupRowStyle}>
+                                {setupNeeds.queue
+                                    ? <button
+                                        key="btn-cold-clear-setup-queue"
+                                        datatest="btn-cold-clear-setup-queue"
+                                        style={setupButtonStyle}
+                                        onclick={(event: MouseEvent) => {
+                                            event.preventDefault();
+                                            setupQueue();
+                                        }}
+                                    >
+                                        {i18n.ColdClear.SetupQueueButton()}
+                                    </button>
+                                    : undefined}
+                                {setupNeeds.lock
+                                    ? <button
+                                        key="btn-cold-clear-setup-lock"
+                                        datatest="btn-cold-clear-setup-lock"
+                                        style={setupButtonStyle}
+                                        onclick={(event: MouseEvent) => {
+                                            event.preventDefault();
+                                            setupLock();
+                                        }}
+                                    >
+                                        {i18n.ColdClear.SetupLockButton()}
+                                    </button>
+                                    : undefined}
+                            </div>
+                            : undefined}
                         {items.map((item) => {
                             const clickable = item.enabled || item.onDisabledClick !== undefined;
                             return h('button', {
@@ -533,11 +612,17 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     style: iconStyle(item.enabled, item.danger ?? false),
                                 }, item.iconName),
                                 h('div', { key: `${item.key}-texts`, style: style({ flex: 1 }) }, [
-                                    h('p', { key: `${item.key}-title`, style: titleStyle }, item.title),
-                                    h('p', {
-                                        key: `${item.key}-description`,
-                                        style: itemDescriptionStyle(item.enabled),
-                                    }, item.description),
+                                    h('div', {
+                                        key: `${item.key}-title-row`,
+                                        style: style({ alignItems: 'center', display: 'flex', gap: px(8) }),
+                                    }, [
+                                        h('p', { key: `${item.key}-title`, style: titleStyle }, item.title),
+                                        ...(item.badge ? [h('span', {
+                                            key: `${item.key}-badge`,
+                                            datatest: item.badge.datatest,
+                                            style: badgeStyle(item.enabled),
+                                        }, item.badge.text)] : []),
+                                    ]),
                                     ...(item.warning ? [h('p', {
                                         key: `${item.key}-warning`,
                                         style: menuItemWarningStyle,
@@ -886,7 +971,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
 
                         {engine === 'soldSlear'
                             ? <div key="txt-ai-engine-notice" datatest="txt-ai-engine-notice">
-                                <p style={descriptionStyle}>{i18n.ColdClear.SoldSlearNotice()}</p>
+                                <span style={noticeChipStyle}>{i18n.ColdClear.SoldSlearNotice()}</span>
                                 {rotationSystemMismatch
                                     ? <p style={warningStyle}>{i18n.ColdClear.SoldSlearRotationWarning()}</p>
                                     : undefined}
@@ -894,10 +979,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                             : undefined}
 
                         {capabilities.holdToggle ? <div key="cold-clear-hold-allowed-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.HoldAllowedLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.HoldAllowedDescription()}</p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.HoldAllowedLabel()}</p>
                             <label>
                                 <input
                                     datatest="toggle-cold-clear-hold-allowed"
@@ -914,62 +996,58 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                             </label>
                         </div> : undefined}
 
-                        <div key="cold-clear-next-limit-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.NextLimitLabel()}</p>
-                                <p style={descriptionStyle}>
-                                    {engine === 'soldSlear'
-                                        ? i18n.ColdClear.SoldSlearNextLimitDescription()
-                                        : i18n.ColdClear.NextLimitDescription()}
-                                </p>
-                            </div>
-                            <div style={style({ display: 'flex', alignItems: 'center', gap: px(8) })}>
-                                <label>
-                                    <input
-                                        datatest="toggle-cold-clear-next-limit-enabled"
-                                        type="checkbox"
-                                        checked={nextLimit !== null}
-                                        disabled={isRunning}
-                                        onchange={(event: Event) => {
-                                            const target = event.target as HTMLInputElement;
-                                            actions.setColdClearNextLimit({
-                                                nextLimit: target.checked ? COLD_CLEAR_NEXT_LIMIT_DEFAULT : null,
-                                            });
-                                        }}
-                                    />
-                                    <span />
-                                </label>
+                        <div
+                            key="cold-clear-next-limit-row"
+                            style={style({
+                                margin: `${px(8)} 0px`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: px(8),
+                            })}
+                        >
+                            <label>
                                 <input
-                                    datatest="input-cold-clear-next-limit"
-                                    type="number"
-                                    value={nextLimit === null ? '' : Math.max(capabilities.minNext, nextLimit)}
-                                    min={Math.max(COLD_CLEAR_NEXT_LIMIT_MIN, capabilities.minNext)}
-                                    max={COLD_CLEAR_NEXT_LIMIT_MAX}
-                                    step={1}
-                                    disabled={isRunning || nextLimit === null}
+                                    datatest="toggle-cold-clear-next-limit-enabled"
+                                    type="checkbox"
+                                    checked={nextLimit !== null}
+                                    disabled={isRunning}
                                     onchange={(event: Event) => {
                                         const target = event.target as HTMLInputElement;
-                                        const value = Number(target.value);
-                                        if (Number.isNaN(value)) {
-                                            return;
-                                        }
-                                        const normalized = Math.max(
-                                            COLD_CLEAR_NEXT_LIMIT_MIN,
-                                            capabilities.minNext,
-                                            Math.min(COLD_CLEAR_NEXT_LIMIT_MAX, Math.floor(value)),
-                                        );
-                                        actions.setColdClearNextLimit({ nextLimit: normalized });
+                                        actions.setColdClearNextLimit({
+                                            nextLimit: target.checked ? COLD_CLEAR_NEXT_LIMIT_DEFAULT : null,
+                                        });
                                     }}
-                                    style={numberInputStyle}
                                 />
-                            </div>
+                                <span style={labelStyle}>{i18n.ColdClear.NextLimitPrefix()}</span>
+                            </label>
+                            <input
+                                datatest="input-cold-clear-next-limit"
+                                type="number"
+                                value={nextLimit === null ? '' : Math.max(capabilities.minNext, nextLimit)}
+                                min={Math.max(COLD_CLEAR_NEXT_LIMIT_MIN, capabilities.minNext)}
+                                max={COLD_CLEAR_NEXT_LIMIT_MAX}
+                                step={1}
+                                disabled={isRunning || nextLimit === null}
+                                onchange={(event: Event) => {
+                                    const target = event.target as HTMLInputElement;
+                                    const value = Number(target.value);
+                                    if (Number.isNaN(value)) {
+                                        return;
+                                    }
+                                    const normalized = Math.max(
+                                        COLD_CLEAR_NEXT_LIMIT_MIN,
+                                        capabilities.minNext,
+                                        Math.min(COLD_CLEAR_NEXT_LIMIT_MAX, Math.floor(value)),
+                                    );
+                                    actions.setColdClearNextLimit({ nextLimit: normalized });
+                                }}
+                                style={nextLimitInputStyle}
+                            />
+                            <p style={labelStyle}>{i18n.ColdClear.NextLimitSuffix()}</p>
                         </div>
 
                         {engine === 'soldSlear' ? <div key="sold-slear-budget-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.SoldSlearBudgetLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.SoldSlearBudgetDescription()}</p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.SoldSlearBudgetLabel()}</p>
                             <select
                                 key="select-sold-slear-budget"
                                 datatest="select-sold-slear-budget"
@@ -980,7 +1058,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     actions.setSoldSlearBudget({ budget: target.value });
                                 }}
                                 style={style({
-                                    width: px(120),
+                                    width: px(230),
+                                    maxWidth: '65%',
                                     height: px(32),
                                     margin: '0px',
                                     fontSize: px(13),
@@ -991,7 +1070,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     const millis = budgetMillisOf(id);
                                     return <option key={`sold-slear-budget-${id}`} value={id}>
                                         {millis === null
-                                            ? i18n.ColdClear.SoldSlearBudgetStandard()
+                                            ? i18n.ColdClear.SoldSlearBudgetStandardDetail()
                                             : i18n.ColdClear.SoldSlearBudgetTime(millis)}
                                     </option>;
                                 })}
@@ -999,10 +1078,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         </div> : undefined}
 
                         {engine !== 'soldSlear' ? <div key="cold-clear-think-time-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.ThinkTimeLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.ThinkTimeDescription()}</p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.ThinkTimeLabel()}</p>
                             <select
                                 key="select-cold-clear-think-time"
                                 datatest="select-cold-clear-think-time"
@@ -1031,10 +1107,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         </div> : undefined}
 
                         {capabilities.weightsPreset ? <div key="cold-clear-weights-preset-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.WeightsPresetLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.WeightsPresetDescription()}</p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.WeightsPresetLabel()}</p>
                             <select
                                 key="select-cold-clear-weights-preset"
                                 datatest="select-cold-clear-weights-preset"
@@ -1060,10 +1133,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         </div> : undefined}
 
                         {capabilities.speculateToggle ? <div key="cold-clear-speculate-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.SpeculateLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.SpeculateDescription()}</p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.SpeculateLabel()}</p>
                             <label>
                                 <input
                                     datatest="toggle-cold-clear-speculate"
@@ -1085,19 +1155,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                             : undefined}
 
                         <div key="cold-clear-top-branch-count-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
-                                <p style={descriptionStyle}>
-                                    {engine === 'soldSlear'
-                                        ? i18n.ColdClear.SoldSlearTopBranchCountDescription()
-                                        : i18n.ColdClear.TopBranchCountDescription()}
-                                </p>
-                            </div>
+                            <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
                             <input
                                 key="input-cold-clear-top-branch-count"
                                 datatest="input-cold-clear-top-branch-count"
                                 type="number"
-                                value={Math.min(topBranchCount, capabilities.maxTopBranches)}
+                                value={effectiveTopBranchCount}
                                 min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
                                 max={Math.min(COLD_CLEAR_TOP_BRANCH_COUNT_MAX, capabilities.maxTopBranches)}
                                 step={1}

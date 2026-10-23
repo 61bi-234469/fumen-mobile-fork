@@ -69,7 +69,6 @@ jest.mock('../../../locales/keys', () => ({
             HoldSwapMissingQueue: () => 'Next queue required',
             HoldSwapCurrentPieceRequired: () => 'Current piece required',
             EvaluatePlacedSpawnScoreLabel: () => 'Placed Score',
-            EvaluatePlacedSpawnScoreDescription: () => 'Evaluate placed piece',
             InvalidPageFlags: () => 'Invalid page flags',
             FieldContainsCompleteLine: () => 'Field contains a complete line',
             InvalidQueueComment: () => 'Invalid queue comment',

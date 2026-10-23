@@ -180,11 +180,11 @@
         RotateLeft: 'Rotate left', RotateRight: 'Rotate right',
         Rotate: 'Rotate', Mirror: 'Mirror', UtilsMirror: 'Mirror',
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
-        UtilsPages: 'Delete pages',
-        ClearPast: 'Delete pages before this', ClearToEnd: 'Delete pages after this',
+        UtilsPages: 'Delete',
+        ClearPast: 'Pages before this', ClearToEnd: 'Pages after this',
         CommentPlaceholder: 'Comment',
-        AllMirror: 'Mirror all pages', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
-        ResetAllComments: 'Reset all comments', ReplaceComments: 'Replace comments',
+        AllMirror: 'Mirror', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
+        ResetAllComments: 'Reset comments', ReplaceComments: 'Replace comments',
         SpawnMinoToggle: {
             ToPaint: 'TO PAINT', ToMino: 'TO MINO', CancelPick: 'CANCEL',
             UtilsLabel: 'Spawn mino / blocks',
@@ -355,7 +355,8 @@
             CurrentPending: 'Not analyzed yet',
             Aborted: 'Analysis stopped',
             Failed: 'Analysis failed',
-            Note: 'Taller bars mean a bigger gap from the best move. Losses are relative within this round and depend on the search budget.',
+            GraphApprox: ' (approx.)',
+            LossAxis: 'Loss',
             BudgetLabel: 'Search budget per move',
         },
         Error: {
@@ -432,8 +433,7 @@
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',
         NextLabel: 'NEXT',
-        NextOrderHint: 'CURRENT is the piece in play (optional). NEXT pieces are used from left to right. '
-            + 'The first piece appears at the top of the field.',
+        CurrentEmpty: 'None',
         OpenSettings: 'Open piece queue settings',
     },
     InputStats: {

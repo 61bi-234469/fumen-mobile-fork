@@ -63,8 +63,9 @@ const inputGuideReasonText = (reason: InputGuideUnavailableReason | undefined): 
 };
 
 const inputAiGuideStatusText = (guide: InputAiGuideView): string => {
+    // OFF の間はスイッチが状態を示すので、文字は出さない
     if (!guide.enabled) {
-        return i18n.ColdClear.InputGuideStatus.Off();
+        return '';
     }
     switch (guide.status) {
     case 'thinking':
@@ -312,7 +313,7 @@ export const pieceQueueOverlays = ({
     // 低いときはアイコンを外し、スイッチ付きラベルと状態文字の2段だけにする。さらに低ければ状態文字も外す
     // アイコン・スイッチ行・状態文字の 3 段は 42px 未満だと状態文字が欠ける（スマホ縦で約 37px）
     const inputGuideCompact = inputGuideHeight < 42;
-    const inputGuideStatusVisible = inputGuideHeight >= 22;
+    const inputGuideStatusVisible = inputGuideHeight >= 22 && inputGuideStatusText !== '';
     const inputGuideStatusColor = !inputAiGuide.enabled
         ? '#757575'
         : inputAiGuide.status === 'unavailable' ? EDITOR_DANGER_COLOR : EDITOR_ACTIVE_TEXT_COLOR;

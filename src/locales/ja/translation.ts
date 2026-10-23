@@ -183,11 +183,11 @@ export const resources = {
         Rotate: '回転', Mirror: 'Mirror', UtilsMirror: '左右反転',
         // UTILS は説明的な操作名が並ぶ一覧なので、読み取りやすさを優先して日本語にする（モード名の Slide / Comment は英語のまま）
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
-        UtilsPages: 'ページ削除',
-        ClearPast: 'このページより前を削除', ClearToEnd: 'このページより後を削除',
+        UtilsPages: '削除',
+        ClearPast: 'このページより前', ClearToEnd: 'このページより後',
         CommentPlaceholder: 'Comment',
-        AllMirror: '全ページ左右反転', ToGray: 'グレー化', ToBlack: 'グレー以外を削除',
-        ResetAllComments: '全ページのコメントをリセット', ReplaceComments: '全ページのコメントを置換',
+        AllMirror: '左右反転', ToGray: 'グレー化', ToBlack: 'グレー以外を削除',
+        ResetAllComments: 'コメントをリセット', ReplaceComments: 'コメントを置換',
         SpawnMinoToggle: {
             ToPaint: 'TO PAINT', ToMino: 'TO MINO', CancelPick: 'CANCEL',
             UtilsLabel: 'SPAWNミノ ⇄ ブロック',
@@ -337,8 +337,9 @@ export const resources = {
             CurrentPending: '未解析',
             Aborted: '解析を中止しました',
             Failed: '解析に失敗しました',
-            // AI の評価値は局面ごとに尺度が変わるため、絶対値ではなく相対で読む
-            Note: '棒が高いほど最善手との差が大きい。損失はこの試合の中での相対表示で、探索量に左右される参考値',
+            // AI の評価値は局面ごとに尺度が変わるため、相対で読む参考値であることだけをタイトルに残す
+            GraphApprox: '（参考値）',
+            LossAxis: '損失',
             BudgetLabel: '1手あたりの探索量',
         },
         Error: {
@@ -415,7 +416,7 @@ export const resources = {
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',
         NextLabel: 'NEXT',
-        NextOrderHint: 'CURRENTは現在操作中のミノです (任意)。NEXTは左から順に使用され、フィールドでは近いNEXTから上に表示されます。',
+        CurrentEmpty: 'なし',
         OpenSettings: 'ピースキュー設定を開く',
     },
     InputStats: {

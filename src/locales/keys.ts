@@ -381,7 +381,8 @@ export const i18n = {
             CurrentPending: () => t('Replay.Analysis.CurrentPending'),
             Aborted: () => t('Replay.Analysis.Aborted'),
             Failed: () => t('Replay.Analysis.Failed'),
-            Note: () => t('Replay.Analysis.Note'),
+            GraphApprox: () => t('Replay.Analysis.GraphApprox'),
+            LossAxis: () => t('Replay.Analysis.LossAxis'),
             BudgetLabel: () => t('Replay.Analysis.BudgetLabel'),
         },
         Error: {
@@ -458,7 +459,7 @@ export const i18n = {
         HoldLabel: () => t('PieceQueue.HoldLabel'),
         CurrentLabel: () => t('PieceQueue.CurrentLabel'),
         NextLabel: () => t('PieceQueue.NextLabel'),
-        NextOrderHint: () => t('PieceQueue.NextOrderHint'),
+        CurrentEmpty: () => t('PieceQueue.CurrentEmpty'),
         OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
     InputStats: {

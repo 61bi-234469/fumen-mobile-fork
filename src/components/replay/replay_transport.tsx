@@ -113,6 +113,7 @@ export const replayTransport = (
                     step="1"
                     value={String(Math.round(cursor.frame))}
                     aria-label={i18n.Replay.Playing.Timeline()}
+                    title={i18n.Replay.Playing.Timeline()}
                     style={style({
                         // materialize が Firefox 向けに付ける白枠は、高さを持たせると箱に見える
                         border: 'none',
@@ -186,6 +187,7 @@ export const replayTransport = (
                     key="replay-speed-select"
                     datatest="replay-speed-select"
                     aria-label={i18n.Replay.Playing.Speed()}
+                    title={i18n.Replay.Playing.Speed()}
                     value={String(playback.speed)}
                     style={style({
                         border: '1px solid #ccc',

@@ -184,11 +184,13 @@ export const railAnchorOffset = (
     return Math.max(0, rightEdgeOffset - (layout.buttons.size.width + 4));
 };
 
-const overlaySection = ({ key, datatest, label, children }: {
+// showHeading=false は項目が 1 つだけで見出しが項目名の言い直しになるセクション用（名前は aria-label に残す）
+const overlaySection = ({ key, datatest, label, children, showHeading = true }: {
     key: string;
     datatest: string;
     label: string;
     children: VNode<{}>[];
+    showHeading?: boolean;
 }) => div({
     key,
     datatest,
@@ -199,7 +201,7 @@ const overlaySection = ({ key, datatest, label, children }: {
         gap: px(5),
     }),
 }, [
-    div({
+    ...(showHeading ? [div({
         key: `${key}-heading`,
         datatest: `${datatest}-heading`,
         role: 'heading',
@@ -213,7 +215,7 @@ const overlaySection = ({ key, datatest, label, children }: {
             lineHeight: px(16),
             padding: '0 2px 2px',
         }),
-    }, label),
+    }, label)] : []),
     ...children,
 ]);
 
@@ -336,6 +338,7 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             key: 'utils-replay',
             datatest: 'utils-scope-replay',
             label: i18n.Replay.Title(),
+            showHeading: false,
             children: [
                 overlayButton({
                     key: 'btn-open-replay', datatest: 'btn-open-replay',

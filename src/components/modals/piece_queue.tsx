@@ -33,6 +33,9 @@ interface PieceQueueModalProps {
     };
 }
 
+// フィールドのNEXT列に出る個数と合わせる
+const NEXT_PREVIEW_COUNT = 5;
+
 type FocusTarget = 'hold' | 'current' | 'next';
 let focusTarget: FocusTarget = 'next';
 
@@ -185,7 +188,6 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                 >{i18n.ColdClear.QueueStateClearAndEdit()}</button> : undefined}
                             </div>
                             : <div>
-                                <p style={descriptionStyle}>{i18n.PieceQueue.NextOrderHint()}</p>
                                 <div style={style({ display: 'flex', gap: px(8) })}>
                                     <div
                                         key="piece-queue-hold-pane"
@@ -235,6 +237,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                             datatest="input-piece-queue-current"
                                             type="text"
                                             maxlength={1}
+                                            placeholder={i18n.PieceQueue.CurrentEmpty()}
                                             value={currentQueueState.current === null
                                                 ? '' : pieceQueuePieceToChar(currentQueueState.current)}
                                             onfocus={() => setFocus('current')}
@@ -277,6 +280,37 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                             }}
                                             style={inputStyle}
                                         />
+                                        {/* フィールドのNEXT列と同じ向き（先頭が上）に番号付きで並べ、使われる順を示す */}
+                                        <ol
+                                            key="piece-queue-next-preview"
+                                            datatest="piece-queue-next-preview"
+                                            style={style({ listStyle: 'none', margin: `${px(4)} 0 0 0`, padding: '0' })}
+                                        >
+                                            {Array.from({ length: NEXT_PREVIEW_COUNT }).map((_, index) => {
+                                                const piece = currentQueueState.queue[index];
+                                                return <li
+                                                    key={`piece-queue-next-slot-${index + 1}`}
+                                                    datatest={`piece-queue-next-slot-${index + 1}`}
+                                                    style={style({
+                                                        alignItems: 'center',
+                                                        display: 'flex',
+                                                        fontSize: px(11),
+                                                        gap: px(8),
+                                                        lineHeight: px(13),
+                                                    })}
+                                                >
+                                                    <span style={style({
+                                                        color: '#6b7280', minWidth: px(12), textAlign: 'right',
+                                                    })}>{index + 1}</span>
+                                                    <span style={style({
+                                                        color: piece === undefined ? '#bdbdbd' : '#111827',
+                                                        fontWeight: '700',
+                                                    })}>
+                                                        {piece === undefined ? '—' : pieceQueuePieceToChar(piece)}
+                                                    </span>
+                                                </li>;
+                                            })}
+                                        </ol>
                                     </div>
                                 </div>
 

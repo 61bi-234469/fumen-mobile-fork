@@ -26,7 +26,7 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('btn-input-ai-guide'))
             .should('have.attr', 'aria-pressed', 'false')
             .and('have.attr', 'data-status', 'idle');
-        cy.get(datatest('input-ai-guide-status')).should('have.text', 'OFF');
+        cy.get(datatest('input-ai-guide-status')).should('have.text', '');
         operations.mode.piece.toggleAiGuide();
         cy.get(datatest('btn-input-ai-guide')).should('have.attr', 'aria-pressed', 'true');
         cy.window().then(win => {

@@ -50,7 +50,6 @@ export const resources = {
     },
     UserSettings: {
         Title: 'ユーザー設定',
-        Notice: 'ブラウザのキャッシュを削除すると、これらの設定は初期化されます。',
         Tabs: {
             Edit: '編集',
             View: 'List/Tree',
@@ -79,11 +78,9 @@ export const resources = {
         },
         OpenTreeScreenOnTreeData: {
             Title: 'ツリーデータ(#TREE)を含むテト譜はTree画面で開く',
-            Description: '上の初期画面より優先されます。OFFにすると初期画面の設定どおりに開きます',
         },
         UtilsMenuPinned: {
             Title: 'UTILSメニューを開いたままにする',
-            Description: '項目を選んでもメニューを閉じない。メニュー外は暗転せず、そのまま操作できる',
         },
         Loop: {
             Title: 'ページ移動のループ',
@@ -100,15 +97,15 @@ export const resources = {
             Srs: () => 'SRS',
             SrsPlus: () => 'SRS+',
         },
+        ShortcutInput: {
+            Placeholder: 'キーを押す',
+            Clear: '割り当てをクリア',
+        },
         PaletteShortcuts: {
             Title: 'パレットショートカット',
-            Description: 'キーを押して割り当て。Backspaceでクリア。',
-            NotSet: '未設定',
         },
         EditShortcuts: {
             Title: '編集用ショートカット',
-            Description: 'キーを押して割り当て。Backspaceでクリア。',
-            NotSet: '未設定',
             InsertPage: 'ページ追加',
             PrevPage: '前ページ',
             NextPage: '次ページ',
@@ -126,8 +123,6 @@ export const resources = {
         },
         PieceShortcuts: {
             Title: 'ピースショートカット',
-            Description: 'キーを押して割り当て。Backspaceでクリア。',
-            NotSet: '未設定',
             MoveLeft: '左移動',
             MoveRight: '右移動',
             SoftDrop: 'ソフトドロップ',
@@ -137,34 +132,28 @@ export const resources = {
             Rotate180: '180°回転',
             Reset: 'RESET',
             Hold: 'ホールド',
+            Handling: 'ハンドリング',
             DasFrames: 'DAS',
-            DasDescription: 'ARR開始までのフレーム数',
             ArrFrames: 'ARR',
-            ArrDescription: 'DAS後のリピート間隔。0にすると端まで即移動',
+            ArrZero: '0 = 即移動',
             DasCutFrames: 'DCD',
-            DasCutDescription: '回転・出現後の先行入力ARRを遅延させるフレーム数。0で無効',
+            DasCutZero: '0 = 無効',
             Sdf: 'SDF',
-            SdfDescription: 'TETR.IO準拠のソフトドロップ倍率（下限0.05G × SDF = 3マス/秒 × SDF）',
             SoftDropPriority: {
-                Title: 'ソフトドロップ優先',
-                Description: '左右移動とソフトドロップを同時に押したときの適用順',
-                Off: '横移動優先',
-                On: 'ソフトドロップ優先',
+                Title: '同時押しの優先',
+                Off: '左右',
+                On: 'ソフトドロップ',
             },
         },
         PieceControls: {
             Title: 'ピースコントロール',
         },
         PageRotation: {
-            Title: 'ページローテーション',
-            Description: 'ページを追加したとき、保持数を超えた分を古いページ番号から削除する。0で上限なし',
+            Title: '最大ページ数',
             Unit: 'ページ',
+            Unlimited: '無制限',
         },
-        SevenBagGray: {
-            Title: '7bagグレー',
-            Description: 'INPUTで∞7bag使用時、7bagごとにページをまとめ、確定した7bagの地形をグレー化する',
-        },
-        EditorSidePanel: 'サイドパネルを表示（PC）',
+        EditorSidePanel: 'サイドパネルを表示',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
@@ -211,10 +200,6 @@ export const resources = {
         Blank: 'Blank', Inherit: 'Inherit', Parts: 'パーツ',
         Pin: 'ピン留め', Unpin: 'ピン留め解除', Delete: 'Delete',
         Blocks: '{{count}} blocks',
-    },
-    GifFrameDelayMs: {
-        Title: 'GIFページ送り間隔',
-        Description: 'GIF出力時の1ページあたりの表示時間',
     },
     Clipboard: {
         Title: 'クリップボードにコピー',

@@ -527,7 +527,7 @@ export const pieceQueueOverlays = ({
         key: 'piece-queue-seven-bag-gray-checkbox',
         datatest: 'piece-queue-seven-bag-gray-checkbox',
         type: 'button',
-        title: i18n.UserSettings.SevenBagGray.Title(),
+        title: i18n.EditorUi.SevenBagGray(),
         'aria-label': i18n.EditorUi.SevenBagGray(),
         'aria-pressed': sevenBagGrayEnabled ? 'true' : 'false',
         'aria-disabled': infinitePieceQueue ? 'false' : 'true',

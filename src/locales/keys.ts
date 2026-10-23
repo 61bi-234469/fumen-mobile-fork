@@ -55,7 +55,6 @@ export const i18n = {
     },
     UserSettings: {
         Title: () => t('UserSettings.Title'),
-        Notice: () => t('UserSettings.Notice'),
         Tabs: {
             Edit: () => t('UserSettings.Tabs.Edit'),
             View: () => t('UserSettings.Tabs.View'),
@@ -84,11 +83,9 @@ export const i18n = {
         },
         OpenTreeScreenOnTreeData: {
             Title: () => t('UserSettings.OpenTreeScreenOnTreeData.Title'),
-            Description: () => t('UserSettings.OpenTreeScreenOnTreeData.Description'),
         },
         UtilsMenuPinned: {
             Title: () => t('UserSettings.UtilsMenuPinned.Title'),
-            Description: () => t('UserSettings.UtilsMenuPinned.Description'),
         },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
@@ -105,15 +102,15 @@ export const i18n = {
             Srs: () => t('UserSettings.RotationSystem.Srs'),
             SrsPlus: () => t('UserSettings.RotationSystem.SrsPlus'),
         },
+        ShortcutInput: {
+            Placeholder: () => t('UserSettings.ShortcutInput.Placeholder'),
+            Clear: () => t('UserSettings.ShortcutInput.Clear'),
+        },
         PaletteShortcuts: {
             Title: () => t('UserSettings.PaletteShortcuts.Title'),
-            Description: () => t('UserSettings.PaletteShortcuts.Description'),
-            NotSet: () => t('UserSettings.PaletteShortcuts.NotSet'),
         },
         EditShortcuts: {
             Title: () => t('UserSettings.EditShortcuts.Title'),
-            Description: () => t('UserSettings.EditShortcuts.Description'),
-            NotSet: () => t('UserSettings.EditShortcuts.NotSet'),
             InsertPage: () => t('UserSettings.EditShortcuts.InsertPage'),
             PrevPage: () => t('UserSettings.EditShortcuts.PrevPage'),
             NextPage: () => t('UserSettings.EditShortcuts.NextPage'),
@@ -131,8 +128,6 @@ export const i18n = {
         },
         PieceShortcuts: {
             Title: () => t('UserSettings.PieceShortcuts.Title'),
-            Description: () => t('UserSettings.PieceShortcuts.Description'),
-            NotSet: () => t('UserSettings.PieceShortcuts.NotSet'),
             MoveLeft: () => t('UserSettings.PieceShortcuts.MoveLeft'),
             MoveRight: () => t('UserSettings.PieceShortcuts.MoveRight'),
             SoftDrop: () => t('UserSettings.PieceShortcuts.SoftDrop'),
@@ -142,17 +137,15 @@ export const i18n = {
             Rotate180: () => t('UserSettings.PieceShortcuts.Rotate180'),
             Reset: () => t('UserSettings.PieceShortcuts.Reset'),
             Hold: () => t('UserSettings.PieceShortcuts.Hold'),
+            Handling: () => t('UserSettings.PieceShortcuts.Handling'),
             DasFrames: () => t('UserSettings.PieceShortcuts.DasFrames'),
-            DasDescription: () => t('UserSettings.PieceShortcuts.DasDescription'),
             ArrFrames: () => t('UserSettings.PieceShortcuts.ArrFrames'),
-            ArrDescription: () => t('UserSettings.PieceShortcuts.ArrDescription'),
+            ArrZero: () => t('UserSettings.PieceShortcuts.ArrZero'),
             DasCutFrames: () => t('UserSettings.PieceShortcuts.DasCutFrames'),
-            DasCutDescription: () => t('UserSettings.PieceShortcuts.DasCutDescription'),
+            DasCutZero: () => t('UserSettings.PieceShortcuts.DasCutZero'),
             Sdf: () => t('UserSettings.PieceShortcuts.Sdf'),
-            SdfDescription: () => t('UserSettings.PieceShortcuts.SdfDescription'),
             SoftDropPriority: {
                 Title: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Title'),
-                Description: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Description'),
                 Off: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Off'),
                 On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
             },
@@ -162,16 +155,8 @@ export const i18n = {
         },
         PageRotation: {
             Title: () => t('UserSettings.PageRotation.Title'),
-            Description: () => t('UserSettings.PageRotation.Description'),
             Unit: () => t('UserSettings.PageRotation.Unit'),
-        },
-        SevenBagGray: {
-            Title: () => t('UserSettings.SevenBagGray.Title'),
-            Description: () => t('UserSettings.SevenBagGray.Description'),
-        },
-        GifFrameDelayMs: {
-            Title: () => t('GifFrameDelayMs.Title'),
-            Description: () => t('GifFrameDelayMs.Description'),
+            Unlimited: () => t('UserSettings.PageRotation.Unlimited'),
         },
         EditorSidePanel: () => t('UserSettings.EditorSidePanel'),
         Buttons: {

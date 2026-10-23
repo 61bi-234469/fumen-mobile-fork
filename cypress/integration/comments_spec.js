@@ -33,8 +33,7 @@ describe('Comments', () => {
     });
 
     it('keeps comments isolated across pages while seven bag gray is enabled', () => {
-        visit({ mode: 'edit' });
-        operations.menu.setSevenBagGray(true);
+        visit({ mode: 'edit', userSettings: { sevenBagGrayEnabled: true } });
         operations.mode.comment.open();
 
         operations.mode.tools.nextPage();

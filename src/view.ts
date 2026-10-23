@@ -19,7 +19,7 @@ import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
-import { getSidePanelWidth } from './views/editor/side_panel_layout';
+import { canShowSidePanel, getSidePanelWidth } from './views/editor/side_panel_layout';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
@@ -123,11 +123,11 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutSdf: state.temporary.userSettings.pieceShortcutSdf,
             pieceShortcutSoftDropPriority: state.temporary.userSettings.pieceShortcutSoftDropPriority,
             rotationSystem: state.temporary.userSettings.rotationSystem,
-            sevenBagGrayEnabled: state.temporary.userSettings.sevenBagGrayEnabled,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,
+            sidePanelAvailable: canShowSidePanel(state),
             currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 

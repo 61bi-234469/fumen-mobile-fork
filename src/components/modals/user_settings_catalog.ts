@@ -6,7 +6,7 @@ export type SettingId =
     | 'gradient' | 'gray-after-line-clear' | 'trim-top-blank' | 'editor-side-panel'
     | 'open-tree-screen-on-tree-data' | 'utils-menu-pinned' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
-    | 'seven-bag-gray' | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
+    | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
     | 'initial-screen' | 'loop' | 'page-rotation-limit';
 
 type SwitchSetting = {
@@ -46,12 +46,10 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'open-tree-screen-on-tree-data': {
         type: 'switch', datatestBase: 'switch-open-tree-screen-on-tree-data',
         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title,
-        description: i18n.UserSettings.OpenTreeScreenOnTreeData.Description,
     },
     'utils-menu-pinned': {
         type: 'switch', datatestBase: 'switch-utils-menu-pinned',
         title: i18n.UserSettings.UtilsMenuPinned.Title,
-        description: i18n.UserSettings.UtilsMenuPinned.Description,
     },
     'piece-shortcuts': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Title },
     'ghost-visible': { type: 'switch', datatestBase: 'switch-ghost-visible', title: i18n.UserSettings.Ghost.Title },
@@ -60,15 +58,7 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'piece-das': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.DasFrames },
     'piece-dcd': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.DasCutFrames },
     'piece-sdf': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Sdf },
-    'piece-softdrop-priority': {
-        type: 'switch', datatestBase: 'switch-piece-softdrop-priority',
-        title: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title,
-        description: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Description,
-    },
-    'seven-bag-gray': {
-        type: 'switch', datatestBase: 'switch-seven-bag-gray', title: i18n.UserSettings.SevenBagGray.Title,
-        description: i18n.UserSettings.SevenBagGray.Description,
-    },
+    'piece-softdrop-priority': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title },
     'palette-shortcuts': { type: 'custom', title: i18n.UserSettings.PaletteShortcuts.Title },
     'edit-shortcuts': { type: 'custom', title: i18n.UserSettings.EditShortcuts.Title },
     'shortcut-label': {
@@ -87,7 +77,7 @@ export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
     view: ['trim-top-blank', 'gray-after-line-clear', 'editor-side-panel'],
     input: [
         'ghost-visible', 'rotation-system', 'piece-arr', 'piece-das', 'piece-dcd', 'piece-sdf',
-        'piece-softdrop-priority', 'seven-bag-gray',
+        'piece-softdrop-priority',
     ],
     keys: ['palette-shortcuts', 'edit-shortcuts', 'piece-shortcuts', 'shortcut-label'],
     // 実際の描画順に合わせる。open-tree-screen-on-tree-data は初期画面の従属項目として直下に置く。

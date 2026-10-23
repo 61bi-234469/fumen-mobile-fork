@@ -33,13 +33,17 @@ export const getSidePanelWidthBounds = (state: Readonly<State>) => {
     };
 };
 
+// パネルを出せる環境か。画面ごとの条件（Editor画面）は含まない。ユーザー設定の項目表示にも使う。
+export const canShowSidePanel = (state: Readonly<State>): boolean => (
+    state.platform === Platforms.PC && state.display.width >= SIDE_PANEL_MIN_DISPLAY_WIDTH
+);
+
 // パネル非表示のとき 0 を返す。エディタのレイアウトと画像保存の双方がこの値を使う。
 // 盤面サイズは高さで決まるため、盤面に不要な横幅はすべてパネルに割り当てる。
 export const getSidePanelWidth = (state: Readonly<State>): number => {
     if (!state.editorPanel.enabled
-        || state.platform !== Platforms.PC
         || state.mode.screen !== Screens.Editor
-        || state.display.width < SIDE_PANEL_MIN_DISPLAY_WIDTH
+        || !canShowSidePanel(state)
     ) {
         return 0;
     }

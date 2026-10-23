@@ -50,7 +50,6 @@
     },
     UserSettings: {
         Title: 'User Settings',
-        Notice: 'Clearing the browser cache will initialize the settings.',
         Tabs: {
             Edit: 'Edit',
             View: 'List & Tree',
@@ -79,11 +78,9 @@
         },
         OpenTreeScreenOnTreeData: {
             Title: 'Open fumen with tree data (#TREE) in Tree screen',
-            Description: 'Takes priority over the initial screen above. Turn it off to always follow that setting.',
         },
         UtilsMenuPinned: {
             Title: 'Keep the UTILS menu open',
-            Description: 'Selecting an item does not close the menu. The area outside stays undimmed and usable.',
         },
         Loop: {
             Title: 'Loop on page navigation',
@@ -100,15 +97,15 @@
             Srs: () => 'SRS',
             SrsPlus: () => 'SRS+',
         },
+        ShortcutInput: {
+            Placeholder: 'Press a key',
+            Clear: 'Clear shortcut',
+        },
         PaletteShortcuts: {
             Title: 'Palette shortcuts',
-            Description: 'Press a key to assign. Press Backspace to clear.',
-            NotSet: 'Not set',
         },
         EditShortcuts: {
             Title: 'Edit shortcuts',
-            Description: 'Press a key to assign. Press Backspace to clear.',
-            NotSet: 'Not set',
             InsertPage: 'Add page',
             PrevPage: 'Prev page',
             NextPage: 'Next page',
@@ -126,8 +123,6 @@
         },
         PieceShortcuts: {
             Title: 'Piece shortcuts',
-            Description: 'Press a key to assign. Press Backspace to clear.',
-            NotSet: 'Not set',
             MoveLeft: 'Move left',
             MoveRight: 'Move right',
             SoftDrop: 'Soft drop',
@@ -137,34 +132,28 @@
             Rotate180: 'Rotate 180°',
             Reset: 'RESET',
             Hold: 'Hold',
+            Handling: 'Handling',
             DasFrames: 'DAS',
-            DasDescription: 'Frames before ARR starts when holding left/right',
             ArrFrames: 'ARR',
-            ArrDescription: 'Repeat interval after DAS. 0 moves to the edge instantly',
+            ArrZero: '0 = instant',
             DasCutFrames: 'DCD',
-            DasCutDescription: 'Frames to delay pre-charged ARR after rotation or spawn. 0 disables it',
+            DasCutZero: '0 = off',
             Sdf: 'SDF',
-            SdfDescription: 'TETR.IO-style soft drop factor (SDF x 3 cells per second, from the 0.05G floor)',
             SoftDropPriority: {
-                Title: 'Soft drop priority',
-                Description: 'Apply soft drop before horizontal movement when both are held',
-                Off: 'Horizontal movement first',
-                On: 'Soft drop first',
+                Title: 'Priority on simultaneous press',
+                Off: 'Left/Right',
+                On: 'Soft drop',
             },
         },
         PieceControls: {
             Title: 'Piece controls',
         },
         PageRotation: {
-            Title: 'Page rotation',
-            Description: 'When a page is added, drop the oldest page numbers beyond this count. 0 means no limit',
+            Title: 'Max pages',
             Unit: 'pages',
+            Unlimited: 'Unlimited',
         },
-        SevenBagGray: {
-            Title: '7-bag gray',
-            Description: 'In INPUT with infinite 7-bag, group every 7 pieces into one page and gray the completed bag.',
-        },
-        EditorSidePanel: 'Show side panel (PC)',
+        EditorSidePanel: 'Show side panel',
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',
@@ -230,10 +219,6 @@
             InvalidImageRatio: 'Invalid image ratio (expected 10 columns with 1-23 rows)',
             TooManyUnknownColors: 'Too many unknown colors in image',
         },
-    },
-    GifFrameDelayMs: {
-        Title: 'GIF page interval',
-        Description: 'Delay per page in GIF export',
     },
     Menu: {
         Title: 'Menu',

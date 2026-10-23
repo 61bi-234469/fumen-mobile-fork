@@ -903,17 +903,6 @@ export const operations = {
             }
             cy.get(datatest('btn-save')).click();
         },
-        setSevenBagGray: (enabled) => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('input');
-            const target = cy.get(datatest('switch-seven-bag-gray'));
-            if (enabled) {
-                target.check({ force: true });
-            } else {
-                target.uncheck({ force: true });
-            }
-            cy.get(datatest('btn-save')).click();
-        },
     },
     listView: {
         // 狭い画面では取り込み・書き出しがバーから外れ、⋮ のシートの「ページ」から開く

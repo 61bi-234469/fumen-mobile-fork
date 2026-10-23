@@ -1,5 +1,5 @@
 import { Platforms, Screens } from '../../../lib/enums';
-import { getSidePanelWidth } from '../side_panel_layout';
+import { canShowSidePanel, getSidePanelWidth } from '../side_panel_layout';
 
 const createState = (override: {
     enabled?: boolean;
@@ -22,6 +22,18 @@ const createState = (override: {
         height: 800,
     },
 }) as any;
+
+describe('canShowSidePanel', () => {
+    test('requires a PC platform at or above the display width threshold', () => {
+        expect(canShowSidePanel(createState({ width: 1024 }))).toBe(true);
+        expect(canShowSidePanel(createState({ width: 1023 }))).toBe(false);
+        expect(canShowSidePanel(createState({ platform: Platforms.Mobile }))).toBe(false);
+    });
+
+    test('does not depend on the current screen or the setting', () => {
+        expect(canShowSidePanel(createState({ screen: Screens.Reader, enabled: false }))).toBe(true);
+    });
+});
 
 describe('getSidePanelWidth', () => {
     test('returns 0 when the setting is off', () => {

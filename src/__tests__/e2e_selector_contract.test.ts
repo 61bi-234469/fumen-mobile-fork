@@ -173,6 +173,11 @@ const ALLOWLIST: ReadonlyArray<string> = [
     'input-piece-shortcut-Hold',
     'input-piece-shortcut-Reset',
     'input-piece-shortcut-SoftDrop',
+    // generated at src/components/modals/user_settings.tsx: the palette and edit shortcut grids
+    // build `input-palette-shortcut-${palette}` / `input-edit-shortcut-${shortcut}` through the
+    // same `inputDatatest` callback. user_settings_spec.js references one of each directly.
+    'input-palette-shortcut-I',
+    'input-edit-shortcut-Undo',
     // generated at src/components/replay/replay_side.tsx: replaySide builds the
     // HOLD/NEXT datatest values through queueColumn/queueRow and pieceSlot helpers;
     // the selector contract cannot infer the interpolated queue indexes.

@@ -164,24 +164,32 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'I');
     });
 
-    it('shares the seven-bag gray setting and disables it while infinite 7bag is off', () => {
+    it('toggles seven-bag gray only on the rail, keeps it while infinite 7bag is off, and persists it', () => {
         visit({ mode: 'edit' });
         operations.mode.piece.openWithQueues();
 
-        operations.menu.setSevenBagGray(true);
+        // ∞7bagがOFFの間は触れず、設定値(既定OFF)だけが表示される
         cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
             .should('be.disabled')
-            .and('have.attr', 'aria-pressed', 'true');
+            .and('have.attr', 'aria-pressed', 'false');
 
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-seven-bag-gray-checkbox')).should('not.be.disabled');
         operations.mode.piece.toggleSevenBagGray();
         cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
-            .should('have.attr', 'aria-pressed', 'false');
+            .should('have.attr', 'aria-pressed', 'true');
 
-        operations.menu.openUserSettings();
-        operations.menu.selectUserSettingsTab('input');
-        cy.get(datatest('switch-seven-bag-gray')).should('not.be.checked');
+        // ∞7bagをOFFに戻しても設定値は残る
+        operations.mode.piece.toggleInfiniteQueue();
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
+            .should('be.disabled')
+            .and('have.attr', 'aria-pressed', 'true');
+
+        // 保存されて再読み込み後も残る
+        visit({ mode: 'edit', reload: true });
+        operations.mode.piece.openWithQueues();
+        cy.get(datatest('piece-queue-seven-bag-gray-checkbox'))
+            .should('have.attr', 'aria-pressed', 'true');
     });
 
     it('keeps the field focused when toggling infinite 7bag', () => {
@@ -372,8 +380,7 @@ describe('PIECE queues', () => {
     });
 
     it('keeps the infinite queue boundary stable while seven bag gray is enabled', () => {
-        visit({ mode: 'edit' });
-        operations.menu.setSevenBagGray(true);
+        visit({ mode: 'edit', userSettings: { sevenBagGrayEnabled: true } });
         cy.get(datatest('btn-paint-mode')).click();
         operations.mode.block.L();
         operations.mode.block.click(0, 0);
@@ -422,7 +429,7 @@ describe('PIECE queues', () => {
             'AtwhgWxwQ?4glQ4xwxhg0wwg0AeglQ4B8i0glg0BtQ4BtA8xhglg0A8Ct?g0QpAtA8QLAeglxwJeAgHHhQ4IeQ4AeAtCewhAexwTeTGJ',
         ].join('');
 
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', userSettings: { sevenBagGrayEnabled: true } });
         operations.menu.openPage();
         cy.get(datatest('mdl-open-fumen')).should('be.visible').within(() => {
             cy.get(datatest('input-fumen')).clear().type(suppliedFumen);
@@ -431,7 +438,6 @@ describe('PIECE queues', () => {
         cy.get(datatest('mdl-open-fumen')).should('not.exist');
         cy.get(datatest('text-pages')).should('contain', '1 / 41');
 
-        operations.menu.setSevenBagGray(true);
         operations.mode.piece.open();
         operations.mode.piece.layout('play');
         operations.mode.piece.toggleInfiniteQueue();
@@ -447,8 +453,7 @@ describe('PIECE queues', () => {
     });
 
     it('keeps all seven placements visible before line clears', () => {
-        visit({ mode: 'edit' });
-        operations.menu.setSevenBagGray(true);
+        visit({ mode: 'edit', userSettings: { sevenBagGrayEnabled: true } });
         cy.get(datatest('btn-paint-mode')).click();
         operations.mode.block.L();
         [0, 1, 2, 7, 8, 9].forEach(x => operations.mode.block.click(x, 0));

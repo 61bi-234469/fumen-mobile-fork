@@ -260,8 +260,7 @@ describe('Tree mode in list view', () => {
     });
 
     it('keeps comments, branch, and copy working while seven bag gray is enabled', () => {
-        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
-        operations.menu.setSevenBagGray(true);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en', userSettings: { sevenBagGrayEnabled: true } });
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).clear().type('tree comment').blur();
 

@@ -35,11 +35,11 @@ interface UserSettingsModalProps {
     pieceShortcutSdf: number;
     pieceShortcutSoftDropPriority: boolean;
     rotationSystem: RotationSystem;
-    sevenBagGrayEnabled: boolean;
     pageRotationLimit: number;
     grayAfterLineClear: boolean;
     trimTopBlank: boolean;
     editorSidePanel: boolean;
+    sidePanelAvailable: boolean;
     currentTab: UserSettingsTab;
     actions: {
         closeUserSettingsModal: () => void;
@@ -64,7 +64,6 @@ interface UserSettingsModalProps {
         keepPieceShortcutSdf: (data: { sdf: number }) => void;
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
-        keepSevenBagGrayEnabled: (data: { enable: boolean }) => void;
         keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
         keepTrimTopBlank: (data: { enable: boolean }) => void;
@@ -160,11 +159,11 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutSdf,
         pieceShortcutSoftDropPriority,
         rotationSystem,
-        sevenBagGrayEnabled,
         pageRotationLimit,
         grayAfterLineClear,
         trimTopBlank,
         editorSidePanel,
+        sidePanelAvailable,
         currentTab,
         actions,
     },
@@ -209,17 +208,15 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    // 名前を左、スイッチを右に置く。左右の名前は、無効／有効以外の意味を持つものだけ渡す
+    // 名前を左、スイッチを右に置く
     const renderSwitch = ({
-        key, datatest, title, description, checked, offLabel, onLabel, onChange, disabled = false,
+        key, datatest, title, description, checked, onChange, disabled = false,
     }: {
         key: string;
         datatest: string;
         title: string;
         description?: string;
         checked: boolean;
-        offLabel?: string;
-        onLabel?: string;
         onChange: (checked: boolean) => void;
         disabled?: boolean;
     }) => {
@@ -236,7 +233,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
             onChange(target.checked);
         };
         const inputId = `user-settings-${datatest}`;
-        const sideLabelStyle = style({ color: '#666', fontSize: px(12) });
         return (
             <div key={key} class="switch" style={style({
                 display: 'flex',
@@ -264,68 +260,91 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                 </div>
 
                 <label key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
-                    {offLabel !== undefined && <span key={`${key}-off`} style={sideLabelStyle}>{offLabel}</span>}
                     <input type="checkbox" id={inputId} dataTest={datatest} checked={checked} disabled={disabled}
                            onupdate={onupdate} onchange={onchange}/>
                     <span class="lever"/>
-                    {onLabel !== undefined && <span key={`${key}-on`} style={sideLabelStyle}>{onLabel}</span>}
                 </label>
             </div>
         );
     };
 
     // ショートカット割当グリッドの共通レンダラ（パレット/編集/PIECEで共有）
+    // 未割り当ての欄はプレースホルダ、割り当て済みの欄は右に×ボタンを出す（Backspace/Deleteでも消せる）
     const renderShortcutGrid = <K extends string>({
-        keys, getCode, renderLabel, labelMinWidth, onKeyDown, inputDatatest, notSetText,
+        keys, getCode, renderLabel, labelMinWidth, onKeyDown, onClear, inputDatatest,
     }: {
         keys: K[];
         getCode: (key: K) => string;
         renderLabel: (key: K) => string;
         labelMinWidth: number;
         onKeyDown: (key: K, e: KeyboardEvent) => void;
-        inputDatatest?: (key: K) => string;
-        notSetText: string;
+        onClear: (key: K) => void;
+        inputDatatest: (key: K) => string;
     }) => (
         <div style={style({
             display: 'grid',
-            gridTemplateColumns: 'auto 1fr',
+            gridTemplateColumns: 'auto 1fr 28px',
             gap: px(8),
             alignItems: 'center',
         })}>
             {keys.map((key) => {
                 const code = getCode(key);
-                const display = code ? displayShortcut(code) : notSetText;
+                const inputName = inputDatatest(key);
                 return [
-                    <div style={style({ fontWeight: 'bold', minWidth: px(labelMinWidth) })}>
+                    <div key={`${inputName}-label`} style={style({ fontWeight: 'bold', minWidth: px(labelMinWidth) })}>
                         {renderLabel(key)}
                     </div>,
                     <input
+                        key={`${inputName}-input`}
                         type="text"
-                        datatest={inputDatatest ? inputDatatest(key) : undefined}
+                        datatest={inputName}
                         readonly
-                        value={display}
+                        value={code ? displayShortcut(code) : ''}
+                        placeholder={i18n.UserSettings.ShortcutInput.Placeholder()}
                         onkeydown={(e: KeyboardEvent) => onKeyDown(key, e)}
                         style={style({
                             cursor: 'pointer',
                             textAlign: 'center',
-                            color: code ? '#333' : '#999',
+                            color: '#333',
                             marginBottom: px(0),
                             height: px(32),
                         })}
                     />,
+                    code
+                        ? <button
+                            key={`${inputName}-clear`}
+                            type="button"
+                            datatest={`btn-clear-${inputName.replace(/^input-/, '')}`}
+                            aria-label={i18n.UserSettings.ShortcutInput.Clear()}
+                            onclick={() => onClear(key)}
+                            style={style({
+                                background: 'transparent',
+                                border: '0',
+                                color: '#888',
+                                cursor: 'pointer',
+                                fontSize: px(20),
+                                height: px(28),
+                                lineHeight: px(28),
+                                padding: '0',
+                                width: px(28),
+                            })}>
+                            ×
+                        </button>
+                        : <span key={`${inputName}-clear`}/>,
                 ];
             })}
         </div>
     );
 
-    // フレーム数値入力ブロックの共通レンダラ（ARR/DAS/DCD/GIF遅延で共有）
+    const noteStyle = style({ color: '#888', fontSize: px(12) });
+
+    // 名前・数値入力・単位（・値が0のときだけ出す補足）を1行に並べる（ARR/DAS/DCD/最大ページ数で共有）
     const renderNumberField = ({
-        labelDatatest, title, description, inputDatatest, value, min, max, step, onchange, width,
-        unitDatatest, unit, outerMarginBottom,
+        labelDatatest, title, inputDatatest, value, min, max, step, onchange, width,
+        unitDatatest, unit, note, noteDatatest, labelMinWidth,
     }: {
         labelDatatest?: string;
         title: string;
-        description: string;
         inputDatatest?: string;
         value: number;
         min: number;
@@ -335,38 +354,63 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         width: number;
         unitDatatest?: string;
         unit: string;
-        outerMarginBottom?: number;
-    }) => {
-        const outerStyle = outerMarginBottom !== undefined
-            ? style({ marginTop: px(15), marginBottom: px(outerMarginBottom) })
-            : style({ marginTop: px(15) });
-        return (
-            <div style={outerStyle}>
-                <div datatest={labelDatatest} style={style({ fontWeight: 'bold' })}>
-                    {title}
-                </div>
-                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                    {description}
-                </div>
-                <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                    <input
-                        type="number"
-                        datatest={inputDatatest}
-                        value={value}
-                        min={min}
-                        max={max}
-                        step={step}
-                        onchange={onchange}
-                        style={style({
-                            width: px(width),
-                            textAlign: 'center',
-                        })}
-                    />
-                    <span datatest={unitDatatest}>{unit}</span>
-                </div>
+        note?: string;
+        noteDatatest?: string;
+        labelMinWidth?: number;
+    }) => (
+        <div style={style({
+            alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: px(6), marginTop: px(12),
+        })}>
+            <div datatest={labelDatatest} style={style({
+                fontWeight: 'bold', minWidth: labelMinWidth === undefined ? undefined : px(labelMinWidth),
+            })}>
+                {title}
             </div>
-        );
-    };
+            <input
+                type="number"
+                datatest={inputDatatest}
+                value={value}
+                min={min}
+                max={max}
+                step={step}
+                onchange={onchange}
+                style={style({
+                    width: px(width),
+                    height: px(32),
+                    marginBottom: px(0),
+                    textAlign: 'center',
+                })}
+            />
+            <span datatest={unitDatatest}>{unit}</span>
+            {note !== undefined && <span datatest={noteDatatest} style={noteStyle}>{note}</span>}
+        </div>
+    );
+
+    const handlingLabelMinWidth = 48;
+
+    // 2択のセグメント。選択中だけ強調色で塗る
+    const renderSegment = ({ datatest, label, selected, first, onSelect }: {
+        datatest: string;
+        label: string;
+        selected: boolean;
+        first: boolean;
+        onSelect: () => void;
+    }) => (
+        <button type="button" key={datatest} datatest={datatest} role="radio"
+                aria-checked={selected ? 'true' : 'false'} onclick={onSelect}
+                style={style({
+                    background: selected ? EDITOR_ACTIVE_COLOR : '#fff',
+                    border: '0',
+                    borderLeft: first ? '0' : 'solid 1px #bbb',
+                    color: selected ? '#fff' : '#333',
+                    cursor: 'pointer',
+                    fontSize: px(13),
+                    fontWeight: selected ? 'bold' : 'normal',
+                    padding: '7px 14px',
+                })}>
+            {label}
+        </button>
+    );
 
     const onchangeGradient = (index: number, value: string) => {
         const replaced = gradient.substring(0, index) + value + gradient.substring(index + 1, gradient.length);
@@ -619,7 +663,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
                             })}
 
-                            {renderSwitch({
+                            {/* サイドパネルを出せない幅・環境では、設定しても効かないので項目ごと隠す */}
+                            {sidePanelAvailable && renderSwitch({
                                 key: 'switch-row-editor-side-panel',
                                 datatest: 'switch-editor-side-panel',
                                 title: i18n.UserSettings.EditorSidePanel(),
@@ -639,58 +684,58 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 onChange: checked => actions.keepShortcutLabelVisible({ visible: checked }),
                             })}
 
-                            <details key="details-user-settings-piece-controls">
+                            <details key="details-user-settings-piece-controls"
+                                     datatest="details-user-settings-piece-controls">
                                 <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
                                     {i18n.UserSettings.PieceControls.Title()}
                                 </summary>
-                                <div style={style({ color: '#666', margin: '8px 0 10px', fontSize: px(12) })}>
-                                    {i18n.UserSettings.PieceShortcuts.Description()}
+                                <div style={style({ marginTop: px(8) })}>
+                                    {renderShortcutGrid({
+                                        keys: pieceShortcutKeys,
+                                        getCode: shortcut => pieceShortcuts[shortcut],
+                                        renderLabel: shortcut => pieceShortcutLabels[shortcut](),
+                                        labelMinWidth: 80,
+                                        onKeyDown: onkeydownPieceShortcut,
+                                        onClear: shortcut => actions.keepPieceShortcut({ shortcut, code: '' }),
+                                        inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
+                                    })}
                                 </div>
-                                {renderShortcutGrid({
-                                    keys: pieceShortcutKeys,
-                                    getCode: shortcut => pieceShortcuts[shortcut],
-                                    renderLabel: shortcut => pieceShortcutLabels[shortcut](),
-                                    labelMinWidth: 80,
-                                    onKeyDown: onkeydownPieceShortcut,
-                                    inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
-                                    notSetText: i18n.UserSettings.PieceShortcuts.NotSet(),
-                                })}
                             </details>
 
-                            <details key="details-user-settings-palette-shortcuts">
+                            <details key="details-user-settings-palette-shortcuts"
+                                     datatest="details-user-settings-palette-shortcuts">
                                 <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
                                     {i18n.UserSettings.PaletteShortcuts.Title()}
                                 </summary>
-                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                    {i18n.UserSettings.PaletteShortcuts.Description()}
+                                <div style={style({ marginTop: px(8) })}>
+                                    {renderShortcutGrid({
+                                        keys: paletteKeys,
+                                        getCode: palette => paletteShortcuts[palette],
+                                        renderLabel: palette => palette,
+                                        labelMinWidth: 50,
+                                        onKeyDown: onkeydownShortcut,
+                                        onClear: palette => actions.keepPaletteShortcut({ palette, code: '' }),
+                                        inputDatatest: palette => `input-palette-shortcut-${palette}`,
+                                    })}
                                 </div>
-
-                                {renderShortcutGrid({
-                                    keys: paletteKeys,
-                                    getCode: palette => paletteShortcuts[palette],
-                                    renderLabel: palette => palette,
-                                    labelMinWidth: 50,
-                                    onKeyDown: onkeydownShortcut,
-                                    notSetText: i18n.UserSettings.PaletteShortcuts.NotSet(),
-                                })}
                             </details>
 
-                            <details key="details-user-settings-edit-shortcuts">
+                            <details key="details-user-settings-edit-shortcuts"
+                                     datatest="details-user-settings-edit-shortcuts">
                                 <summary style={style({ cursor: 'pointer', marginTop: px(10) })}>
                                     {i18n.UserSettings.EditShortcuts.Title()}
                                 </summary>
-                                <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
-                                    {i18n.UserSettings.EditShortcuts.Description()}
+                                <div style={style({ marginTop: px(8) })}>
+                                    {renderShortcutGrid({
+                                        keys: editShortcutKeys,
+                                        getCode: shortcut => editShortcuts[shortcut],
+                                        renderLabel: shortcut => editShortcutLabels[shortcut](),
+                                        labelMinWidth: 80,
+                                        onKeyDown: onkeydownEditShortcut,
+                                        onClear: shortcut => actions.keepEditShortcut({ shortcut, code: '' }),
+                                        inputDatatest: shortcut => `input-edit-shortcut-${shortcut}`,
+                                    })}
                                 </div>
-
-                                {renderShortcutGrid({
-                                    keys: editShortcutKeys,
-                                    getCode: shortcut => editShortcuts[shortcut],
-                                    renderLabel: shortcut => editShortcutLabels[shortcut](),
-                                    labelMinWidth: 80,
-                                    onKeyDown: onkeydownEditShortcut,
-                                    notSetText: i18n.UserSettings.EditShortcuts.NotSet(),
-                                })}
                             </details>
                         </div>
 
@@ -721,10 +766,13 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     })}
                                 </div>
 
+                                <h6 datatest="heading-piece-handling">
+                                    {i18n.UserSettings.PieceShortcuts.Handling()}
+                                </h6>
+
                                 {renderNumberField({
                                     labelDatatest: 'label-piece-arr',
                                     title: i18n.UserSettings.PieceShortcuts.ArrFrames(),
-                                    description: i18n.UserSettings.PieceShortcuts.ArrDescription(),
                                     inputDatatest: 'input-piece-arr',
                                     value: pieceShortcutArrFrames,
                                     min: 0,
@@ -734,12 +782,15 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     width: 80,
                                     unitDatatest: 'unit-piece-arr',
                                     unit: 'F',
+                                    note: pieceShortcutArrFrames === 0
+                                        ? i18n.UserSettings.PieceShortcuts.ArrZero() : undefined,
+                                    noteDatatest: 'note-piece-arr-zero',
+                                    labelMinWidth: handlingLabelMinWidth,
                                 })}
 
                                 {renderNumberField({
                                     labelDatatest: 'label-piece-das',
                                     title: i18n.UserSettings.PieceShortcuts.DasFrames(),
-                                    description: i18n.UserSettings.PieceShortcuts.DasDescription(),
                                     inputDatatest: 'input-piece-das',
                                     value: pieceShortcutDasFrames,
                                     min: 1,
@@ -749,39 +800,35 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     width: 80,
                                     unitDatatest: 'unit-piece-das',
                                     unit: 'F',
+                                    labelMinWidth: handlingLabelMinWidth,
                                 })}
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-dcd" style={style({ fontWeight: 'bold' })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasCutFrames()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.DasCutDescription()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input
-                                            type="number"
-                                            datatest="input-piece-dcd"
-                                            value={pieceShortcutDasCutFrames}
-                                            min={0}
-                                            max={60}
-                                            step={0.1}
-                                            onchange={onchangeDasCut}
-                                            style={style({
-                                                width: px(80),
-                                                textAlign: 'center',
-                                            })}
-                                        />
-                                        <span datatest="unit-piece-dcd">F</span>
-                                    </div>
-                                </div>
+                                {renderNumberField({
+                                    labelDatatest: 'label-piece-dcd',
+                                    title: i18n.UserSettings.PieceShortcuts.DasCutFrames(),
+                                    inputDatatest: 'input-piece-dcd',
+                                    value: pieceShortcutDasCutFrames,
+                                    min: 0,
+                                    max: 60,
+                                    step: 0.1,
+                                    onchange: onchangeDasCut,
+                                    width: 80,
+                                    unitDatatest: 'unit-piece-dcd',
+                                    unit: 'F',
+                                    note: pieceShortcutDasCutFrames === 0
+                                        ? i18n.UserSettings.PieceShortcuts.DasCutZero() : undefined,
+                                    noteDatatest: 'note-piece-dcd-zero',
+                                    labelMinWidth: handlingLabelMinWidth,
+                                })}
 
-                                <div style={style({ marginTop: px(15) })}>
-                                    <div datatest="label-piece-sdf" style={style({ fontWeight: 'bold' })}>
+                                <div style={style({
+                                    alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: px(6),
+                                    marginTop: px(12),
+                                })}>
+                                    <div datatest="label-piece-sdf" style={style({
+                                        fontWeight: 'bold', minWidth: px(handlingLabelMinWidth),
+                                    })}>
                                         {i18n.UserSettings.PieceShortcuts.Sdf()}
-                                    </div>
-                                    <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
-                                        {i18n.UserSettings.PieceShortcuts.SdfDescription()}
                                     </div>
                                     <select datatest="input-piece-sdf" className="browser-default"
                                             value={String(pieceShortcutSdf)}
@@ -791,27 +838,42 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             .map(value => <option value={String(value)}>{value}</option>)}
                                         <option value="Infinity">∞</option>
                                     </select>
+                                    <span datatest="unit-piece-sdf">×</span>
                                 </div>
 
-                                {renderSwitch({
-                                    key: 'switch-row-piece-softdrop-priority',
-                                    datatest: 'switch-piece-softdrop-priority',
-                                    title: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title(),
-                                    description: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Description(),
-                                    checked: pieceShortcutSoftDropPriority,
-                                    offLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Off(),
-                                    onLabel: i18n.UserSettings.PieceShortcuts.SoftDropPriority.On(),
-                                    onChange: checked => actions.keepPieceShortcutSoftDropPriority({ enable: checked }),
-                                })}
-
-                                {renderSwitch({
-                                    key: 'switch-row-seven-bag-gray',
-                                    datatest: 'switch-seven-bag-gray',
-                                    title: i18n.UserSettings.SevenBagGray.Title(),
-                                    description: i18n.UserSettings.SevenBagGray.Description(),
-                                    checked: sevenBagGrayEnabled,
-                                    onChange: checked => actions.keepSevenBagGrayEnabled({ enable: checked }),
-                                })}
+                                <div style={style({ marginTop: px(12) })}>
+                                    <div datatest="label-piece-softdrop-priority" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title()}
+                                    </div>
+                                    <div datatest="group-piece-softdrop-priority" role="radiogroup"
+                                         aria-label={i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title()}
+                                         style={style({
+                                             border: 'solid 1px #bbb',
+                                             borderRadius: px(4),
+                                             display: 'inline-flex',
+                                             marginTop: px(6),
+                                             overflow: 'hidden',
+                                         })}>
+                                        {renderSegment({
+                                            datatest: 'segment-piece-softdrop-priority-horizontal',
+                                            label: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Off(),
+                                            selected: !pieceShortcutSoftDropPriority,
+                                            first: true,
+                                            onSelect: () => actions.keepPieceShortcutSoftDropPriority({
+                                                enable: false,
+                                            }),
+                                        })}
+                                        {renderSegment({
+                                            datatest: 'segment-piece-softdrop-priority-softdrop',
+                                            label: i18n.UserSettings.PieceShortcuts.SoftDropPriority.On(),
+                                            selected: pieceShortcutSoftDropPriority,
+                                            first: false,
+                                            onSelect: () => actions.keepPieceShortcutSoftDropPriority({
+                                                enable: true,
+                                            }),
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -853,7 +915,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         key: 'switch-row-open-tree-screen-on-tree-data',
                                         datatest: 'switch-open-tree-screen-on-tree-data',
                                         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title(),
-                                        description: i18n.UserSettings.OpenTreeScreenOnTreeData.Description(),
                                         checked: openTreeScreenOnTreeData,
                                         onChange: checked => actions.keepOpenTreeScreenOnTreeData({
                                             enable: checked,
@@ -865,36 +926,28 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                             {renderNumberField({
                                 labelDatatest: 'label-page-rotation-limit',
                                 title: i18n.UserSettings.PageRotation.Title(),
-                                description: i18n.UserSettings.PageRotation.Description(),
                                 inputDatatest: 'input-page-rotation-limit',
                                 value: pageRotationLimit,
                                 min: PAGE_ROTATION_LIMIT_MIN,
                                 max: PAGE_ROTATION_LIMIT_MAX,
                                 step: 1,
                                 onchange: onchangePageRotationLimit,
-                                width: 100,
+                                width: 80,
                                 unitDatatest: 'unit-page-rotation-limit',
                                 unit: i18n.UserSettings.PageRotation.Unit(),
+                                note: pageRotationLimit === 0 ? i18n.UserSettings.PageRotation.Unlimited() : undefined,
+                                noteDatatest: 'note-page-rotation-limit-unlimited',
                             })}
 
                             {renderSwitch({
                                 key: 'switch-row-utils-menu-pinned',
                                 datatest: 'switch-utils-menu-pinned',
                                 title: i18n.UserSettings.UtilsMenuPinned.Title(),
-                                description: i18n.UserSettings.UtilsMenuPinned.Description(),
                                 checked: utilsMenuPinned,
                                 onChange: checked => actions.keepUtilsMenuPinned({ enable: checked }),
                             })}
 
                         </div>
-                    </div>
-
-                    <div key="user-settings-notice" datatest="user-settings-notice" style={style({
-                        color: '#888',
-                        fontSize: px(12),
-                        marginTop: px(16),
-                    })}>
-                        {i18n.UserSettings.Notice()}
                     </div>
                 </div>
 

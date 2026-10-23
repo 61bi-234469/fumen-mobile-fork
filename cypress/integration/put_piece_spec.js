@@ -14,12 +14,9 @@ const configurePieceHorizontalMove = (softDropPriority = false) => {
     cy.get(datatest('input-piece-arr')).clear().type('0').blur();
     cy.get(datatest('input-piece-das')).clear().type('5').blur();
     cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
-    const prioritySwitch = cy.get(datatest('switch-piece-softdrop-priority'));
-    if (softDropPriority) {
-        prioritySwitch.check({ force: true });
-    } else {
-        prioritySwitch.uncheck({ force: true });
-    }
+    cy.get(datatest(softDropPriority
+        ? 'segment-piece-softdrop-priority-softdrop'
+        : 'segment-piece-softdrop-priority-horizontal')).click();
     cy.get(datatest('btn-save')).click();
 };
 

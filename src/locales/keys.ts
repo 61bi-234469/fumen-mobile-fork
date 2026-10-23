@@ -260,7 +260,6 @@ export const i18n = {
         Title: () => t('Menu.Title'),
         Build: (version: string) => t('Menu.Build', { version }),
         Sections: {
-            Mode: () => t('Menu.Sections.Mode'),
             Page: () => t('Menu.Sections.Page'),
             General: () => t('Menu.Sections.General'),
             View: () => t('Menu.Sections.View'),
@@ -429,20 +428,19 @@ export const i18n = {
             Import: () => t('ListViewMenu.Tabs.Import'),
         },
         Sections: {
-            Read: () => t('ListViewMenu.Sections.Read'),
+            Clipboard: () => t('ListViewMenu.Sections.Clipboard'),
             Image: () => t('ListViewMenu.Sections.Image'),
             Copy: () => t('ListViewMenu.Sections.Copy'),
             Url: () => t('ListViewMenu.Sections.Url'),
         },
         Scope: {
             Label: () => t('ListViewMenu.Scope.Label'),
-            Description: () => t('ListViewMenu.Scope.Description'),
             AllWithCount: (count: number) => t('ListViewMenu.Scope.AllWithCount', { count }),
             LeftToActiveWithCount: (count: number) => t('ListViewMenu.Scope.LeftToActiveWithCount', { count }),
         },
+        GifFrameDelayUnit: () => t('ListViewMenu.GifFrameDelayUnit'),
         ShortUrl: {
-            Title: () => t('ListViewMenu.ShortUrl.Title'),
-            Description: () => t('ListViewMenu.ShortUrl.Description'),
+            Label: () => t('ListViewMenu.ShortUrl.Label'),
         },
         ImageOptions: {
             PageNumbers: () => t('ListViewMenu.ImageOptions.PageNumbers'),
@@ -450,9 +448,7 @@ export const i18n = {
         },
         Buttons: {
             Insert: () => t('ListViewMenu.Buttons.Insert'),
-            InsertHint: () => t('ListViewMenu.Buttons.InsertHint'),
             Import: () => t('ListViewMenu.Buttons.Import'),
-            ImportHint: () => t('ListViewMenu.Buttons.ImportHint'),
             Png: () => t('ListViewMenu.Buttons.Png'),
             Gif: () => t('ListViewMenu.Buttons.Gif'),
             Fumen: () => t('ListViewMenu.Buttons.Fumen'),

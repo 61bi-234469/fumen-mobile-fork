@@ -186,6 +186,7 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
 
     const scopeCardStyle = style({
         ...sectionBaseStyle,
+        maxWidth: 'none',
         marginTop: '0px',
         backgroundColor: '#e3f2fd',
         border: '1px solid #90caf9',
@@ -193,6 +194,7 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
 
     const imageButtonsStyle = style({
         display: 'flex',
+        alignItems: 'flex-start',
         gap: px(8),
     });
 
@@ -200,14 +202,6 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         flex: '1 1 0',
         width: 'auto',
         margin: '0px',
-    });
-
-    const hintStyle = style({
-        display: 'block',
-        fontSize: px(11),
-        lineHeight: px(14),
-        marginTop: px(2),
-        opacity: 0.85,
     });
 
     const externalLinkStyle = style({
@@ -250,17 +244,47 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
 
     const settingStyle = style(settingBaseStyle);
 
-    const settingNameStyle = style({
-        fontSize: px(13),
-        fontWeight: 'bold',
-        color: '#424242',
-        marginBottom: px(2),
+    const treeBadgeStyle = style({
+        display: 'inline-block',
+        marginLeft: px(8),
+        padding: '0px 6px',
+        fontSize: px(11),
+        lineHeight: px(16),
+        borderRadius: px(8),
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        verticalAlign: 'middle',
     });
 
-    const settingDescriptionStyle = style({
-        color: '#666',
+    const warningHintStyle = style({
+        display: 'block',
+        margin: '0px 0px 6px 0px',
         fontSize: px(11),
-        marginBottom: px(4),
+        lineHeight: px(14),
+        color: '#e65100',
+    });
+
+    const gifButtonStyle = style({
+        flex: '0 0 auto',
+        width: 'auto',
+        margin: '0px',
+    });
+
+    const gifColumnStyle = style({
+        flex: '1 1 0',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+    });
+
+    const gifDelayRowStyle = style({
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: px(4),
+        marginTop: px(6),
+        fontSize: px(12),
+        color: '#666',
+        whiteSpace: 'nowrap',
     });
 
     const readonlyScopeStyle = style({
@@ -321,7 +345,7 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                         <div key="panel-list-view-menu-import" datatest="panel-list-view-menu-import"
                              role="tabpanel" style={buttonsStyle}>
                             <div key="section-read" datatest="section-read" style={firstSectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Read()}</div>
+                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Clipboard()}</div>
                                 <a href="#" key="btn-import" datatest="btn-import" style={btnStyle}
                                    className="waves-effect waves-light btn red"
                                    onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'import' }))}>
@@ -329,14 +353,12 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                         move_to_inbox
                                     </Icon>
                                     {i18n.ListViewMenu.Buttons.Import()}
-                                    <span style={hintStyle}>{i18n.ListViewMenu.Buttons.ImportHint()}</span>
                                 </a>
                                 <a href="#" key="btn-add" datatest="btn-add" style={btnStyle}
                                    className="waves-effect waves-light btn red"
                                    onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'add' }))}>
                                     <Icon key="btn-add-icon" classNames={['left']} iconSize={18}>add</Icon>
                                     {i18n.ListViewMenu.Buttons.Insert()}
-                                    <span style={hintStyle}>{i18n.ListViewMenu.Buttons.InsertHint()}</span>
                                 </a>
                             </div>
                         </div>
@@ -345,7 +367,6 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                              role="tabpanel" style={buttonsStyle}>
                             <div key="export-scope-card" datatest="export-scope-card" style={scopeCardStyle}>
                                 <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Scope.Label()}</div>
-                                <div style={settingDescriptionStyle}>{i18n.ListViewMenu.Scope.Description()}</div>
                                 {treeEnabled ? (
                                     <div style={style({ display: 'flex', gap: px(4) })}>
                                         <button key="btn-scope-all" datatest="btn-scope-all"
@@ -396,7 +417,12 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                             content_copy
                                         </Icon>
                                         {i18n.ListViewMenu.Buttons.TetgramRaw()}
-                                        <span style={hintStyle}>{i18n.ListViewMenu.Buttons.TetgramRawHint()}</span>
+                                        {treeEnabled ? (
+                                            <span key="badge-tetgram-raw-tree" datatest="badge-tetgram-raw-tree"
+                                                  style={treeBadgeStyle}>
+                                                {i18n.ListViewMenu.Buttons.TetgramRawHint()}
+                                            </span>
+                                        ) : undefined}
                                     </a>
                                 </div>
                             </div>
@@ -416,14 +442,32 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                         </Icon>
                                         {i18n.ListViewMenu.Buttons.Png()}
                                     </a>
-                                    <a href="#" key="btn-export-gif" datatest="btn-export-gif"
-                                       style={imageButtonStyle} className="waves-effect waves-light btn red"
-                                       onclick={runAndClose(() => (
-                                           useLeft ? actions.exportLeftSegmentAsGif() : actions.exportListViewAsGif()
-                                       ))}>
-                                        <Icon key="btn-export-gif-icon" classNames={['left']} iconSize={18}>gif</Icon>
-                                        {i18n.ListViewMenu.Buttons.Gif()}
-                                    </a>
+                                    <div key="gif-export" style={gifColumnStyle}>
+                                        <a href="#" key="btn-export-gif" datatest="btn-export-gif"
+                                           style={gifButtonStyle} className="waves-effect waves-light btn red"
+                                           onclick={runAndClose(() => (
+                                               useLeft
+                                                   ? actions.exportLeftSegmentAsGif()
+                                                   : actions.exportListViewAsGif()
+                                           ))}>
+                                            <Icon key="btn-export-gif-icon" classNames={['left']} iconSize={18}>
+                                                gif
+                                            </Icon>
+                                            {i18n.ListViewMenu.Buttons.Gif()}
+                                        </a>
+                                        <div key="gif-frame-delay" style={gifDelayRowStyle}>
+                                            <input key="input-gif-frame-delay" datatest="input-gif-frame-delay"
+                                                   type="number" value={gifFrameDelayMs} min={100} max={10000}
+                                                   step={100} onchange={onchangeGifFrameDelay}
+                                                   style={style({
+                                                       width: px(64),
+                                                       height: px(28),
+                                                       margin: '0px',
+                                                       textAlign: 'center',
+                                                   })}/>
+                                            <span>{i18n.ListViewMenu.GifFrameDelayUnit()}</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div key="image-display-options" datatest="image-display-options"
                                      style={settingStyle}>
@@ -439,19 +483,6 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                                onchange={onchangeComments}/>
                                         <span>{i18n.ListViewMenu.ImageOptions.Comments()}</span>
                                     </label>
-                                </div>
-                                <div key="gif-frame-delay" style={settingStyle}>
-                                    <div style={settingNameStyle}>{i18n.UserSettings.GifFrameDelayMs.Title()}</div>
-                                    <div style={settingDescriptionStyle}>
-                                        {i18n.UserSettings.GifFrameDelayMs.Description()}
-                                    </div>
-                                    <div style={style({ display: 'flex', alignItems: 'center', gap: px(4) })}>
-                                        <input key="input-gif-frame-delay" datatest="input-gif-frame-delay"
-                                               type="number" value={gifFrameDelayMs} min={100} max={10000} step={100}
-                                               onchange={onchangeGifFrameDelay}
-                                               style={style({ width: px(100), textAlign: 'center' })}/>
-                                        <span>ms</span>
-                                    </div>
                                 </div>
                             </div>
 
@@ -498,18 +529,20 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                             open_in_new
                                         </Icon>
                                         {i18n.ListViewMenu.Buttons.TetgramUrl()}
-                                        <span datatest="hint-tetgram-url" style={hintStyle}>
+                                    </a>
+                                    {treeEnabled ? (
+                                        <span key="hint-tetgram-url" datatest="hint-tetgram-url"
+                                              style={warningHintStyle}>
                                             {i18n.ListViewMenu.Buttons.TetgramUrlHint()}
                                         </span>
-                                    </a>
+                                    ) : undefined}
                                 </div>
                                 <div key="shorten-urls" datatest="shorten-urls" style={settingStyle}>
-                                    <div style={settingNameStyle}>{i18n.ListViewMenu.ShortUrl.Title()}</div>
                                     <label>
                                         <input key="switch-shorten-urls" datatest="switch-shorten-urls"
                                                type="checkbox" checked={shortenUrls}
                                                onchange={onchangeShortenUrls}/>
-                                        <span>{i18n.ListViewMenu.ShortUrl.Description()}</span>
+                                        <span>{i18n.ListViewMenu.ShortUrl.Label()}</span>
                                     </label>
                                 </div>
                             </div>

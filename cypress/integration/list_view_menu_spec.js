@@ -179,14 +179,14 @@ describe('Unified import/export menu', () => {
         [
             ['btn-export-image', 'PNG', 'image'],
             ['btn-export-gif', 'GIF', 'gif'],
-            ['btn-export-fumen', 'テト譜データをコピー', 'content_copy'],
-            ['btn-copy-url', '共有URLをコピー', 'content_copy'],
-            ['btn-export-tetgram', 'tetgram用rawデータをコピー', 'content_copy'],
-            ['btn-export-url', '共有URLを開く', 'link'],
-            ['btn-export-fumen-zui', '連続テト譜エディタで開く', 'open_in_new'],
-            ['btn-export-tetgram-url', 'tetgramで開く', 'open_in_new'],
-            ['btn-export-fumen-for-mobile', 'Fumen for mobileで開く', 'open_in_new'],
-            ['btn-export-external-site', '連続テト譜エディタ(LIST)で開く', 'open_in_new'],
+            ['btn-export-fumen', 'テト譜データ', 'content_copy'],
+            ['btn-copy-url', '共有URL', 'content_copy'],
+            ['btn-export-tetgram', 'tetgram raw', 'content_copy'],
+            ['btn-export-url', '共有URL', 'link'],
+            ['btn-export-fumen-zui', '連続テト譜エディタ', 'open_in_new'],
+            ['btn-export-tetgram-url', 'tetgram', 'open_in_new'],
+            ['btn-export-fumen-for-mobile', 'Fumen for mobile', 'open_in_new'],
+            ['btn-export-external-site', '連続テト譜エディタ (LIST)', 'open_in_new'],
         ].forEach(([button, label, icon]) => {
             cy.get(datatest(button)).should('contain.text', label);
             cy.get(datatest(button)).find('.material-icons').should('contain.text', icon);
@@ -197,31 +197,36 @@ describe('Unified import/export menu', () => {
             cy.get(datatest(button)).should('not.have.class', 'btn');
         });
         cy.get(datatest('btn-copy-url')).should('have.class', 'btn');
-        cy.get(datatest('export-scope-card')).should('contain.text', '書き出すページ');
+        cy.get(datatest('export-scope-card'))
+            .should('contain.text', '書き出すページ')
+            .and('not.contain.text', 'このタブ内のすべての書き出し操作に適用されます');
         cy.get(datatest('scope-summary-all')).should('contain.text', 'すべて（全1ページ）');
         cy.get(datatest('btn-scope-all')).should('not.exist');
         cy.get(datatest('section-export')).should('contain.text', 'データをコピー');
         cy.get(datatest('section-external')).scrollIntoView().should('contain.text', 'URLで開く');
-        cy.get(datatest('section-tetgram')).should('contain.text', 'tetgramで開く');
-        cy.get(datatest('hint-tetgram-url')).scrollIntoView().should('be.visible');
+        cy.get(datatest('section-tetgram')).should('contain.text', 'tetgram');
+        // ツリーが無効なときは補足を出さない
+        cy.get(datatest('hint-tetgram-url')).should('not.exist');
+        cy.get(datatest('badge-tetgram-raw-tree')).should('not.exist');
         cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
         cy.get(datatest('toggle-export-page-numbers')).should('be.checked')
             .next('span').should('contain.text', 'ページ番号を表示');
         cy.get(datatest('toggle-export-comments')).should('be.checked')
             .next('span').should('contain.text', 'コメントを表示');
-        cy.contains('短縮URL').scrollIntoView().should('be.visible');
+        cy.contains('TinyURLで短縮する').scrollIntoView().should('be.visible');
         cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
-        cy.get(datatest('section-external'))
-            .should('contain.text', '共有URL・外部サイト・tetgramを開くときにTinyURL作成ページを使用');
+        cy.get(datatest('input-gif-frame-delay')).parent().should('contain.text', 'ms/ページ');
+        cy.get(datatest('section-image')).should('not.contain.text', 'GIFページ送り間隔');
+        cy.get(datatest('section-external')).should('not.contain.text', 'TinyURL作成ページを使用');
 
         cy.get(datatest('mdl-list-view-menu')).then(($modal) => {
             const ids = Array.from($modal[0].querySelectorAll('[datatest]'))
                 .map(element => element.getAttribute('datatest'));
             expect(ids.indexOf('export-scope-card')).to.be.lessThan(ids.indexOf('section-export'));
             expect(ids.indexOf('section-export')).to.be.lessThan(ids.indexOf('section-image'));
-            expect(ids.indexOf('btn-export-gif')).to.be.lessThan(ids.indexOf('toggle-export-page-numbers'));
+            expect(ids.indexOf('btn-export-gif')).to.be.lessThan(ids.indexOf('input-gif-frame-delay'));
+            expect(ids.indexOf('input-gif-frame-delay')).to.be.lessThan(ids.indexOf('toggle-export-page-numbers'));
             expect(ids.indexOf('toggle-export-page-numbers')).to.be.lessThan(ids.indexOf('toggle-export-comments'));
-            expect(ids.indexOf('toggle-export-comments')).to.be.lessThan(ids.indexOf('input-gif-frame-delay'));
             expect(ids.indexOf('input-gif-frame-delay')).to.be.greaterThan(ids.indexOf('section-image'));
             expect(ids.indexOf('section-image')).to.be.lessThan(ids.indexOf('section-external'));
             expect(ids.indexOf('switch-shorten-urls')).to.be.greaterThan(ids.indexOf('section-external'));
@@ -238,14 +243,14 @@ describe('Unified import/export menu', () => {
         cy.get(datatest('panel-list-view-menu-export')).should('not.exist');
         cy.get(datatest('export-scope-card')).should('not.exist');
         cy.get(datatest('btn-export-image')).should('not.exist');
+        cy.get(datatest('section-read')).should('contain.text', 'クリップボードから');
         cy.get(datatest('btn-import'))
-            .should('contain.text', 'クリップボードから読み込む')
-            .and('contain.text', '現在のテト譜全体を置き換え')
+            .should('contain.text', '置き換え')
             .find('.material-icons').should('contain.text', 'move_to_inbox');
         cy.get(datatest('btn-add'))
-            .should('contain.text', 'クリップボードから挿入')
-            .and('contain.text', '現在のテト譜の末尾へ追加')
+            .should('contain.text', '末尾に追加')
             .find('.material-icons').should('contain.text', 'add');
+        cy.get(datatest('panel-list-view-menu-import')).should('not.contain.text', '現在のテト譜');
 
         cy.get(datatest('btn-cancel')).click();
         operations.menu.import();
@@ -287,6 +292,21 @@ describe('Unified import/export menu', () => {
             .click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
         cy.get(datatest('btn-scope-left')).should('have.css', 'background-color', 'rgb(33, 150, 243)');
+    });
+
+    it('shows the tree notes on the tetgram buttons only while tree mode is enabled', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
+        cy.get('[title="Show pages in tree view"], [title="ページをTree表示に切り替え"]').click();
+
+        operations.listView.openExport();
+        cy.get(datatest('btn-export-tetgram'))
+            .find(datatest('badge-tetgram-raw-tree'))
+            .should('contain.text', 'ツリー構造を含む');
+        cy.get(datatest('hint-tetgram-url')).scrollIntoView()
+            .should('be.visible')
+            .and('contain.text', 'ツリー構造は含まれません');
     });
 
     it('imports tetgram RawData through the existing clipboard button', () => {
@@ -386,6 +406,9 @@ describe('Menu sheet', () => {
                     .filter(name => sectionOrder.includes(name));
                 expect(sections).to.deep.equal(sectionOrder);
             });
+            // モード切替は見出しを持たず、その他の見出しはシート名と重ならない「Tools」にする
+            cy.get(datatest('menu-section-mode-heading')).should('not.exist');
+            cy.get(datatest('menu-section-general-heading')).should('have.text', 'Tools');
             ['btn-new-fumen', 'btn-copy-fumen', 'btn-open-fumen', 'btn-append-fumen'].forEach((name) => {
                 cy.get(datatest('menu-section-page')).find(datatest(name)).should('exist');
             });

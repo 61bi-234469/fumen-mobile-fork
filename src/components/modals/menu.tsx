@@ -359,8 +359,7 @@ export const MenuModal: Component<MenuProps> = (
                         {i18n.Menu.Title()}
                     </div>
 
-                    <MenuSection key="menu-section-mode" datatest="menu-section-mode"
-                                 label={i18n.Menu.Sections.Mode()}>
+                    <MenuSection key="menu-section-mode" datatest="menu-section-mode">
                         {modeButtons}
                     </MenuSection>
 
@@ -395,23 +394,25 @@ export const MenuModal: Component<MenuProps> = (
 interface MenuSectionProps {
     key: string;
     datatest: string;
-    label: string;
+    label?: string;
 }
 
 const MenuSection: Component<MenuSectionProps & { children?: any }> = ({ key, datatest, label }, children) => (
     <div key={key} datatest={datatest} style={style({ margin: '0 0 6px 0' })}>
-        <div key={`${key}-heading`} datatest={`${datatest}-heading`}
-             style={style({
-                 borderBottom: '1px solid #ddd',
-                 color: '#777',
-                 fontSize: px(11),
-                 fontWeight: '700',
-                 letterSpacing: '.05em',
-                 lineHeight: px(18),
-                 margin: '4px 0 2px',
-             })}>
-            {label}
-        </div>
+        {label !== undefined ? (
+            <div key={`${key}-heading`} datatest={`${datatest}-heading`}
+                 style={style({
+                     borderBottom: '1px solid #ddd',
+                     color: '#777',
+                     fontSize: px(11),
+                     fontWeight: '700',
+                     letterSpacing: '.05em',
+                     lineHeight: px(18),
+                     margin: '4px 0 2px',
+                 })}>
+                {label}
+            </div>
+        ) : undefined}
         <div key={`${key}-buttons`} style={style({
             margin: 0,
             padding: 0,

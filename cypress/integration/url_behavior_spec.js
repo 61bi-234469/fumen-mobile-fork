@@ -111,6 +111,7 @@ describe('URL behavior', () => {
         operations.listView.openExport();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
         cy.get(datatest('btn-scope-left')).click();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-url')).click();
 
         cy.get('@windowOpen').should('have.been.called');

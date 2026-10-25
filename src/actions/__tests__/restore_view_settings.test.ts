@@ -5,7 +5,8 @@ const createActions = () => ({
     setListViewShortenUrls: jest.fn(),
     setExportShowPageNumbers: jest.fn(),
     setExportShowComments: jest.fn(),
-    setListViewMenuTab: jest.fn(),
+    setExportImageOptionsOpen: jest.fn(),
+    setExportOtherSitesOpen: jest.fn(),
     setEditorSidePanelEnabled: jest.fn(),
     setEditorSidePanelTab: jest.fn(),
     setEditorSidePanelWidth: jest.fn(),
@@ -34,7 +35,8 @@ describe('restoreViewSettings', () => {
             shortenUrls: true,
             exportShowPageNumbers: false,
             exportShowComments: false,
-            listViewMenuTab: 'import',
+            exportImageOptionsOpen: true,
+            exportOtherSitesOpen: true,
             treeOperationScope: 'descendants',
             grayAfterLineClear: true,
             editorSidePanel: true,
@@ -59,7 +61,8 @@ describe('restoreViewSettings', () => {
         expect(actions.setListViewShortenUrls).toHaveBeenCalledWith({ enabled: true, persist: false });
         expect(actions.setExportShowPageNumbers).toHaveBeenCalledWith({ enabled: false, persist: false });
         expect(actions.setExportShowComments).toHaveBeenCalledWith({ enabled: false, persist: false });
-        expect(actions.setListViewMenuTab).toHaveBeenCalledWith({ tab: 'import', persist: false });
+        expect(actions.setExportImageOptionsOpen).toHaveBeenCalledWith({ open: true, persist: false });
+        expect(actions.setExportOtherSitesOpen).toHaveBeenCalledWith({ open: true, persist: false });
         expect(actions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true, persist: false });
         expect(actions.setEditorSidePanelTab).toHaveBeenCalledWith({ tab: 'tree', persist: false });
         expect(actions.setEditorSidePanelWidth).toHaveBeenCalledWith({ width: 320, persist: false });

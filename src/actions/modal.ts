@@ -2,7 +2,6 @@ import { NextState, sequence } from './commons';
 import { action } from '../actions';
 import { PieceQueueFocus, State, UserSettingsTab } from '../states';
 import { coldClearActions } from './cold_clear';
-import { persistViewSettings } from './view_settings';
 
 export interface ModalActions {
     showOpenErrorMessage: (data: { message: string }) => action;
@@ -78,7 +77,7 @@ export const modalActions: Readonly<ModalActions> = {
             return setModal('listViewMenu', true)(state);
         }
 
-        persistViewSettings(state, { listViewMenuTab: data.initialTab });
+        // 取り込み・書き出しのどちらを出すかは入口で決まるので、保存はしない
         return {
             modal: {
                 ...state.modal,

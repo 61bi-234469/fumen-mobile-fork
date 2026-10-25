@@ -109,6 +109,8 @@ const createState = (overrides: any = {}) => ({
     listView: {
         exportScope: overrides.exportScope || 'all',
         menuTab: overrides.menuTab || 'export',
+        exportImageOptionsOpen: overrides.exportImageOptionsOpen ?? false,
+        exportOtherSitesOpen: overrides.exportOtherSitesOpen ?? false,
         trimTopBlank: false,
         shortenUrls: overrides.shortenUrls ?? false,
         exportShowPageNumbers: overrides.exportShowPageNumbers ?? true,
@@ -241,21 +243,33 @@ describe('image export visibility settings', () => {
     });
 });
 
-describe('setListViewMenuTab', () => {
-    test('updates and saves the selected tab', () => {
-        const state = createState({ menuTab: 'export' });
-        const next = listViewActions.setListViewMenuTab({ tab: 'import' })(state) as any;
+describe('export collapsible states', () => {
+    test('saves the image options open state', () => {
+        const state = createState();
+        const next = listViewActions.setExportImageOptionsOpen({ open: true })(state) as any;
 
-        expect(next.listView.menuTab).toBe('import');
+        expect(next.listView.exportImageOptionsOpen).toBe(true);
         const { localStorageWrapper } = require('../../memento');
         expect(localStorageWrapper.saveViewSettings).toHaveBeenCalledWith(
-            expect.objectContaining({ listViewMenuTab: 'import' }),
+            expect.objectContaining({ exportImageOptionsOpen: true, exportOtherSitesOpen: false }),
         );
     });
 
-    test('does nothing when the tab is unchanged', () => {
-        const state = createState({ menuTab: 'export' });
-        expect(listViewActions.setListViewMenuTab({ tab: 'export' })(state)).toBeUndefined();
+    test('saves the other sites open state', () => {
+        const state = createState();
+        const next = listViewActions.setExportOtherSitesOpen({ open: true })(state) as any;
+
+        expect(next.listView.exportOtherSitesOpen).toBe(true);
+        const { localStorageWrapper } = require('../../memento');
+        expect(localStorageWrapper.saveViewSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ exportOtherSitesOpen: true }),
+        );
+    });
+
+    test('does nothing when the state is unchanged', () => {
+        const state = createState();
+        expect(listViewActions.setExportImageOptionsOpen({ open: false })(state)).toBeUndefined();
+        expect(listViewActions.setExportOtherSitesOpen({ open: false })(state)).toBeUndefined();
     });
 });
 

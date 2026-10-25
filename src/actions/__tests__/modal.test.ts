@@ -82,6 +82,8 @@ describe('modalActions characterization tests', () => {
 
             expect(result.modal).toEqual({ ...baseModal, listViewMenu: true });
             expect(result.listView.menuTab).toBe('import');
+            // どちらの窓を出すかは入口で決まるので保存しない
+            expect(require('../view_settings').persistViewSettings).not.toHaveBeenCalled();
         });
 
         test('without initialTab preserves the current tab', () => {

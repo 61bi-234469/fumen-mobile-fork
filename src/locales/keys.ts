@@ -405,7 +405,6 @@ export const i18n = {
         },
     },
     ListViewMenu: {
-        Title: () => t('ListViewMenu.Title'),
         Tabs: {
             Export: () => t('ListViewMenu.Tabs.Export'),
             Import: () => t('ListViewMenu.Tabs.Import'),
@@ -413,13 +412,15 @@ export const i18n = {
         Sections: {
             Clipboard: () => t('ListViewMenu.Sections.Clipboard'),
             Image: () => t('ListViewMenu.Sections.Image'),
-            Copy: () => t('ListViewMenu.Sections.Copy'),
-            Url: () => t('ListViewMenu.Sections.Url'),
+            Share: () => t('ListViewMenu.Sections.Share'),
+            ImageOptions: () => t('ListViewMenu.Sections.ImageOptions'),
+            OtherSites: () => t('ListViewMenu.Sections.OtherSites'),
         },
         Scope: {
             Label: () => t('ListViewMenu.Scope.Label'),
             AllWithCount: (count: number) => t('ListViewMenu.Scope.AllWithCount', { count }),
             LeftToActiveWithCount: (count: number) => t('ListViewMenu.Scope.LeftToActiveWithCount', { count }),
+            PageCount: (count: number) => t('ListViewMenu.Scope.PageCount', { count }),
         },
         GifFrameDelayUnit: () => t('ListViewMenu.GifFrameDelayUnit'),
         ShortUrl: {
@@ -428,6 +429,7 @@ export const i18n = {
         ImageOptions: {
             PageNumbers: () => t('ListViewMenu.ImageOptions.PageNumbers'),
             Comments: () => t('ListViewMenu.ImageOptions.Comments'),
+            GifFrameDelay: () => t('ListViewMenu.ImageOptions.GifFrameDelay'),
         },
         Buttons: {
             Insert: () => t('ListViewMenu.Buttons.Insert'),

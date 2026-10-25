@@ -17,6 +17,8 @@ interface ListViewMenuModalProps {
     shortenUrls: boolean;
     exportShowPageNumbers: boolean;
     exportShowComments: boolean;
+    imageOptionsOpen: boolean;
+    otherSitesOpen: boolean;
     actions: {
         closeListViewMenuModal: () => void;
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
@@ -34,7 +36,8 @@ interface ListViewMenuModalProps {
         setListViewShortenUrls: (data: { enabled: boolean }) => void;
         setExportShowPageNumbers: (data: { enabled: boolean }) => void;
         setExportShowComments: (data: { enabled: boolean }) => void;
-        setListViewMenuTab: (data: { tab: 'export' | 'import' }) => void;
+        setExportImageOptionsOpen: (data: { open: boolean }) => void;
+        setExportOtherSitesOpen: (data: { open: boolean }) => void;
         setGifFrameDelay: (data: { delayMs: number }) => void;
         openListViewInFumenZui: () => void;
         openListViewInFumenForMobile: () => void;
@@ -43,6 +46,8 @@ interface ListViewMenuModalProps {
     };
 }
 
+// 取り込み・書き出しは開いた入口で決まるため、タブで切り替えず別の窓として出す。
+// 書き出しは「共有・画像・他のサイト」の目的別に並べ、細かい設定は折りたたみに入れる。
 export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     {
         treeEnabled,
@@ -54,6 +59,8 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         shortenUrls,
         exportShowPageNumbers,
         exportShowComments,
+        imageOptionsOpen,
+        otherSitesOpen,
         actions,
     },
 ) => {
@@ -87,7 +94,10 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     };
 
     // 出力アクションを実行してからモーダルを閉じて破棄する
-    const runAndClose = (run: () => void) => () => {
+    const runAndClose = (run: () => void) => (event?: Event) => {
+        if (event !== undefined) {
+            event.preventDefault();
+        }
         run();
         close();
         destroy();
@@ -96,130 +106,49 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     const useLeft = treeEnabled && exportScope === 'left';
 
     const contentStyle = style({
-        textAlign: 'center',
-        padding: px(10),
+        padding: '16px 16px 4px 16px',
+        textAlign: 'left',
     });
 
+    // Materialize 既定の幅（スマホで 80%）だと 2 列のボタン名が切れるので、狭い画面では端まで使う
     const modalStyle = style({
         maxHeight: '85%',
+        maxWidth: px(400),
+        width: `calc(100% - ${px(32)})`,
     });
 
-    const buttonsStyle = style({
-        margin: '0px auto',
-        padding: '0px',
+    const headerStyle = style({
+        alignItems: 'baseline',
         display: 'flex',
-        justifyContent: 'flex-end',
-        flexDirection: 'column',
-        alignItems: 'center',
-    });
-
-    const tabsStyle = style({
-        width: '100%',
-        maxWidth: px(304),
-        margin: '0px auto 12px auto',
-        display: 'flex',
-        gap: px(4),
-        padding: px(4),
-        backgroundColor: '#eceff1',
-        borderRadius: px(6),
-    });
-
-    const tabButtonBase = {
-        flex: '1 1 0',
-        padding: '9px 8px',
-        border: 'none',
-        borderRadius: px(4),
-        fontSize: px(14),
-        fontWeight: 'bold',
-        cursor: 'pointer',
-    };
-
-    const activeTabStyle = style({
-        ...tabButtonBase,
-        backgroundColor: '#fff',
-        color: '#1565c0',
-        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.18)',
-    });
-
-    const inactiveTabStyle = style({
-        ...tabButtonBase,
-        backgroundColor: 'transparent',
-        color: '#546e7a',
-        boxShadow: 'none',
-    });
-
-    const btnStyle = style({
-        width: '100%',
-        margin: '5px 0px',
-        height: 'auto',
-        minHeight: px(36),
-        lineHeight: px(18),
-        padding: '6px 12px',
-    });
-
-    const sectionHeadingStyle = style({
-        width: '100%',
-        margin: '0px 0px 8px 0px',
-        fontSize: px(15),
-        fontWeight: 'bold',
-        color: '#424242',
-        textAlign: 'left',
-    });
-
-    const sectionBaseStyle: CSSProperties = {
-        width: '100%',
-        maxWidth: px(304),
-        margin: '12px auto 0px auto',
-        padding: px(12),
-        backgroundColor: '#fafafa',
-        border: '1px solid #e0e0e0',
-        borderRadius: px(6),
-        textAlign: 'left',
-    };
-
-    const sectionStyle = style(sectionBaseStyle);
-
-    const firstSectionStyle = style({
-        ...sectionBaseStyle,
-        marginTop: '0px',
-    });
-
-    const scopeCardStyle = style({
-        ...sectionBaseStyle,
-        maxWidth: 'none',
-        marginTop: '0px',
-        backgroundColor: '#e3f2fd',
-        border: '1px solid #90caf9',
-    });
-
-    const imageButtonsStyle = style({
-        display: 'flex',
-        alignItems: 'flex-start',
         gap: px(8),
+        justifyContent: 'space-between',
+        margin: '0px 0px 8px 0px',
     });
 
-    const imageButtonStyle = style({
-        flex: '1 1 0',
-        width: 'auto',
+    const titleStyle = style({
+        fontSize: px(20),
+        fontWeight: 'bold',
         margin: '0px',
     });
 
-    const externalLinkStyle = style({
-        display: 'block',
-        width: '100%',
-        margin: '6px 0px',
-        color: '#1e88e5',
+    const pageCountStyle = style({
+        color: '#757575',
         fontSize: px(13),
-        textAlign: 'left',
-        textDecoration: 'underline',
+        whiteSpace: 'nowrap',
+    });
+
+    const scopeGroupStyle = style({
+        display: 'flex',
+        gap: px(4),
+        margin: '0px 0px 8px 0px',
     });
 
     const scopeButtonBase = {
         flex: '1 1 0',
-        padding: '6px 8px',
+        padding: '5px 8px',
         fontSize: px(12),
-        border: 'none',
-        borderRadius: px(3),
+        border: '1px solid #cfd8dc',
+        borderRadius: px(14),
         cursor: 'pointer',
         outline: 'none',
     };
@@ -227,74 +156,168 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     const scopeActiveStyle = style({
         ...scopeButtonBase,
         backgroundColor: '#2196F3',
+        borderColor: '#2196F3',
         color: '#fff',
     });
 
     const scopeInactiveStyle = style({
         ...scopeButtonBase,
-        backgroundColor: '#e0e0e0',
-        color: '#666',
+        backgroundColor: '#fff',
+        color: '#546e7a',
     });
 
-    const settingBaseStyle: CSSProperties = {
-        width: '100%',
-        margin: '10px 0px 0px 0px',
-        textAlign: 'left',
+    // 各段は枠で囲まず、細い区切り線だけで分ける
+    const sectionStyle = style({
+        borderTop: '1px solid #eeeeee',
+        display: 'block',
+        padding: '12px 0px',
+    });
+
+    const sectionHeadingStyle = style({
+        color: '#616161',
+        fontSize: px(13),
+        fontWeight: 'bold',
+        margin: '0px 0px 8px 0px',
+    });
+
+    const rowStyle = style({
+        display: 'flex',
+        gap: px(8),
+    });
+
+    const buttonBase: CSSProperties = {
+        alignItems: 'center',
+        display: 'flex',
+        flex: '1 1 0',
+        gap: px(6),
+        height: px(38),
+        justifyContent: 'center',
+        lineHeight: px(18),
+        margin: '0px',
+        minWidth: '0',
+        padding: '0px 10px',
+        textTransform: 'none',
+        whiteSpace: 'nowrap',
     };
 
-    const settingStyle = style(settingBaseStyle);
+    // 塗りは各窓の主な操作 1 つだけ。他は枠線ボタンにする
+    const primaryButtonStyle = style(buttonBase);
 
-    const treeBadgeStyle = style({
-        display: 'inline-block',
-        marginLeft: px(8),
-        padding: '0px 6px',
-        fontSize: px(11),
-        lineHeight: px(16),
-        borderRadius: px(8),
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        verticalAlign: 'middle',
+    const outlineButtonStyle = style({
+        ...buttonBase,
+        backgroundColor: '#fff',
+        border: '1px solid #d0d0d0',
+        borderRadius: px(2),
+        color: '#424242',
     });
 
-    const warningHintStyle = style({
-        display: 'block',
-        margin: '0px 0px 6px 0px',
-        fontSize: px(11),
-        lineHeight: px(14),
-        color: '#e65100',
+    const summaryStyle = style({
+        color: '#616161',
+        cursor: 'pointer',
+        fontSize: px(13),
+        fontWeight: 'bold',
+        outline: 'none',
+        userSelect: 'none',
     });
 
-    const gifButtonStyle = style({
-        flex: '0 0 auto',
-        width: 'auto',
-        margin: '0px',
+    const optionsSummaryStyle = style({
+        color: '#757575',
+        cursor: 'pointer',
+        fontSize: px(12),
+        margin: '8px 0px 0px 0px',
+        outline: 'none',
+        userSelect: 'none',
     });
 
-    const gifColumnStyle = style({
-        flex: '1 1 0',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
+    const optionsBodyStyle = style({
+        display: 'grid',
+        gap: px(6),
+        padding: '8px 0px 0px 4px',
     });
 
     const gifDelayRowStyle = style({
-        display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: px(4),
-        marginTop: px(6),
-        fontSize: px(12),
-        color: '#666',
+        color: '#424242',
+        display: 'flex',
+        fontSize: px(13),
+        gap: px(6),
         whiteSpace: 'nowrap',
     });
 
-    const readonlyScopeStyle = style({
-        padding: '8px 10px',
-        backgroundColor: '#fff',
-        borderRadius: px(3),
-        fontSize: px(13),
-        fontWeight: 'bold',
-        color: '#1565c0',
+    const gifDelayInputStyle = style({
+        height: px(28),
+        margin: '0px',
+        textAlign: 'center',
+        width: px(64),
     });
+
+    const siteListStyle = style({
+        display: 'grid',
+        padding: '6px 0px 0px 0px',
+    });
+
+    const siteRowStyle = style({
+        alignItems: 'center',
+        borderBottom: '1px solid #f5f5f5',
+        display: 'flex',
+        gap: px(8),
+        minHeight: px(36),
+    });
+
+    const siteLinkStyle = style({
+        alignItems: 'center',
+        color: '#1e88e5',
+        display: 'flex',
+        flex: '1 1 auto',
+        fontSize: px(14),
+        gap: px(8),
+        minWidth: '0',
+        padding: '6px 0px',
+    });
+
+    const smallButtonStyle = style({
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        border: '1px solid #d0d0d0',
+        borderRadius: px(14),
+        color: '#424242',
+        cursor: 'pointer',
+        display: 'flex',
+        flex: '0 0 auto',
+        fontSize: px(12),
+        gap: px(6),
+        padding: '3px 10px',
+    });
+
+    const treeBadgeStyle = style({
+        backgroundColor: '#e3f2fd',
+        borderRadius: px(8),
+        color: '#1565c0',
+        fontSize: px(11),
+        lineHeight: px(16),
+        padding: '0px 6px',
+        whiteSpace: 'nowrap',
+    });
+
+    const warningHintStyle = style({
+        color: '#e65100',
+        fontSize: px(11),
+        lineHeight: px(14),
+        margin: '2px 0px 4px 26px',
+    });
+
+    const checkboxRowStyle = style({
+        display: 'block',
+        margin: '10px 0px 0px 0px',
+    });
+
+    // details の開閉は state と同期させ、次に開いたときも保つ
+    const ontoggle = (current: boolean, set: (data: { open: boolean }) => void) => (event: Event) => {
+        const open = (event.target as HTMLDetailsElement).open;
+        if (open !== current) {
+            set({ open });
+        }
+    };
 
     const onchangeGifFrameDelay = (event: Event) => {
         const target = event.target as HTMLInputElement;
@@ -317,237 +340,195 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         actions.setExportShowComments({ enabled: (event.target as HTMLInputElement).checked });
     };
 
+    const title = menuTab === 'import' ? i18n.ListViewMenu.Tabs.Import() : i18n.ListViewMenu.Tabs.Export();
+
+    const importBody = (
+        <div key="panel-list-view-menu-import" datatest="panel-list-view-menu-import">
+            <div key="section-read" datatest="section-read" style={sectionStyle}>
+                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Clipboard()}</div>
+                <div style={rowStyle}>
+                    <a href="#" key="btn-import" datatest="btn-import" style={primaryButtonStyle}
+                       className="waves-effect waves-light btn red"
+                       onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'import' }))}>
+                        <Icon key="btn-import-icon" iconSize={18}>move_to_inbox</Icon>
+                        {i18n.ListViewMenu.Buttons.Import()}
+                    </a>
+                    <a href="#" key="btn-add" datatest="btn-add" style={outlineButtonStyle}
+                       className="waves-effect btn-flat"
+                       onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'add' }))}>
+                        <Icon key="btn-add-icon" iconSize={18}>add</Icon>
+                        {i18n.ListViewMenu.Buttons.Insert()}
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+
+    // 範囲を選べるのはツリー有効時だけ。それ以外は見出しの右にページ数だけを出す
+    const scopeControl = treeEnabled ? (
+        <div key="export-scope" datatest="export-scope" role="group"
+             aria-label={i18n.ListViewMenu.Scope.Label()} style={scopeGroupStyle}>
+            <button key="btn-scope-all" datatest="btn-scope-all" type="button"
+                    aria-pressed={exportScope === 'all' ? 'true' : 'false'}
+                    style={exportScope === 'all' ? scopeActiveStyle : scopeInactiveStyle}
+                    onclick={() => actions.setExportScope({ scope: 'all' })}>
+                {i18n.ListViewMenu.Scope.AllWithCount(pageCount)}
+            </button>
+            <button key="btn-scope-left" datatest="btn-scope-left" type="button"
+                    aria-pressed={exportScope === 'left' ? 'true' : 'false'}
+                    style={exportScope === 'left' ? scopeActiveStyle : scopeInactiveStyle}
+                    onclick={() => actions.setExportScope({ scope: 'left' })}>
+                {i18n.ListViewMenu.Scope.LeftToActiveWithCount(selectedPathPageCount)}
+            </button>
+        </div>
+    ) : undefined;
+
+    const siteRow = (key: string, label: string, iconName: string, onclick: () => void, extra?: any) => (
+        <div key={`${key}-row`} style={siteRowStyle}>
+            <a href="#" key={key} datatest={key} style={siteLinkStyle} className="waves-effect waves-teal"
+               onclick={runAndClose(onclick)}>
+                <Icon key={`${key}-icon`} iconSize={18}>{iconName}</Icon>
+                {label}
+            </a>
+            {extra}
+        </div>
+    );
+
+    const tetgramRawButton = (
+        <button key="btn-export-tetgram" datatest="btn-export-tetgram" type="button" style={smallButtonStyle}
+                onclick={runAndClose(() => actions.copyTetgramRawToClipboard())}>
+            {i18n.ListViewMenu.Buttons.TetgramRaw()}
+            {treeEnabled ? (
+                <span key="badge-tetgram-raw-tree" datatest="badge-tetgram-raw-tree" style={treeBadgeStyle}>
+                    {i18n.ListViewMenu.Buttons.TetgramRawHint()}
+                </span>
+            ) : undefined}
+        </button>
+    );
+
+    const exportBody = (
+        <div key="panel-list-view-menu-export" datatest="panel-list-view-menu-export">
+            <div key="section-export" datatest="section-export" style={sectionStyle}>
+                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Share()}</div>
+                <div style={rowStyle}>
+                    <a href="#" key="btn-copy-url" datatest="btn-copy-url" style={primaryButtonStyle}
+                       className="waves-effect waves-light btn red"
+                       onclick={runAndClose(() => actions.copyListViewUrlToClipboard())}>
+                        <Icon key="btn-copy-url-icon" iconSize={18}>link</Icon>
+                        {i18n.ListViewMenu.Buttons.UrlCopy()}
+                    </a>
+                    <a href="#" key="btn-export-fumen" datatest="btn-export-fumen" style={outlineButtonStyle}
+                       className="waves-effect btn-flat"
+                       onclick={runAndClose(() => (
+                           useLeft ? actions.copyLeftSegmentToClipboard() : actions.copyAllPagesToClipboard()
+                       ))}>
+                        <Icon key="btn-export-fumen-icon" iconSize={18}>content_copy</Icon>
+                        {i18n.ListViewMenu.Buttons.Fumen()}
+                    </a>
+                </div>
+            </div>
+
+            <div key="section-image" datatest="section-image" style={sectionStyle}>
+                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Image()}</div>
+                <div style={rowStyle}>
+                    <a href="#" key="btn-export-image" datatest="btn-export-image" style={outlineButtonStyle}
+                       className="waves-effect btn-flat"
+                       onclick={runAndClose(() => (
+                           useLeft ? actions.exportLeftSegmentAsImage() : actions.exportListViewAsImage()
+                       ))}>
+                        <Icon key="btn-export-image-icon" iconSize={18}>image</Icon>
+                        {i18n.ListViewMenu.Buttons.Png()}
+                    </a>
+                    <a href="#" key="btn-export-gif" datatest="btn-export-gif" style={outlineButtonStyle}
+                       className="waves-effect btn-flat"
+                       onclick={runAndClose(() => (
+                           useLeft ? actions.exportLeftSegmentAsGif() : actions.exportListViewAsGif()
+                       ))}>
+                        <Icon key="btn-export-gif-icon" iconSize={18}>gif</Icon>
+                        {i18n.ListViewMenu.Buttons.Gif()}
+                    </a>
+                </div>
+                <details key="image-display-options" datatest="image-display-options" open={imageOptionsOpen}
+                         ontoggle={ontoggle(imageOptionsOpen, actions.setExportImageOptionsOpen)}>
+                    <summary key="image-options-summary" datatest="image-options-summary"
+                             style={optionsSummaryStyle}>
+                        {i18n.ListViewMenu.Sections.ImageOptions()}
+                    </summary>
+                    <div key="image-options-body" style={optionsBodyStyle}>
+                        <label key="label-export-page-numbers">
+                            <input key="toggle-export-page-numbers" datatest="toggle-export-page-numbers"
+                                   type="checkbox" checked={exportShowPageNumbers}
+                                   onchange={onchangePageNumbers}/>
+                            <span>{i18n.ListViewMenu.ImageOptions.PageNumbers()}</span>
+                        </label>
+                        <label key="label-export-comments">
+                            <input key="toggle-export-comments" datatest="toggle-export-comments"
+                                   type="checkbox" checked={exportShowComments}
+                                   onchange={onchangeComments}/>
+                            <span>{i18n.ListViewMenu.ImageOptions.Comments()}</span>
+                        </label>
+                        <div key="gif-frame-delay" style={gifDelayRowStyle}>
+                            <span>{i18n.ListViewMenu.ImageOptions.GifFrameDelay()}</span>
+                            <input key="input-gif-frame-delay" datatest="input-gif-frame-delay"
+                                   type="number" value={gifFrameDelayMs} min={100} max={10000}
+                                   step={100} onchange={onchangeGifFrameDelay}
+                                   style={gifDelayInputStyle}/>
+                            <span>{i18n.ListViewMenu.GifFrameDelayUnit()}</span>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <details key="section-external" datatest="section-external" style={sectionStyle}
+                     open={otherSitesOpen} ontoggle={ontoggle(otherSitesOpen, actions.setExportOtherSitesOpen)}>
+                <summary key="other-sites-summary" datatest="other-sites-summary" style={summaryStyle}>
+                    {i18n.ListViewMenu.Sections.OtherSites()}
+                </summary>
+                <div key="other-sites-list" style={siteListStyle}>
+                    {siteRow('btn-export-url', i18n.ListViewMenu.Buttons.Url(), 'link', () => (
+                        useLeft ? actions.exportLeftSegmentAsUrl() : actions.exportListViewAsUrl()
+                    ))}
+                    {siteRow('btn-export-fumen-zui', i18n.ListViewMenu.Buttons.FumenZui(), 'open_in_new',
+                        () => actions.openListViewInFumenZui())}
+                    {siteRow('btn-export-external-site', i18n.ListViewMenu.Buttons.ExternalSite(), 'open_in_new',
+                        () => actions.openListViewInExternalSite())}
+                    {siteRow('btn-export-fumen-for-mobile', i18n.ListViewMenu.Buttons.FumenForMobile(),
+                        'open_in_new', () => actions.openListViewInFumenForMobile())}
+                    <div key="section-tetgram" datatest="section-tetgram">
+                        {siteRow('btn-export-tetgram-url', i18n.ListViewMenu.Buttons.TetgramUrl(), 'open_in_new',
+                            () => actions.openListViewInTetgram(), tetgramRawButton)}
+                        {treeEnabled ? (
+                            <div key="hint-tetgram-url" datatest="hint-tetgram-url" style={warningHintStyle}>
+                                {i18n.ListViewMenu.Buttons.TetgramUrlHint()}
+                            </div>
+                        ) : undefined}
+                    </div>
+                    <label key="shorten-urls" datatest="shorten-urls" style={checkboxRowStyle}>
+                        <input key="switch-shorten-urls" datatest="switch-shorten-urls"
+                               type="checkbox" checked={shortenUrls}
+                               onchange={onchangeShortenUrls}/>
+                        <span>{i18n.ListViewMenu.ShortUrl.Label()}</span>
+                    </label>
+                </div>
+            </details>
+        </div>
+    );
+
     return (
         <div key="list-view-menu-modal-top">
-            <div key="mdl-list-view-menu" datatest="mdl-list-view-menu"
+            <div key="mdl-list-view-menu" datatest="mdl-list-view-menu" data-menu={menuTab}
                  className="modal" style={modalStyle} oncreate={oncreate}>
                 <div key="modal-content" className="modal-content" style={contentStyle}>
-                    <h4 key="menu-label" style={style({ marginTop: '0px', marginBottom: px(10), fontSize: px(22) })}>
-                        {i18n.ListViewMenu.Title()}
-                    </h4>
-
-                    <div key="list-view-menu-tabs" role="tablist" style={tabsStyle}>
-                        <button key="tab-list-view-menu-import" datatest="tab-list-view-menu-import"
-                                type="button" role="tab" aria-selected={menuTab === 'import'}
-                                style={menuTab === 'import' ? activeTabStyle : inactiveTabStyle}
-                                onclick={() => actions.setListViewMenuTab({ tab: 'import' })}>
-                            {i18n.ListViewMenu.Tabs.Import()}
-                        </button>
-                        <button key="tab-list-view-menu-export" datatest="tab-list-view-menu-export"
-                                type="button" role="tab" aria-selected={menuTab === 'export'}
-                                style={menuTab === 'export' ? activeTabStyle : inactiveTabStyle}
-                                onclick={() => actions.setListViewMenuTab({ tab: 'export' })}>
-                            {i18n.ListViewMenu.Tabs.Export()}
-                        </button>
+                    <div key="menu-header" style={headerStyle}>
+                        <h4 key="menu-label" datatest="list-view-menu-title" style={titleStyle}>{title}</h4>
+                        {menuTab === 'export' && !treeEnabled ? (
+                            <span key="scope-summary-all" datatest="scope-summary-all" style={pageCountStyle}>
+                                {i18n.ListViewMenu.Scope.PageCount(pageCount)}
+                            </span>
+                        ) : undefined}
                     </div>
-
-                    {menuTab === 'import' ? (
-                        <div key="panel-list-view-menu-import" datatest="panel-list-view-menu-import"
-                             role="tabpanel" style={buttonsStyle}>
-                            <div key="section-read" datatest="section-read" style={firstSectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Clipboard()}</div>
-                                <a href="#" key="btn-import" datatest="btn-import" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'import' }))}>
-                                    <Icon key="btn-import-icon" classNames={['left']} iconSize={18}>
-                                        move_to_inbox
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.Import()}
-                                </a>
-                                <a href="#" key="btn-add" datatest="btn-add" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => actions.importPagesFromClipboard({ mode: 'add' }))}>
-                                    <Icon key="btn-add-icon" classNames={['left']} iconSize={18}>add</Icon>
-                                    {i18n.ListViewMenu.Buttons.Insert()}
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        <div key="panel-list-view-menu-export" datatest="panel-list-view-menu-export"
-                             role="tabpanel" style={buttonsStyle}>
-                            <div key="export-scope-card" datatest="export-scope-card" style={scopeCardStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Scope.Label()}</div>
-                                {treeEnabled ? (
-                                    <div style={style({ display: 'flex', gap: px(4) })}>
-                                        <button key="btn-scope-all" datatest="btn-scope-all"
-                                                style={exportScope === 'all' ? scopeActiveStyle : scopeInactiveStyle}
-                                                onclick={() => actions.setExportScope({ scope: 'all' })}>
-                                            {i18n.ListViewMenu.Scope.AllWithCount(pageCount)}
-                                        </button>
-                                        <button key="btn-scope-left" datatest="btn-scope-left"
-                                                style={exportScope === 'left' ? scopeActiveStyle : scopeInactiveStyle}
-                                                onclick={() => actions.setExportScope({ scope: 'left' })}>
-                                            {i18n.ListViewMenu.Scope.LeftToActiveWithCount(selectedPathPageCount)}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div datatest="scope-summary-all" style={readonlyScopeStyle}>
-                                        {i18n.ListViewMenu.Scope.AllWithCount(pageCount)}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div key="section-export" datatest="section-export" style={sectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Copy()}</div>
-                                <a href="#" key="btn-export-fumen" datatest="btn-export-fumen" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => (
-                                       useLeft
-                                           ? actions.copyLeftSegmentToClipboard()
-                                           : actions.copyAllPagesToClipboard()
-                                   ))}>
-                                    <Icon key="btn-export-fumen-icon" classNames={['left']} iconSize={18}>
-                                        content_copy
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.Fumen()}
-                                </a>
-                                <a href="#" key="btn-copy-url" datatest="btn-copy-url" style={btnStyle}
-                                   className="waves-effect waves-light btn red"
-                                   onclick={runAndClose(() => actions.copyListViewUrlToClipboard())}>
-                                    <Icon key="btn-copy-url-icon" classNames={['left']} iconSize={18}>
-                                        content_copy
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.UrlCopy()}
-                                </a>
-                                <div key="section-tetgram-copy" datatest="section-tetgram-copy">
-                                    <a href="#" key="btn-export-tetgram" datatest="btn-export-tetgram"
-                                       style={btnStyle} className="waves-effect waves-light btn red"
-                                       onclick={runAndClose(() => actions.copyTetgramRawToClipboard())}>
-                                        <Icon key="btn-export-tetgram-icon" classNames={['left']} iconSize={18}>
-                                            content_copy
-                                        </Icon>
-                                        {i18n.ListViewMenu.Buttons.TetgramRaw()}
-                                        {treeEnabled ? (
-                                            <span key="badge-tetgram-raw-tree" datatest="badge-tetgram-raw-tree"
-                                                  style={treeBadgeStyle}>
-                                                {i18n.ListViewMenu.Buttons.TetgramRawHint()}
-                                            </span>
-                                        ) : undefined}
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div key="section-image" datatest="section-image" style={sectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Image()}</div>
-                                <div style={imageButtonsStyle}>
-                                    <a href="#" key="btn-export-image" datatest="btn-export-image"
-                                       style={imageButtonStyle} className="waves-effect waves-light btn red"
-                                       onclick={runAndClose(() => (
-                                           useLeft
-                                               ? actions.exportLeftSegmentAsImage()
-                                               : actions.exportListViewAsImage()
-                                       ))}>
-                                        <Icon key="btn-export-image-icon" classNames={['left']} iconSize={18}>
-                                            image
-                                        </Icon>
-                                        {i18n.ListViewMenu.Buttons.Png()}
-                                    </a>
-                                    <div key="gif-export" style={gifColumnStyle}>
-                                        <a href="#" key="btn-export-gif" datatest="btn-export-gif"
-                                           style={gifButtonStyle} className="waves-effect waves-light btn red"
-                                           onclick={runAndClose(() => (
-                                               useLeft
-                                                   ? actions.exportLeftSegmentAsGif()
-                                                   : actions.exportListViewAsGif()
-                                           ))}>
-                                            <Icon key="btn-export-gif-icon" classNames={['left']} iconSize={18}>
-                                                gif
-                                            </Icon>
-                                            {i18n.ListViewMenu.Buttons.Gif()}
-                                        </a>
-                                        <div key="gif-frame-delay" style={gifDelayRowStyle}>
-                                            <input key="input-gif-frame-delay" datatest="input-gif-frame-delay"
-                                                   type="number" value={gifFrameDelayMs} min={100} max={10000}
-                                                   step={100} onchange={onchangeGifFrameDelay}
-                                                   style={style({
-                                                       width: px(64),
-                                                       height: px(28),
-                                                       margin: '0px',
-                                                       textAlign: 'center',
-                                                   })}/>
-                                            <span>{i18n.ListViewMenu.GifFrameDelayUnit()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div key="image-display-options" datatest="image-display-options"
-                                     style={settingStyle}>
-                                    <label style={style({ display: 'block', marginBottom: px(6) })}>
-                                        <input key="toggle-export-page-numbers" datatest="toggle-export-page-numbers"
-                                               type="checkbox" checked={exportShowPageNumbers}
-                                               onchange={onchangePageNumbers}/>
-                                        <span>{i18n.ListViewMenu.ImageOptions.PageNumbers()}</span>
-                                    </label>
-                                    <label style={style({ display: 'block' })}>
-                                        <input key="toggle-export-comments" datatest="toggle-export-comments"
-                                               type="checkbox" checked={exportShowComments}
-                                               onchange={onchangeComments}/>
-                                        <span>{i18n.ListViewMenu.ImageOptions.Comments()}</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div key="section-external" datatest="section-external" style={sectionStyle}>
-                                <div style={sectionHeadingStyle}>{i18n.ListViewMenu.Sections.Url()}</div>
-                                <a href="#" key="btn-export-url" datatest="btn-export-url"
-                                   style={externalLinkStyle} className="waves-effect waves-teal"
-                                   onclick={runAndClose(() => (
-                                       useLeft ? actions.exportLeftSegmentAsUrl() : actions.exportListViewAsUrl()
-                                   ))}>
-                                    <Icon key="btn-export-url-icon" classNames={['left']} iconSize={18}>link</Icon>
-                                    {i18n.ListViewMenu.Buttons.Url()}
-                                </a>
-                                <a href="#" key="btn-export-fumen-zui" datatest="btn-export-fumen-zui"
-                                   style={externalLinkStyle} className="waves-effect waves-teal"
-                                   onclick={runAndClose(() => actions.openListViewInFumenZui())}>
-                                    <Icon key="btn-export-fumen-zui-icon" classNames={['left']} iconSize={18}>
-                                        open_in_new
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.FumenZui()}
-                                </a>
-                                <a href="#" key="btn-export-external-site" datatest="btn-export-external-site"
-                                   style={externalLinkStyle} className="waves-effect waves-teal"
-                                   onclick={runAndClose(() => actions.openListViewInExternalSite())}>
-                                    <Icon key="btn-export-external-site-icon" classNames={['left']} iconSize={18}>
-                                        open_in_new
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.ExternalSite()}
-                                </a>
-                                <a href="#" key="btn-export-fumen-for-mobile"
-                                   datatest="btn-export-fumen-for-mobile" style={externalLinkStyle}
-                                   className="waves-effect waves-teal"
-                                   onclick={runAndClose(() => actions.openListViewInFumenForMobile())}>
-                                    <Icon key="btn-export-fumen-for-mobile-icon" classNames={['left']} iconSize={18}>
-                                        open_in_new
-                                    </Icon>
-                                    {i18n.ListViewMenu.Buttons.FumenForMobile()}
-                                </a>
-                                <div key="section-tetgram" datatest="section-tetgram">
-                                    <a href="#" key="btn-export-tetgram-url" datatest="btn-export-tetgram-url"
-                                       style={externalLinkStyle} className="waves-effect waves-teal"
-                                       onclick={runAndClose(() => actions.openListViewInTetgram())}>
-                                        <Icon key="btn-export-tetgram-url-icon" classNames={['left']} iconSize={18}>
-                                            open_in_new
-                                        </Icon>
-                                        {i18n.ListViewMenu.Buttons.TetgramUrl()}
-                                    </a>
-                                    {treeEnabled ? (
-                                        <span key="hint-tetgram-url" datatest="hint-tetgram-url"
-                                              style={warningHintStyle}>
-                                            {i18n.ListViewMenu.Buttons.TetgramUrlHint()}
-                                        </span>
-                                    ) : undefined}
-                                </div>
-                                <div key="shorten-urls" datatest="shorten-urls" style={settingStyle}>
-                                    <label>
-                                        <input key="switch-shorten-urls" datatest="switch-shorten-urls"
-                                               type="checkbox" checked={shortenUrls}
-                                               onchange={onchangeShortenUrls}/>
-                                        <span>{i18n.ListViewMenu.ShortUrl.Label()}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {menuTab === 'export' ? scopeControl : undefined}
+                    {menuTab === 'import' ? importBody : exportBody}
                 </div>
 
                 <div key="modal-footer" className="modal-footer">

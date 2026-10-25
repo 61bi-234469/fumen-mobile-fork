@@ -242,7 +242,8 @@ export interface ListViewActions {
     setListViewShortenUrls: (data: { enabled: boolean; persist?: boolean }) => action;
     setExportShowPageNumbers: (data: { enabled: boolean; persist?: boolean }) => action;
     setExportShowComments: (data: { enabled: boolean; persist?: boolean }) => action;
-    setListViewMenuTab: (data: { tab: 'export' | 'import'; persist?: boolean }) => action;
+    setExportImageOptionsOpen: (data: { open: boolean; persist?: boolean }) => action;
+    setExportOtherSitesOpen: (data: { open: boolean; persist?: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     activatePageInListView: (data: { pageIndex: number }) => action;
@@ -916,18 +917,33 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    setListViewMenuTab: ({ tab, persist = true }) => (state): NextState => {
-        if (state.listView.menuTab === tab) {
+    setExportImageOptionsOpen: ({ open, persist = true }) => (state): NextState => {
+        if (state.listView.exportImageOptionsOpen === open) {
             return undefined;
         }
 
         if (persist) {
-            persistViewSettings(state, { listViewMenuTab: tab });
+            persistViewSettings(state, { exportImageOptionsOpen: open });
         }
         return {
             listView: {
                 ...state.listView,
-                menuTab: tab,
+                exportImageOptionsOpen: open,
+            },
+        };
+    },
+    setExportOtherSitesOpen: ({ open, persist = true }) => (state): NextState => {
+        if (state.listView.exportOtherSitesOpen === open) {
+            return undefined;
+        }
+
+        if (persist) {
+            persistViewSettings(state, { exportOtherSitesOpen: open });
+        }
+        return {
+            listView: {
+                ...state.listView,
+                exportOtherSitesOpen: open,
             },
         };
     },

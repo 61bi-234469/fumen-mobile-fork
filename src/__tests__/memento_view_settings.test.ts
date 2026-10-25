@@ -33,7 +33,8 @@ describe('view settings tree operation scope migration', () => {
             shortenUrls: false,
             exportShowPageNumbers: true,
             exportShowComments: false,
-            listViewMenuTab: 'import',
+            exportImageOptionsOpen: true,
+            exportOtherSitesOpen: false,
             treeOperationScope: 'descendants',
             grayAfterLineClear: false,
             editorSidePanel: false,
@@ -57,7 +58,9 @@ describe('view settings tree operation scope migration', () => {
 
         const saved = JSON.parse(localStorage.getItem('view-settings@1')!);
         expect(saved.treeOperationScope).toBe('descendants');
-        expect(saved.listViewMenuTab).toBe('import');
+        expect(saved.exportImageOptionsOpen).toBe(true);
+        expect(saved.exportOtherSitesOpen).toBe(false);
+        expect(saved.listViewMenuTab).toBeUndefined();
         expect(saved.exportShowPageNumbers).toBe(true);
         expect(saved.exportShowComments).toBe(false);
         expect(saved.pieceLayout).toBe('play');
@@ -121,12 +124,14 @@ describe('view settings tree operation scope migration', () => {
         expect(localStorageWrapper.loadViewSettings().pieceLayout).toBeUndefined();
     });
 
-    test('loads valid import/export tabs and rejects invalid values', () => {
-        localStorage.setItem('view-settings@1', JSON.stringify({ listViewMenuTab: 'import' }));
-        expect(localStorageWrapper.loadViewSettings().listViewMenuTab).toBe('import');
-
-        localStorage.setItem('view-settings@1', JSON.stringify({ listViewMenuTab: 'invalid' }));
-        expect(localStorageWrapper.loadViewSettings().listViewMenuTab).toBeUndefined();
+    test('loads the export collapsible states as booleans and ignores the old tab key', () => {
+        localStorage.setItem('view-settings@1', JSON.stringify({
+            exportImageOptionsOpen: true, exportOtherSitesOpen: 'yes', listViewMenuTab: 'import',
+        }));
+        const loaded = localStorageWrapper.loadViewSettings() as any;
+        expect(loaded.exportImageOptionsOpen).toBe(true);
+        expect(loaded.exportOtherSitesOpen).toBeUndefined();
+        expect(loaded.listViewMenuTab).toBeUndefined();
     });
 
     test('loads a boolean INPUT AI guide preference and rejects other values', () => {

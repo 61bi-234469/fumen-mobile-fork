@@ -459,6 +459,8 @@ export interface State {
         exportShowComments: boolean;
         exportScope: 'all' | 'left';
         menuTab: 'export' | 'import';
+        exportImageOptionsOpen: boolean;
+        exportOtherSitesOpen: boolean;
         settingsOpened: boolean;
     };
     editorPanel: {
@@ -667,6 +669,8 @@ export const initState: Readonly<State> = {
         exportShowComments: true,
         exportScope: 'all',
         menuTab: 'export',
+        exportImageOptionsOpen: false,
+        exportOtherSitesOpen: false,
         settingsOpened: false,
     },
     editorPanel: {

@@ -303,7 +303,8 @@ export interface ViewSettings {
     shortenUrls: boolean;
     exportShowPageNumbers: boolean;
     exportShowComments: boolean;
-    listViewMenuTab: 'export' | 'import';
+    exportImageOptionsOpen: boolean;
+    exportOtherSitesOpen: boolean;
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
@@ -347,9 +348,6 @@ const safer = {
     },
     editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
         return value === 'list' || value === 'tree' ? value : undefined;
-    },
-    listViewMenuTab: (value: any): 'export' | 'import' | undefined => {
-        return value === 'export' || value === 'import' ? value : undefined;
     },
     pieceLayout: (value: any): PieceLayoutMode | undefined => {
         return value === 'play' || value === 'select' ? value : undefined;
@@ -453,7 +451,8 @@ export const localStorageWrapper = {
             shortenUrls: safer.boolean(obj.shortenUrls),
             exportShowPageNumbers: safer.boolean(obj.exportShowPageNumbers),
             exportShowComments: safer.boolean(obj.exportShowComments),
-            listViewMenuTab: safer.listViewMenuTab(obj.listViewMenuTab),
+            exportImageOptionsOpen: safer.boolean(obj.exportImageOptionsOpen),
+            exportOtherSitesOpen: safer.boolean(obj.exportOtherSitesOpen),
             treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
                 ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),

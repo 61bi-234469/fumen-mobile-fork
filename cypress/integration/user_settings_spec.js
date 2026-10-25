@@ -275,7 +275,7 @@ describe('User settings', () => {
         // エディタの書き出しボタンからImport/Exportモーダルを直接開く
         cy.get(datatest('btn-editor-export')).click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
-        cy.get(datatest('tab-list-view-menu-export')).should('have.attr', 'aria-selected', 'true');
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'export');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-list-view-menu')).should('not.exist');
 

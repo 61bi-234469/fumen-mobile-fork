@@ -229,9 +229,10 @@ describe('Unified import/export menu', () => {
             expect(ids.indexOf('btn-export-tetgram')).to.be.lessThan(ids.indexOf('switch-shorten-urls'));
         });
 
-        // 折りたたみの開閉は次に開いたときも保つ
+        // 折りたたみの開閉は次に開いたときも保つ。
+        // cy.reload() だと URL の lng が落ちてブラウザの言語に戻るので、言語を指定して開き直す
         cy.get(datatest('btn-cancel')).click();
-        cy.reload();
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja', reload: true });
         operations.menu.export();
         cy.get(datatest('image-display-options')).should('have.attr', 'open');
         cy.get(datatest('section-external')).should('have.attr', 'open');

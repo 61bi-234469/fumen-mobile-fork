@@ -79,9 +79,6 @@
         OpenTreeScreenOnTreeData: {
             Title: 'Open fumen with tree data (#TREE) in Tree screen',
         },
-        UtilsMenuPinned: {
-            Title: 'Keep the UTILS menu open',
-        },
         Loop: {
             Title: 'Loop on page navigation',
         },

@@ -891,18 +891,6 @@ export const operations = {
             cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
             cy.get(datatest('btn-save')).click();
         },
-        // UTILSメニューを開いたままにする設定を切り替える (全般タブ)
-        setUtilsMenuPinned: (enabled) => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('general');
-            const target = cy.get(datatest('switch-utils-menu-pinned'));
-            if (enabled) {
-                target.check({ force: true });
-            } else {
-                target.uncheck({ force: true });
-            }
-            cy.get(datatest('btn-save')).click();
-        },
     },
     listView: {
         // 狭い画面では取り込み・書き出しがバーから外れ、⋮ のシートの「ページ」から開く

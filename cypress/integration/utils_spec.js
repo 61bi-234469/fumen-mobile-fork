@@ -60,9 +60,12 @@ describe('Utils', () => {
         cy.clearLocalStorage();
 
         visit({ mode: 'edit' });
-        operations.menu.setUtilsMenuPinned(true);
 
+        // ピンはUTILSの窓のヘッダーで切り替え、その場で暗転が外れる
         operations.mode.utils.open();
+        cy.get(datatest('overlay-backdrop-modal')).should('exist');
+        cy.get(datatest('btn-utils-pin')).should('have.attr', 'aria-pressed', 'false').click();
+        cy.get(datatest('btn-utils-pin')).should('have.attr', 'aria-pressed', 'true');
         cy.get(datatest('overlay-backdrop-pinned')).should('exist');
         cy.get(datatest('btn-convert-to-gray')).click();
         cy.get(datatest('overlay-utils')).should('be.visible');
@@ -74,6 +77,16 @@ describe('Utils', () => {
         cy.get(datatest('overlay-utils')).should('be.visible');
 
         cy.get(datatest('btn-inspector-close')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+
+        // ピンは保存され、再読み込み後も有効。外すと元の閉じ方に戻る
+        cy.reload();
+        operations.mode.utils.open();
+        cy.get(datatest('btn-utils-pin')).should('have.attr', 'aria-pressed', 'true');
+        cy.get(datatest('overlay-backdrop-pinned')).should('exist');
+        cy.get(datatest('btn-utils-pin')).click();
+        cy.get(datatest('btn-utils-pin')).should('have.attr', 'aria-pressed', 'false');
+        cy.get(datatest('btn-convert-to-gray')).click();
         cy.get(datatest('overlay-utils')).should('not.exist');
     });
 

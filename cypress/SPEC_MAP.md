@@ -49,7 +49,7 @@ spec の追加・削除と `spec-timings.json` のずれは `src/__tests__/spec_
 | `tree_mode_spec.js` | Tree（グラフ表示・ノードD&D・分岐/挿入・削除Undo・スコープ選択） | `src/actions/tree_operations.ts`, `src/components/tree/`, `src/lib/fumen/tree_utils.ts`, `src/lib/fumen/tree_types.ts` | `tree.setScope`（他は合成タッチイベント直接） | 0:16 | AGENTS.md「tree root仮想ノード/DFS pre-order」invariantに直結 |
 | `url_behavior_spec.js` | URL/hashパラメータの横断挙動（screen/tree/lng/mobile維持、モーダルキャンセル時のURL不変） | `src/actions.ts`, `src/memento.ts` | `menu.append/openPage/openUserSettings`, `mode.block` | 0:04 | 一部 `it.skip`（未実装のライブURL同期。e2e skill参照） |
 | `user_settings_spec.js` | ユーザー設定モーダル（ハンドリング(DAS/ARR/DCD/SDF)と0値の補足・同時押しの優先セグメント・ショートカットのプレースホルダと×クリア・最大ページ数・サイドパネル項目のPC幅限定・グラデーション折りたたみ・Ghost・Loop・ライン消去後グレー・Readerの歯車・スイッチ行と強調色） | `src/components/modals/user_settings.tsx`, `src/actions/user_settings.ts`, `resources/index.html`（設定モーダルの色） | `menu.lastPage/loopOn/openUserSettings/selectUserSettingsTab`, `mode.block/piece/tools` | 0:28 | - |
-| `utils_spec.js` | Utilsモード（Paintツールとの分離・スコープ別グルーピング・Mirror） | `src/views/editor/editor_overlay.ts` | `mode.tools/utils` | 0:03 | - |
+| `utils_spec.js` | Utilsモード（Paintツールとの分離・スコープ別グルーピング・ヘッダーのピン留めと保存・Mirror） | `src/views/editor/editor_overlay.ts` | `mode.tools/utils` | 0:03 | - |
 
 ## 逆引き: src 領域 → 見るべき spec
 

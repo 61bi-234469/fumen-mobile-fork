@@ -84,9 +84,6 @@ export const i18n = {
         OpenTreeScreenOnTreeData: {
             Title: () => t('UserSettings.OpenTreeScreenOnTreeData.Title'),
         },
-        UtilsMenuPinned: {
-            Title: () => t('UserSettings.UtilsMenuPinned.Title'),
-        },
         Loop: {
             Title: () => t('UserSettings.Loop.Title'),
         },

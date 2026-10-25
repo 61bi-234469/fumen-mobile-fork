@@ -22,7 +22,6 @@ interface UserSettingsModalProps {
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
-    utilsMenuPinned: boolean;
     loop: boolean;
     shortcutLabelVisible: boolean;
     gradient: string;
@@ -51,7 +50,6 @@ interface UserSettingsModalProps {
         keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
-        keepUtilsMenuPinned: (data: { enable: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
@@ -146,7 +144,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
-        utilsMenuPinned,
         loop,
         shortcutLabelVisible,
         gradient,
@@ -937,14 +934,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 unit: i18n.UserSettings.PageRotation.Unit(),
                                 note: pageRotationLimit === 0 ? i18n.UserSettings.PageRotation.Unlimited() : undefined,
                                 noteDatatest: 'note-page-rotation-limit-unlimited',
-                            })}
-
-                            {renderSwitch({
-                                key: 'switch-row-utils-menu-pinned',
-                                datatest: 'switch-utils-menu-pinned',
-                                title: i18n.UserSettings.UtilsMenuPinned.Title(),
-                                checked: utilsMenuPinned,
-                                onChange: checked => actions.keepUtilsMenuPinned({ enable: checked }),
                             })}
 
                         </div>

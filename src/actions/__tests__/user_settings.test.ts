@@ -382,6 +382,22 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('setUtilsMenuPinned', () => {
+        test('updates and persists the UTILS pin immediately', () => {
+            const state = createState();
+            mockActions.changeUtilsMenuPinned = jest.fn(({ enable }) => (current: any) => ({
+                mode: { ...current.mode, utilsMenuPinned: enable },
+            }));
+
+            userSettingsActions.setUtilsMenuPinned({ enable: true })(state);
+
+            expect(mockActions.changeUtilsMenuPinned).toHaveBeenCalledWith({ enable: true });
+            expect(saveUserSettingsMock).toHaveBeenCalledWith(expect.objectContaining({
+                utilsMenuPinned: true,
+            }));
+        });
+    });
+
     describe('commitUserSettings', () => {
         beforeEach(() => {
             const actionNames = [

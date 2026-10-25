@@ -4,7 +4,7 @@ import { i18n } from '../../locales/keys';
 export type SettingId =
     | 'delete-spawn-mino-on-paint-drag' | 'paint-palette-mino-design' | 'flags-hidden'
     | 'gradient' | 'gray-after-line-clear' | 'trim-top-blank' | 'editor-side-panel'
-    | 'open-tree-screen-on-tree-data' | 'utils-menu-pinned' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
+    | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
     | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
     | 'initial-screen' | 'loop' | 'page-rotation-limit';
@@ -47,10 +47,6 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
         type: 'switch', datatestBase: 'switch-open-tree-screen-on-tree-data',
         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title,
     },
-    'utils-menu-pinned': {
-        type: 'switch', datatestBase: 'switch-utils-menu-pinned',
-        title: i18n.UserSettings.UtilsMenuPinned.Title,
-    },
     'piece-shortcuts': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Title },
     'ghost-visible': { type: 'switch', datatestBase: 'switch-ghost-visible', title: i18n.UserSettings.Ghost.Title },
     'rotation-system': { type: 'custom', title: i18n.UserSettings.RotationSystem.Title },
@@ -82,7 +78,7 @@ export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
     keys: ['palette-shortcuts', 'edit-shortcuts', 'piece-shortcuts', 'shortcut-label'],
     // 実際の描画順に合わせる。open-tree-screen-on-tree-data は初期画面の従属項目として直下に置く。
     general: [
-        'loop', 'initial-screen', 'open-tree-screen-on-tree-data', 'page-rotation-limit', 'utils-menu-pinned',
+        'loop', 'initial-screen', 'open-tree-screen-on-tree-data', 'page-rotation-limit',
     ],
 };
 

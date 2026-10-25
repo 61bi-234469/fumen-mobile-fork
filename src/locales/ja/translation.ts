@@ -79,9 +79,6 @@ export const resources = {
         OpenTreeScreenOnTreeData: {
             Title: 'ツリーデータ(#TREE)を含むテト譜はTree画面で開く',
         },
-        UtilsMenuPinned: {
-            Title: 'UTILSメニューを開いたままにする',
-        },
         Loop: {
             Title: 'ページ移動のループ',
         },

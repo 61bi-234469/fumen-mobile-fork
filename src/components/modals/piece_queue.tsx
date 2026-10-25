@@ -286,9 +286,8 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                             datatest="piece-queue-next-preview"
                                             style={style({ listStyle: 'none', margin: `${px(4)} 0 0 0`, padding: '0' })}
                                         >
-                                            {Array.from({ length: NEXT_PREVIEW_COUNT }).map((_, index) => {
-                                                const piece = currentQueueState.queue[index];
-                                                return <li
+                                            {currentQueueState.queue.slice(0, NEXT_PREVIEW_COUNT).map(
+                                                (piece, index) => <li
                                                     key={`piece-queue-next-slot-${index + 1}`}
                                                     datatest={`piece-queue-next-slot-${index + 1}`}
                                                     style={style({
@@ -303,13 +302,13 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
                                                         color: '#6b7280', minWidth: px(12), textAlign: 'right',
                                                     })}>{index + 1}</span>
                                                     <span style={style({
-                                                        color: piece === undefined ? '#bdbdbd' : '#111827',
+                                                        color: '#111827',
                                                         fontWeight: '700',
                                                     })}>
-                                                        {piece === undefined ? '—' : pieceQueuePieceToChar(piece)}
+                                                        {pieceQueuePieceToChar(piece)}
                                                     </span>
-                                                </li>;
-                                            })}
+                                                </li>,
+                                            )}
                                         </ol>
                                     </div>
                                 </div>

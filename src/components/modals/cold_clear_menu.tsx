@@ -59,7 +59,6 @@ interface ColdClearMenuModalProps {
     canClearComment: boolean;
     actions: {
         closeColdClearMenuModal: () => void;
-        openPieceQueueModal: () => void;
         changeLockFlag: (data: { index: number; enable: boolean }) => void;
         startColdClearSearch: () => void;
         startColdClearTopThreeSearch: () => void;
@@ -437,9 +436,15 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         fontWeight: 700,
         cursor: 'pointer',
     });
+    // INPUTのキューモーダルへは切り替えず、このメニュー内の Queue State で編集させる
     const setupQueue = () => {
-        closeMenu();
-        actions.openPieceQueueModal();
+        const section = document.querySelector('[datatest="section-cold-clear-queue-state"]');
+        section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.querySelector('[datatest="input-cold-clear-queue"]') as HTMLInputElement | null;
+        if (input && !input.disabled) {
+            setQueueFocus('next');
+            input.focus({ preventScroll: true });
+        }
     };
     const setupLock = () => {
         actions.changeLockFlag({ index: setupNeeds.pageIndex, enable: true });
@@ -632,7 +637,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         })}
                     </div>
 
-                    <div key="cold-clear-queue-state" style={sectionStyle}>
+                    <div key="cold-clear-queue-state" datatest="section-cold-clear-queue-state" style={sectionStyle}>
                         <p style={sectionTitleStyle}>{i18n.ColdClear.QueueStateSectionTitle()}</p>
                         {!currentQueueState
                             ? (canClearComment

@@ -44,6 +44,7 @@ import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_a
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 import { restoreViewSettings } from './actions/restore_view_settings';
 import { initReplayFileDrop } from './actions/replay_file_drop';
+import { chooseStartupFumen, loadTabSourceUrlKey, toUrlFumenKey } from './lib/autosave_session';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -160,7 +161,7 @@ const handleUrlChange = () => {
     // Case 1: fumen data changed - reload via loadFumen
     // loadPages now handles screen param internally
     if (dChanged && currentParams.d !== undefined) {
-        main.loadFumen({ fumen: currentParams.d });
+        main.loadFumen({ fumen: currentParams.d, sourceUrlKey: toUrlFumenKey(currentParams.d) });
         return;
     }
 
@@ -200,6 +201,15 @@ const applyParamsWithoutReload = (params: {
 
 window.addEventListener('hashchange', handleUrlChange);
 window.addEventListener('popstate', handleUrlChange);
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        main.flushAutosave();
+    }
+});
+window.addEventListener('pagehide', () => {
+    main.flushAutosave();
+});
 
 window.onresize = () => {
     main.resize({
@@ -274,25 +284,28 @@ const setupI18n = (urlQuery: Query) => {
 };
 
 const loadFumen = (urlQuery: Query) => {
-    // URLからロードする
-    {
-        const fumen = urlQuery.get('d');
-        if (fumen !== undefined) {
-            return main.loadFumen({ fumen, initialLoad: true });
-        }
-    }
-
-    // LocalStrageからロードする
-    {
-        const fumen = localStorageWrapper.loadFumen();
-        if (fumen) {
-            M.toast({ html: i18n.Top.RestoreFromStorage(), classes: 'top-toast', displayLength: 1500 });
-            return main.loadFumen({ fumen, initialLoad: true });
-        }
-    }
+    const startup = chooseStartupFumen({
+        urlFumen: urlQuery.get('d'),
+        storedFumen: localStorageWrapper.loadFumen(),
+        storedSourceUrlKey: localStorageWrapper.loadFumenSourceUrlKey(),
+        storedPageIndex: localStorageWrapper.loadPageIndex(),
+        tabSourceUrlKey: loadTabSourceUrlKey(),
+    });
 
     // 空のフィールドを読み込む
-    return main.loadNewFumen({ initialLoad: true });
+    if (startup === undefined) {
+        return main.loadNewFumen({ initialLoad: true });
+    }
+
+    if (startup.restored) {
+        M.toast({ html: i18n.Top.RestoreFromStorage(), classes: 'top-toast', displayLength: 1500 });
+    }
+    return main.loadFumen({
+        fumen: startup.fumen,
+        initialLoad: true,
+        pageIndex: startup.pageIndex,
+        sourceUrlKey: startup.sourceUrlKey,
+    });
 };
 
 const loadUserSettings = () => {

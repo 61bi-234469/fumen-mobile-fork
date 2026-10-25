@@ -202,7 +202,9 @@ describe('User settings', () => {
 
         visit({ reload: true });
 
-        // 移動することの確認
+        // 再読み込み前に開いていたページへ戻る。そこから移動することの確認
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');
+        rightTap();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
         leftTap();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');

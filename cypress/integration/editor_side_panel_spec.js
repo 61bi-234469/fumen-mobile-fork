@@ -100,6 +100,47 @@ describe('Editor side panel', () => {
         cy.get(datatest('editor-side-panel')).should('not.exist');
     });
 
+    it('keeps the board beside the panel and the pinned UTILS window right of the rail', () => {
+        cy.viewport(1280, 800);
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', mobile: false, lng: 'en' });
+        operations.editorPanel.enable();
+
+        cy.get(datatest('editor-side-panel')).then(($panel) => {
+            const automaticWidth = $panel[0].getBoundingClientRect().width;
+
+            operations.mode.utils.open();
+            cy.get(datatest('btn-utils-pin')).click();
+            cy.get(datatest('overlay-backdrop-pinned')).should('exist');
+
+            // ピン留め中の窓の列を空けるため、自動幅のパネルが縮む
+            cy.get(datatest('editor-side-panel')).should(($narrowed) => {
+                expect($narrowed[0].getBoundingClientRect().width).to.be.lessThan(automaticWidth - 150);
+            });
+        });
+
+        cy.get(datatest('editor-side-panel')).then(($panel) => {
+            const panelRight = $panel[0].getBoundingClientRect().right;
+            cy.get(datatest('editor-field-frame')).should(($field) => {
+                // 盤面はパネルのすぐ右に寄る（中央寄せの空白を作らない）
+                expect($field[0].getBoundingClientRect().left - panelRight).to.be.closeTo(16, 2);
+            });
+        });
+        cy.get(datatest('editor-rail')).then(($rail) => {
+            const railRight = $rail[0].getBoundingClientRect().right;
+            cy.get(datatest('overlay-utils')).should(($overlay) => {
+                const rect = $overlay[0].getBoundingClientRect();
+                expect(rect.left).to.be.greaterThan(railRight);
+                expect(rect.right).to.be.at.most(1280);
+            });
+        });
+
+        // ピンを外すと列の確保をやめ、パネルは自動幅に戻る
+        cy.get(datatest('btn-utils-pin')).click();
+        cy.get(datatest('btn-inspector-close')).click({ force: true });
+        cy.get(datatest('overlay-utils')).should('not.exist');
+    });
+
     it('hides the top control on mobile', () => {
         cy.viewport(1280, 800);
         cy.clearLocalStorage();

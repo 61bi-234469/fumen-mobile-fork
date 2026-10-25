@@ -14,19 +14,39 @@ export const SIDE_PANEL_TAB_BAR_HEIGHT = 40;
 const FIELD_BOTTOM_BORDER = 2.4;
 const BOARD_AREA_SLACK = 30;
 
+// パネル表示中は盤面とレールをパネル側に寄せる。そのときのパネル右端からの間隔。
+export const EDITOR_CONTENT_START_GAP = 16;
+// UTILS/FLAGS の窓とレールの間隔、窓の外側の余白（editor_overlay の配置と共通）
+export const EDITOR_OVERLAY_GAP = 16;
+export const EDITOR_OVERLAY_EDGE_PADDING = 8;
+
+export const getEditorOverlayPanelWidth = (fieldWidth: number): number => (
+    Math.min(220, Math.max(150, fieldWidth * .8))
+);
+
+// ピン留めした UTILS は開いている間、盤面の右に常設の列として場所を取る
+export const isUtilsColumnReserved = (state: Readonly<State>): boolean => (
+    state.mode.utilsMenuPinned && state.editorUi.inspector === 'utils'
+);
+
 // 盤面エリアが必要とする canvas 幅。blockSize は高さ制約
 // (canvasHeight - border - 2) / 24 で決まるため、幅制約 (canvasWidth - 90) / 10.5 が
 // それを下回らない最小幅 + 余白を確保すれば、残りの横幅は盤面に使われない。
-const getRequiredCanvasWidth = (displayHeight: number, topLeftY: number): number => {
+const getRequiredCanvasWidth = (displayHeight: number, topLeftY: number, utilsColumn: boolean): number => {
     const { commentHeight, toolsHeight } = getEditorBottomMetrics(displayHeight);
     const canvasHeight = displayHeight - (toolsHeight + commentHeight + topLeftY);
     const rail = getEditorRailConfig(canvasHeight);
-    return (canvasHeight - FIELD_BOTTOM_BORDER - 2) * 10.5 / 24 + rail.reserve + BOARD_AREA_SLACK;
+    const unit = (canvasHeight - FIELD_BOTTOM_BORDER - 2) / 24;
+    const utilsColumnWidth = utilsColumn
+        ? getEditorOverlayPanelWidth(unit * 10 + 1) + EDITOR_OVERLAY_GAP + EDITOR_OVERLAY_EDGE_PADDING
+        : 0;
+    return unit * 10.5 + rail.reserve + BOARD_AREA_SLACK + utilsColumnWidth;
 };
 
 export const getSidePanelWidthBounds = (state: Readonly<State>) => {
     const topLeftY = getNavigatorHeight(state.platform);
-    const availableWidth = state.display.width - getRequiredCanvasWidth(state.display.height, topLeftY);
+    const availableWidth = state.display.width
+        - getRequiredCanvasWidth(state.display.height, topLeftY, isUtilsColumnReserved(state));
     return {
         min: SIDE_PANEL_MIN_WIDTH,
         max: Math.max(SIDE_PANEL_MIN_WIDTH, Math.round(availableWidth)),

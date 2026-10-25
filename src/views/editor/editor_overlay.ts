@@ -6,7 +6,10 @@ import { px, style } from '../../lib/types';
 import { BlockIcon } from '../../components/atomics/icons';
 import { EditorLayout } from './editor';
 import { PIECE_RIGHT_COLUMN_GAP } from './responsive_layout';
-import { getSidePanelWidth } from './side_panel_layout';
+import {
+    EDITOR_CONTENT_START_GAP, EDITOR_OVERLAY_EDGE_PADDING, EDITOR_OVERLAY_GAP, getEditorOverlayPanelWidth,
+    getSidePanelWidth,
+} from './side_panel_layout';
 import { i18n } from '../../locales/keys';
 import { editorControlStateStyle, EditorControlState } from './editor_control_style';
 import { Screens } from '../../lib/enums';
@@ -153,8 +156,6 @@ const startOverlayDrag = (event: PointerEvent) => {
     event.stopPropagation();
 };
 
-// レール右端とパネル左端の間隔
-const RAIL_ANCHOR_GAP = 16;
 // 通常レイアウトのレール左マージン（editor_rail.ts の railStyle と対応）
 const RAIL_MARGIN_LEFT = 8;
 
@@ -170,14 +171,18 @@ export const editorContentWidth = (layout: EditorLayout): number => (
 // 敷かれる領域（サイドパネルを除いたエディタ領域）の幅。
 // レール右に置けるだけの幅がないときは、レールを覆わない従来位置（レールの左隣・右端寄せ）へ退避する。
 // レイアウト未指定（List/Tree画面）は基準にするレールがないので null を返し、従来どおり右端寄せにする。
+// `contentStart` は並びを左寄せしたときの左端位置（サイドパネル表示中）。null なら中央寄せ。
 export const railAnchorOffset = (
-    layout: EditorLayout | undefined, panelWidth: number, availableWidth: number,
+    layout: EditorLayout | undefined, panelWidth: number, availableWidth: number, contentStart: number | null = null,
 ): number | null => {
     if (layout === undefined) {
         return null;
     }
-    const rightEdgeOffset = availableWidth / 2 - panelWidth / 2 - 8;
-    const desired = editorContentWidth(layout) / 2 + panelWidth / 2 + RAIL_ANCHOR_GAP;
+    const contentWidth = editorContentWidth(layout);
+    // 並びの中心が領域の中心からどれだけずれているか
+    const contentShift = contentStart === null ? 0 : contentStart + contentWidth / 2 - availableWidth / 2;
+    const rightEdgeOffset = availableWidth / 2 - panelWidth / 2 - EDITOR_OVERLAY_EDGE_PADDING;
+    const desired = contentShift + contentWidth / 2 + panelWidth / 2 + EDITOR_OVERLAY_GAP;
     if (desired <= rightEdgeOffset) {
         return desired;
     }
@@ -375,8 +380,10 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
         }),
     ];
     const title = inspector === 'utils' ? 'UTILS' : 'FLAGS';
-    const panelWidth = Math.min(220, Math.max(150, (layout?.field.size.width ?? state.display.width) * .8));
-    const anchorOffset = railAnchorOffset(layout, panelWidth, state.display.width - getSidePanelWidth(state));
+    const panelWidth = getEditorOverlayPanelWidth(layout?.field.size.width ?? state.display.width);
+    const sidePanelWidth = getSidePanelWidth(state);
+    const anchorOffset = railAnchorOffset(layout, panelWidth, state.display.width - sidePanelWidth,
+        0 < sidePanelWidth ? EDITOR_CONTENT_START_GAP : null);
 
     return div({
         key: 'editor-overlay-backdrop',
@@ -390,7 +397,7 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
             // 画面端寄せだと、盤面が中央に寄る広い画面でレールから大きく離れてしまうため。
             justifyContent: anchorOffset === null ? 'flex-end' : 'center',
             left: '0',
-            padding: px(8),
+            padding: px(EDITOR_OVERLAY_EDGE_PADDING),
             pointerEvents: pinned ? 'none' : 'auto',
             position: 'absolute',
             right: '0',

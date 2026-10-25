@@ -376,7 +376,7 @@ export const resources = {
         Scope: {
             Label: '書き出すページ',
             AllWithCount: 'すべて（{{count}}）',
-            LeftToActiveWithCount: '選択ページまで（{{count}}）',
+            LeftToActiveWithCount: '選択まで（{{count}}）',
             PageCount: '全{{count}}ページ',
         },
         GifFrameDelayUnit: 'ms/ページ',

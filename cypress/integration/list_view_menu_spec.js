@@ -282,16 +282,32 @@ describe('Unified import/export menu', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
 
         operations.listView.openExport();
-        // ツリー有効時は題名の下に範囲の切り替えを出し、ページ数は各選択肢に含める
+        // ツリー有効時は題名の右に小さな範囲の切り替えを出し、ページ数は各選択肢に含める。
+        // 下の操作ボタンと見分けられるよう、横いっぱいには広げない
         cy.get(datatest('scope-summary-all')).should('not.exist');
-        cy.get(datatest('export-scope')).should('have.attr', 'aria-label', '書き出すページ');
+        cy.get(datatest('export-scope')).should('have.attr', 'aria-label', '書き出すページ')
+            .and('have.attr', 'role', 'radiogroup');
+        cy.get(datatest('list-view-menu-title')).then(($title) => {
+            const title = $title[0].getBoundingClientRect();
+            cy.get(datatest('export-scope')).should(($scope) => {
+                const scope = $scope[0].getBoundingClientRect();
+                expect(scope.left).to.be.greaterThan(title.right);
+                expect(scope.top).to.be.lessThan(title.bottom);
+            });
+        });
+        cy.get(datatest('export-scope')).then(($scope) => {
+            cy.get(datatest('btn-copy-url')).parent().should(($row) => {
+                expect($scope[0].getBoundingClientRect().width).to.be.lessThan($row[0].getBoundingClientRect().width);
+            });
+        });
         cy.get(datatest('btn-scope-all')).should('contain.text', 'すべて（3）');
         cy.get(datatest('btn-scope-left'))
-            .should('contain.text', '選択ページまで（3）')
+            .should('contain.text', '選択まで（3）')
             .click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
-        cy.get(datatest('btn-scope-left')).should('have.attr', 'aria-pressed', 'true')
-            .and('have.css', 'background-color', 'rgb(33, 150, 243)');
+        cy.get(datatest('btn-scope-left')).should('have.attr', 'aria-checked', 'true')
+            .and('have.css', 'background-color', 'rgb(255, 255, 255)');
+        cy.get(datatest('btn-scope-all')).should('have.attr', 'aria-checked', 'false');
     });
 
     it('shows the tree notes on the tetgram buttons only while tree mode is enabled', () => {

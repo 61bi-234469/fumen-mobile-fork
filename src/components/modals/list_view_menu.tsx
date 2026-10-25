@@ -118,7 +118,7 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     });
 
     const headerStyle = style({
-        alignItems: 'baseline',
+        alignItems: 'center',
         display: 'flex',
         gap: px(8),
         justifyContent: 'space-between',
@@ -126,9 +126,11 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
     });
 
     const titleStyle = style({
+        flexShrink: 0,
         fontSize: px(20),
         fontWeight: 'bold',
         margin: '0px',
+        whiteSpace: 'nowrap',
     });
 
     const pageCountStyle = style({
@@ -137,33 +139,41 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         whiteSpace: 'nowrap',
     });
 
+    // 範囲は「設定」なので、下の操作ボタン（横いっぱいの 2 つ並び）と形を分ける。
+    // 題名の右に寄せた小さな切り替えにし、灰色の溝の中で選択中だけを白く浮かせる。
     const scopeGroupStyle = style({
+        backgroundColor: '#eceff1',
+        borderRadius: px(8),
         display: 'flex',
-        gap: px(4),
-        margin: '0px 0px 8px 0px',
+        flex: '0 1 auto',
+        gap: px(2),
+        minWidth: '0',
+        padding: px(2),
     });
 
     const scopeButtonBase = {
-        flex: '1 1 0',
-        padding: '5px 8px',
-        fontSize: px(12),
-        border: '1px solid #cfd8dc',
-        borderRadius: px(14),
+        border: 'none',
+        borderRadius: px(6),
         cursor: 'pointer',
+        fontSize: px(12),
+        lineHeight: px(16),
         outline: 'none',
+        padding: '4px 10px',
+        whiteSpace: 'nowrap' as const,
     };
 
     const scopeActiveStyle = style({
         ...scopeButtonBase,
-        backgroundColor: '#2196F3',
-        borderColor: '#2196F3',
-        color: '#fff',
+        backgroundColor: '#fff',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, .2)',
+        color: '#1565c0',
+        fontWeight: 'bold',
     });
 
     const scopeInactiveStyle = style({
         ...scopeButtonBase,
-        backgroundColor: '#fff',
-        color: '#546e7a',
+        backgroundColor: 'transparent',
+        color: '#607d8b',
     });
 
     // 各段は枠で囲まず、細い区切り線だけで分ける
@@ -364,18 +374,18 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
         </div>
     );
 
-    // 範囲を選べるのはツリー有効時だけ。それ以外は見出しの右にページ数だけを出す
+    // 範囲を選べるのはツリー有効時だけ。それ以外は題名の右にページ数だけを出す
     const scopeControl = treeEnabled ? (
-        <div key="export-scope" datatest="export-scope" role="group"
+        <div key="export-scope" datatest="export-scope" role="radiogroup"
              aria-label={i18n.ListViewMenu.Scope.Label()} style={scopeGroupStyle}>
-            <button key="btn-scope-all" datatest="btn-scope-all" type="button"
-                    aria-pressed={exportScope === 'all' ? 'true' : 'false'}
+            <button key="btn-scope-all" datatest="btn-scope-all" type="button" role="radio"
+                    aria-checked={exportScope === 'all' ? 'true' : 'false'}
                     style={exportScope === 'all' ? scopeActiveStyle : scopeInactiveStyle}
                     onclick={() => actions.setExportScope({ scope: 'all' })}>
                 {i18n.ListViewMenu.Scope.AllWithCount(pageCount)}
             </button>
-            <button key="btn-scope-left" datatest="btn-scope-left" type="button"
-                    aria-pressed={exportScope === 'left' ? 'true' : 'false'}
+            <button key="btn-scope-left" datatest="btn-scope-left" type="button" role="radio"
+                    aria-checked={exportScope === 'left' ? 'true' : 'false'}
                     style={exportScope === 'left' ? scopeActiveStyle : scopeInactiveStyle}
                     onclick={() => actions.setExportScope({ scope: 'left' })}>
                 {i18n.ListViewMenu.Scope.LeftToActiveWithCount(selectedPathPageCount)}
@@ -526,8 +536,8 @@ export const ListViewMenuModal: Component<ListViewMenuModalProps> = (
                                 {i18n.ListViewMenu.Scope.PageCount(pageCount)}
                             </span>
                         ) : undefined}
+                        {menuTab === 'export' ? scopeControl : undefined}
                     </div>
-                    {menuTab === 'export' ? scopeControl : undefined}
                     {menuTab === 'import' ? importBody : exportBody}
                 </div>
 

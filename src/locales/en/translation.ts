@@ -393,7 +393,7 @@
         Scope: {
             Label: 'Pages to export',
             AllWithCount: 'All ({{count}})',
-            LeftToActiveWithCount: 'To selected page ({{count}})',
+            LeftToActiveWithCount: 'To selected ({{count}})',
             PageCount: '{{count}} pages',
         },
         GifFrameDelayUnit: 'ms/page',

@@ -17,7 +17,6 @@ export interface UserSettingsActions {
     keepFlagsHidden: (data: { hidden: boolean }) => action;
     keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
-    keepUtilsMenuPinned: (data: { enable: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
@@ -31,6 +30,7 @@ export interface UserSettingsActions {
     keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
     setGifFrameDelay: (data: { delayMs: number }) => action;
     setSevenBagGrayEnabled: (data: { enable: boolean }) => action;
+    setUtilsMenuPinned: (data: { enable: boolean }) => action;
     keepRotationSystem: (data: { rotationSystem: RotationSystem }) => action;
     keepSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     keepPageRotationLimit: (data: { limit: number }) => action;
@@ -160,7 +160,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepFlagsHidden: ({ hidden }) => keepTemporary({ flagsHidden: hidden }),
     keepInitialScreen: ({ initialScreen }) => keepTemporary({ initialScreen }),
     keepOpenTreeScreenOnTreeData: ({ enable }) => keepTemporary({ openTreeScreenOnTreeData: enable }),
-    keepUtilsMenuPinned: ({ enable }) => keepTemporary({ utilsMenuPinned: enable }),
     keepLoop: ({ enable }) => keepTemporary({ loop: enable }),
     keepShortcutLabelVisible: ({ visible }) => keepTemporary({ shortcutLabelVisible: visible }),
     keepGradient: ({ gradient }) => keepTemporary({ gradient }),
@@ -279,6 +278,11 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     ]),
     setSevenBagGrayEnabled: ({ enable }) => (state): NextState => sequence(state, [
         actions.changeSevenBagGrayEnabled({ enable }),
+        saveToLocalStorage,
+    ]),
+    // UTILSの窓のピンから切り替え、設定モーダルを経ずにすぐ保存する
+    setUtilsMenuPinned: ({ enable }) => (state): NextState => sequence(state, [
+        actions.changeUtilsMenuPinned({ enable }),
         saveToLocalStorage,
     ]),
     keepRotationSystem: ({ rotationSystem }) => keepTemporary({ rotationSystem }),

@@ -26,7 +26,7 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('btn-input-ai-guide'))
             .should('have.attr', 'aria-pressed', 'false')
             .and('have.attr', 'data-status', 'idle');
-        cy.get(datatest('input-ai-guide-status')).should('have.text', 'OFF');
+        cy.get(datatest('input-ai-guide-status')).should('have.text', '');
         operations.mode.piece.toggleAiGuide();
         cy.get(datatest('btn-input-ai-guide')).should('have.attr', 'aria-pressed', 'true');
         cy.window().then(win => {
@@ -202,11 +202,30 @@ describe('Cold Clear menu', () => {
         cy.get(datatest('input-cold-clear-top-branch-count')).scrollIntoView()
             .should('be.visible').and('not.be.disabled');
 
+        cy.get(datatest('badge-cold-clear-top-branch-count')).should('have.text', '×5');
         cy.get(datatest('input-cold-clear-top-branch-count')).clear().type('7').blur();
         cy.get(datatest('input-cold-clear-top-branch-count')).should('have.value', '7');
+        cy.get(datatest('badge-cold-clear-top-branch-count')).should('have.text', '×7');
         cy.get(datatest('btn-cold-clear-top-branches-search')).click();
 
         cy.get(datatest('input-cold-clear-top-branch-count')).should('be.disabled');
+    });
+
+    it('offers buttons to set the queue and turn Lock on when the search cannot start', () => {
+        visit({ mode: 'edit', lng: 'en', flagsHidden: false });
+        operations.mode.flags.open();
+        operations.mode.flags.lockToOff();
+        operations.mode.flags.close();
+        ensureTreeGraphView();
+
+        cy.get(datatest('btn-tree-ai-menu')).click();
+        cy.get(datatest('btn-cold-clear-setup-queue')).should('be.visible');
+        cy.get(datatest('btn-cold-clear-setup-lock')).should('be.visible').click();
+        cy.get(datatest('btn-cold-clear-setup-lock')).should('not.exist');
+
+        cy.get(datatest('btn-cold-clear-setup-queue')).click();
+        cy.get(datatest('mdl-cold-clear-menu')).should('not.exist');
+        cy.get(datatest('mdl-piece-queue')).should('be.visible');
     });
 
     describe('Sold Slear engine', () => {

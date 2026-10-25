@@ -8,7 +8,7 @@ import { generateKey } from '../lib/random';
 import { getBlockPositions } from '../lib/piece';
 
 export interface SetterActions {
-    setPages: (data: { pages: Page[], open?: boolean }) => action;
+    setPages: (data: { pages: Page[], open?: boolean, index?: number }) => action;
     updateFumenData: (data: { value: string }) => action;
     clearFumenData: () => action;
     setComment: (data: { comment: string }) => action;
@@ -32,14 +32,14 @@ const isMarkablePiece = (piece: Piece | 'inference') => {
 };
 
 export const setterActions: Readonly<SetterActions> = {
-    setPages: ({ pages, open = true }) => (state): NextState => {
+    setPages: ({ pages, open = true, index = 0 }) => (state): NextState => {
         if (pages.length < 1) {
             return undefined;
         }
 
         if (open) {
             setTimeout(() => {
-                main.openPage({ index: 0 });
+                main.openPage({ index });
             }, 0);
         }
 

@@ -16,10 +16,13 @@ describe('User settings', () => {
                 'input-piece-shortcut-Reset',
                 'switch-ghost-visible',
                 'radio-rotation-system-classic',
+                'heading-piece-handling',
                 'input-piece-arr',
                 'input-piece-das',
+                'input-piece-dcd',
                 'input-piece-sdf',
-                'switch-piece-softdrop-priority',
+                'segment-piece-softdrop-priority-horizontal',
+                'segment-piece-softdrop-priority-softdrop',
             ];
             const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
             const indexes = expectedOrder.map(value => datatests.findIndex(element =>
@@ -31,9 +34,22 @@ describe('User settings', () => {
         cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
         cy.get(datatest('input-piece-shortcut-Reset')).prev().should('have.text', 'RESET');
         cy.get(datatest('input-piece-das')).should('have.value', '10').clear().type('5.5').blur();
-        cy.get(datatest('input-piece-arr')).should('have.value', '1').clear().type('1.5').blur();
+        // 0 のときだけ欄の横に補足を出す
+        cy.get(datatest('note-piece-arr-zero')).should('not.exist');
+        cy.get(datatest('input-piece-arr')).should('have.value', '1').clear().type('0').blur();
+        cy.get(datatest('note-piece-arr-zero')).should('have.text', '0 = instant');
+        cy.get(datatest('input-piece-arr')).clear().type('1.5').blur();
+        cy.get(datatest('note-piece-arr-zero')).should('not.exist');
+        cy.get(datatest('input-piece-dcd')).invoke('val').then((dcd) => {
+            cy.get(datatest('input-piece-dcd')).clear().type('0').blur();
+            cy.get(datatest('note-piece-dcd-zero')).should('have.text', '0 = off');
+            cy.get(datatest('input-piece-dcd')).clear().type(dcd === '0' ? '1' : dcd).blur();
+            cy.get(datatest('note-piece-dcd-zero')).should('not.exist');
+        });
         cy.get(datatest('unit-piece-das')).should('have.text', 'F');
         cy.get(datatest('unit-piece-arr')).should('have.text', 'F');
+        cy.get(datatest('unit-piece-dcd')).should('have.text', 'F');
+        cy.get(datatest('unit-piece-sdf')).should('have.text', '×');
         cy.get(datatest('label-piece-das')).should('have.text', 'DAS');
         cy.get(datatest('label-piece-arr')).should('have.text', 'ARR');
         cy.get(datatest('label-piece-sdf')).should('have.text', 'SDF');
@@ -41,8 +57,14 @@ describe('User settings', () => {
         // and breaks Hyperapp patching (settings modal fails to close).
         cy.get(datatest('input-piece-sdf')).should('be.visible')
             .and('have.value', 'Infinity').select('10');
-        cy.get(datatest('switch-piece-softdrop-priority')).should('not.be.checked')
-            .check({ force: true });
+        // 同時押しの優先は2択のセグメント。既定は左右(横移動)優先
+        cy.get(datatest('label-piece-softdrop-priority')).should('have.text', 'Priority on simultaneous press');
+        cy.get(datatest('segment-piece-softdrop-priority-horizontal'))
+            .should('have.text', 'Left/Right').and('have.attr', 'aria-checked', 'true');
+        cy.get(datatest('segment-piece-softdrop-priority-softdrop'))
+            .should('have.text', 'Soft drop').and('have.attr', 'aria-checked', 'false').click();
+        cy.get(datatest('segment-piece-softdrop-priority-softdrop')).should('have.attr', 'aria-checked', 'true');
+        cy.get(datatest('segment-piece-softdrop-priority-horizontal')).should('have.attr', 'aria-checked', 'false');
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
@@ -50,7 +72,7 @@ describe('User settings', () => {
         cy.get(datatest('input-piece-das')).should('have.value', '5.5');
         cy.get(datatest('input-piece-arr')).should('have.value', '1.5');
         cy.get(datatest('input-piece-sdf')).should('have.value', '10');
-        cy.get(datatest('switch-piece-softdrop-priority')).should('be.checked');
+        cy.get(datatest('segment-piece-softdrop-priority-softdrop')).should('have.attr', 'aria-checked', 'true');
         cy.get(datatest('btn-save')).click();
 
         cy.get('body').trigger('keydown', { code: 'Space', key: ' ' });
@@ -180,7 +202,9 @@ describe('User settings', () => {
 
         visit({ reload: true });
 
-        // 移動することの確認
+        // 再読み込み前に開いていたページへ戻る。そこから移動することの確認
+        cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');
+        rightTap();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '1 / 6');
         leftTap();
         cy.get(datatest('tools')).find(datatest('text-pages')).should('have.text', '6 / 6');
@@ -253,7 +277,7 @@ describe('User settings', () => {
         // エディタの書き出しボタンからImport/Exportモーダルを直接開く
         cy.get(datatest('btn-editor-export')).click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
-        cy.get(datatest('tab-list-view-menu-export')).should('have.attr', 'aria-selected', 'true');
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'export');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-list-view-menu')).should('not.exist');
 
@@ -400,7 +424,7 @@ describe('User settings', () => {
 
         cy.get(datatest('btn-editor-user-settings')).click();
         cy.get(datatest('tab-user-settings-general')).click();
-        // 「ページローテーション」→説明文→ページ数の順に並べ、トグルは持たない
+        // 「最大ページ数」→ページ数の順に並べ、トグルは持たない
         cy.get(datatest('panel-user-settings-general')).then(panel => {
             const order = ['label-page-rotation-limit', 'input-page-rotation-limit'];
             const datatests = Array.from(panel[0].querySelectorAll('[datatest]'));
@@ -412,9 +436,13 @@ describe('User settings', () => {
         });
         cy.get(datatest('input-page-rotation-limit')).should('have.value', '0');
         cy.get(datatest('unit-page-rotation-limit')).should('not.be.empty');
+        cy.get(datatest('label-page-rotation-limit')).should('have.text', 'Max pages');
+        // 0 のときだけ「無制限」を横に出す
+        cy.get(datatest('note-page-rotation-limit-unlimited')).should('have.text', 'Unlimited');
 
         // 上限を超える値は保持可能な最大値まで引き下げる
         cy.get(datatest('input-page-rotation-limit')).clear().type('5000').blur();
+        cy.get(datatest('note-page-rotation-limit-unlimited')).should('not.exist');
         cy.get(datatest('btn-save')).click();
 
         cy.get(datatest('btn-editor-user-settings')).click();
@@ -438,6 +466,89 @@ describe('User settings', () => {
     });
 });
 
+describe('User settings layout', () => {
+    it('shows a placeholder for unassigned shortcuts and clears assigned ones with the x button', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-keys')).click();
+        // 説明文の代わりに、欄そのものが操作を示す
+        cy.get(datatest('panel-user-settings-keys')).should('not.contain.text', 'Backspace');
+
+        cy.get(datatest('details-user-settings-piece-controls')).find('summary').click();
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C')
+            .and('have.attr', 'placeholder', 'Press a key');
+        cy.get(datatest('btn-clear-piece-shortcut-Hold')).click();
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', '');
+        cy.get(datatest('btn-clear-piece-shortcut-Hold')).should('not.exist');
+
+        // キー入力で割り当てると×が現れ、Backspaceでも消せる
+        cy.get(datatest('input-piece-shortcut-Hold')).trigger('keydown', { code: 'KeyV', key: 'v' });
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'V');
+        cy.get(datatest('btn-clear-piece-shortcut-Hold')).should('exist');
+        cy.get(datatest('input-piece-shortcut-Hold')).trigger('keydown', { code: 'Backspace', key: 'Backspace' });
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', '');
+        cy.get(datatest('btn-clear-piece-shortcut-Hold')).should('not.exist');
+
+        cy.get(datatest('details-user-settings-palette-shortcuts')).find('summary').click();
+        cy.get(datatest('input-palette-shortcut-I')).should('have.value', 'Q');
+        cy.get(datatest('btn-clear-palette-shortcut-I')).click();
+        cy.get(datatest('input-palette-shortcut-I')).should('have.value', '')
+            .and('have.attr', 'placeholder', 'Press a key');
+
+        cy.get(datatest('details-user-settings-edit-shortcuts')).find('summary').click();
+        cy.get(datatest('input-edit-shortcut-Undo')).invoke('val').should('not.be.empty');
+        cy.get(datatest('btn-clear-edit-shortcut-Undo')).click();
+        cy.get(datatest('input-edit-shortcut-Undo')).should('have.value', '');
+
+        // 割り当ては保存で確定する。キャンセルすると元に戻る
+        cy.get(datatest('btn-cancel')).click();
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-keys')).click();
+        cy.get(datatest('details-user-settings-piece-controls')).find('summary').click();
+        cy.get(datatest('input-piece-shortcut-Hold')).should('have.value', 'C');
+        cy.get(datatest('btn-cancel')).click();
+    });
+
+    it('shows the open-in-Tree option as an indented child of the initial screen without a note', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-general')).click();
+        cy.get(datatest('group-initial-screen')).within(() => {
+            cy.get(datatest('group-initial-screen-exception')).should('have.css', 'padding-left', '12px')
+                .find(datatest('switch-open-tree-screen-on-tree-data')).should('exist');
+        });
+        cy.get(datatest('switch-open-tree-screen-on-tree-data')).parents('.switch')
+            .should('not.contain.text', 'priority');
+        cy.get(datatest('btn-cancel')).click();
+    });
+
+    it('hides the side panel option on mobile', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit' });
+
+        // サイドパネルを出せない環境では項目ごと隠す
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-view')).click();
+        cy.get(datatest('switch-trim-top-blank')).should('exist');
+        cy.get(datatest('switch-editor-side-panel')).should('not.exist');
+        cy.get(datatest('btn-cancel')).click();
+    });
+
+    it('shows the side panel option without a PC suffix on a PC-width viewport', () => {
+        cy.clearLocalStorage();
+        cy.viewport(1280, 800);
+        visit({ mode: 'edit', mobile: false });
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('tab-user-settings-view')).click();
+        cy.get(datatest('switch-editor-side-panel')).should('exist')
+            .parents('.switch').should('have.text', 'Show side panel');
+        cy.get(datatest('btn-cancel')).click();
+    });
+});
 
 describe('User settings appearance', () => {
     const BLUE = 'rgb(25, 118, 210)';
@@ -502,22 +613,17 @@ describe('User settings appearance', () => {
                 expect(header.scrollWidth).to.be.at.most(header.clientWidth);
             });
 
-        // 見出しは小さく、注意書きはモーダルの一番下
+        // 見出しは小さく、キャッシュ削除の注意書きは出さない
         cy.get(datatest('mdl-user-settings')).find('.modal-content').should(([content]) => {
             expect(getComputedStyle(content.firstElementChild).fontSize).to.equal('20px');
-            expect(content.lastElementChild.getAttribute('datatest')).to.equal('user-settings-notice');
-            expect(getComputedStyle(content.lastElementChild).fontSize).to.equal('12px');
+            expect(content.textContent).not.to.contain('キャッシュ');
         });
 
-        // 「無効／有効」はどのスイッチにも出さず、ソフトドロップ優先だけ左右の名前を残す
-        cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 5)
+        // 「無効／有効」などの名前は、どのスイッチにも出さない
+        cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 3)
             .each(([input]) => {
                 const text = input.closest('label').textContent.trim();
-                if (input.getAttribute('datatest') === 'switch-piece-softdrop-priority') {
-                    expect(text).to.contain('横移動優先').and.contain('ソフトドロップ優先');
-                } else {
-                    expect(text, input.getAttribute('datatest')).to.equal('');
-                }
+                expect(text, input.getAttribute('datatest')).to.equal('');
             });
 
         // 名前を押しても切り替わる

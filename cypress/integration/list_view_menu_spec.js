@@ -24,15 +24,13 @@ describe('Unified import/export menu', () => {
                 cy.get(datatest('btn-external-site')).should('not.exist');
             });
 
-            it('opens the matching tab directly from the Menu buttons', () => {
+            it('opens the matching window directly from the Menu buttons', () => {
                 operations.menu.import();
-                cy.get(datatest('tab-list-view-menu-import'))
-                    .should('have.attr', 'aria-selected', 'true');
+                cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'import');
                 cy.get(datatest('btn-cancel')).click();
 
                 operations.menu.export();
-                cy.get(datatest('tab-list-view-menu-export'))
-                    .should('have.attr', 'aria-selected', 'true');
+                cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'export');
                 cy.get(datatest('btn-cancel')).click();
             });
 
@@ -64,6 +62,7 @@ describe('Unified import/export menu', () => {
 
         operations.menu.importExport();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-external-site')).click();
 
         cy.get('@windowOpen').should('have.been.called');
@@ -83,6 +82,7 @@ describe('Unified import/export menu', () => {
         });
 
         operations.menu.importExport();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-fumen-zui')).click();
 
         cy.get('@windowOpen').then((windowOpen) => {
@@ -100,6 +100,7 @@ describe('Unified import/export menu', () => {
         });
 
         operations.menu.importExport();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-fumen-for-mobile')).click();
 
         cy.get('@windowOpen').then((windowOpen) => {
@@ -117,6 +118,7 @@ describe('Unified import/export menu', () => {
         });
 
         operations.menu.importExport();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-tetgram-url')).click();
 
         cy.get('@windowOpen').then((windowOpen) => {
@@ -125,26 +127,23 @@ describe('Unified import/export menu', () => {
         });
     });
 
-    it('opens the matching tab directly from split import/export buttons', () => {
+    it('opens the matching window directly from split import/export buttons', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
         cy.wait(300);
 
         cy.get(datatest('btn-editor-import')).click();
-        cy.get(datatest('tab-list-view-menu-import'))
-            .should('have.attr', 'aria-selected', 'true');
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'import');
         cy.get(datatest('btn-import')).should('be.visible');
         cy.get(datatest('btn-cancel')).click();
 
         cy.get(datatest('btn-editor-export')).click();
-        cy.get(datatest('tab-list-view-menu-export'))
-            .should('have.attr', 'aria-selected', 'true');
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'export');
         cy.get(datatest('btn-export-image')).should('be.visible');
         cy.get(datatest('btn-cancel')).click();
 
         cy.get(datatest('btn-list-view')).click();
         operations.listView.openImport();
-        cy.get(datatest('tab-list-view-menu-import'))
-            .should('have.attr', 'aria-selected', 'true');
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'import');
         cy.get(datatest('btn-import')).should('be.visible');
     });
 
@@ -153,6 +152,7 @@ describe('Unified import/export menu', () => {
         cy.wait(300);
 
         operations.menu.importExport();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-tetgram')).click();
         cy.get(datatest('copied-tetgram-raw')).should('have.attr', 'data').then((data) => {
             const raw = JSON.parse(data);
@@ -163,94 +163,95 @@ describe('Unified import/export menu', () => {
         });
     });
 
-    it('separates export and import tasks into remembered tabs', () => {
+    it('shows export and import as separate windows without tabs', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
         cy.wait(300);
 
-        operations.menu.importExport();
-        cy.get(datatest('mdl-list-view-menu')).find('[role="tab"]').eq(0)
-            .should('contain.text', '取り込み');
-        cy.get(datatest('mdl-list-view-menu')).find('[role="tab"]').eq(1)
-            .should('contain.text', '書き出し');
-        cy.get(datatest('tab-list-view-menu-export')).should('have.attr', 'aria-selected', 'true');
-        cy.get(datatest('panel-list-view-menu-export')).should('exist');
-        cy.get(datatest('panel-list-view-menu-import')).should('not.exist');
+        operations.menu.export();
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'export');
+        cy.get(datatest('mdl-list-view-menu')).find('[role="tab"]').should('not.exist');
+        cy.get(datatest('list-view-menu-title')).should('have.text', '書き出し');
+        // ツリーが無効なときは範囲を選べないので、題名の右にページ数だけを出す
+        cy.get(datatest('scope-summary-all')).should('have.text', '全1ページ');
+        cy.get(datatest('export-scope')).should('not.exist');
         cy.get(datatest('btn-import')).should('not.exist');
-        [
-            ['btn-export-image', 'PNG', 'image'],
-            ['btn-export-gif', 'GIF', 'gif'],
-            ['btn-export-fumen', 'テト譜データをコピー', 'content_copy'],
-            ['btn-copy-url', '共有URLをコピー', 'content_copy'],
-            ['btn-export-tetgram', 'tetgram用rawデータをコピー', 'content_copy'],
-            ['btn-export-url', '共有URLを開く', 'link'],
-            ['btn-export-fumen-zui', '連続テト譜エディタで開く', 'open_in_new'],
-            ['btn-export-tetgram-url', 'tetgramで開く', 'open_in_new'],
-            ['btn-export-fumen-for-mobile', 'Fumen for mobileで開く', 'open_in_new'],
-            ['btn-export-external-site', '連続テト譜エディタ(LIST)で開く', 'open_in_new'],
-        ].forEach(([button, label, icon]) => {
-            cy.get(datatest(button)).should('contain.text', label);
-            cy.get(datatest(button)).find('.material-icons').should('contain.text', icon);
+
+        // 共有・画像・他のサイトの順。塗りボタンは「URLをコピー」だけ
+        cy.get(datatest('section-export')).should('contain.text', '共有');
+        cy.get(datatest('btn-copy-url')).should('contain.text', 'URLをコピー').and('have.class', 'btn');
+        cy.get(datatest('btn-export-fumen')).should('contain.text', 'テト譜をコピー').and('not.have.class', 'btn');
+        cy.get(datatest('section-image')).should('contain.text', '画像');
+        ['btn-export-image', 'btn-export-gif'].forEach((button) => {
+            cy.get(datatest(button)).should('be.visible').and('not.have.class', 'btn');
         });
-        ['btn-export-url', 'btn-export-fumen-zui', 'btn-export-tetgram-url', 'btn-export-fumen-for-mobile',
-            'btn-export-external-site']
-            .forEach(button => {
-            cy.get(datatest(button)).should('not.have.class', 'btn');
-        });
-        cy.get(datatest('btn-copy-url')).should('have.class', 'btn');
-        cy.get(datatest('export-scope-card')).should('contain.text', '書き出すページ');
-        cy.get(datatest('scope-summary-all')).should('contain.text', 'すべて（全1ページ）');
-        cy.get(datatest('btn-scope-all')).should('not.exist');
-        cy.get(datatest('section-export')).should('contain.text', 'データをコピー');
-        cy.get(datatest('section-external')).scrollIntoView().should('contain.text', 'URLで開く');
-        cy.get(datatest('section-tetgram')).should('contain.text', 'tetgramで開く');
-        cy.get(datatest('hint-tetgram-url')).scrollIntoView().should('be.visible');
-        cy.get(datatest('input-gif-frame-delay')).should('have.value', '500');
+        cy.get(datatest('mdl-list-view-menu')).find('.btn.red').should('have.length', 1);
+
+        // 細かい設定とほかのサイトは折りたたみで、初めは閉じている
+        cy.get(datatest('image-display-options')).should('not.have.attr', 'open');
+        cy.get(datatest('toggle-export-page-numbers')).should('not.be.visible');
+        cy.get(datatest('section-external')).should('not.have.attr', 'open');
+        cy.get(datatest('btn-export-fumen-zui')).should('not.be.visible');
+        cy.get(datatest('other-sites-summary')).should('have.text', '他のサイトで開く');
+
+        operations.listView.expandImageOptions();
         cy.get(datatest('toggle-export-page-numbers')).should('be.checked')
             .next('span').should('contain.text', 'ページ番号を表示');
         cy.get(datatest('toggle-export-comments')).should('be.checked')
             .next('span').should('contain.text', 'コメントを表示');
-        cy.contains('短縮URL').scrollIntoView().should('be.visible');
-        cy.get(datatest('switch-shorten-urls')).should('not.be.checked');
-        cy.get(datatest('section-external'))
-            .should('contain.text', '共有URL・外部サイト・tetgramを開くときにTinyURL作成ページを使用');
+        cy.get(datatest('input-gif-frame-delay')).should('have.value', '500')
+            .parent().should('contain.text', 'GIFの間隔').and('contain.text', 'ms/ページ');
+
+        operations.listView.expandOtherSites();
+        [
+            ['btn-export-url', '共有URL', 'link'],
+            ['btn-export-fumen-zui', '連続テト譜エディタ', 'open_in_new'],
+            ['btn-export-external-site', '連続テト譜エディタ (LIST)', 'open_in_new'],
+            ['btn-export-fumen-for-mobile', 'Fumen for mobile', 'open_in_new'],
+            ['btn-export-tetgram-url', 'tetgram', 'open_in_new'],
+        ].forEach(([button, label, icon]) => {
+            cy.get(datatest(button)).should('be.visible').and('contain.text', label);
+            cy.get(datatest(button)).find('.material-icons').should('contain.text', icon);
+        });
+        // tetgram の raw コピーは tetgram の行に並ぶ
+        cy.get(datatest('btn-export-tetgram-url')).parent().find(datatest('btn-export-tetgram'))
+            .should('contain.text', 'rawをコピー');
+        cy.get(datatest('hint-tetgram-url')).should('not.exist');
+        cy.get(datatest('badge-tetgram-raw-tree')).should('not.exist');
+        cy.get(datatest('switch-shorten-urls')).should('not.be.checked')
+            .next('span').should('contain.text', 'TinyURLで短縮する');
 
         cy.get(datatest('mdl-list-view-menu')).then(($modal) => {
             const ids = Array.from($modal[0].querySelectorAll('[datatest]'))
                 .map(element => element.getAttribute('datatest'));
-            expect(ids.indexOf('export-scope-card')).to.be.lessThan(ids.indexOf('section-export'));
             expect(ids.indexOf('section-export')).to.be.lessThan(ids.indexOf('section-image'));
-            expect(ids.indexOf('btn-export-gif')).to.be.lessThan(ids.indexOf('toggle-export-page-numbers'));
-            expect(ids.indexOf('toggle-export-page-numbers')).to.be.lessThan(ids.indexOf('toggle-export-comments'));
-            expect(ids.indexOf('toggle-export-comments')).to.be.lessThan(ids.indexOf('input-gif-frame-delay'));
-            expect(ids.indexOf('input-gif-frame-delay')).to.be.greaterThan(ids.indexOf('section-image'));
             expect(ids.indexOf('section-image')).to.be.lessThan(ids.indexOf('section-external'));
-            expect(ids.indexOf('switch-shorten-urls')).to.be.greaterThan(ids.indexOf('section-external'));
-            expect(ids.indexOf('switch-shorten-urls')).to.be.greaterThan(ids.indexOf('btn-export-tetgram-url'));
-            expect(ids.indexOf('btn-export-tetgram-url'))
-                .to.be.greaterThan(ids.indexOf('btn-export-fumen-for-mobile'));
-            expect(ids.indexOf('btn-export-tetgram'))
-                .to.be.greaterThan(ids.indexOf('section-export'));
+            expect(ids.indexOf('btn-export-tetgram-url')).to.be.lessThan(ids.indexOf('btn-export-tetgram'));
+            expect(ids.indexOf('btn-export-tetgram')).to.be.lessThan(ids.indexOf('switch-shorten-urls'));
         });
 
-        cy.get(datatest('tab-list-view-menu-import')).click();
-        cy.get(datatest('tab-list-view-menu-import')).should('have.attr', 'aria-selected', 'true');
-        cy.get(datatest('panel-list-view-menu-import')).should('be.visible');
-        cy.get(datatest('panel-list-view-menu-export')).should('not.exist');
-        cy.get(datatest('export-scope-card')).should('not.exist');
+        // 折りたたみの開閉は次に開いたときも保つ。
+        // cy.reload() だと URL の lng が落ちてブラウザの言語に戻るので、言語を指定して開き直す
+        cy.get(datatest('btn-cancel')).click();
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja', reload: true });
+        operations.menu.export();
+        cy.get(datatest('image-display-options')).should('have.attr', 'open');
+        cy.get(datatest('section-external')).should('have.attr', 'open');
+        cy.get(datatest('btn-cancel')).click();
+
+        operations.menu.import();
+        cy.get(datatest('mdl-list-view-menu')).should('have.attr', 'data-menu', 'import');
+        cy.get(datatest('list-view-menu-title')).should('have.text', '取り込み');
         cy.get(datatest('btn-export-image')).should('not.exist');
+        cy.get(datatest('scope-summary-all')).should('not.exist');
+        cy.get(datatest('section-read')).should('contain.text', 'クリップボードから');
         cy.get(datatest('btn-import'))
-            .should('contain.text', 'クリップボードから読み込む')
-            .and('contain.text', '現在のテト譜全体を置き換え')
+            .should('contain.text', '置き換え')
+            .and('have.class', 'btn')
             .find('.material-icons').should('contain.text', 'move_to_inbox');
         cy.get(datatest('btn-add'))
-            .should('contain.text', 'クリップボードから挿入')
-            .and('contain.text', '現在のテト譜の末尾へ追加')
+            .should('contain.text', '末尾に追加')
+            .and('not.have.class', 'btn')
             .find('.material-icons').should('contain.text', 'add');
-
-        cy.get(datatest('btn-cancel')).click();
-        operations.menu.import();
-        cy.get(datatest('tab-list-view-menu-import')).should('have.attr', 'aria-selected', 'true');
-        cy.get(datatest('btn-import')).should('be.visible');
     });
 
     it('persists image metadata visibility and exposes it in tree export', () => {
@@ -265,6 +266,7 @@ describe('Unified import/export menu', () => {
         cy.get('[title="Show pages in tree view"], [title="ページをTree表示に切り替え"]').click();
         operations.listView.openExport();
 
+        operations.listView.expandImageOptions();
         cy.get(datatest('toggle-export-page-numbers')).should('not.be.checked');
         cy.get(datatest('toggle-export-comments')).should('not.be.checked');
     });
@@ -281,12 +283,48 @@ describe('Unified import/export menu', () => {
         cy.get('[datatest^="tree-node-"]').should('have.length', 3);
 
         operations.listView.openExport();
-        cy.get(datatest('btn-scope-all')).should('contain.text', 'すべて（全3ページ）');
+        // ツリー有効時は題名の右に小さな範囲の切り替えを出し、ページ数は各選択肢に含める。
+        // 下の操作ボタンと見分けられるよう、横いっぱいには広げない
+        cy.get(datatest('scope-summary-all')).should('not.exist');
+        cy.get(datatest('export-scope')).should('have.attr', 'aria-label', '書き出すページ')
+            .and('have.attr', 'role', 'radiogroup');
+        cy.get(datatest('list-view-menu-title')).then(($title) => {
+            const title = $title[0].getBoundingClientRect();
+            cy.get(datatest('export-scope')).should(($scope) => {
+                const scope = $scope[0].getBoundingClientRect();
+                expect(scope.left).to.be.greaterThan(title.right);
+                expect(scope.top).to.be.lessThan(title.bottom);
+            });
+        });
+        cy.get(datatest('export-scope')).then(($scope) => {
+            cy.get(datatest('btn-copy-url')).parent().should(($row) => {
+                expect($scope[0].getBoundingClientRect().width).to.be.lessThan($row[0].getBoundingClientRect().width);
+            });
+        });
+        cy.get(datatest('btn-scope-all')).should('contain.text', 'すべて（3）');
         cy.get(datatest('btn-scope-left'))
-            .should('contain.text', 'ルートから選択ページまで（3ページ）')
+            .should('contain.text', '選択まで（3）')
             .click();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
-        cy.get(datatest('btn-scope-left')).should('have.css', 'background-color', 'rgb(33, 150, 243)');
+        cy.get(datatest('btn-scope-left')).should('have.attr', 'aria-checked', 'true')
+            .and('have.css', 'background-color', 'rgb(255, 255, 255)');
+        cy.get(datatest('btn-scope-all')).should('have.attr', 'aria-checked', 'false');
+    });
+
+    it('shows the tree notes on the tetgram buttons only while tree mode is enabled', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'ja' });
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="Enable tree mode"], [title="ツリーモードを有効にする"]').click();
+        cy.get('[title="Show pages in tree view"], [title="ページをTree表示に切り替え"]').click();
+
+        operations.listView.openExport();
+        operations.listView.expandOtherSites();
+        cy.get(datatest('btn-export-tetgram'))
+            .find(datatest('badge-tetgram-raw-tree'))
+            .should('contain.text', 'ツリー構造を含む');
+        cy.get(datatest('hint-tetgram-url')).scrollIntoView()
+            .should('be.visible')
+            .and('contain.text', 'ツリー構造は含まれません');
     });
 
     it('imports tetgram RawData through the existing clipboard button', () => {
@@ -307,8 +345,7 @@ describe('Unified import/export menu', () => {
             });
         });
 
-        operations.menu.importExport();
-        cy.get(datatest('tab-list-view-menu-import')).click();
+        operations.menu.import();
         cy.get(datatest('btn-import')).click();
         cy.get('[title="Disable tree mode"]').should('be.visible');
         cy.get('[datatest^="tree-node-"]').should('have.length', 1);
@@ -353,8 +390,7 @@ describe('Unified import/export menu', () => {
             });
         });
 
-        operations.menu.importExport();
-        cy.get(datatest('tab-list-view-menu-import')).click();
+        operations.menu.import();
         cy.get(datatest('btn-import')).click();
         cy.get(datatest('text-pages')).should('have.text', '1 / 2');
         cy.get(datatest('btn-next-page')).click();
@@ -386,6 +422,9 @@ describe('Menu sheet', () => {
                     .filter(name => sectionOrder.includes(name));
                 expect(sections).to.deep.equal(sectionOrder);
             });
+            // モード切替は見出しを持たず、その他の見出しはシート名と重ならない「Tools」にする
+            cy.get(datatest('menu-section-mode-heading')).should('not.exist');
+            cy.get(datatest('menu-section-general-heading')).should('have.text', 'Tools');
             ['btn-new-fumen', 'btn-copy-fumen', 'btn-open-fumen', 'btn-append-fumen'].forEach((name) => {
                 cy.get(datatest('menu-section-page')).find(datatest(name)).should('exist');
             });

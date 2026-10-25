@@ -1,4 +1,4 @@
-import { datatest, visit } from '../support/common';
+import { block, Color, datatest, emptyPagesFumen, visit } from '../support/common';
 import { operations } from '../support/operations';
 
 const closeModalAndAssertUrlStable = ({ open, modalDatatest, cancelDatatest = 'btn-cancel' }) => {
@@ -21,6 +21,22 @@ describe('URL behavior', () => {
         cy.location('href').should('include', 'd=');
         cy.wait(400);
         cy.location('href').should('include', 'd=');
+    });
+
+    // 再読み込みやタブの復元では同じURLが開き直されるため、URLの元データより編集後の保存データを優先する
+    it('restores the edits and the open page when the same shared URL is reloaded', () => {
+        visit({ mode: 'edit', fumen: emptyPagesFumen(3) });
+
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        cy.get(datatest('btn-next-page')).click();
+        cy.get(datatest('text-pages')).should('have.text', '2 / 3');
+
+        cy.reload();
+
+        cy.get(datatest('text-pages')).should('have.text', '2 / 3');
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
     });
 
     // Skipped: asserts a live-URL state-sync feature the app does not implement (and never has — no
@@ -111,6 +127,7 @@ describe('URL behavior', () => {
         operations.listView.openExport();
         cy.get(datatest('mdl-list-view-menu')).should('be.visible');
         cy.get(datatest('btn-scope-left')).click();
+        operations.listView.expandOtherSites();
         cy.get(datatest('btn-export-url')).click();
 
         cy.get('@windowOpen').should('have.been.called');
@@ -127,16 +144,22 @@ describe('URL behavior', () => {
             // (see docs/notes/2026_07_22_e2e-ci-failure-investigation.md, local-only:
             // 一部 skip テストの hash collapse と同種の注意点)。
 
+            // 同じタブでの再読み込みは編集内容の復元になるため、タブごとの sessionStorage を消して新しいタブを再現する
+            const reloadAsNewTab = () => {
+                cy.window().then(win => win.sessionStorage.clear());
+                cy.reload();
+            };
+
             // 画面指定なしのURLは受け取り側の初期画面設定(デフォルト: Reader)で開く
             cy.visit(exportedUrl);
-            cy.reload();
+            reloadAsNewTab();
             cy.wait(800);
             cy.get(datatest('btn-writable-in-reader')).should('be.visible');
             cy.get(datatest('list-view-tools')).should('not.exist');
 
             // 旧URL互換: screen=list を付ければ従来どおりList画面で開ける
             cy.visit(`${exportedUrl}&screen=list`);
-            cy.reload();
+            reloadAsNewTab();
             cy.wait(800);
             cy.get(datatest('list-view-tools')).should('be.visible');
         });

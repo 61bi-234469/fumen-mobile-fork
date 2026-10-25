@@ -744,7 +744,7 @@ describe('TETR.IO Replay', () => {
             });
         });
         operations.inputReplay.b2b().should('exist');
-        operations.inputReplay.combo().should('contain', 'Combo');
+        operations.inputReplay.combo().should('contain', 'COMBO');
         cy.get(datatest('input-stats-action')).should('have.text', '—');
 
         // 元リプレイと同じく次lockはライン消去なし。cap内の5行が1手で同時に上がる。

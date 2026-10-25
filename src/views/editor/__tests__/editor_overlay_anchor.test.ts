@@ -36,6 +36,16 @@ describe('railAnchorOffset', () => {
         expect(railAnchorOffset(createLayout(), 220, 200)).toBe(0);
     });
 
+    test('follows a left-aligned board when the side panel is shown', () => {
+        // 並びの左端 16px、幅 416px。窓の左端は 16 + 416 + 16 = 448 (領域の中心 500 から窓半分を引いた位置)
+        const offset = railAnchorOffset(createLayout(), 220, 1000, 16) as number;
+        expect(1000 / 2 + offset - 220 / 2).toBe(16 + 416 + 16);
+    });
+
+    test('retreats left of the rail when a left-aligned board leaves no room', () => {
+        expect(railAnchorOffset(createLayout(), 220, 560, 16)).toBe(280 - 110 - 8 - (78 + 4));
+    });
+
     test('falls back to the plain right-edge layout when there is no rail to anchor to', () => {
         expect(railAnchorOffset(undefined, 220, 1920)).toBeNull();
     });

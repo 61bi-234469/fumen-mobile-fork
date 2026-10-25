@@ -50,13 +50,14 @@ const toSaver = ({ saveKey, pages }: SaverProp, saveCallback: (data: string) => 
 };
 
 const saver = (() => {
-    return (pages: Page[]) => {
+    return (pages: Page[], sourceUrlKey: string | undefined, onSaved: () => void) => {
         const key = generateKey();
         const saverObj: SaverObj = toSaver({
             pages,
             saveKey: key,
         }, (data: string) => {
-            localStorageWrapper.saveFumen(data);
+            localStorageWrapper.saveFumen(data, sourceUrlKey);
+            onSaved();
         });
         saverState.last = { key, saverObj };
 
@@ -171,14 +172,38 @@ export const memento = (() => {
         return 1 <= undoQueue.length && undoSpawnFlags[undoQueue.length - 1];
     };
 
+    // 保存データがどのURLの d= から始まったか（toUrlFumenKey）。それ以外から読み込んだときは undefined
+    let autosaveSourceUrlKey: string | undefined;
+    // 自動保存を依頼して、まだ書き込まれていないページ
+    let unsavedPages: Page[] | undefined;
+
+    const saveImmediately = async (pages: Page[]): Promise<void> => {
+        localStorageWrapper.saveFumen(await sequentialEncode(pages), autosaveSourceUrlKey);
+    };
+
     return {
+        // 即時保存。強制リロードのように直後にページが破棄される場面で、遅延保存の取りこぼしを防ぐ
+        saveImmediately,
         // 自動保存
         save: (pages: Page[]) => {
-            saver(pages);
+            unsavedPages = pages;
+            saver(pages, autosaveSourceUrlKey, () => {
+                if (unsavedPages === pages) {
+                    unsavedPages = undefined;
+                }
+            });
         },
-        // 即時保存。強制リロードのように直後にページが破棄される場面で、遅延保存の取りこぼしを防ぐ
-        saveImmediately: async (pages: Page[]): Promise<void> => {
-            localStorageWrapper.saveFumen(await sequentialEncode(pages));
+        // 書き込み待ちの自動保存があるときだけ、すぐに保存する。
+        // 起動時の読み込み前（初期状態の空ページ）や保存済みの状態で書き込むと、保存データを不要に上書きしてしまう
+        flush: async (pages: Page[]): Promise<void> => {
+            if (unsavedPages === undefined) {
+                return;
+            }
+            unsavedPages = undefined;
+            await saveImmediately(pages);
+        },
+        setAutosaveSource: (sourceUrlKey: string | undefined) => {
+            autosaveSourceUrlKey = sourceUrlKey;
         },
         // タスクの追加
         register: (
@@ -303,7 +328,8 @@ export interface ViewSettings {
     shortenUrls: boolean;
     exportShowPageNumbers: boolean;
     exportShowComments: boolean;
-    listViewMenuTab: 'export' | 'import';
+    exportImageOptionsOpen: boolean;
+    exportOtherSitesOpen: boolean;
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
@@ -348,9 +374,6 @@ const safer = {
     editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
         return value === 'list' || value === 'tree' ? value : undefined;
     },
-    listViewMenuTab: (value: any): 'export' | 'import' | undefined => {
-        return value === 'export' || value === 'import' ? value : undefined;
-    },
     pieceLayout: (value: any): PieceLayoutMode | undefined => {
         return value === 'play' || value === 'select' ? value : undefined;
     },
@@ -377,6 +400,14 @@ const safeSetItem = (key: string, value: string): void => {
     }
 };
 
+const safeRemoveItem = (key: string): void => {
+    try {
+        localStorage.removeItem(key);
+    } catch (error) {
+        console.warn(`Failed to remove ${key} from localStorage:`, error);
+    }
+};
+
 const safeParseJson = (data: string): any => {
     try {
         return JSON.parse(data);
@@ -386,12 +417,30 @@ const safeParseJson = (data: string): any => {
 };
 
 export const localStorageWrapper = {
-    saveFumen: (data: string) => {
+    saveFumen: (data: string, sourceUrlKey?: string) => {
         safeSetItem('data@1', data);
+        if (sourceUrlKey !== undefined) {
+            safeSetItem('data-source@1', sourceUrlKey);
+        } else {
+            safeRemoveItem('data-source@1');
+        }
     },
     loadFumen: (): string | undefined => {
         const data = safeGetItem('data@1');
         return safer.fumenV115(data);
+    },
+    loadFumenSourceUrlKey: (): string | undefined => {
+        return safer.string(safeGetItem('data-source@1'));
+    },
+    savePageIndex: (index: number) => {
+        safeSetItem('data-page@1', String(index));
+    },
+    loadPageIndex: (): number | undefined => {
+        const data = safeGetItem('data-page@1');
+        if (data === null || !/^\d+$/.test(data)) {
+            return undefined;
+        }
+        return Number(data);
     },
     saveUserSettings: (data: UserSettings) => {
         safeSetItem('user-settings@1', JSON.stringify(data));
@@ -453,7 +502,8 @@ export const localStorageWrapper = {
             shortenUrls: safer.boolean(obj.shortenUrls),
             exportShowPageNumbers: safer.boolean(obj.exportShowPageNumbers),
             exportShowComments: safer.boolean(obj.exportShowComments),
-            listViewMenuTab: safer.listViewMenuTab(obj.listViewMenuTab),
+            exportImageOptionsOpen: safer.boolean(obj.exportImageOptionsOpen),
+            exportOtherSitesOpen: safer.boolean(obj.exportOtherSitesOpen),
             treeOperationScope: safer.treeOperationScope(obj.treeOperationScope)
                 ?? (legacyScope === undefined ? undefined : legacyScope ? 'subtree' : 'node'),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),

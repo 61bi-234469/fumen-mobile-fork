@@ -1270,6 +1270,35 @@ export const isColdClearSearchBlockedByHoldQueue = (
     return queueState !== null && queueState.hold === null;
 };
 
+// 探索できない理由のうち、AIメニューのボタンで直せるもの（キュー未設定・Lock OFF）。
+export interface ColdClearSearchSetupNeeds {
+    pageIndex: number;
+    queue: boolean;
+    lock: boolean;
+}
+
+export const resolveColdClearSearchSetupNeeds = (state: Readonly<State>): ColdClearSearchSetupNeeds => {
+    const none = { pageIndex: state.fumen.currentIndex, queue: false, lock: false };
+    const target = resolveTargetNode(state);
+    const page = target === null ? undefined : state.fumen.pages[target.pageIndex];
+    if (target === null || page === undefined) {
+        return none;
+    }
+
+    const parsedResult = parseQueueCommentResultFromPage(
+        state.fumen.pages,
+        target.pageIndex,
+        state.coldClear.queuePreview,
+    );
+    const queueMissing = parsedResult.error !== 'invalidQuizChain'
+        && (!parsedResult.parsed || resolveSearchQueueState(parsedResult.parsed) === null);
+    const lock = !page.flags.lock;
+    // Lock が通った後に、キューを使い切っていて探索できない場合も「キューを設定」で直せる
+    const queue = queueMissing
+        || (!lock && resolveSingleSearchInput(state).error === 'invalidQueueComment');
+    return { queue, lock, pageIndex: target.pageIndex };
+};
+
 // pieceモードのホールドボタン用。AI探索のHold使用設定 (holdAllowed) とは独立して判定する
 export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
     const pageIndex = state.fumen.currentIndex;

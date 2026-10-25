@@ -33,11 +33,19 @@ import { forceReload } from '../lib/force_reload';
 import { memento } from '../memento';
 import { toPagesForStorage } from './memento';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
+import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
+import { saveTabSourceUrlKey } from '../lib/autosave_session';
 
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
     commitOpenFumenData: () => action;
-    loadFumen: (data: { fumen: string, purgeOnFailed?: boolean, initialLoad?: boolean }) => action;
+    loadFumen: (data: {
+        fumen: string,
+        purgeOnFailed?: boolean,
+        initialLoad?: boolean,
+        pageIndex?: number,
+        sourceUrlKey?: string,
+    }) => action;
     loadNewFumen: (data?: { initialLoad?: boolean }) => action;
     commitAppendFumenData: (data: { position: 'next' | 'end' }) => action;
     loadPages: (data: {
@@ -47,10 +55,13 @@ export interface UtilsActions {
         treeViewModeParam?: TreeViewMode,
         screenParam?: Screens,
         initialLoad?: boolean,
+        pageIndex?: number,
+        sourceUrlKey?: string,
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number, pieceSpawn?: boolean }) => action;
     executeNewFumen: () => action;
     forceReload: () => action;
+    flushAutosave: () => action;
     refresh: () => action;
     ontapCanvas: (e: any) => action;
 }
@@ -154,8 +165,8 @@ export const utilsActions: Readonly<UtilsActions> = {
         }
         return loadFumen(fumen, false);
     },
-    loadFumen: ({ fumen, purgeOnFailed = false, initialLoad = false }) => (): NextState => {
-        return loadFumen(fumen, purgeOnFailed, initialLoad);
+    loadFumen: ({ fumen, purgeOnFailed = false, initialLoad = false, pageIndex, sourceUrlKey }) => (): NextState => {
+        return loadFumen(fumen, purgeOnFailed, initialLoad, { pageIndex, sourceUrlKey });
     },
     loadNewFumen: ({ initialLoad = false } = {}) => (state): NextState => {
         const items = clearUnpinnedParts(state.parts.items);
@@ -190,8 +201,20 @@ export const utilsActions: Readonly<UtilsActions> = {
         })();
         return undefined;
     },
+    // モバイルでは裏に回ったアプリが通知なく破棄されるため、遅延保存を待たずに入力途中のコメントごと保存する
+    flushAutosave: () => (state): NextState => {
+        return sequence(state, [
+            actions.commitCommentText(),
+            (newState) => {
+                const pages = toPagesForStorage(newState);
+                warnIfTreeCommentOverLimit(pages);
+                memento.flush(pages).catch(error => console.error(error));
+                return undefined;
+            },
+        ]);
+    },
     loadPages: (
-        { pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam, initialLoad },
+        { pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam, initialLoad, pageIndex, sourceUrlKey },
     ) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
         const prevTree: SerializedTree | null = hasTreeData ? {
@@ -300,8 +323,14 @@ export const utilsActions: Readonly<UtilsActions> = {
             ? () => ({ mode: { ...state.mode, screen: targetScreen } })
             : undefined;
 
+        const openIndex = pageIndex !== undefined && pageIndex < cleanedPages.length ? pageIndex : 0;
+
+        // 直後の registerHistoryTask が自動保存するので、保存元はそれより先に切り替える
+        memento.setAutosaveSource(sourceUrlKey);
+        saveTabSourceUrlKey(sourceUrlKey);
+
         return sequence(state, [
-            actions.setPages({ pages: cleanedPages }),
+            actions.setPages({ pages: cleanedPages, index: openIndex }),
             () => ({ tree: treeState }),
             actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
             screenUpdate,
@@ -437,7 +466,12 @@ const appendPages = (
     ]);
 };
 
-const loadFumen = (fumen: string, purgeOnFailed: boolean, initialLoad: boolean = false): NextState => {
+const loadFumen = (
+    fumen: string,
+    purgeOnFailed: boolean,
+    initialLoad: boolean = false,
+    { pageIndex, sourceUrlKey }: { pageIndex?: number, sourceUrlKey?: string } = {},
+): NextState => {
     main.pauseAnimation();
 
     if (fumen === undefined) {
@@ -468,6 +502,8 @@ const loadFumen = (fumen: string, purgeOnFailed: boolean, initialLoad: boolean =
             main.loadPages({
                 pages,
                 initialLoad,
+                pageIndex,
+                sourceUrlKey,
                 loadedFumen: normalizedFumen,
                 treeEnabledParam: parsedInput.treeParam,
                 treeViewModeParam: parsedInput.treeViewMode,

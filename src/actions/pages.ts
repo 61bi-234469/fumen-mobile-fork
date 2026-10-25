@@ -36,6 +36,7 @@ import { i18n } from '../locales/keys';
 import { showToast } from '../lib/toast';
 import { copyTextToClipboard } from '../lib/clipboard_copy';
 import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
+import { rememberPageIndex } from '../lib/autosave_session';
 
 const safeDecodeClipboardFumen = (value: string): string => {
     try {
@@ -146,6 +147,8 @@ export const pageActions: Readonly<PageActions> = {
         return pageActions.openPage({ index: state.fumen.currentIndex })(state);
     },
     openPage: ({ index }) => (state): NextState => {
+        rememberPageIndex(index);
+
         const pages = new Pages(state.fumen.pages);
 
         const comment = pages.getComment(index);

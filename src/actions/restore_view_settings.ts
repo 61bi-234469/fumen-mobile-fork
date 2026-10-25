@@ -6,7 +6,8 @@ interface ViewSettingsRestorationActions {
     setListViewShortenUrls: (data: { enabled: boolean; persist: false }) => void;
     setExportShowPageNumbers: (data: { enabled: boolean; persist: false }) => void;
     setExportShowComments: (data: { enabled: boolean; persist: false }) => void;
-    setListViewMenuTab: (data: { tab: 'export' | 'import'; persist: false }) => void;
+    setExportImageOptionsOpen: (data: { open: boolean; persist: false }) => void;
+    setExportOtherSitesOpen: (data: { open: boolean; persist: false }) => void;
     setEditorSidePanelEnabled: (data: { enabled: boolean; persist: false }) => void;
     setEditorSidePanelTab: (data: { tab: ViewSettings['editorSidePanelTab']; persist: false }) => void;
     setEditorSidePanelWidth: (data: { width: number | null; persist: false }) => void;
@@ -42,8 +43,11 @@ export const restoreViewSettings = (
     if (settings.exportShowComments !== undefined) {
         actions.setExportShowComments({ enabled: settings.exportShowComments, persist: false });
     }
-    if (settings.listViewMenuTab !== undefined) {
-        actions.setListViewMenuTab({ tab: settings.listViewMenuTab, persist: false });
+    if (settings.exportImageOptionsOpen !== undefined) {
+        actions.setExportImageOptionsOpen({ open: settings.exportImageOptionsOpen, persist: false });
+    }
+    if (settings.exportOtherSitesOpen !== undefined) {
+        actions.setExportOtherSitesOpen({ open: settings.exportOtherSitesOpen, persist: false });
     }
     if (settings.editorSidePanel !== undefined) {
         actions.setEditorSidePanelEnabled({ enabled: settings.editorSidePanel, persist: false });

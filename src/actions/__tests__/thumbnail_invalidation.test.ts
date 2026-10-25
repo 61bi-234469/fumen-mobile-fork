@@ -35,6 +35,7 @@ jest.mock('../../memento', () => ({
     },
     localStorageWrapper: {
         saveViewSettings: jest.fn(),
+        savePageIndex: jest.fn(),
     },
 }));
 

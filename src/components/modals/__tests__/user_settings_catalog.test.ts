@@ -26,6 +26,10 @@ describe('user settings catalog', () => {
         expect(resolveDatatest('gray-after-line-clear', 'view')).toBe('switch-gray-after-line-clear-view');
     });
 
+    test('does not offer settings whose only UI is elsewhere', () => {
+        expect('seven-bag-gray' in settingsCatalog).toBe(false);
+    });
+
     test('does not include the Import/Export-only GIF delay setting', () => {
         expect('gif-frame-delay' in settingsCatalog).toBe(false);
     });

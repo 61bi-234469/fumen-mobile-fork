@@ -13,7 +13,7 @@ import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
 import { navigatorElement } from '../navigator';
-import { getSidePanelWidth } from './side_panel_layout';
+import { EDITOR_CONTENT_START_GAP, getSidePanelWidth } from './side_panel_layout';
 import { sidePanel } from './side_panel';
 import { editorRail } from './editor_rail';
 import { editorOverlay } from './editor_overlay';
@@ -272,6 +272,7 @@ export const getLayout = (
 };
 
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
+    const sidePanelVisible = 0 < getSidePanelWidth(state);
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {
             return GradientPattern.None;
@@ -496,7 +497,9 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         tabIndex: -1, // フォーカス可能にする（Tabでは移動しない）
         style: style({
             display: 'flex',
-            justifyContent: 'center',
+            // サイドパネル表示中は盤面をパネル側に寄せ、余った幅は右（UTILSの窓の側）にまとめる
+            justifyContent: sidePanelVisible ? 'flex-start' : 'center',
+            paddingLeft: sidePanelVisible ? px(EDITOR_CONTENT_START_GAP) : undefined,
             flexDirection: 'row',
             alignItems: 'center',
             userSelect: 'none',

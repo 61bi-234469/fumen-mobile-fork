@@ -891,29 +891,6 @@ export const operations = {
             cy.get(datatest('input-page-rotation-limit')).clear().type(String(limit)).blur();
             cy.get(datatest('btn-save')).click();
         },
-        // UTILSメニューを開いたままにする設定を切り替える (全般タブ)
-        setUtilsMenuPinned: (enabled) => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('general');
-            const target = cy.get(datatest('switch-utils-menu-pinned'));
-            if (enabled) {
-                target.check({ force: true });
-            } else {
-                target.uncheck({ force: true });
-            }
-            cy.get(datatest('btn-save')).click();
-        },
-        setSevenBagGray: (enabled) => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('input');
-            const target = cy.get(datatest('switch-seven-bag-gray'));
-            if (enabled) {
-                target.check({ force: true });
-            } else {
-                target.uncheck({ force: true });
-            }
-            cy.get(datatest('btn-save')).click();
-        },
     },
     listView: {
         // 狭い画面では取り込み・書き出しがバーから外れ、⋮ のシートの「ページ」から開く
@@ -935,7 +912,25 @@ export const operations = {
                 }
             });
         },
+        // 書き出しの折りたたみ（画像のオプション・他のサイト）を開く。開いていれば何もしない
+        expandImageOptions: () => {
+            cy.get(datatest('image-display-options')).then(($details) => {
+                if (!$details[0].open) {
+                    cy.get(datatest('image-options-summary')).click();
+                }
+            });
+            cy.get(datatest('image-display-options')).should('have.attr', 'open');
+        },
+        expandOtherSites: () => {
+            cy.get(datatest('section-external')).then(($details) => {
+                if (!$details[0].open) {
+                    cy.get(datatest('other-sites-summary')).click();
+                }
+            });
+            cy.get(datatest('section-external')).should('have.attr', 'open');
+        },
         setExportMetadata: ({ pageNumbers, comments }) => {
+            operations.listView.expandImageOptions();
             const pageNumbersToggle = cy.get(datatest('toggle-export-page-numbers'));
             const commentsToggle = cy.get(datatest('toggle-export-comments'));
             pageNumbers ? pageNumbersToggle.check({ force: true }) : pageNumbersToggle.uncheck({ force: true });

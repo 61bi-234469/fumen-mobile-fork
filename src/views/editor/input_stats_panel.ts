@@ -48,7 +48,7 @@ export const inputStatsPanel = (
                 fontWeight: '800', lineHeight: px(13), padding: '4px 2px', textAlign: 'center' }) },
         formatActionLabel(action)),
         value('input-stats-b2b', 'B2B', displayB2b(stats.b2bChain)),
-        value('input-stats-combo', 'Combo', displayRen(stats.renChain)),
+        value('input-stats-combo', 'COMBO', displayRen(stats.renChain)),
         ...(garbage !== undefined && tier !== 'compact' ? [
             textValue(
                 'input-garbage-damage', i18n.InputStats.Attack(),

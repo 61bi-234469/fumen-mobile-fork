@@ -512,7 +512,7 @@ describe('Drawing Tools', () => {
         operations.mode.tools.nextPage();
         operations.mode.utils.open();
 
-        [['btn-clear-past', 'このページより前を削除'], ['btn-clear-to-end', 'このページより後を削除']]
+        [['btn-clear-past', 'このページより前'], ['btn-clear-to-end', 'このページより後']]
             .forEach(([name, label]) => {
                 cy.get(datatest(name)).should('have.attr', 'aria-label', label).should(([button]) => {
                     const rect = button.getBoundingClientRect();
@@ -537,9 +537,9 @@ describe('Drawing Tools', () => {
             operations.mode.utils.open();
 
             cy.get(datatest('btn-clear-to-end')).should('not.have.class', 'disabled')
-                .children().last().should('have.text', 'Delete pages after this');
+                .children().last().should('have.text', 'Pages after this');
             cy.get(datatest('btn-clear-past')).should('have.class', 'disabled')
-                .children().last().should('have.text', 'Delete pages before this');
+                .children().last().should('have.text', 'Pages before this');
 
             operations.mode.utils.close();
         }

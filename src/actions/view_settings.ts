@@ -9,7 +9,8 @@ type ViewSettingsOverrides = Partial<{
     shortenUrls: boolean;
     exportShowPageNumbers: boolean;
     exportShowComments: boolean;
-    listViewMenuTab: 'export' | 'import';
+    exportImageOptionsOpen: boolean;
+    exportOtherSitesOpen: boolean;
     treeOperationScope: TreeOperationScope;
     grayAfterLineClear: boolean;
     editorSidePanel: boolean;
@@ -112,7 +113,8 @@ export const persistViewSettings = (state: Readonly<State>, overrides: ViewSetti
         shortenUrls: overrides.shortenUrls ?? state.listView.shortenUrls,
         exportShowPageNumbers: overrides.exportShowPageNumbers ?? state.listView.exportShowPageNumbers ?? true,
         exportShowComments: overrides.exportShowComments ?? state.listView.exportShowComments ?? true,
-        listViewMenuTab: overrides.listViewMenuTab ?? state.listView.menuTab,
+        exportImageOptionsOpen: overrides.exportImageOptionsOpen ?? state.listView.exportImageOptionsOpen ?? false,
+        exportOtherSitesOpen: overrides.exportOtherSitesOpen ?? state.listView.exportOtherSitesOpen ?? false,
         treeOperationScope: overrides.treeOperationScope ?? state.tree.operationScope ?? 'node',
         grayAfterLineClear: overrides.grayAfterLineClear ?? state.tree.grayAfterLineClear,
         editorSidePanel: overrides.editorSidePanel ?? state.editorPanel.enabled,

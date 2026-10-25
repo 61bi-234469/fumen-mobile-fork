@@ -19,7 +19,7 @@ import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
-import { getSidePanelWidth } from './views/editor/side_panel_layout';
+import { canShowSidePanel, getSidePanelWidth } from './views/editor/side_panel_layout';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
@@ -27,6 +27,7 @@ import {
     isColdClearSearchBlockedByHoldQueue,
     resolveCurrentColdClearMenuQueueState,
     canClearCommentForColdClearQueue,
+    resolveColdClearSearchSetupNeeds,
 } from './actions/cold_clear';
 import { availableAiEngines, resolveAiEngine } from './lib/ai_engine';
 
@@ -109,7 +110,6 @@ export const view: View<State, Actions> = (state, actions) => {
             flagsHidden: state.temporary.userSettings.flagsHidden,
             initialScreen: state.temporary.userSettings.initialScreen,
             openTreeScreenOnTreeData: state.temporary.userSettings.openTreeScreenOnTreeData,
-            utilsMenuPinned: state.temporary.userSettings.utilsMenuPinned,
             loop: state.temporary.userSettings.loop,
             shortcutLabelVisible: state.temporary.userSettings.shortcutLabelVisible,
             gradient: state.temporary.userSettings.gradient,
@@ -122,11 +122,11 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutSdf: state.temporary.userSettings.pieceShortcutSdf,
             pieceShortcutSoftDropPriority: state.temporary.userSettings.pieceShortcutSoftDropPriority,
             rotationSystem: state.temporary.userSettings.rotationSystem,
-            sevenBagGrayEnabled: state.temporary.userSettings.sevenBagGrayEnabled,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
             trimTopBlank: state.temporary.userSettings.trimTopBlank,
             editorSidePanel: state.temporary.userSettings.editorSidePanel,
+            sidePanelAvailable: canShowSidePanel(state),
             currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 
@@ -145,6 +145,8 @@ export const view: View<State, Actions> = (state, actions) => {
             shortenUrls: state.listView.shortenUrls,
             exportShowPageNumbers: state.listView.exportShowPageNumbers,
             exportShowComments: state.listView.exportShowComments,
+            imageOptionsOpen: state.listView.exportImageOptionsOpen,
+            otherSitesOpen: state.listView.exportOtherSitesOpen,
         }) : undefined as any,
 
         state.modal.treeDisableConfirm ? TreeDisableConfirmModal({
@@ -171,6 +173,7 @@ export const view: View<State, Actions> = (state, actions) => {
             nextLimit: state.coldClear.nextLimit,
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
+            setupNeeds: resolveColdClearSearchSetupNeeds(state),
         }) : undefined as any,
 
         state.modal.pieceQueue ? PieceQueueModal({

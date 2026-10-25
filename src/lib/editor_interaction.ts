@@ -8,7 +8,7 @@ import {
 import { PageFieldOperation, Pages } from './pages';
 import { hasAnyLiftableMino } from './spawn_mino_convert';
 
-// ツールやパレットの切り替えは通常インスペクタを閉じるが、「UTILSメニューを開いたままにする」設定の
+// ツールやパレットの切り替えは通常インスペクタを閉じるが、UTILSの窓でピン留めしている
 // ときは UTILS だけ残す。並行して通常操作するための設定なので、操作のたびに閉じては意味がないため。
 export const inspectorAfterToolChange = (state: State): EditorInspector => (
     state.mode.utilsMenuPinned && state.editorUi.inspector === 'utils' ? 'utils' : 'none'

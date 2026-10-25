@@ -258,6 +258,19 @@ export const replayAnalysisPanel = (
 
             {drawable ? (
                 <div
+                    key="replay-analysis-graph-title"
+                    datatest="replay-analysis-graph-title"
+                    style={style({ fontSize: px(11), margin: '2px 0' })}
+                >
+                    {i18n.Replay.Analysis.Graph()}
+                    <span key="replay-analysis-graph-approx" style={style({ color: MUTED })}>
+                        {i18n.Replay.Analysis.GraphApprox()}
+                    </span>
+                </div>
+            ) : undefined}
+
+            {drawable ? (
+                <div
                     key="replay-analysis-graph-area"
                     style={style({ position: 'relative', height: px(EVAL_GRAPH_HEIGHT) })}
                     onclick={(e: MouseEvent) => {
@@ -283,6 +296,16 @@ export const replayAnalysisPanel = (
                             width: '100%',
                         })}
                     />
+                    <span
+                        key="replay-analysis-graph-axis"
+                        datatest="replay-analysis-graph-axis"
+                        style={style({
+                            color: MUTED, fontSize: px(9), left: px(3), lineHeight: '1',
+                            pointerEvents: 'none', position: 'absolute', top: px(3),
+                        })}
+                    >
+                        {i18n.Replay.Analysis.LossAxis()}
+                    </span>
                     <div
                         key="replay-analysis-cursor"
                         datatest="replay-analysis-cursor"
@@ -381,15 +404,6 @@ export const replayAnalysisPanel = (
                             {i18n.Replay.Analysis.WorstItem(move.index, formatLoss(move.loss ?? 0))}
                         </a>
                     ))}
-                </div>
-            ) : undefined}
-
-            {drawable ? (
-                <div
-                    key="replay-analysis-note"
-                    style={style({ color: MUTED, fontSize: px(10), margin: '2px 0 0' })}
-                >
-                    {i18n.Replay.Analysis.Note()}
                 </div>
             ) : undefined}
         </div>

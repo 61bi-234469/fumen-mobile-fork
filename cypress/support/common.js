@@ -236,7 +236,7 @@ export const disableModalAnimations = (win) => {
 export const visit = (
     {
         fumen, sleepInMill = 200, lng = 'en', mode = 'readonly', mobile = true, reload = false,
-        stubClipboard = true, flagsHidden = undefined,
+        stubClipboard = true, flagsHidden = undefined, userSettings = undefined,
     },
 ) => {
     let baseUrl = 'fumen-mobile-fork/#';
@@ -259,8 +259,15 @@ export const visit = (
         params.mobile = 1;
     }
 
-    const applyFlagsHidden = (win) => {
-        if (flagsHidden === undefined) {
+    // userSettings: user-settings@1 に前もって書き込む値。UIから設定できない項目の前提作りに使う
+    const presetSettings = { ...userSettings };
+    if (flagsHidden !== undefined) {
+        presetSettings.flagsHidden = flagsHidden;
+    }
+    const hasPresetSettings = Object.keys(presetSettings).length > 0;
+
+    const applyPresetSettings = (win) => {
+        if (!hasPresetSettings) {
             return;
         }
         let settings = {};
@@ -269,14 +276,14 @@ export const visit = (
         } catch (error) {
             settings = {};
         }
-        win.localStorage.setItem('user-settings@1', JSON.stringify({ ...settings, flagsHidden }));
+        win.localStorage.setItem('user-settings@1', JSON.stringify({ ...settings, ...presetSettings }));
     };
 
     const beforeLoad = (win) => {
         if (stubClipboard) {
             stubClipboardCopy(win);
         }
-        applyFlagsHidden(win);
+        applyPresetSettings(win);
     };
 
     // Keep direct cy.reload() calls covered as well; onBeforeLoad below handles the initial
@@ -287,13 +294,13 @@ export const visit = (
 
     if (params) {
         const query = Object.entries(params).map(value => value[0] + '=' + value[1]).join('&');
-        if (stubClipboard || flagsHidden !== undefined) {
+        if (stubClipboard || hasPresetSettings) {
             cy.visit(baseUrl + '?' + query, { onBeforeLoad: beforeLoad });
         } else {
             cy.visit(baseUrl + '?' + query);
         }
     } else {
-        if (stubClipboard || flagsHidden !== undefined) {
+        if (stubClipboard || hasPresetSettings) {
             cy.visit(baseUrl, { onBeforeLoad: beforeLoad });
         } else {
             cy.visit(baseUrl);
@@ -307,8 +314,8 @@ export const visit = (
     // The app restores user settings during its bootstrap. Re-apply the explicit test
     // fixture after the first render and reload once so the setting is also covered on
     // browsers that do not deliver the initial beforeLoad callback consistently.
-    if (flagsHidden !== undefined && !reload) {
-        cy.window().then(applyFlagsHidden);
+    if (hasPresetSettings && !reload) {
+        cy.window().then(applyPresetSettings);
         cy.reload();
     }
 

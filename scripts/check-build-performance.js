@@ -28,8 +28,10 @@ if (urls.length > 75) {
 // input, the INPUT engine switch row, the Replay ghost toggle and their strings added about 11 KB to main).
 // Raised from 1.89 MiB for the INPUT garbage editor, AI ghost tap and B2B/COMBO counters (local build
 // measured 1,993,248 bytes, CI 1,992,272: the garbage modal, segment editing and its strings added about 11 KB).
-if (totalBytes > 1.91 * 1024 * 1024) {
-    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.91 MiB`);
+// Raised from 1.91 MiB for the INPUT State sheet and share URL (local build measured 2,020,573 bytes,
+// 1,993,269 before: the isnap= serializer and validator, the sheet and their strings added about 27 KB to main).
+if (totalBytes > 1.94 * 1024 * 1024) {
+    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.94 MiB`);
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);

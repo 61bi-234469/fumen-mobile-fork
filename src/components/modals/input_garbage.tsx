@@ -152,7 +152,8 @@ export const InputGarbageModal: Component<InputGarbageModalProps> = ({ segments,
                             ? <p key="empty" datatest="input-garbage-empty" style={style({ color: '#9e9e9e' })}>
                                 {i18n.InputGarbage.Empty()}
                             </p>
-                            : rows}
+                            // Stack bottom-up like the in-game gauge: segment 1 sits at the bottom.
+                            : rows.slice().reverse()}
                     </div>
                     <div
                         key="summary"

@@ -443,7 +443,7 @@
     InputGarbage: {
         Title: 'Incoming garbage',
         Description: 'Each segment is one incoming attack. Every lock that clears no line raises the next segment '
-            + 'from the top of the list (up to 8 rows at a time); line clears cancel them first.',
+            + 'from the bottom of the list (up to 8 rows at a time); line clears cancel them first.',
         Open: 'Edit incoming garbage',
         Segment: 'Segment {{index}}',
         Amount: 'Lines',

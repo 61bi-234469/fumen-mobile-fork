@@ -421,6 +421,26 @@ export const resources = {
     InputStats: {
         Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
+        SurgeCharged: 'Surgeチャージ済み: いまB2Bが途切れるとSurgeが発生します',
+    },
+    InputGarbage: {
+        Title: 'せり上がり',
+        Description: '1つの区間が1回分の攻撃です。ラインを消さずにミノを置くたびに、上の区間から1つずつ'
+            + 'せり上がります（1回最大8段）。ラインを消すと先に相殺されます。',
+        Open: 'せり上がりを編集',
+        Segment: '区間 {{index}}',
+        Amount: '段数',
+        Column: '穴の列',
+        Random: 'ランダム',
+        Decrease: '段数を減らす',
+        Increase: '段数を増やす',
+        Add: '区間を追加',
+        Remove: '区間を削除',
+        Empty: 'せり上がりはありません',
+        Total: '合計 {{count}} 段',
+        ClearAll: 'すべて消去',
+        Cancel: 'キャンセル',
+        Apply: '適用',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

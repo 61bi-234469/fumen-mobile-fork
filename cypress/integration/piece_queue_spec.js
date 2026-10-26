@@ -596,6 +596,60 @@ describe('PIECE queues', () => {
         });
     });
 
+    it('takes the HOLD piece out with Hold once NEXT has run out', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[O]()').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', 'O');
+        cy.get(datatest('tray-piece-harddrop')).should('be.disabled');
+        cy.get(datatest('tray-piece-hold')).should('not.be.disabled').click();
+
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', '');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+    });
+
+    it('edits incoming garbage from the INPUT gauge and raises it on a no-clear lock', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+        cy.get(datatest('input-garbage-field-gauge')).click();
+        cy.get(datatest('mdl-input-garbage')).should('be.visible');
+        cy.get(datatest('input-garbage-empty')).should('exist');
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('btn-input-garbage-decrease-0')).click();
+        cy.get(datatest('input-garbage-column-0')).select('0');
+        cy.get(datatest('input-garbage-segment-0'))
+            .should('have.attr', 'data-amount', '3')
+            .and('have.attr', 'data-column', '0');
+        cy.get(datatest('input-garbage-total')).should('have.attr', 'data-total', '3');
+        cy.get(datatest('btn-input-garbage-apply')).click();
+        cy.get(datatest('mdl-input-garbage')).should('not.exist');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '3');
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+        [0, 1, 2].forEach((y) => {
+            cy.get(block(0, y)).should('have.attr', 'color', Color.Empty.Normal);
+            cy.get(block(9, y)).should('not.have.attr', 'color', Color.Empty.Normal);
+        });
+        cy.get(block(9, 3)).should('have.attr', 'color', Color.Empty.Normal);
+
+        // Undo restores the queued garbage together with the page.
+        operations.mode.tools.undo();
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '3');
+    });
+
     it('never rewinds across a fumen load', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-paint-mode')).click();

@@ -15,6 +15,7 @@ import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
+import { InputGarbageModal } from './components/modals/input_garbage';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
@@ -151,6 +152,11 @@ export const view: View<State, Actions> = (state, actions) => {
 
         state.modal.treeDisableConfirm ? TreeDisableConfirmModal({
             actions,
+        }) : undefined as any,
+
+        state.modal.inputGarbage ? InputGarbageModal({
+            actions,
+            segments: state.temporary.inputGarbageSegments,
         }) : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({

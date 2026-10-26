@@ -2,6 +2,7 @@ import {
     isColdClearSearchBlockedByHoldQueue,
     canStartColdClearSequenceSearch,
     canSwapCurrentPieceWithHoldQueue,
+    isHoldOnlyQueue,
     coldClearActions,
     createRandomSevenBagQueue,
     createRandomSevenBags,
@@ -2592,6 +2593,32 @@ describe('coldClearActions run isolation', () => {
         expect(result).toBeDefined();
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[S](T)LZJI' });
         expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.T, historyBoundary: false });
+    });
+
+    test('swapCurrentPieceWithHoldQueue takes the HOLD piece out once NEXT and current are used up', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: '#Q=[T]()' });
+        state.fumen.pages[0].piece = undefined;
+        expect(isHoldOnlyQueue(state as any)).toBe(true);
+        expect(canSwapCurrentPieceWithHoldQueue(state as any)).toBe(true);
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeDefined();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: '#Q=[](T)' });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.T, historyBoundary: false });
+    });
+
+    test('isHoldOnlyQueue is false while a piece or NEXT remains', () => {
+        const withNext = makeColdClearState({ commentText: '#Q=[T]()I' });
+        withNext.fumen.pages[0].piece = undefined;
+        expect(isHoldOnlyQueue(withNext as any)).toBe(false);
+
+        const withPiece = makeColdClearState({ commentText: '#Q=[T]()' });
+        withPiece.fumen.pages[0].piece = { type: Piece.O, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
+        expect(isHoldOnlyQueue(withPiece as any)).toBe(false);
     });
 
     test('swapCurrentPieceWithHoldQueue fails with toast when no current piece and no queue', () => {

@@ -2,6 +2,8 @@ import { Piece, Screens } from '../lib/enums';
 import { isModifierKey, matchShortcut } from '../lib/shortcuts';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
+import { isHoldOnlyQueue, parseQueueStateComment } from '../lib/cold_clear/queueParser';
+import { resolvePageCommentText } from '../lib/pages';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import {
     endPieceShortcut,
@@ -242,6 +244,18 @@ const currentPageHasPiece = (state: State): boolean => {
     return page?.piece !== undefined;
 };
 
+// ピースが無く、HOLDだけが残っている（Holdで取り出せる）か。cold_clear はワーカーを読み込むので使わない
+const currentPageIsHoldOnly = (state: State): boolean => {
+    if (currentPageHasPiece(state)) return false;
+    try {
+        return isHoldOnlyQueue(parseQueueStateComment(
+            resolvePageCommentText(state.fumen.pages, state.fumen.currentIndex),
+        ));
+    } catch (e) {
+        return false;
+    }
+};
+
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
 let getState: (() => State) | null = null;
 let getActions: (() => Actions) | null = null;
@@ -330,7 +344,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
             longPressTimer: null,
             longPressExecuted: false,
         });
-        if (pieceModeShortcut === 'Reset' || currentPageHasPiece(state)) {
+        if (pieceModeShortcut === 'Reset' || currentPageHasPiece(state)
+            || (pieceModeShortcut === 'Hold' && currentPageIsHoldOnly(state))) {
             startPieceShortcut(keyboardHoldId(event.code), pieceModeShortcut, {
                 dasFrames: state.mode.pieceShortcutDasFrames,
                 arrFrames: state.mode.pieceShortcutArrFrames,

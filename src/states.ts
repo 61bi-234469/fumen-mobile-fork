@@ -161,6 +161,7 @@ import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
 import { PlacementResult } from './lib/input_stats';
+import { InputGarbageSegment } from './lib/input_replay';
 import { ReplayIR } from './lib/ttrm/types';
 
 export type ReplayPhase = 'empty' | 'parsing' | 'playing' | 'failed';
@@ -359,6 +360,7 @@ export interface State {
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
         pieceQueue: boolean;
+        inputGarbage: boolean;
     };
     temporary: {
         userSettings: {
@@ -389,6 +391,8 @@ export interface State {
         };
         userSettingsTab: UserSettingsTab;
         pieceQueueFocus: PieceQueueFocus;
+        // INPUTのせり上がり設定モーダルで編集中の区間（適用するまでページには反映しない）
+        inputGarbageSegments: InputGarbageSegment[];
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -578,6 +582,7 @@ export const initState: Readonly<State> = {
         treeDisableConfirm: false,
         coldClearMenu: false,
         pieceQueue: false,
+        inputGarbage: false,
     },
     temporary: {
         userSettings: {
@@ -608,6 +613,7 @@ export const initState: Readonly<State> = {
         },
         userSettingsTab: 'edit',
         pieceQueueFocus: 'next',
+        inputGarbageSegments: [],
     },
     handlers: {
         animation: undefined,
@@ -741,6 +747,7 @@ export const resources = {
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
         pieceQueue: undefined as any,
+        inputGarbage: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

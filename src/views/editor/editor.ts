@@ -27,8 +27,8 @@ import {
 } from './responsive_layout';
 import { pieceQueueOverlays } from './piece_queue_overlay';
 import { resolveCurrentColdClearMenuQueueState } from '../../actions/cold_clear';
-import { computeInputStats } from '../../lib/input_stats';
-import { inputStatsPanel } from './input_stats_panel';
+import { computeInputStats, resolveInputRulesPreset } from '../../lib/input_stats';
+import { inputChainPanel, inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
 import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
 import { InputAiGuideOverlay } from '../../components/input_ai_guide_overlay';
@@ -271,6 +271,15 @@ export const getLayout = (
     };
 };
 
+// B2B and COMBO rows plus the panel margin.
+const INPUT_CHAIN_PANEL_MIN_HEIGHT = 42;
+
+// TETR.IO League charges B2B from a shown count of 4.
+const SRS_PLUS_SURGE_CHARGE_AT = 4;
+
+// Without a battle context the INPUT gauge is empty and scaled like TETR.IO's default cap.
+const EMPTY_INPUT_GARBAGE_CAP = 8;
+
 const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const sidePanelVisible = 0 < getSidePanelWidth(state);
     const getGradientPattern = (piece: Piece | 'inference') => {
@@ -301,26 +310,41 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ? resolveCurrentColdClearMenuQueueState(state)
         : null;
     const holdButtonHeight = 20 + layout.pieceQueue.nextMinoHeight;
-    const inputStatsTier = getInputStatsPanelTier(layout.field.size.height - layout.pieceQueue.ceilingOffset
-        - holdButtonHeight - INPUT_STATS_GAP);
+    const inputStatsHeight = layout.field.size.height - layout.pieceQueue.ceilingOffset
+        - holdButtonHeight - INPUT_STATS_GAP;
+    const inputStatsTier = getInputStatsPanelTier(inputStatsHeight);
     const computedInputStats = computeInputStats(state.fumen.pages, state.fumen.currentIndex, {
         rotationSystem: state.mode.rotationSystem,
         tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
     });
     const inputReplayContext = state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext;
-    const replayGarbage = inputReplayContext === undefined ? undefined : {
-        ...inputGarbageView(inputReplayContext),
-        last: inputReplayContext.garbage.last,
-    };
+    // INPUTでは常にゲージを出す。タップでせり上がりを編集でき、文脈がなければ空のゲージにする
+    const replayGarbage = inputReplayContext === undefined
+        ? !layout.pieceQueue.visible ? undefined : {
+            gauge: 0, cap: EMPTY_INPUT_GARBAGE_CAP, maxGauge: EMPTY_INPUT_GARBAGE_CAP, reservedTanks: [],
+        }
+        : {
+            ...inputGarbageView(inputReplayContext),
+            last: inputReplayContext.garbage.last,
+        };
     const inputStatsGarbage = inputReplayContext === undefined ? undefined : {
         last: inputReplayContext.garbage.last,
     };
-    const statsPanel = layout.pieceQueue.visible && inputStatsTier !== 'hidden'
-        ? inputStatsPanel({
-            ...computedInputStats,
-            lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-        }, inputStatsTier, inputStatsGarbage)
-        : undefined;
+    // B2Bを連鎖として数えるのはSRS+だけ（SRSは最大1、クラシックはなし）。
+    // Surgeしきい値はリプレイ文脈ならそのルール、無ければリーグ既定
+    const chainPreset = resolveInputRulesPreset(state.mode.rotationSystem);
+    const surgeChargeAt = chainPreset !== 'tetrioS2' ? undefined : inputReplayContext !== undefined
+        ? inputReplayContext.garbage.rules.b2bCharging ? inputReplayContext.garbage.rules.b2bChargeAt : undefined
+        : SRS_PLUS_SURGE_CHARGE_AT;
+    const statsPanel = !layout.pieceQueue.visible
+        ? undefined
+        : inputStatsTier === 'hidden'
+            ? INPUT_CHAIN_PANEL_MIN_HEIGHT <= inputStatsHeight
+                ? inputChainPanel(computedInputStats, { surgeChargeAt, preset: chainPreset }) : undefined
+            : inputStatsPanel({
+                ...computedInputStats,
+                lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
+            }, inputStatsTier, inputStatsGarbage, { surgeChargeAt, preset: chainPreset });
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
         statsPanel,
@@ -365,7 +389,25 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ...(replayGarbage === undefined ? [] : [div({
             key: 'input-garbage-field-gauge',
             datatest: 'input-garbage-field-gauge',
+            role: 'button',
+            tabindex: 0,
+            title: i18n.InputGarbage.Open(),
+            'aria-label': i18n.InputGarbage.Open(),
+            onclick: (event: MouseEvent) => {
+                actions.commitCommentText();
+                actions.openInputGarbageModal();
+                event.preventDefault();
+                event.stopPropagation();
+            },
+            onkeydown: (event: KeyboardEvent) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    actions.openInputGarbageModal();
+                    event.preventDefault();
+                }
+            },
+            onpointerdown: (event: PointerEvent) => event.stopPropagation(),
             style: style({
+                cursor: 'pointer',
                 left: px(-(gaugeColumnWidth('full') + 2)),
                 position: 'absolute',
                 top: px(layout.field.topLeft.y),
@@ -634,8 +676,7 @@ export const view: View<State, Actions> = (state, actions) => {
         pieceModeVisible: state.editorUi.primaryTool === 'piece',
         pieceLayout: state.editorUi.pieceLayout,
         inputGarbageGaugeVisible: state.editorUi.primaryTool === 'piece'
-            && state.editorUi.pieceLayout === 'play'
-            && state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext !== undefined,
+            && state.editorUi.pieceLayout === 'play',
         ...state.display,
         topLeftY: navigatorHeight,
     });

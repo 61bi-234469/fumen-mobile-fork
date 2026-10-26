@@ -1,5 +1,5 @@
 import { isMinoPiece, Piece, Rotation, Screens, toPositionIndex, TouchTypes } from '../lib/enums';
-import { action, actions } from '../actions';
+import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
 import { drawBlockActions } from './draw_block';
@@ -19,7 +19,8 @@ import {
 } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
-import { Page } from '../lib/fumen/types';
+import { Move, Page } from '../lib/fumen/types';
+import { inferGuideRotationEvidence } from '../lib/input_guide_placement';
 import { State } from '../states';
 import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
@@ -112,6 +113,11 @@ export interface FieldEditorActions {
     softdropStep(): action;
 
     harddrop(): action;
+
+    // Tapping a ready AI guide ghost in INPUT locks the current piece there (holding first when the AI did).
+    tapInputAiGuide(): action;
+
+    placeInputAiGuideMove(data: { move: Move }): action;
 
     spawnNextPieceFromColdClearQueue(data?: {
         placedPiece?: Piece;
@@ -210,6 +216,24 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
+// A ready AI guide ghost is drawn only in INPUT; its cells are a tap target unless the
+// current piece already covers that cell (dragging the piece keeps priority).
+export const isInputAiGuideCell = (state: State, index: number): boolean => {
+    const guide = state.coldClear?.inputGuide;
+    if (state.editorUi?.primaryTool !== 'piece' || state.editorUi.pieceLayout !== 'play'
+        || !guide?.enabled || guide.status !== 'ready' || guide.move === null) {
+        return false;
+    }
+    const { type, rotation, coordinate } = guide.move;
+    if (!getBlockPositions(type, rotation, coordinate.x, coordinate.y).map(toPositionIndex).includes(index)) {
+        return false;
+    }
+    const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
+    return piece === undefined || !isMinoPiece(piece.type)
+        || !getBlockPositions(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)
+            .map(toPositionIndex).includes(index);
+};
+
 const clearLastPieceManipulation = (state: State) => ({
     events: { ...state.events, lastPieceManipulation: undefined },
 });
@@ -450,6 +474,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     actions.cancelSpawnMinoPick(),
                     afterState => actions.convertBlocksToSpawnMino({ index })(afterState),
                 ]);
+            }
+            if (isInputAiGuideCell(newState, index)) {
+                return fieldEditorActions.tapInputAiGuide()(newState);
             }
             // The paint eraser deletes a selection it is tapped on, like the SPAWN mino below.
             // SELECT keeps its own left-click behaviour (grab and move the selection).
@@ -1219,6 +1246,44 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             clearLastPieceManipulation,
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    tapInputAiGuide: () => (state): NextState => {
+        const guide = state.coldClear.inputGuide;
+        if (guide.status !== 'ready' || guide.move === null) {
+            return undefined;
+        }
+        const move = guide.move;
+        // HOLD入れ替えは配線済みアクションで盤面を確定させ、その後の状態で設置する
+        if (guide.usedHold) {
+            main.swapCurrentPieceWithHoldQueue();
+        }
+        main.placeInputAiGuideMove({ move });
+        return undefined;
+    },
+    placeInputAiGuideMove: ({ move }) => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (page?.piece === undefined || page.piece.type !== move.type || !page.flags.lock) {
+            return undefined;
+        }
+        const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+        const { type, rotation, coordinate } = move;
+        if (!field.canPut(type, rotation, coordinate.x, coordinate.y)
+            || !field.isOnGround(type, rotation, coordinate.x, coordinate.y)) {
+            return undefined;
+        }
+        const preset = page.internal?.inputReplayContext !== undefined
+            ? 'tetrioS2' : resolveInputRulesPreset(state.mode.rotationSystem);
+        const evidence = inferGuideRotationEvidence(field, move, state.mode.rotationSystem, preset);
+        const prevPage = toPrimitivePage(page);
+        page.piece = { type, rotation, coordinate: { ...coordinate } };
+        return sequence(state, [
+            fieldEditorActions.resetInferencePiece(),
+            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            actions.reopenCurrentPage(),
+            nextState => ({ events: { ...nextState.events, lastPieceManipulation: evidence } }),
+            fieldEditorActions.harddrop(),
         ]);
     },
     harddrop: () => (state): NextState => {

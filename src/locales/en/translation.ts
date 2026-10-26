@@ -438,6 +438,26 @@
     InputStats: {
         Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
+        SurgeCharged: 'Surge charged: breaking B2B now releases a Surge',
+    },
+    InputGarbage: {
+        Title: 'Incoming garbage',
+        Description: 'Each segment is one incoming attack. Every lock that clears no line raises the next segment '
+            + 'from the top of the list (up to 8 rows at a time); line clears cancel them first.',
+        Open: 'Edit incoming garbage',
+        Segment: 'Segment {{index}}',
+        Amount: 'Lines',
+        Column: 'Hole',
+        Random: 'Random',
+        Decrease: 'Fewer lines',
+        Increase: 'More lines',
+        Add: 'Add segment',
+        Remove: 'Remove segment',
+        Empty: 'No incoming garbage',
+        Total: 'Total {{count}} lines',
+        ClearAll: 'Clear all',
+        Cancel: 'Cancel',
+        Apply: 'Apply',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

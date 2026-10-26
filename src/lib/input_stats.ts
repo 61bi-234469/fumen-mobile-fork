@@ -108,10 +108,21 @@ export const evaluatePlacement = (
     };
 };
 
+// Only SRS+ (TETR.IO) counts a B2B chain; SRS (PPT) keeps B2B as an on/off flag and classic has none.
+export const capB2bChain = (b2bChain: number, preset: InputRulesPreset): number => {
+    switch (preset) {
+    case 'tetrioS2': return b2bChain;
+    case 'ppt': return Math.min(1, b2bChain);
+    case 'none': return 0;
+    }
+};
+
 export const advanceStats = (stats: InputStats, result: PlacementResult, preset: InputRulesPreset): InputStats => {
     const difficult = result.clearedLines === 4 || result.spin !== 'none'
         || (preset === 'tetrioS2' && result.perfectClear);
-    const b2bChain = result.clearedLines === 0 ? stats.b2bChain : difficult ? stats.b2bChain + 1 : 0;
+    const b2bChain = capB2bChain(
+        result.clearedLines === 0 ? stats.b2bChain : difficult ? stats.b2bChain + 1 : 0, preset,
+    );
     return {
         b2bChain,
         renChain: result.clearedLines === 0 ? 0 : stats.renChain + 1,

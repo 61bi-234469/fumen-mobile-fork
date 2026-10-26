@@ -76,6 +76,11 @@ export function parseQueueComment(text: string): ParsedQueue | null {
     };
 }
 
+/** NEXT and CURRENT are used up and only HOLD remains: Hold is the only way to continue. */
+export const isHoldOnlyQueue = (parsed: ParsedQueue | null): boolean => (
+    parsed !== null && parsed.hold !== null && parsed.current === null && parsed.queue.length === 0
+);
+
 export function parseQueueStateComment(text: string): ParsedQueueState | null {
     if (!text) {
         return null;

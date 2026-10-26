@@ -153,6 +153,7 @@ export const modalActions: Readonly<ModalActions> = {
                 coldClearMenu: state.coldClear.isRunning ? true : false,
                 pieceQueue: false,
                 inputGarbage: false,
+                inputState: false,
             },
         };
     },

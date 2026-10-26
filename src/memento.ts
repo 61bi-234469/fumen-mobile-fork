@@ -6,6 +6,8 @@ import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import lodash from 'lodash';
+import { showToast } from './lib/toast';
+import { i18n } from './locales/keys';
 
 interface SaverProp {
     saveKey: string;
@@ -27,6 +29,19 @@ const sequentialEncode = async (pages: Page[]): Promise<string> => {
     const data = await encode(pages, true);
     saverState.isWorking = false;
     return `v115@${data}`;
+};
+
+// 自動保存は編集のたびに走るため、失敗し始めたときに1回だけ知らせ、成功したら再び知らせられるようにする
+let fumenSaveFailureNotified = false;
+const notifyFumenSaveResult = (saved: boolean) => {
+    if (saved) {
+        fumenSaveFailureNotified = false;
+        return;
+    }
+    if (!fumenSaveFailureNotified) {
+        fumenSaveFailureNotified = true;
+        showToast(i18n.Toast.AutosaveFailed(), 8000);
+    }
 };
 
 const toSaver = ({ saveKey, pages }: SaverProp, saveCallback: (data: string) => void) => {
@@ -56,7 +71,7 @@ const saver = (() => {
             pages,
             saveKey: key,
         }, (data: string) => {
-            localStorageWrapper.saveFumen(data, sourceUrlKey);
+            notifyFumenSaveResult(localStorageWrapper.saveFumen(data, sourceUrlKey));
             onSaved();
         });
         saverState.last = { key, saverObj };
@@ -178,7 +193,7 @@ export const memento = (() => {
     let unsavedPages: Page[] | undefined;
 
     const saveImmediately = async (pages: Page[]): Promise<void> => {
-        localStorageWrapper.saveFumen(await sequentialEncode(pages), autosaveSourceUrlKey);
+        notifyFumenSaveResult(localStorageWrapper.saveFumen(await sequentialEncode(pages), autosaveSourceUrlKey));
     };
 
     return {
@@ -392,11 +407,13 @@ const safeGetItem = (key: string): string | null => {
     }
 };
 
-const safeSetItem = (key: string, value: string): void => {
+const safeSetItem = (key: string, value: string): boolean => {
     try {
         localStorage.setItem(key, value);
+        return true;
     } catch (error) {
         console.warn(`Failed to save ${key} to localStorage:`, error);
+        return false;
     }
 };
 
@@ -417,13 +434,20 @@ const safeParseJson = (data: string): any => {
 };
 
 export const localStorageWrapper = {
-    saveFumen: (data: string, sourceUrlKey?: string) => {
-        safeSetItem('data@1', data);
+    // 本体を書けなかったときに保存元だけ更新すると、次回起動で古い本体を今のURLの続きとして復元してしまう
+    saveFumen: (data: string, sourceUrlKey?: string): boolean => {
+        if (!safeSetItem('data@1', data)) {
+            return false;
+        }
         if (sourceUrlKey !== undefined) {
-            safeSetItem('data-source@1', sourceUrlKey);
+            if (!safeSetItem('data-source@1', sourceUrlKey)) {
+                // 古い保存元を残すと、別のURLのタブが今の本体を自分の続きとして復元してしまう
+                safeRemoveItem('data-source@1');
+            }
         } else {
             safeRemoveItem('data-source@1');
         }
+        return true;
     },
     loadFumen: (): string | undefined => {
         const data = safeGetItem('data@1');

@@ -33,8 +33,8 @@ import {
     parseSevenBagGrayDisplay, parseSevenBagGrayProgress, withInputRotationEvidence,
 } from '../lib/comment_metadata';
 import {
-    advanceStats, computeInputStats, evaluatePlacement, fromCommentCombo, InputStats, resolveInputRulesPreset,
-    toCommentCombo,
+    advanceStats, capB2bChain, computeInputStats, evaluatePlacement, fromCommentCombo, InputStats,
+    resolveInputRulesPreset, toCommentCombo,
 } from '../lib/input_stats';
 import { advanceSevenBagGrayDisplay } from '../lib/seven_bag_gray';
 import {
@@ -121,6 +121,8 @@ export interface FieldEditorActions {
 
     spawnNextPieceFromColdClearQueue(data?: {
         placedPiece?: Piece;
+        // 7bag gray burns the placed mino into the same page, so the queue was not advanced through a quiz ref.
+        advanceQueue?: boolean;
         stats?: InputStats;
         mirrorCommentPageIndex?: number;
     }): action;
@@ -1360,14 +1362,14 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     const progress = page.internal?.sevenBagGrayProgress
                         ?? parseSevenBagGrayProgress(currentComment)
                         ?? { bag: 0, pieces: 0, lines: 0, perfectClears: 0 };
+                    const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
                     const baseStats = {
-                        b2bChain: parsed?.b2b ? 1 : 0,
+                        b2bChain: capB2bChain(parsed?.b2bLevel ?? 0, preset),
                         renChain: fromCommentCombo(parsed?.combo ?? 0),
                         pieces: progress.pieces,
                         lines: progress.lines,
                         perfectClears: progress.perfectClears,
                     };
-                    const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
                     const result = evaluatePlacement(
                         field, piece, preset, rotationEvidence,
                     );
@@ -1419,6 +1421,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                             stats,
                             mirrorCommentPageIndex: completedBag ? pageIndex : undefined,
                             placedPiece: piece.type,
+                            advanceQueue: true,
                         }),
                         nextStateAfterSpawn => ({
                             events: { ...nextStateAfterSpawn.events, lastInputPlacement: result },
@@ -1464,7 +1467,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 rotationSystem: state.mode.rotationSystem,
             })
             : undefined);
-        const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain >= 1;
+        // INPUT writes the chain itself (b2b=N) so Sold Slear's b2bLevel and a later reload agree with it.
+        const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain;
         const nextCombo = inputStats === undefined ? parsed.combo : toCommentCombo(inputStats.renChain);
         // Quizページのrefコメントは取得時点で設置操作が反映済み。
         // メタデータ付き等の非Quizコメントは、直前ページで設置したミノがカレントに残ったままのため
@@ -1475,8 +1479,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         let current = parsed.current;
         let queue = parsed.queue;
         // 7bagグレーは同じページへ設置ミノを焼き込むため、再表示後はQuiz参照ページに見える。
-        // 呼び出し元が配置ミノを明示した場合は、その判定より優先して必ずキューを進める。
-        if ((data.placedPiece !== undefined || !isAdvancedQuizComment) && current !== null) {
+        // その場合だけ呼び出し元が advanceQueue で明示し、判定より優先して必ずキューを進める。
+        // INPUT文脈のロック（placedPiece のみ）は新しいページを挿入するので、Quiz参照なら進行済み。
+        if ((data.advanceQueue === true || !isAdvancedQuizComment) && current !== null) {
             const prevPage = state.fumen.pages[pageIndex - 1];
             const placedPiece = data.placedPiece ?? (
                 prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)

@@ -37,6 +37,7 @@ import { showToast } from '../lib/toast';
 import { copyTextToClipboard } from '../lib/clipboard_copy';
 import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { rememberPageIndex } from '../lib/autosave_session';
+import { buildInputSharePage } from '../lib/input_snapshot';
 
 const safeDecodeClipboardFumen = (value: string): string => {
     try {
@@ -98,6 +99,7 @@ export interface PageActions {
     changeRiseFlag: (data: { index: number, enable: boolean }) => action;
     changeMirrorFlag: (data: { index: number, enable: boolean }) => action;
     copyCurrentPageToClipboard: () => action;
+    copyInputShareUrlToClipboard: (data?: { native?: boolean }) => action;
     cutCurrentPage: () => action;
     insertPageFromClipboard: () => action;
     copyAllPagesToClipboard: () => action;
@@ -120,6 +122,47 @@ const toTreeEmbeddedPages = (state: Readonly<State>): Page[] => {
         version: 1,
     } : null;
     return embedTreeInPages(state.fumen.pages, tree, treeExists);
+};
+
+// INPUT の「その瞬間」を現在ページ1枚の専用URLにする。汎用エクスポートと違い isnap= を載せる
+const shareInputSnapshotUrl = (state: Readonly<State>, native: boolean) => {
+    const result = buildInputSharePage(state.fumen.pages, state.fumen.currentIndex, {
+        rotationSystem: state.mode.rotationSystem,
+        tree: state.tree.enabled && state.tree.rootId !== null
+            ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
+        seed: Math.floor(Math.random() * 0x7fffffff),
+    });
+    if (result.status !== 'ok') {
+        showToast(result.status === 'tooLong' ? i18n.InputState.CommentTooLong() : i18n.InputState.InvalidState());
+        return;
+    }
+
+    (async () => {
+        try {
+            const params = new URLSearchParams();
+            params.set('d', `v115@${await encode([result.page])}`);
+            const url = `${window.location.origin}${window.location.pathname}#?${params.toString()}`;
+            if (native && typeof navigator.share === 'function') {
+                try {
+                    await navigator.share({ url });
+                    return;
+                } catch (error: any) {
+                    // 共有シートを閉じただけなら何もしない。使えなかったときはコピーに切り替える
+                    if (error?.name === 'AbortError') {
+                        return;
+                    }
+                }
+            }
+            if (await copyTextToClipboard(url)) {
+                showToast(i18n.InputState.Copied(), 1000);
+            } else {
+                showToast(i18n.InputState.FailedToCopy());
+            }
+        } catch (error) {
+            console.error(error);
+            showToast(`${i18n.InputState.FailedToCopy()}: ${error}`);
+        }
+    })();
 };
 
 const startCutAllPages = (state: Readonly<State>): NextState => {
@@ -624,6 +667,15 @@ export const pageActions: Readonly<PageActions> = {
         })();
 
         return undefined;
+    },
+    copyInputShareUrlToClipboard: ({ native = false } = {}) => (state): NextState => {
+        return sequence(state, [
+            actions.commitCommentText(),
+            (newState) => {
+                shareInputSnapshotUrl(newState, native);
+                return undefined;
+            },
+        ]);
     },
     cutCurrentPage: () => (state): NextState => {
         const currentIndex = state.fumen.currentIndex;

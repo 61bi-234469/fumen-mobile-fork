@@ -400,3 +400,11 @@ describe('hold swap logic', () => {
         expect(buildQueueComment(newHold, newCurrent, newQueue)).toBe('#Q=[I](T)LJSZ');
     });
 });
+
+describe('parseQueueStateComment with an INPUT snapshot token', () => {
+    test('skips isnap= so the queue and counters survive', () => {
+        expect(parseQueueStateComment('isnap=1.eyJ2IjoxfQ b2b=3 combo=2 | #Q=[S](T)IO')).toMatchObject({
+            hold: Piece.S, current: Piece.T, queue: [Piece.I, Piece.O], b2bLevel: 3, combo: 2,
+        });
+    });
+});

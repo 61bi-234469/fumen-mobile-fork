@@ -16,6 +16,9 @@ import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
 import { InputGarbageModal } from './components/modals/input_garbage';
+import { InputStateModal } from './components/modals/input_state';
+import { describeInputState, resolveInputShareContext } from './lib/input_snapshot';
+import { resolveInputRulesPreset } from './lib/input_stats';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
@@ -158,6 +161,22 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             segments: state.temporary.inputGarbageSegments,
         }) : undefined as any,
+
+        state.modal.inputState ? (() => {
+            // Shows exactly what the share URL carries (same context resolution as the share action).
+            const context = resolveInputShareContext(state.fumen.pages, state.fumen.currentIndex, {
+                rotationSystem: state.mode.rotationSystem,
+                tree: state.tree.enabled && state.tree.rootId !== null
+                    ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
+                seed: 1,
+            });
+            return context === undefined ? undefined as any : InputStateModal({
+                actions,
+                description: describeInputState(context),
+                rotationSystem: state.mode.rotationSystem,
+                preset: resolveInputRulesPreset(state.mode.rotationSystem),
+            });
+        })() : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({
             canSequenceSearch,

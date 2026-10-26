@@ -1070,6 +1070,21 @@ export const operations = {
             },
         },
     },
+    // INPUT State シート（左枠ステータスから開く。共有URLのコピー）
+    inputState: {
+        open: () => {
+            cy.get(datatest('input-stats')).click();
+            cy.get(datatest('mdl-input-state')).should('be.visible');
+        },
+        close: () => {
+            cy.get(datatest('btn-input-state-close')).click();
+            cy.get(datatest('mdl-input-state')).should('not.exist');
+        },
+        share: () => {
+            cy.get(datatest('btn-input-share-url')).click();
+            cy.get(datatest('mdl-input-state')).should('not.exist');
+        },
+    },
     inputReplay: {
         openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),
         fieldGauge: () => cy.get(datatest('replay-gauge-input')),

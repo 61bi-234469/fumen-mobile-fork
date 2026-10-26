@@ -30,6 +30,8 @@ const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
 const B2B_SEGMENT_REGEX = /^b2b=(true|false|0|[1-9]\d{0,5})$/;
 const COMBO_SEGMENT_REGEX = /^combo=(-?\d+)$/;
+// INPUT状態の共有トークン（src/lib/input_snapshot.ts）。中身は読み込み側で検証する
+const INPUT_SNAPSHOT_TOKEN_PREFIX = 'isnap=';
 const METADATA_SEPARATOR = ' | ';
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
@@ -107,7 +109,8 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
             if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)
                 || parseInputRotationEvidence(token) !== undefined
                 || parseSevenBagGrayProgress(token) !== undefined
-                || parseSevenBagGrayDisplay(token) !== undefined) {
+                || parseSevenBagGrayDisplay(token) !== undefined
+                || token.startsWith(INPUT_SNAPSHOT_TOKEN_PREFIX)) {
                 continue;
             }
 

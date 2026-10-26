@@ -35,6 +35,8 @@ import { toPagesForStorage } from './memento';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { saveTabSourceUrlKey } from '../lib/autosave_session';
+import { extractInputSnapshotsFromPages, InputSnapshot, rotationSystemLabel } from '../lib/input_snapshot';
+import { showToast } from '../lib/toast';
 
 export interface UtilsActions {
     resize: (data: { width: number, height: number }) => action;
@@ -59,6 +61,7 @@ export interface UtilsActions {
         sourceUrlKey?: string,
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number, pieceSpawn?: boolean }) => action;
+    openReceivedInputSnapshot: (data: { index: number, snapshot: InputSnapshot }) => action;
     executeNewFumen: () => action;
     forceReload: () => action;
     flushAutosave: () => action;
@@ -228,10 +231,11 @@ export const utilsActions: Readonly<UtilsActions> = {
         const prevPages = prevPagesWithTree.map(toPrimitivePage);
         const currentIndex = state.fumen.currentIndex;
 
-        // Extract tree data from pages if present
+        // Extract tree data from pages if present, then the INPUT state tokens (isnap=)
         const extracted = extractTreeFromPages(pages);
+        const inputSnapshots = extractInputSnapshotsFromPages(extracted.cleanedPages);
         const cleanedPages = state.mode.sevenBagGrayEnabled
-            ? extracted.cleanedPages.map((page) => {
+            ? inputSnapshots.pages.map((page) => {
                 if (page.comment.text === undefined) {
                     return page;
                 }
@@ -241,7 +245,7 @@ export const utilsActions: Readonly<UtilsActions> = {
                 );
                 return text === page.comment.text ? page : { ...page, comment: { text } };
             })
-            : extracted.cleanedPages;
+            : inputSnapshots.pages;
         const tree = extracted.tree;
         const normalizedTree = tree ? ensureVirtualRoot(tree) : null;
         const hasImportedTree = normalizedTree !== null && normalizedTree.nodes.length > 0;
@@ -324,16 +328,30 @@ export const utilsActions: Readonly<UtilsActions> = {
             : undefined;
 
         const openIndex = pageIndex !== undefined && pageIndex < cleanedPages.length ? pageIndex : 0;
+        if (inputSnapshots.unsupported) {
+            showToast(i18n.InputState.UnsupportedVersion(), 5000);
+        }
+        // 専用の共有URL（o=1）は、指定の画面や初期画面設定より優先して Editor の INPUT で開く
+        const receivedSnapshot = inputSnapshots.snapshots[openIndex];
+        const openInput = receivedSnapshot?.openInput === true;
+        if (openInput) {
+            setTimeout(() => main.openReceivedInputSnapshot({ index: openIndex, snapshot: receivedSnapshot! }), 0);
+        }
 
         // 直後の registerHistoryTask が自動保存するので、保存元はそれより先に切り替える
         memento.setAutosaveSource(sourceUrlKey);
         saveTabSourceUrlKey(sourceUrlKey);
 
         return sequence(state, [
-            actions.setPages({ pages: cleanedPages, index: openIndex }),
+            // INPUT を開くときは、ページを開いてからレイアウトを切り替える（openReceivedInputSnapshot）
+            actions.setPages({ pages: cleanedPages, index: openIndex, open: !openInput }),
             () => ({ tree: treeState }),
             actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
-            screenUpdate,
+            openInput ? newState => ({ mode: { ...newState.mode, screen: Screens.Editor } }) : screenUpdate,
+            // 前の作業の直前ラベルと回転の記録は、読み込んだページと関係がない（採点に使われてしまう）
+            newState => ({
+                events: { ...newState.events, lastInputPlacement: undefined, lastPieceManipulation: undefined },
+            }),
             // Imported Fumen data may carry a palette that differs from the selected rotation system.
             actions.changeRotationSystem({ rotationSystem: state.mode.rotationSystem }),
         ]);
@@ -354,14 +372,28 @@ export const utilsActions: Readonly<UtilsActions> = {
         }
     },
     appendPages: ({ pages, pageIndex, pieceSpawn = false }) => (state): NextState => {
+        // 挿入は今の作業の続きなので、INPUT状態は戻すが画面は切り替えない
+        const inputSnapshots = extractInputSnapshotsFromPages(pages);
+        if (inputSnapshots.unsupported) {
+            showToast(i18n.InputState.UnsupportedVersion(), 5000);
+        }
         return sequence(state, [
             appendPages({
                 pageIndex,
                 pieceSpawn,
-                appendedPages: pages,
+                appendedPages: inputSnapshots.pages,
                 indexAfterReverting: state.fumen.currentIndex,
             }),
             actions.applyPageRotation(),
+        ]);
+    },
+    openReceivedInputSnapshot: ({ index, snapshot }) => (state): NextState => {
+        if (snapshot.rotationSystem !== state.mode.rotationSystem) {
+            showToast(i18n.InputState.RotationMismatch(rotationSystemLabel(snapshot.rotationSystem)), 5000);
+        }
+        return sequence(state, [
+            actions.openPage({ index }),
+            actions.selectPieceLayout({ layout: 'play' }),
         ]);
     },
     refresh: () => (): NextState => {

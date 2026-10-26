@@ -89,6 +89,31 @@ describe('autosave storage', () => {
         expect(localStorageWrapper.loadFumen()).toBe('v115@vhAAgH');
     });
 
+    test('keeps the previous data and source together when the data cannot be written', () => {
+        localStorageWrapper.saveFumen('v115@vhAAgH', 'a');
+        const setItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new Error('QuotaExceededError');
+        });
+        expect(localStorageWrapper.saveFumen('v115@vhAAgI', 'b')).toBe(false);
+        setItem.mockRestore();
+        expect(localStorageWrapper.loadFumen()).toBe('v115@vhAAgH');
+        expect(localStorageWrapper.loadFumenSourceUrlKey()).toBe('a');
+    });
+
+    test('drops the old source when only the source key cannot be written', () => {
+        localStorageWrapper.saveFumen('v115@vhAAgH', 'a');
+        const original = Storage.prototype.setItem;
+        const failSourceOnly = function (this: Storage, key: string, value: string) {
+            if (key === 'data-source@1') throw new Error('QuotaExceededError');
+            original.call(this, key, value);
+        };
+        const setItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(failSourceOnly);
+        expect(localStorageWrapper.saveFumen('v115@vhAAgI', 'b')).toBe(true);
+        setItem.mockRestore();
+        expect(localStorageWrapper.loadFumen()).toBe('v115@vhAAgI');
+        expect(localStorageWrapper.loadFumenSourceUrlKey()).toBeUndefined();
+    });
+
     test('remembers the page index and ignores invalid values', () => {
         rememberPageIndex(4);
         expect(localStorageWrapper.loadPageIndex()).toBe(4);

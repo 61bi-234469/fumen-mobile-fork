@@ -202,4 +202,16 @@ describe('input stats', () => {
 
         expect(computeInputStats(pages, 2, { tree, rotationSystem: 'srsPlus' }).pieces).toBe(10);
     });
+
+    test('seeds the first page B2B level and COMBO even on page 0, capped by the rotation system', () => {
+        const pages: any[] = [{
+            index: 0, field: { obj: new Field({}) }, comment: { text: 'b2b=3 combo=2 | #Q=[](T)IO' },
+            flags: { lock: true },
+        }];
+        expect(computeInputStats(pages, 0, 'srsPlus')).toMatchObject({ b2bChain: 3, renChain: 2 });
+        expect(computeInputStats(pages, 0, 'srs').b2bChain).toBe(1);
+        expect(computeInputStats(pages, 0, 'classic').b2bChain).toBe(0);
+        expect(computeInputStats([{ ...pages[0], comment: { text: 'b2b=3 sbg=1,4,2,0 | #Q=[](T)IO' } }], 0,
+            'srsPlus')).toMatchObject({ b2bChain: 3, pieces: 4, lines: 2 });
+    });
 });

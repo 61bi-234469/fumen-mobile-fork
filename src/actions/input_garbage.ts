@@ -21,6 +21,9 @@ export interface InputGarbageActions {
     closeInputGarbageModal: () => action;
     updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => action;
     applyInputGarbageDraft: () => action;
+    applyInputGarbageDraftAndOpenState: () => action;
+    openInputStateModal: () => action;
+    closeInputStateModal: () => action;
 }
 
 const clampSegment = (segment: InputGarbageSegment): InputGarbageSegment => ({
@@ -84,4 +87,15 @@ export const inputGarbageActions: Readonly<InputGarbageActions> = {
             close,
         ]);
     },
+    // The draft is not on the page until applied; opening the sheet first would share the old garbage.
+    applyInputGarbageDraftAndOpenState: () => (state): NextState => sequence(state, [
+        inputGarbageActions.applyInputGarbageDraft(),
+        inputGarbageActions.openInputStateModal(),
+    ]),
+    openInputStateModal: () => (state): NextState => ({
+        modal: { ...state.modal, inputState: true },
+    }),
+    closeInputStateModal: () => (state): NextState => ({
+        modal: { ...state.modal, inputState: false },
+    }),
 };

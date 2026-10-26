@@ -73,7 +73,7 @@ interface UserSettingsModalProps {
 const paletteKeys: (keyof PaletteShortcuts)[] = ['I', 'L', 'O', 'Z', 'T', 'J', 'S', 'Empty', 'Gray', 'Comp'];
 const editShortcutKeys: (keyof EditShortcuts)[] = [
     'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
-    'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle',
+    'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle', 'InputShareUrl',
 ];
 
 const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
@@ -91,6 +91,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
     Copy: i18n.UserSettings.EditShortcuts.Copy,
     Cut: i18n.UserSettings.EditShortcuts.Cut,
     MinoBlockToggle: i18n.UserSettings.EditShortcuts.MinoBlockToggle,
+    InputShareUrl: i18n.UserSettings.EditShortcuts.InputShareUrl,
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [

@@ -650,6 +650,86 @@ describe('PIECE queues', () => {
         cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '3');
     });
 
+    it('shares the INPUT moment as a URL that reopens it in INPUT and survives a reload', () => {
+        const holeColumnAt = (y) => cy.document().then((doc) => {
+            const empty = Array.from({ length: 10 }, (_, x) => x)
+                .filter(x => doc.querySelector(block(x, y)).getAttribute('color') === Color.Empty.Normal);
+            expect(empty).to.have.length(1);
+            return empty[0];
+        });
+        const stubClipboardWrite = () => cy.window().then((win) => {
+            const writeText = cy.stub().as('writeText').resolves();
+            Object.defineProperty(win.navigator, 'clipboard', { configurable: true, value: { writeText } });
+        });
+
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        // Two attacks: a fixed hole, then a random one that depends on the restored RNG.
+        cy.get(datatest('input-garbage-field-gauge')).click();
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('input-garbage-column-0')).select('0');
+        // The link applies the draft first, so the sheet already shows it.
+        cy.get(datatest('btn-input-garbage-open-state')).click();
+        cy.get(datatest('mdl-input-garbage')).should('not.exist');
+        cy.get(datatest('mdl-input-state')).should('be.visible');
+        cy.get(datatest('input-state-garbage')).should('have.attr', 'data-value', '4:0,4:r');
+        cy.get(datatest('input-state-totals')).should('have.attr', 'data-value', '0:0:0');
+        cy.get(datatest('input-state-rules')).should('have.attr', 'data-value', 'league');
+        operations.inputState.close();
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+
+        stubClipboardWrite();
+        operations.inputState.open();
+        cy.get(datatest('input-state-garbage')).should('have.attr', 'data-value', '4:r');
+        cy.get(datatest('input-state-totals')).should('have.attr', 'data-value', '1:0:0');
+        operations.inputState.share();
+        cy.get('@writeText').should('have.been.calledOnce');
+
+        cy.get('@writeText').then((writeText) => {
+            const url = writeText.firstCall.args[0];
+            expect(url).to.match(/\/fumen-mobile-fork\/#\?d=v115%40/);
+            const fumen = url.slice(url.indexOf('d=') + 2);
+
+            // The sender's next no-clear lock raises the random-hole attack.
+            operations.mode.piece.harddrop();
+            cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+            holeColumnAt(0).then((senderColumn) => {
+                visit({ fumen });
+                cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+                cy.get(datatest('text-pages')).should('contain', '1 / 1');
+                cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+                cy.get(datatest('input-stats-total-pieces')).should('have.attr', 'data-value', '1');
+                cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+                [0, 1, 2, 3].forEach((y) => {
+                    cy.get(block(0, y)).should('have.attr', 'color', Color.Empty.Normal);
+                });
+
+                operations.mode.piece.harddrop();
+                cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+                holeColumnAt(0).should('equal', senderColumn);
+
+                // Reloading the same tab restores the autosave (normal startup screen) with the INPUT state kept.
+                cy.reload();
+                cy.get(datatest('text-pages')).should('contain', '2 / 2');
+                operations.screen.writable();
+                cy.get(datatest('btn-piece-layout')).click();
+                cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+                cy.get(datatest('input-stats-total-pieces')).should('have.attr', 'data-value', '2');
+                // The ATTACK row only exists while the page carries its garbage context.
+                cy.get(datatest('input-garbage-damage')).should('exist');
+            });
+        });
+    });
+
     it('never rewinds across a fumen load', () => {
         visit({ mode: 'edit' });
         cy.get(datatest('btn-paint-mode')).click();

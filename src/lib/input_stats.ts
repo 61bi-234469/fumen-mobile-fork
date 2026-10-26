@@ -142,11 +142,12 @@ export const computeInputStats = (
     const currentComment = pages.length === 0 ? '' : resolvePageCommentText(pages, resolvedIndex);
     const sevenBagGray = pages[resolvedIndex]?.internal?.sevenBagGrayProgress
         ?? parseSevenBagGrayProgress(currentComment);
+    const preset = resolveInputRulesPreset(rotationSystem);
     if (sevenBagGray !== undefined) {
         const seed = parseQueueStateComment(currentComment);
         return {
             ...initial,
-            b2bChain: seed?.b2b ? 1 : 0,
+            b2bChain: capB2bChain(seed?.b2bLevel ?? 0, preset),
             renChain: fromCommentCombo(seed?.combo ?? 0),
             pieces: sevenBagGray.pieces,
             lines: sevenBagGray.lines,
@@ -179,18 +180,18 @@ export const computeInputStats = (
         // The boundary page's piece is still active; only completed pages after it are replayed.
         indices = route.slice(boundaryPosition + 1).filter(index => index !== currentIndex);
     } else {
-        if (currentIndex <= 0) return initial;
+        // The first page's b2b=/combo= describe the state before its own piece, so they apply even on page 0.
         const seed = parseQueueStateComment(resolvePageCommentText(pages, 0));
         stats = seed ? {
             ...initial,
-            b2bChain: seed.b2b ? 1 : 0,
+            b2bChain: capB2bChain(seed.b2bLevel, preset),
             renChain: fromCommentCombo(seed.combo),
         } : initial;
+        if (currentIndex <= 0) return stats;
         indices = route.filter(index => index !== currentIndex);
     }
     const pagesObject = new Pages(pages);
     const replayedFields = pagesObject.replayFieldIndices(indices, PageFieldOperation.Command);
-    const preset = resolveInputRulesPreset(rotationSystem);
     for (let position = 0; position < indices.length; position += 1) {
         const index = indices[position];
         const page = pages[index];

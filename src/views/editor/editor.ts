@@ -336,15 +336,20 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const surgeChargeAt = chainPreset !== 'tetrioS2' ? undefined : inputReplayContext !== undefined
         ? inputReplayContext.garbage.rules.b2bCharging ? inputReplayContext.garbage.rules.b2bChargeAt : undefined
         : SRS_PLUS_SURGE_CHARGE_AT;
+    const openInputState = () => {
+        actions.commitCommentText();
+        actions.openInputStateModal();
+    };
     const statsPanel = !layout.pieceQueue.visible
         ? undefined
         : inputStatsTier === 'hidden'
             ? INPUT_CHAIN_PANEL_MIN_HEIGHT <= inputStatsHeight
-                ? inputChainPanel(computedInputStats, { surgeChargeAt, preset: chainPreset }) : undefined
+                ? inputChainPanel(computedInputStats, { surgeChargeAt, preset: chainPreset, open: openInputState })
+                : undefined
             : inputStatsPanel({
                 ...computedInputStats,
                 lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-            }, inputStatsTier, inputStatsGarbage, { surgeChargeAt, preset: chainPreset });
+            }, inputStatsTier, inputStatsGarbage, { surgeChargeAt, preset: chainPreset, open: openInputState });
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
         statsPanel,

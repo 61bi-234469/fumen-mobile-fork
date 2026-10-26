@@ -43,6 +43,7 @@ import { showToast } from '../lib/toast';
 import { rebuildPageRefsForOrder } from './tree_operations';
 import { i18n } from '../locales/keys';
 import { copyTextToClipboard } from '../lib/clipboard_copy';
+import { extractInputSnapshotsFromPages } from '../lib/input_snapshot';
 
 type ClipboardImportMode = 'import' | 'add';
 
@@ -1089,7 +1090,13 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        const { cleanedPages, tree } = extractTreeFromPages(pages);
+        const { cleanedPages: treeCleanedPages, tree } = extractTreeFromPages(pages);
+        // 取り込むページ列の中だけで isnap= を読む（"^" も取り込み側の直前トークンを指す）
+        const inputSnapshots = extractInputSnapshotsFromPages(treeCleanedPages);
+        if (inputSnapshots.unsupported) {
+            showToast(i18n.InputState.UnsupportedVersion(), 5000);
+        }
+        const cleanedPages = inputSnapshots.pages;
         const normalizedImportedTree = tree ? ensureVirtualRoot(tree) : null;
 
         const insertIndex = state.fumen.pages.length;

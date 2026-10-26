@@ -13,6 +13,7 @@ interface InputGarbageModalProps {
         closeInputGarbageModal: () => void;
         updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => void;
         applyInputGarbageDraft: () => void;
+        applyInputGarbageDraftAndOpenState: () => void;
     };
 }
 
@@ -59,6 +60,12 @@ export const InputGarbageModal: Component<InputGarbageModalProps> = ({ segments,
 
     const apply = () => {
         actions.applyInputGarbageDraft();
+        close();
+    };
+
+    // Reaches the INPUT State sheet when the left status panel has no room; the draft is applied first.
+    const applyAndOpenState = () => {
+        actions.applyInputGarbageDraftAndOpenState();
         close();
     };
 
@@ -179,6 +186,13 @@ export const InputGarbageModal: Component<InputGarbageModalProps> = ({ segments,
                               style={style({ color: '#e53935', fontWeight: '700' })}>
                             {i18n.InputGarbage.Total(total)}
                         </span>
+                    </div>
+                    <div key="state-link" style={style({ marginTop: px(8), textAlign: 'right' })}>
+                        <a href="#" key="btn-open-state" datatest="btn-input-garbage-open-state"
+                           className="waves-effect waves-teal btn-flat"
+                           onclick={applyAndOpenState} style={style({ padding: '0 8px', textTransform: 'none' })}>
+                            {i18n.InputGarbage.ApplyAndOpenState()}
+                        </a>
                     </div>
                 </div>
 

@@ -22,7 +22,7 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
 
 export type EditShortcuts = {
     [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome'
-        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut' | 'MinoBlockToggle']: string;
+        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut' | 'MinoBlockToggle' | 'InputShareUrl']: string;
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
@@ -31,6 +31,7 @@ export const defaultEditShortcuts: EditShortcuts = {
     Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'KeyN',
     Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
     MinoBlockToggle: 'KeyB',
+    InputShareUrl: '',
 };
 
 export type PieceShortcuts = {
@@ -361,6 +362,7 @@ export interface State {
         coldClearMenu: boolean;
         pieceQueue: boolean;
         inputGarbage: boolean;
+        inputState: boolean;
     };
     temporary: {
         userSettings: {
@@ -583,6 +585,7 @@ export const initState: Readonly<State> = {
         coldClearMenu: false,
         pieceQueue: false,
         inputGarbage: false,
+        inputState: false,
     },
     temporary: {
         userSettings: {
@@ -748,6 +751,7 @@ export const resources = {
         coldClearMenu: undefined as any,
         pieceQueue: undefined as any,
         inputGarbage: undefined as any,
+        inputState: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

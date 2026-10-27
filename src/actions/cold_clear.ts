@@ -212,7 +212,7 @@ export interface ColdClearActions {
         hold: Piece | null;
         current: Piece | null;
         queue: Piece[];
-        b2b: boolean;
+        b2b: boolean | number;
         combo: number;
         syncCurrentPiece?: boolean;
     }) => action;
@@ -705,6 +705,8 @@ export interface ColdClearMenuQueueState {
     current: Piece | null;
     queue: Piece[];
     b2b: boolean;
+    // B2B の連鎖数（b2b=N）。キュー編集で書き戻すときに 1 へ潰さないために保持する
+    b2bLevel: number;
     combo: number;
     score: number | null;
 }
@@ -744,6 +746,7 @@ export const resolveCurrentColdClearMenuQueueState = (
             current: null,
             queue: [],
             b2b: false,
+            b2bLevel: 0,
             combo: 0,
             score: null,
         };
@@ -760,6 +763,7 @@ export const resolveCurrentColdClearMenuQueueState = (
         current: parsed.current,
         queue: parsed.queue.slice(),
         b2b: parsed.b2b,
+        b2bLevel: parsed.b2bLevel,
         combo: parsed.combo,
         score: parseScoreFromComment(commentText),
     };
@@ -2915,7 +2919,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: queueState.hold,
             current: page.piece.type,
             queue: queueState.queue,
-            b2b: queueState.b2b,
+            b2b: queueState.b2bLevel,
             combo: queueState.combo,
         })(state);
     },
@@ -2936,7 +2940,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: queueState.hold,
             current: queueState.queue[0],
             queue: queueState.queue.slice(1),
-            b2b: queueState.b2b,
+            b2b: queueState.b2bLevel,
             combo: queueState.combo,
         })(state);
     },

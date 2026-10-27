@@ -338,7 +338,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         : SRS_PLUS_SURGE_CHARGE_AT;
     const openInputState = () => {
         actions.commitCommentText();
-        actions.openInputStateModal();
+        actions.openInputWindow({ tab: 'state' });
     };
     const statsPanel = !layout.pieceQueue.visible
         ? undefined
@@ -361,7 +361,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         guideLineColor: state.fumen.guideLineColor,
         infinitePieceQueue: state.editorUi.infinitePieceQueue,
         sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
-        openSettings: ({ focus }) => actions.openPieceQueueModal({ focus }),
+        openSettings: ({ focus }) => actions.openInputWindow({ focus, tab: 'queue' }),
         toggleInfinitePieceQueue: () => {
             actions.commitCommentText();
             actions.toggleInfinitePieceQueue();
@@ -400,13 +400,13 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             'aria-label': i18n.InputGarbage.Open(),
             onclick: (event: MouseEvent) => {
                 actions.commitCommentText();
-                actions.openInputGarbageModal();
+                actions.openInputWindow({ tab: 'garbage' });
                 event.preventDefault();
                 event.stopPropagation();
             },
             onkeydown: (event: KeyboardEvent) => {
                 if (event.key === 'Enter' || event.key === ' ') {
-                    actions.openInputGarbageModal();
+                    actions.openInputWindow({ tab: 'garbage' });
                     event.preventDefault();
                 }
             },

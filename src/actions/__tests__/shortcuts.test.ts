@@ -340,9 +340,9 @@ describe('clipboard insert shortcut', () => {
         expect(selectEditorPalette).not.toHaveBeenCalled();
     });
 
-    test('PIECE shortcuts stay disabled while the piece queue modal is open', () => {
+    test('PIECE shortcuts stay disabled while the INPUT window is open', () => {
         state.editorUi.primaryTool = 'piece';
-        (state.modal as State['modal']).pieceQueue = true;
+        (state.modal as State['modal']).inputWindow = true;
 
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));

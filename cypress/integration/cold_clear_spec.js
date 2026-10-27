@@ -245,7 +245,7 @@ describe('Cold Clear menu', () => {
 
         cy.get(datatest('btn-cold-clear-setup-queue')).click();
         cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
-        cy.get(datatest('mdl-piece-queue')).should('not.exist');
+        cy.get(datatest('mdl-input-window')).should('not.exist');
         cy.get(datatest('input-cold-clear-queue')).should('be.focused');
     });
 

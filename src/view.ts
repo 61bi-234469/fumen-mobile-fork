@@ -15,12 +15,10 @@ import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewMenuModal } from './components/modals/list_view_menu';
 import { TreeDisableConfirmModal } from './components/modals/tree_disable_confirm';
-import { InputGarbageModal } from './components/modals/input_garbage';
-import { InputStateModal } from './components/modals/input_state';
+import { InputWindowModal } from './components/modals/input_window';
 import { describeInputState, resolveInputShareContext } from './lib/input_snapshot';
 import { resolveInputRulesPreset } from './lib/input_stats';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
-import { PieceQueueModal } from './components/modals/piece_queue';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
 import { canShowSidePanel, getSidePanelWidth } from './views/editor/side_panel_layout';
@@ -157,24 +155,23 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
         }) : undefined as any,
 
-        state.modal.inputGarbage ? InputGarbageModal({
-            actions,
-            segments: state.temporary.inputGarbageSegments,
-        }) : undefined as any,
-
-        state.modal.inputState ? (() => {
-            // Shows exactly what the share URL carries (same context resolution as the share action).
+        state.modal.inputWindow ? (() => {
+            // The State tab shows exactly what the share URL carries (same context resolution as the share action).
             const context = resolveInputShareContext(state.fumen.pages, state.fumen.currentIndex, {
                 rotationSystem: state.mode.rotationSystem,
                 tree: state.tree.enabled && state.tree.rootId !== null
                     ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
                 seed: 1,
             });
-            return context === undefined ? undefined as any : InputStateModal({
+            return InputWindowModal({
                 actions,
-                description: describeInputState(context),
-                rotationSystem: state.mode.rotationSystem,
+                currentQueueState,
+                canClearComment,
+                tab: state.temporary.inputWindowTab,
+                description: context === undefined ? undefined : describeInputState(context),
                 preset: resolveInputRulesPreset(state.mode.rotationSystem),
+                garbageSegments: state.temporary.inputGarbageSegments,
+                pieceQueueFocus: state.temporary.pieceQueueFocus,
             });
         })() : undefined as any,
 
@@ -199,13 +196,6 @@ export const view: View<State, Actions> = (state, actions) => {
             weightsPreset: state.coldClear.weightsPreset,
             thinkMs: state.coldClear.thinkMs,
             setupNeeds: resolveColdClearSearchSetupNeeds(state),
-        }) : undefined as any,
-
-        state.modal.pieceQueue ? PieceQueueModal({
-            actions,
-            currentQueueState,
-            canClearComment,
-            initialFocus: state.temporary.pieceQueueFocus,
         }) : undefined as any,
 
         div({ key: 'view-end' }),

@@ -68,6 +68,7 @@ export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
 export type PaletteSelection = Piece | 'comp';
 export type PieceQueueFocus = 'hold' | 'current' | 'next';
+export type InputWindowTab = 'state' | 'garbage' | 'queue';
 // PIECE状態の右列レイアウト。'select'＝カレントミノ選択重視（パレット表示）、
 // 'play'＝テトリス操作重視（HOLD/NEXTキュー表示）
 export type PieceLayoutMode = 'play' | 'select';
@@ -360,9 +361,7 @@ export interface State {
         listViewMenu: boolean;
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
-        pieceQueue: boolean;
-        inputGarbage: boolean;
-        inputState: boolean;
+        inputWindow: boolean;
     };
     temporary: {
         userSettings: {
@@ -392,8 +391,11 @@ export interface State {
             flagsHidden: boolean;
         };
         userSettingsTab: UserSettingsTab;
+        inputWindowTab: InputWindowTab;
+        // Queueタブを開いたときだけ、閉じる際にキューを確定する
+        inputWindowQueueVisited: boolean;
         pieceQueueFocus: PieceQueueFocus;
-        // INPUTのせり上がり設定モーダルで編集中の区間（適用するまでページには反映しない）
+        // INPUTウィンドウのせり上がりタブで編集中の区間（タブを離れるか閉じるまでページには反映しない）
         inputGarbageSegments: InputGarbageSegment[];
     };
     handlers: {
@@ -583,9 +585,7 @@ export const initState: Readonly<State> = {
         listViewMenu: false,
         treeDisableConfirm: false,
         coldClearMenu: false,
-        pieceQueue: false,
-        inputGarbage: false,
-        inputState: false,
+        inputWindow: false,
     },
     temporary: {
         userSettings: {
@@ -615,6 +615,8 @@ export const initState: Readonly<State> = {
             flagsHidden: true,
         },
         userSettingsTab: 'edit',
+        inputWindowTab: 'state',
+        inputWindowQueueVisited: false,
         pieceQueueFocus: 'next',
         inputGarbageSegments: [],
     },
@@ -749,9 +751,7 @@ export const resources = {
         listViewMenu: undefined as any,
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
-        pieceQueue: undefined as any,
-        inputGarbage: undefined as any,
-        inputState: undefined as any,
+        inputWindow: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

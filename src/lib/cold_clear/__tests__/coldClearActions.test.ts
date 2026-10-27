@@ -3088,6 +3088,7 @@ describe('coldClearActions run isolation', () => {
             current: null,
             queue: [],
             b2b: false,
+            b2bLevel: 0,
             combo: 0,
             score: null,
         });

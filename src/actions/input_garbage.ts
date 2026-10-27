@@ -17,13 +17,8 @@ export const INPUT_GARBAGE_MAX_SEGMENTS = 10;
 export const INPUT_GARBAGE_MAX_AMOUNT = 20;
 
 export interface InputGarbageActions {
-    openInputGarbageModal: () => action;
-    closeInputGarbageModal: () => action;
     updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => action;
     applyInputGarbageDraft: () => action;
-    applyInputGarbageDraftAndOpenState: () => action;
-    openInputStateModal: () => action;
-    closeInputStateModal: () => action;
 }
 
 const clampSegment = (segment: InputGarbageSegment): InputGarbageSegment => ({
@@ -31,19 +26,17 @@ const clampSegment = (segment: InputGarbageSegment): InputGarbageSegment => ({
     column: segment.column === null ? null : Math.max(0, Math.min(9, Math.floor(segment.column))),
 });
 
-const currentSegments = (state: State): InputGarbageSegment[] => {
+export const currentInputGarbageSegments = (state: State): InputGarbageSegment[] => {
     const context = state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext;
     return context === undefined ? [] : inputGarbageSegments(context);
 };
 
+const sameSegments = (left: InputGarbageSegment[], right: InputGarbageSegment[]): boolean => (
+    left.length === right.length
+    && left.every((segment, index) => segment.amount === right[index].amount && segment.column === right[index].column)
+);
+
 export const inputGarbageActions: Readonly<InputGarbageActions> = {
-    openInputGarbageModal: () => (state): NextState => ({
-        modal: { ...state.modal, inputGarbage: true },
-        temporary: { ...state.temporary, inputGarbageSegments: currentSegments(state) },
-    }),
-    closeInputGarbageModal: () => (state): NextState => ({
-        modal: { ...state.modal, inputGarbage: false },
-    }),
     updateInputGarbageDraft: ({ segments }) => (state): NextState => ({
         temporary: {
             ...state.temporary,
@@ -55,14 +48,17 @@ export const inputGarbageActions: Readonly<InputGarbageActions> = {
     applyInputGarbageDraft: () => (state): NextState => {
         const pageIndex = state.fumen.currentIndex;
         const page = state.fumen.pages[pageIndex];
-        const close = inputGarbageActions.closeInputGarbageModal();
         if (page === undefined) {
-            return close(state);
+            return undefined;
         }
         const segments = state.temporary.inputGarbageSegments.map(clampSegment);
         const existing = page.internal?.inputReplayContext;
         if (existing === undefined && segments.length === 0) {
-            return close(state);
+            return undefined;
+        }
+        // Applied whenever the window leaves the tab; an untouched draft must not rewrite the page or add history.
+        if (sameSegments(segments, currentInputGarbageSegments(state))) {
+            return undefined;
         }
         const base = existing ?? createDefaultInputReplayContext(
             computeInputStats(state.fumen.pages, pageIndex, {
@@ -84,18 +80,6 @@ export const inputGarbageActions: Readonly<InputGarbageActions> = {
             // A deliberate setup step: INPUT's queue-unit undo stops here instead of discarding it with the lock.
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, previousPage, page), pieceSpawn: true }),
             actions.reopenCurrentPage(),
-            close,
         ]);
     },
-    // The draft is not on the page until applied; opening the sheet first would share the old garbage.
-    applyInputGarbageDraftAndOpenState: () => (state): NextState => sequence(state, [
-        inputGarbageActions.applyInputGarbageDraft(),
-        inputGarbageActions.openInputStateModal(),
-    ]),
-    openInputStateModal: () => (state): NextState => ({
-        modal: { ...state.modal, inputState: true },
-    }),
-    closeInputStateModal: () => (state): NextState => ({
-        modal: { ...state.modal, inputState: false },
-    }),
 };

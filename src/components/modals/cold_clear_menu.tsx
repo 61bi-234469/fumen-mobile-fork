@@ -30,6 +30,7 @@ interface ColdClearQueueState {
     current: Piece | null;
     queue: Piece[];
     b2b: boolean;
+    b2bLevel: number;
     combo: number;
     score: number | null;
 }
@@ -74,7 +75,7 @@ interface ColdClearMenuModalProps {
             hold: Piece | null;
             current: Piece | null;
             queue: Piece[];
-            b2b: boolean;
+            b2b: boolean | number;
             combo: number;
             syncCurrentPiece?: boolean;
         }) => void;
@@ -370,7 +371,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             hold: next.hold,
             current: next.current,
             queue: next.queue,
-            b2b: next.b2b,
+            // Keep the chain level (b2b=N) unless the B2B checkbox itself changed.
+            b2b: next.b2b === currentQueueState.b2b ? currentQueueState.b2bLevel : next.b2b,
             combo: Math.max(0, Math.floor(next.combo)),
         });
     };

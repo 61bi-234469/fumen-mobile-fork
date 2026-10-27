@@ -1,19 +1,13 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { resources } from '../../states';
 import { i18n } from '../../locales/keys';
 import { InputGarbageSegment } from '../../lib/input_replay';
 import { INPUT_GARBAGE_MAX_AMOUNT, INPUT_GARBAGE_MAX_SEGMENTS } from '../../actions/input_garbage';
 
-declare const M: any;
-
-interface InputGarbageModalProps {
+interface InputGarbagePaneProps {
     segments: InputGarbageSegment[];
     actions: {
-        closeInputGarbageModal: () => void;
         updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => void;
-        applyInputGarbageDraft: () => void;
-        applyInputGarbageDraftAndOpenState: () => void;
     };
 }
 
@@ -40,47 +34,8 @@ const stepButton = (
     </button>
 );
 
-export const InputGarbageModal: Component<InputGarbageModalProps> = ({ segments, actions }) => {
-    const destroy = () => {
-        resources.modals.inputGarbage = undefined;
-    };
-
-    const close = () => {
-        const modal = resources.modals.inputGarbage;
-        if (modal !== undefined) {
-            modal.close();
-        }
-        destroy();
-    };
-
-    const cancel = () => {
-        actions.closeInputGarbageModal();
-        close();
-    };
-
-    const apply = () => {
-        actions.applyInputGarbageDraft();
-        close();
-    };
-
-    // Reaches the INPUT State sheet when the left status panel has no room; the draft is applied first.
-    const applyAndOpenState = () => {
-        actions.applyInputGarbageDraftAndOpenState();
-        close();
-    };
-
-    const oncreate = (element: HTMLDivElement) => {
-        const instance = M.Modal.init(element, {
-            onCloseStart: () => {
-                actions.closeInputGarbageModal();
-                destroy();
-            },
-        });
-
-        instance.open();
-        resources.modals.inputGarbage = instance;
-    };
-
+// The draft reaches the page when the window leaves this tab or closes (see closeInputWindow).
+export const InputGarbagePane: Component<InputGarbagePaneProps> = ({ segments, actions }) => {
     const update = (index: number, patch: Partial<InputGarbageSegment>) => {
         actions.updateInputGarbageDraft({
             segments: segments.map((segment, current) => current === index ? { ...segment, ...patch } : segment),
@@ -147,70 +102,53 @@ export const InputGarbageModal: Component<InputGarbageModalProps> = ({ segments,
     ));
 
     return (
-        <div key="input-garbage-modal-top">
-            <div key="mdl-input-garbage" datatest="mdl-input-garbage" className="modal" oncreate={oncreate}>
-                <div key="modal-content" className="modal-content">
-                    <h4 key="title">{i18n.InputGarbage.Title()}</h4>
-                    <p key="description" style={style({ color: '#616161', fontSize: px(13) })}>
-                        {i18n.InputGarbage.Description()}
+        <div key="panel-input-window-garbage" datatest="panel-input-window-garbage">
+            <p key="description" style={style({ color: '#616161', fontSize: px(13) })}>
+                {i18n.InputGarbage.Description()}
+            </p>
+            <div key="segments" datatest="input-garbage-segments">
+                {segments.length === 0
+                    ? <p key="empty" datatest="input-garbage-empty" style={style({ color: '#9e9e9e' })}>
+                        {i18n.InputGarbage.Empty()}
                     </p>
-                    <div key="segments" datatest="input-garbage-segments">
-                        {segments.length === 0
-                            ? <p key="empty" datatest="input-garbage-empty" style={style({ color: '#9e9e9e' })}>
-                                {i18n.InputGarbage.Empty()}
-                            </p>
-                            // Stack bottom-up like the in-game gauge: segment 1 sits at the bottom.
-                            : rows.slice().reverse()}
-                    </div>
-                    <div
-                        key="summary"
-                        style={style({
-                            alignItems: 'center', display: 'flex', justifyContent: 'space-between', marginTop: px(8),
-                        })}
-                    >
-                        <button
-                            key="btn-add"
-                            datatest="btn-input-garbage-add"
-                            type="button"
-                            className="btn-flat waves-effect"
-                            disabled={INPUT_GARBAGE_MAX_SEGMENTS <= segments.length}
-                            onclick={() => actions.updateInputGarbageDraft({
-                                segments: [...segments, DEFAULT_SEGMENT],
-                            })}
-                            style={style({ padding: '0 8px' })}
-                        >
-                            <i key="icon" className="material-icons left notranslate">add</i>
-                            {i18n.InputGarbage.Add()}
-                        </button>
-                        <span key="total" datatest="input-garbage-total" data-total={String(total)}
-                              style={style({ color: '#e53935', fontWeight: '700' })}>
-                            {i18n.InputGarbage.Total(total)}
-                        </span>
-                    </div>
-                    <div key="state-link" style={style({ marginTop: px(8), textAlign: 'right' })}>
-                        <a href="#" key="btn-open-state" datatest="btn-input-garbage-open-state"
-                           className="waves-effect waves-teal btn-flat"
-                           onclick={applyAndOpenState} style={style({ padding: '0 8px', textTransform: 'none' })}>
-                            {i18n.InputGarbage.ApplyAndOpenState()}
-                        </a>
-                    </div>
-                </div>
-
-                <div key="modal-footer" className="modal-footer">
-                    <a href="#" key="btn-clear" datatest="btn-input-garbage-clear"
-                       className="waves-effect waves-teal btn-flat left"
-                       onclick={() => actions.updateInputGarbageDraft({ segments: [] })}>
-                        {i18n.InputGarbage.ClearAll()}
-                    </a>
-                    <a href="#" key="btn-cancel" datatest="btn-input-garbage-cancel"
-                       className="waves-effect waves-teal btn-flat" onclick={cancel}>
-                        {i18n.InputGarbage.Cancel()}
-                    </a>
-                    <a href="#" key="btn-apply" datatest="btn-input-garbage-apply"
-                       className="waves-effect waves-light btn" onclick={apply}>
-                        {i18n.InputGarbage.Apply()}
-                    </a>
-                </div>
+                    // Stack bottom-up like the in-game gauge: segment 1 sits at the bottom.
+                    : rows.slice().reverse()}
+            </div>
+            <div
+                key="summary"
+                style={style({
+                    alignItems: 'center', columnGap: px(8), display: 'flex', flexWrap: 'wrap', marginTop: px(8),
+                })}
+            >
+                <button
+                    key="btn-add"
+                    datatest="btn-input-garbage-add"
+                    type="button"
+                    className="btn-flat waves-effect"
+                    disabled={INPUT_GARBAGE_MAX_SEGMENTS <= segments.length}
+                    onclick={() => actions.updateInputGarbageDraft({
+                        segments: [...segments, DEFAULT_SEGMENT],
+                    })}
+                    style={style({ padding: '0 8px' })}
+                >
+                    <i key="icon" className="material-icons left notranslate">add</i>
+                    {i18n.InputGarbage.Add()}
+                </button>
+                <button
+                    key="btn-clear"
+                    datatest="btn-input-garbage-clear"
+                    type="button"
+                    className="btn-flat waves-effect"
+                    disabled={segments.length === 0}
+                    onclick={() => actions.updateInputGarbageDraft({ segments: [] })}
+                    style={style({ padding: '0 8px' })}
+                >
+                    {i18n.InputGarbage.ClearAll()}
+                </button>
+                <span key="total" datatest="input-garbage-total" data-total={String(total)}
+                      style={style({ color: '#e53935', fontWeight: '700', marginLeft: 'auto' })}>
+                    {i18n.InputGarbage.Total(total)}
+                </span>
             </div>
         </div>
     );

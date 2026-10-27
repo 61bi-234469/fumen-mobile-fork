@@ -1,0 +1,193 @@
+import { Component, px, style } from '../../lib/types';
+import { h } from 'hyperapp';
+import { ColdClearMenuQueueState } from '../../actions/cold_clear';
+import { Piece } from '../../lib/enums';
+import { InputGarbageSegment } from '../../lib/input_replay';
+import { InputStateDescription } from '../../lib/input_snapshot';
+import { InputRulesPreset } from '../../lib/input_stats';
+import { i18n } from '../../locales/keys';
+import { InputWindowTab, PieceQueueFocus, resources } from '../../states';
+import { EDITOR_ACTIVE_COLOR } from '../../views/editor/editor_control_style';
+import { InputGarbagePane } from './input_garbage';
+import { InputStatePane } from './input_state';
+import { PieceQueuePane } from './piece_queue';
+
+declare const M: any;
+
+interface InputWindowModalProps {
+    tab: InputWindowTab;
+    // undefined when the current page cannot be shared (same resolution as the share action)
+    description: InputStateDescription | undefined;
+    preset: InputRulesPreset;
+    garbageSegments: InputGarbageSegment[];
+    currentQueueState: ColdClearMenuQueueState | null;
+    canClearComment: boolean;
+    pieceQueueFocus: PieceQueueFocus;
+    actions: {
+        selectInputWindowTab: (data: { tab: InputWindowTab }) => void;
+        closeInputWindow: () => void;
+        setInputChainCounters: (data: { b2bChain?: number; renChain?: number }) => void;
+        copyInputShareUrlToClipboard: (data?: { native?: boolean }) => void;
+        updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => void;
+        previewColdClearQueueComment: (data: {
+            hold: Piece | null;
+            current: Piece | null;
+            queue: Piece[];
+            b2b: boolean | number;
+            combo: number;
+            syncCurrentPiece?: boolean;
+        }) => void;
+        clearCommentForColdClearQueue: () => void;
+        appendColdClearOneBagToComment: () => void;
+    };
+}
+
+const TABS: InputWindowTab[] = ['queue', 'state', 'garbage'];
+
+const tabLabel = (tab: InputWindowTab): string => {
+    switch (tab) {
+    case 'state':
+        return i18n.InputWindow.Tabs.State();
+    case 'garbage':
+        return i18n.InputWindow.Tabs.Garbage();
+    case 'queue':
+        return i18n.InputWindow.Tabs.Queue();
+    }
+};
+
+export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
+    const { tab, actions } = props;
+    const destroy = () => {
+        resources.modals.inputWindow = undefined;
+    };
+
+    const close = () => {
+        actions.closeInputWindow();
+        const modal = resources.modals.inputWindow;
+        if (modal !== undefined) {
+            modal.close();
+        }
+        destroy();
+    };
+
+    const oncreate = (element: HTMLDivElement) => {
+        const instance = M.Modal.init(element, {
+            onCloseStart: () => {
+                actions.closeInputWindow();
+                destroy();
+            },
+        });
+
+        instance.open();
+        resources.modals.inputWindow = instance;
+    };
+
+    // Shared by every tab for now. Closing first applies the garbage draft and commits the queue,
+    // so the URL carries what the window shows.
+    const share = (native: boolean) => {
+        close();
+        actions.copyInputShareUrlToClipboard({ native });
+    };
+
+    const nativeShareAvailable = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+    const pane = () => {
+        switch (tab) {
+        case 'state':
+            return props.description === undefined ? undefined as any : InputStatePane({
+                actions,
+                description: props.description,
+                preset: props.preset,
+            });
+        case 'garbage':
+            return InputGarbagePane({ actions, segments: props.garbageSegments });
+        case 'queue':
+            return PieceQueuePane({
+                actions,
+                currentQueueState: props.currentQueueState,
+                canClearComment: props.canClearComment,
+                initialFocus: props.pieceQueueFocus,
+            });
+        }
+    };
+
+    return (
+        <div key="input-window-modal-top">
+            <div key="mdl-input-window" datatest="mdl-input-window" data-tab={tab}
+                 className="modal modal-fixed-footer" oncreate={oncreate}
+                 style={style({ height: `min(${px(460)}, 75%)`, maxWidth: px(480), width: '92%' })}>
+                {/* A fixed height keeps the window still when tabs of different lengths swap in. */}
+                <div key="modal-content" className="modal-content" style={style({ paddingTop: '0' })}>
+                    <div key="header" style={style({
+                        background: '#fff', paddingTop: px(12), position: 'sticky', top: '0', zIndex: 1,
+                    })}>
+                        <div key="title" style={style({
+                            color: '#333', fontSize: px(20), fontWeight: '500', lineHeight: px(28),
+                        })}>
+                            {i18n.InputWindow.Title()}
+                        </div>
+                        <div key="tabs" role="tablist" style={style({
+                            borderBottom: 'solid 1px #ddd', display: 'flex', marginTop: px(8),
+                        })}>
+                            {TABS.map(current => (
+                                <a href="#" key={`tab-input-window-${current}`} datatest={`tab-input-window-${current}`}
+                                   role="tab" aria-selected={tab === current ? 'true' : 'false'}
+                                   style={style({
+                                       borderBottom: tab === current
+                                           ? `solid 2px ${EDITOR_ACTIVE_COLOR}` : 'solid 2px transparent',
+                                       color: tab === current ? EDITOR_ACTIVE_COLOR : '#666',
+                                       cursor: 'pointer',
+                                       flexGrow: 1,
+                                       fontSize: px(13),
+                                       fontWeight: tab === current ? 'bold' : 'normal',
+                                       padding: '8px 4px',
+                                       textAlign: 'center',
+                                       whiteSpace: 'nowrap',
+                                   })}
+                                   onclick={(event: MouseEvent) => {
+                                       event.preventDefault();
+                                       event.stopPropagation();
+                                       actions.selectInputWindowTab({ tab: current });
+                                   }}>
+                                    {tabLabel(current)}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                    <div key="pane" style={style({ color: '#333', marginTop: px(12) })}>
+                        {pane()}
+                    </div>
+                </div>
+
+                <div key="modal-footer" className="modal-footer">
+                    <a href="#" key="btn-close" datatest="btn-input-window-close"
+                       className="waves-effect waves-teal btn-flat"
+                       onclick={(event: MouseEvent) => {
+                           event.preventDefault();
+                           close();
+                       }}>
+                        {i18n.InputWindow.Close()}
+                    </a>
+                    {nativeShareAvailable ? (
+                        <a href="#" key="btn-share-native" datatest="btn-input-share-native"
+                           className="waves-effect waves-teal btn-flat"
+                           onclick={(event: MouseEvent) => {
+                               event.preventDefault();
+                               share(true);
+                           }}>
+                            {i18n.InputState.NativeShare()}
+                        </a>
+                    ) : undefined as any}
+                    <a href="#" key="btn-share" datatest="btn-input-share-url"
+                       className="waves-effect waves-light btn"
+                       onclick={(event: MouseEvent) => {
+                           event.preventDefault();
+                           share(false);
+                       }}>
+                        {i18n.InputState.Share()}
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+};

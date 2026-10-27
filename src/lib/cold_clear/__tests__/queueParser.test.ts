@@ -1,5 +1,7 @@
 import { Piece } from '../../enums';
-import { buildQueueComment, buildQueueStateComment, parseQueueComment, parseQueueStateComment } from '../queueParser';
+import {
+    buildQueueComment, buildQueueStateComment, parseQueueComment, parseQueueStateComment, withQueueChainTokens,
+} from '../queueParser';
 
 describe('parseQueueComment (#Q format)', () => {
     test('parse queue without hold and current', () => {
@@ -406,5 +408,18 @@ describe('parseQueueStateComment with an INPUT snapshot token', () => {
         expect(parseQueueStateComment('isnap=1.eyJ2IjoxfQ b2b=3 combo=2 | #Q=[S](T)IO')).toMatchObject({
             hold: Piece.S, current: Piece.T, queue: [Piece.I, Piece.O], b2bLevel: 3, combo: 2,
         });
+    });
+});
+
+describe('withQueueChainTokens', () => {
+    test('rewrites b2b= and combo= and keeps the other tokens in place', () => {
+        expect(withQueueChainTokens('score=1.00 | b2b=1 combo=2 | #Q=[](T)IO', 4, 0))
+            .toBe('score=1.00 | b2b=4 | #Q=[](T)IO');
+        expect(withQueueChainTokens('#Q=[](T)IO', 2, 3)).toBe('b2b=2 combo=3 | #Q=[](T)IO');
+        expect(withQueueChainTokens('b2b=3 | #Q=[](T)IO', 0, 0)).toBe('#Q=[](T)IO');
+    });
+
+    test('returns null for a comment that is not a queue state', () => {
+        expect(withQueueChainTokens('hello', 1, 1)).toBeNull();
     });
 });

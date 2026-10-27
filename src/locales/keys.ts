@@ -464,8 +464,6 @@ export const i18n = {
         OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
     InputStats: {
-        Pieces: () => t('InputStats.Pieces'), Lines: () => t('InputStats.Lines'),
-        PerfectClears: () => t('InputStats.PerfectClears'),
         Attack: () => t('InputStats.Attack'),
         Cancelled: () => t('InputStats.Cancelled'),
         Sent: () => t('InputStats.Sent'),
@@ -500,7 +498,6 @@ export const i18n = {
         HoleColumn: (column: number) => t('InputState.HoleColumn', { column }),
         Total: (count: number) => t('InputState.Total', { count }),
         Chain: (count: number) => t('InputState.Chain', { count }),
-        Totals: () => t('InputState.Totals'),
         Rules: () => t('InputState.Rules'),
         League: () => t('InputState.League'),
         Replay: () => t('InputState.Replay'),

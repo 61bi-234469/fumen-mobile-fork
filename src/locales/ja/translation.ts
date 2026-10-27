@@ -421,7 +421,6 @@ export const resources = {
         OpenSettings: 'ピースキュー設定を開く',
     },
     InputStats: {
-        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
         SurgeCharged: 'Surgeチャージ済み: いまB2Bが途切れるとSurgeが発生します',
     },
@@ -456,7 +455,6 @@ export const resources = {
         HoleColumn: 'col {{column}}',
         Total: 'Total {{count}}',
         Chain: 'chain {{count}}',
-        Totals: 'PIECES / LINES / PC',
         Rules: 'Rules',
         League: 'League',
         Replay: 'Replay',

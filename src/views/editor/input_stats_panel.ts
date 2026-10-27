@@ -112,17 +112,6 @@ export const inputChainPanel = (stats: InputStats, options: InputChainPanelOptio
     style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer', padding: '1px 0' }),
 }, [...chainRows(stats, options), ...(options.open === undefined ? [] : [openMark()])]);
 
-const value = (key: string, label: string, current: number | undefined) => div({
-    key, datatest: key, 'data-value': current === undefined || current === 0 ? '' : String(current),
-    style: style({
-        display: 'flex', fontSize: px(11), fontWeight: '700', justifyContent: 'space-between',
-        lineHeight: px(13), padding: '1px 5px',
-    }),
-}, [
-    span({ key: `${key}-label` }, label),
-    span({ key: `${key}-value` }, current === undefined || current === 0 ? '—' : String(current)),
-]);
-
 // The value wraps under its label in the narrow HOLD column instead of widening it.
 const textValue = (key: string, label: string, current: string, dataValue: string) => div({
     key, datatest: key, 'data-value': dataValue,
@@ -163,11 +152,6 @@ export const inputStatsPanel = (
                 lastGarbage === undefined ? ''
                     : `${lastGarbage.attack}:${lastGarbage.cancelled}:${lastGarbage.sent}:${lastGarbage.risen}`,
             ),
-        ] : []),
-        ...(tier === 'full' ? [
-            value('input-stats-total-pieces', i18n.InputStats.Pieces(), stats.pieces),
-            value('input-stats-total-lines', i18n.InputStats.Lines(), stats.lines),
-            value('input-stats-total-pc', i18n.InputStats.PerfectClears(), stats.perfectClears),
         ] : []),
         ...(options.open === undefined ? [] : [openMark()]),
     ]);

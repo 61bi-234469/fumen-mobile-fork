@@ -679,7 +679,6 @@ describe('PIECE queues', () => {
         cy.get(datatest('mdl-input-garbage')).should('not.exist');
         cy.get(datatest('mdl-input-state')).should('be.visible');
         cy.get(datatest('input-state-garbage')).should('have.attr', 'data-value', '4:0,4:r');
-        cy.get(datatest('input-state-totals')).should('have.attr', 'data-value', '0:0:0');
         cy.get(datatest('input-state-rules')).should('have.attr', 'data-value', 'league');
         operations.inputState.close();
 
@@ -690,7 +689,6 @@ describe('PIECE queues', () => {
         stubClipboardWrite();
         operations.inputState.open();
         cy.get(datatest('input-state-garbage')).should('have.attr', 'data-value', '4:r');
-        cy.get(datatest('input-state-totals')).should('have.attr', 'data-value', '1:0:0');
         operations.inputState.share();
         cy.get('@writeText').should('have.been.calledOnce');
 
@@ -707,7 +705,6 @@ describe('PIECE queues', () => {
                 cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
                 cy.get(datatest('text-pages')).should('contain', '1 / 1');
                 cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
-                cy.get(datatest('input-stats-total-pieces')).should('have.attr', 'data-value', '1');
                 cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
                 [0, 1, 2, 3].forEach((y) => {
                     cy.get(block(0, y)).should('have.attr', 'color', Color.Empty.Normal);
@@ -723,7 +720,6 @@ describe('PIECE queues', () => {
                 operations.screen.writable();
                 cy.get(datatest('btn-piece-layout')).click();
                 cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
-                cy.get(datatest('input-stats-total-pieces')).should('have.attr', 'data-value', '2');
                 // The ATTACK row only exists while the page carries its garbage context.
                 cy.get(datatest('input-garbage-damage')).should('exist');
             });

@@ -117,9 +117,6 @@ export const InputStateModal: Component<InputStateModalProps> = ({ description, 
                             `${shownB2b(b2bChain, preset)} / ${shownCombo(stats.renChain)}`,
                             `${b2bChain}:${stats.renChain}`,
                             `${i18n.InputState.Chain(b2bChain)} / ${i18n.InputState.Chain(stats.renChain)}`)}
-                        {row('input-state-totals', i18n.InputState.Totals(),
-                            `${stats.pieces} / ${stats.lines} / ${stats.perfectClears}`,
-                            `${stats.pieces}:${stats.lines}:${stats.perfectClears}`)}
                         {row('input-state-rules', i18n.InputState.Rules(),
                             `${description.rules === 'league' ? i18n.InputState.League() : i18n.InputState.Replay()}`
                             + ` · ${rotationSystemLabel(rotationSystem)}`,

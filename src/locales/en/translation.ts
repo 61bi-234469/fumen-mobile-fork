@@ -438,7 +438,6 @@
         OpenSettings: 'Open piece queue settings',
     },
     InputStats: {
-        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
         SurgeCharged: 'Surge charged: breaking B2B now releases a Surge',
     },
@@ -473,7 +472,6 @@
         HoleColumn: 'col {{column}}',
         Total: 'Total {{count}}',
         Chain: 'chain {{count}}',
-        Totals: 'PIECES / LINES / PC',
         Rules: 'Rules',
         League: 'League',
         Replay: 'Replay',

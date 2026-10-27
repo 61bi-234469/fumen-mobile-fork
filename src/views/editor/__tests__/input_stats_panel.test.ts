@@ -28,14 +28,11 @@ describe('inputStatsPanel', () => {
 
     it.each(['en', 'ja'])('writes every row label in upper case (%s)', async (lng) => {
         await i18next.changeLanguage(lng);
-        const labels = labelsOf(inputStatsPanel(stats, 'full', { last: undefined }));
+        const labels = labelsOf(inputStatsPanel(stats, 'summary', { last: undefined }));
         expect(labels).toMatchObject({
             'input-stats-b2b': 'B2B',
             'input-stats-combo': 'COMBO',
             'input-garbage-damage': 'ATTACK',
-            'input-stats-total-pieces': 'PIECES',
-            'input-stats-total-lines': 'LINES',
-            'input-stats-total-pc': 'PC',
         });
         Object.values(labels).forEach(label => expect(label).toBe(label.toUpperCase()));
     });

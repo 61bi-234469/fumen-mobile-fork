@@ -20,8 +20,10 @@ export interface InputChainPanelOptions {
     open?: () => void;
 }
 
-const CHAIN_ACTIVE_COLOR = '#2e7d32';
+// Written straight onto the dark editor background, as s2-bot-lab does under HOLD.
+const CHAIN_ACTIVE_COLOR = '#33d17a';
 const CHAIN_IDLE_COLOR = '#9e9e9e';
+const ACTION_COLOR = '#ffb000';
 
 // Same counting as s2-bot-lab: B2B shows the engine's counter (0 after the first
 // B2B-eligible clear, — with no chain) and COMBO opens at 1 on the second clear in a row.
@@ -40,8 +42,9 @@ const chainRow = (key: string, label: string, shown: string, active: boolean, da
         ...(surge ? { 'data-surge': 'true', title: i18n.InputStats.SurgeCharged() } : {}),
         style: style({
             color: active ? CHAIN_ACTIVE_COLOR : CHAIN_IDLE_COLOR,
-            display: 'flex', fontSize: px(11), fontVariantNumeric: 'tabular-nums', fontWeight: '800', gap: px(2),
-            justifyContent: 'space-between', lineHeight: px(13), minWidth: '0', padding: '1px 5px',
+            display: 'flex', fontSize: px(11), fontVariantNumeric: 'tabular-nums', fontWeight: '700', gap: px(4),
+            justifyContent: 'center', letterSpacing: '.04em', lineHeight: px(14), minWidth: '0',
+            whiteSpace: 'nowrap',
         }),
     }, [
         span({ key: `${key}-label` }, label),
@@ -60,18 +63,8 @@ const chainRows = (stats: InputStats, options: InputChainPanelOptions) => {
 };
 
 const panelStyle: CSSProperties = {
-    background: '#fafafa', border: '1px solid #333', boxShadow: '0 2px 5px rgba(0, 0, 0, .16)',
-    boxSizing: 'border-box', color: '#333', marginTop: px(6), position: 'relative', width: '100%',
+    boxSizing: 'border-box', marginTop: px(6), padding: '2px 0', width: '100%',
 };
-
-// A corner fold marks the panel as tappable without adding a row, which would move the tier thresholds.
-const openMark = () => div({
-    key: 'input-stats-open-mark', datatest: 'input-stats-open-mark', 'aria-hidden': 'true',
-    style: style({
-        borderLeft: '7px solid transparent', borderTop: '7px solid #0d47a1', height: '0', pointerEvents: 'none',
-        position: 'absolute', right: '0', top: '0', width: '0',
-    }),
-});
 
 const panelAttributes = (open: (() => void) | undefined) => {
     if (open === undefined) return {};
@@ -109,19 +102,20 @@ const panelAttributes = (open: (() => void) | undefined) => {
 // Too little room for the full panel: the chain counters alone still fit under HOLD.
 export const inputChainPanel = (stats: InputStats, options: InputChainPanelOptions = {}) => div({
     key: 'input-stats', datatest: 'input-stats', ...panelAttributes(options.open),
-    style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer', padding: '1px 0' }),
-}, [...chainRows(stats, options), ...(options.open === undefined ? [] : [openMark()])]);
+    style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer' }),
+}, chainRows(stats, options));
 
 // The value wraps under its label in the narrow HOLD column instead of widening it.
 const textValue = (key: string, label: string, current: string, dataValue: string) => div({
     key, datatest: key, 'data-value': dataValue,
     style: style({
-        columnGap: px(2), display: 'flex', flexWrap: 'wrap', fontSize: px(10), fontWeight: '700',
-        justifyContent: 'space-between', lineHeight: px(13), minWidth: '0', padding: '1px 5px',
+        color: CHAIN_IDLE_COLOR, columnGap: px(4), display: 'flex', flexWrap: 'wrap', fontSize: px(10),
+        fontWeight: '700', justifyContent: 'center', letterSpacing: '.04em', lineHeight: px(13), marginTop: px(2),
+        minWidth: '0', textAlign: 'center',
     }),
 }, [
     span({ key: `${key}-label` }, label),
-    span({ key: `${key}-value`, style: style({ marginLeft: 'auto', textAlign: 'right' }) }, current),
+    span({ key: `${key}-value` }, current),
 ]);
 
 export const inputStatsPanel = (
@@ -131,17 +125,19 @@ export const inputStatsPanel = (
     options: InputChainPanelOptions = {},
 ) => {
     const action = stats.lastAction;
+    const actionLabel = formatActionLabel(action);
     const lastGarbage = garbage?.last;
     return div({
         key: 'input-stats', datatest: 'input-stats', ...panelAttributes(options.open),
         style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer' }),
     }, [
+        ...chainRows(stats, options),
         div({ key: 'input-stats-action', datatest: 'input-stats-action',
             'data-lines': String(action?.clearedLines ?? 0), 'data-spin': action?.spin ?? 'none',
-            style: style({ background: '#e8f1fb', borderBottom: '1px solid #333', color: '#0d47a1', fontSize: px(11),
-                fontWeight: '800', lineHeight: px(13), padding: '4px 2px', textAlign: 'center' }) },
-        formatActionLabel(action)),
-        ...chainRows(stats, options),
+            style: style({ color: actionLabel === '—' ? CHAIN_IDLE_COLOR : ACTION_COLOR, fontSize: px(11),
+                fontWeight: '700', letterSpacing: '.04em', lineHeight: px(14), minHeight: px(14),
+                textAlign: 'center' }) },
+        actionLabel),
         ...(garbage !== undefined && tier !== 'compact' ? [
             textValue(
                 'input-garbage-damage', i18n.InputStats.Attack(),
@@ -153,6 +149,5 @@ export const inputStatsPanel = (
                     : `${lastGarbage.attack}:${lastGarbage.cancelled}:${lastGarbage.sent}:${lastGarbage.risen}`,
             ),
         ] : []),
-        ...(options.open === undefined ? [] : [openMark()]),
     ]);
 };

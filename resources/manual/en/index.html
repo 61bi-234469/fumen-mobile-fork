@@ -67,8 +67,8 @@
 
     <h3>Draw with PAINT</h3>
     <div class="cards">
-      <div class="card"><h3>Pen</h3><p>Choose from seven colors, black, or gray, then tap or drag to place blocks. Long-press a color to spawn its corresponding piece and switch to PIECE.</p></div>
-      <div class="card"><h3>Erase</h3><p>Remove blocks. When <strong>Delete spawn mino when an eraser drag passes over it</strong> is enabled, the drag also removes SPAWN pieces it passes over.</p></div>
+      <div class="card"><h3>Pen</h3><p>Choose from seven colors, black, or gray, then tap or drag to place blocks. Long-press a color to spawn its corresponding piece and switch to PIECE. When <strong>Keep gray blocks that a drag passes over</strong> is enabled, a drag that starts on a non-gray cell does not recolor gray blocks; start on a gray block to change it as usual.</p></div>
+      <div class="card"><h3>Erase</h3><p>Remove blocks. When <strong>Delete spawn mino when an eraser drag passes over it</strong> is enabled, the drag also removes SPAWN pieces it passes over. When <strong>Keep gray blocks that a drag passes over</strong> is enabled, a drag that starts on a non-gray cell leaves gray blocks in place.</p></div>
       <div class="card"><h3>Fill and Fill row</h3><p>Fill a connected area or one row with the selected color. Choose black (empty) to erase the same area.</p></div>
       <div class="card"><h3>COMP</h3><p>Select four cells to infer a piece from its shape and confirm it with the matching color. Long-press to clear colored blocks and SPAWN pieces while leaving gray blocks.</p></div>
       <div class="card"><h3>Mino ⇄ blocks</h3><p>Use <strong>TO PAINT</strong> in the context tray to turn a SPAWN mino into four blocks at the same position. Without a SPAWN mino, press <strong>TO MINO</strong> and pick one of the highlighted shapes to turn it back into a mino. While picking, the button reads <strong>CANCEL</strong>; press it again to stop. The action is also available as <strong>Spawn mino / blocks</strong> in UTILS and as a key assignment (B by default). Paint blocks do not line-clear through Lock.</p></div>
@@ -102,7 +102,7 @@
         <tbody>
           <tr><td>PAINT</td><td>Use Pen, Erase, Fill, Fill row, and TO PAINT / TO MINO. The palette shows block colors.</td></tr>
           <tr><td>PIECE</td><td>Spawn pieces from the palette, then use Hold, hard drop, horizontal movement, soft drop, and rotation. SRS+ also offers 180° rotation. Holding a horizontal move repeats according to the DAS and ARR settings. Use <strong>Delete</strong> in the palette to remove the piece and <strong>RESPAWN</strong> to spawn it again. In PIECE, <strong>+</strong> grays out the field when it creates the next page.</td></tr>
-          <tr><td>INPUT</td><td>Directly operate the queue's CURRENT piece. It shows HOLD/NEXT, placement statistics, the AI Guide, and the Replay button.</td></tr>
+          <tr><td>INPUT</td><td>Directly operate the queue's CURRENT piece. It shows HOLD/NEXT, B2B and COMBO, the garbage gauge, the AI Guide, and the Replay button.</td></tr>
           <tr><td>SELECT</td><td>Drag across the field to select a rectangle, then copy, cut, rotate left, rotate right, or mirror it.</td></tr>
         </tbody>
       </table>
@@ -110,16 +110,37 @@
     <p class="note">Press the selected PAINT or SELECT button again to show or hide the context tools below the field. While they are hidden, you can edit the garbage (rise) row. When the tray is too narrow, labels collapse into icons first, and the tray scrolls horizontally if it still does not fit.</p>
 
     <h3>Play pieces in INPUT</h3>
-    <figure class="shot"><img src="../images/en/input.png" alt="INPUT on PC with the AI Guide, HOLD, and placement statistics on the left, the Replay button, NEXT, infinite 7-bag, and 7bag grey on the right, and the AI Guide's suggested placement drawn with a dashed outline near the bottom of the field."><figcaption>INPUT. The AI Guide sits above HOLD and the Replay button above NEXT. With the AI Guide on, the suggested placement for CURRENT appears as translucent blocks with a dashed outline.</figcaption></figure>
+    <figure class="shot"><img src="../images/en/input.png" alt="INPUT on PC with the AI Guide, HOLD, and B2B and COMBO on the left, the garbage gauge along the left edge of the field, the Replay button, NEXT, infinite 7-bag, and 7bag gray on the right, and the AI Guide's suggested placement drawn with a dashed outline on the left of the field."><figcaption>INPUT. The AI Guide sits above HOLD with B2B and COMBO below it, the Replay button above NEXT, and the garbage gauge left of the field. With the AI Guide on, the suggested placement for CURRENT appears as translucent blocks with a dashed outline.</figcaption></figure>
     <ul>
       <li><strong>INPUT:</strong> Open it from <strong>INPUT</strong> on the rail. Operate the queue's CURRENT piece; a hard drop moves to the next page and spawns the next CURRENT. NEXT is listed upward from the nearest piece.</li>
-      <li><strong>HOLD / NEXT:</strong> Select them to open <strong>Piece queue settings</strong>. The queue is stored in the page comment as data such as <code>#Q=[](I)OTLJSZ</code>. Closing the dialog promotes the first NEXT piece when CURRENT is empty.</li>
-      <li><strong>Placement statistics:</strong> Below HOLD, INPUT shows the latest line clear or spin plus B2B, Combo, PIECES, LINES, and PC. Pages taken from a TETR.IO replay also show ATTACK, CANCEL, and SENT. Short screens show fewer rows.</li>
-      <li><strong>AI Guide:</strong> Turn it on or off with the button above HOLD. See <a href="#ai-guide">The AI Guide in INPUT</a>.</li>
+      <li><strong>HOLD / NEXT:</strong> Select them to open the <strong>Piece queue</strong> tab of the <a href="#input-window">INPUT window</a>. The queue is stored in the page comment as data such as <code>#Q=[](I)OTLJSZ</code>. Closing the window promotes the first NEXT piece when CURRENT is empty.</li>
+      <li><strong>Hold:</strong> Swaps CURRENT and HOLD. Once NEXT and CURRENT are used up, Hold takes the HOLD piece out so you can place it.</li>
+      <li><strong>B2B and COMBO:</strong> Below HOLD, INPUT shows the latest line clear or spin plus B2B and COMBO, in green while a chain is active. With the SRS+ kick table, B2B counts as a chain and shows ⚡ once Surge is charged; with SRS, B2B is 0 or 1, and Classic has no B2B. Pages taken from a TETR.IO replay or with garbage set also show ATTACK, CANCEL, and SENT. Select the counters to open the <strong>B2B / COMBO</strong> tab of the INPUT window.</li>
+      <li><strong>Garbage gauge:</strong> Left of the field, the gauge shows the rows about to rise. It appears only in INPUT; select it to open the <strong>Garbage</strong> tab of the INPUT window.</li>
+      <li><strong>AI Guide:</strong> Turn it on or off with the button above HOLD. Select the shown guide on the field to place CURRENT there. See <a href="#ai-guide">The AI Guide in INPUT</a>.</li>
       <li><strong>Replay:</strong> The button above NEXT opens the <a href="#replay">TETR.IO Replay</a> screen.</li>
-      <li><strong>∞ 7bag:</strong> Automatically refills the queue with randomized seven-piece bags. <strong>7bag grey</strong> directly below it is available only while infinite 7-bag is on.</li>
-      <li><strong>7bag grey:</strong> Groups every seven placements into one page and grays the completed bag's field. It hides ordinary comments while keeping queue and progress as editor data. INPUT workspace branches are protected in Tree mode.</li>
+      <li><strong>∞ 7bag:</strong> Automatically refills the queue with randomized seven-piece bags. <strong>7bag gray</strong> directly below it is available only while infinite 7-bag is on.</li>
+      <li><strong>7bag gray:</strong> Groups every seven placements into one page and grays the completed bag's field. It hides ordinary comments while keeping queue and progress as editor data. INPUT workspace branches are protected in Tree mode.</li>
       <li><strong>RESET:</strong> Resets the field and CURRENT. With infinite 7-bag on, it starts over with a new random queue.</li>
+    </ul>
+
+    <h3 id="input-window">The INPUT window</h3>
+    <p>Selecting HOLD/NEXT, the B2B and COMBO counters, or the garbage gauge opens the INPUT window on the matching tab. Switch tabs at the top.</p>
+    <figure class="shot"><img src="../images/en/input-window.png" alt="The Garbage tab of the INPUT window. Share is at the top right, above the Piece queue, B2B / COMBO, and Garbage tabs, followed by segments with their lines and hole column, Add segment, Clear all, and the total."><figcaption>The INPUT window (Garbage tab). Set the lines and hole column for each segment. Share at the top right copies a share URL for the INPUT state.</figcaption></figure>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tab</th><th>What you can do</th></tr></thead>
+        <tbody>
+          <tr><td>Piece queue</td><td>Edit HOLD, CURRENT, and NEXT. The queue is written to the page comment when you leave the tab or close the window.</td></tr>
+          <tr><td>B2B / COMBO</td><td>Type the B2B and COMBO chain counts. With SRS+ any count is accepted, with SRS B2B is 0 or 1, and Classic has no B2B input. One Undo takes the change back.</td></tr>
+          <tr><td>Garbage</td><td>Each segment is one incoming attack. Set the lines and the hole column (fixed or random) for each segment, and use <strong>Add segment</strong> or <strong>Clear all</strong>. Every lock that clears no line raises the next segment from the bottom of the list (up to 8 rows at a time); line clears cancel garbage first. Changes apply when you leave the tab or close the window.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Share:</strong> The button at the top right copies a one-page share URL with the current field, queue, garbage, B2B and COMBO, and rules. Opening it continues from the same state in INPUT. Browsers with a system share sheet also show a share icon next to it. Assign a key to <strong>Copy INPUT share URL</strong> in the key settings to copy it from the keyboard.</li>
+      <li><strong>Autosave:</strong> The INPUT state is also kept in the browser's autosave, so a reload continues where you left off.</li>
+      <li>When the sender used a different kick table, a notice says so. Your own kick-table setting is not changed.</li>
     </ul>
 
     <h3>Reuse a region with SELECT</h3>
@@ -140,7 +161,7 @@
       <li><strong>Editing modes:</strong> <strong>Slide</strong> opens a tray for moving the field (Up + gray, Up, Left, Right, Down, Done). <strong>Comment</strong> opens a tray with Blank and Inherit.</li>
       <li><strong>TETR.IO Replay:</strong> <strong>Open TETR.IO replay</strong> moves to the replay screen.</li>
       <li><strong>FLAGS:</strong> Toggle Key page / Reference page, Lock, Rise, and Mirror flag. On a page with Lock on, line clears are applied when moving to the next page.</li>
-      <li><strong>Panels:</strong> Drag the header to move a panel. An item normally closes UTILS. Enable <strong>Keep the UTILS menu open</strong> to keep choosing items while using the field.</li>
+      <li><strong>Panels:</strong> Drag the header to move a panel. An item or another press of the UTILS button closes UTILS. Enable <strong>Keep the UTILS menu open</strong> to keep choosing items while using the field.</li>
     </ul>
   </section>
 
@@ -280,6 +301,7 @@
     <ul>
       <li>In INPUT, select <strong>AI Guide</strong> above HOLD to turn it on or off. When it is on, the best move for CURRENT appears on the field as translucent blocks with a dashed outline.</li>
       <li>The button shows its state: <strong>OFF</strong>, <strong>Waiting</strong>, <strong>Thinking…</strong>, or <strong>Showing</strong>. It recalculates after every placement, and a guide that is already showing stays in place when you Hold until the piece locks.</li>
+      <li>Select the shown guide on the field to place CURRENT there. When the AI's move uses Hold, it holds first. Spins are scored.</li>
       <li>When the guide cannot be used, a reason such as <strong>No queue</strong>, <strong>Wrong piece</strong>, <strong>Page flags</strong>, <strong>Need NEXT</strong>, <strong>Clear lines</strong>, <strong>No move</strong>, <strong>Previewing</strong>, or <strong>AI error</strong> appears in red.</li>
       <li>It uses the AI menu's engine, Hold usage, NEXT limit, think time, and other settings, together with B2B and Combo from the comment.</li>
     </ul>
@@ -345,7 +367,7 @@
       <table>
         <thead><tr><th>Tab</th><th>Main settings</th></tr></thead>
         <tbody>
-          <tr><td>Edit</td><td><strong>Delete spawn mino when an eraser drag passes over it</strong>, <strong>Show PAINT palette as mino images</strong>, <strong>Show FLAGS</strong>, <strong>Gray out with + button</strong>, and <strong>Block surface marker</strong></td></tr>
+          <tr><td>Edit</td><td><strong>Delete spawn mino when an eraser drag passes over it</strong>, <strong>Keep gray blocks that a drag passes over</strong>, <strong>Show PAINT palette as mino images</strong>, <strong>Show FLAGS</strong>, <strong>Gray out with + button</strong>, and <strong>Block surface marker</strong></td></tr>
           <tr><td>List &amp; Tree</td><td><strong>Trim top blank</strong>, <strong>Gray out with + button</strong>, and <strong>Show side panel (PC)</strong></td></tr>
           <tr><td>Input</td><td><strong>Show the ghost</strong>, <strong>Kick table</strong>, ARR, DAS, DCD, SDF, <strong>Soft drop priority</strong>, and <strong>7-bag gray</strong></td></tr>
           <tr><td>Keys</td><td><strong>Show shortcut labels</strong>, <strong>Piece controls</strong>, <strong>Palette shortcuts</strong>, and <strong>Edit shortcuts</strong></td></tr>
@@ -358,7 +380,8 @@
       <li><strong>Change a key:</strong> Select a field and press a key. Press Backspace to clear the assignment.</li>
       <li><strong>Kick table:</strong> Choose <strong>Classic</strong>, <strong>SRS</strong>, or <strong>SRS+</strong>. SRS+ also supports 180° rotation. Spin detection follows the kick table.</li>
       <li><strong>ARR, DAS, DCD, and SDF:</strong> Tune horizontal movement and soft drop speed in PIECE and INPUT. Set ARR to 0 to move to the edge instantly.</li>
-      <li><strong>7-bag gray:</strong> This is the same setting as <strong>7bag grey</strong> beside the INPUT field. It takes effect when infinite 7-bag is used in INPUT.</li>
+      <li><strong>7-bag gray:</strong> This is the same setting as <strong>7bag gray</strong> beside the INPUT field. It takes effect when infinite 7-bag is used in INPUT.</li>
+      <li><strong>Keep gray blocks that a drag passes over:</strong> When on, a Pen or Erase drag that starts on a non-gray cell neither recolors nor erases gray blocks. A drag that starts on a gray block changes it as usual. Off by default.</li>
       <li><strong>Show FLAGS:</strong> When on, FLAGS appears next to UTILS on the rail.</li>
       <li><strong>Show PAINT palette as mino images:</strong> Show PAINT color swatches as their corresponding mino images. It does not change the PIECE palette.</li>
       <li><strong>Initial screen:</strong> Choose Reader, Edit, List, or Tree as the screen opened at startup. When <strong>Open fumen with tree data (#TREE) in Tree screen</strong> is on, fumen data with a tree opens in Tree.</li>

@@ -67,8 +67,8 @@
 
     <h3>PAINTで描く</h3>
     <div class="cards">
-      <div class="card"><h3>ペン</h3><p>7色・黒・灰色から選び、タップまたはドラッグでブロックを置きます。色を長押しすると対応するミノを出現させ、PIECEへ切り替わります。</p></div>
-      <div class="card"><h3>消しゴム</h3><p>ブロックを消します。設定の<strong>消しゴムのドラッグでSPAWNミノも削除する</strong>が有効なら、ドラッグが通過したSPAWNミノも削除します。</p></div>
+      <div class="card"><h3>ペン</h3><p>7色・黒・灰色から選び、タップまたはドラッグでブロックを置きます。色を長押しすると対応するミノを出現させ、PIECEへ切り替わります。設定の<strong>ドラッグで通過したグレーを変更しない</strong>が有効なら、グレー以外のマスから始めたドラッグでは灰色ブロックを塗り替えません。灰色ブロックの上から始めると通常どおり塗れます。</p></div>
+      <div class="card"><h3>消しゴム</h3><p>ブロックを消します。設定の<strong>消しゴムのドラッグでSPAWNミノも削除する</strong>が有効なら、ドラッグが通過したSPAWNミノも削除します。<strong>ドラッグで通過したグレーを変更しない</strong>が有効なら、グレー以外のマスから始めたドラッグでは灰色ブロックを残します。</p></div>
       <div class="card"><h3>塗りつぶし・行を塗る</h3><p>連続した範囲または1行を選択色で塗ります。黒（空）を選ぶと同じ範囲を消去します。</p></div>
       <div class="card"><h3>COMP</h3><p>マスを4つ選び、形からミノを推定して対応色で確定します。長押しすると色付きブロックとSPAWNミノを消し、灰色ブロックを残します。</p></div>
       <div class="card"><h3>ミノ ⇄ ブロック</h3><p>操作トレイの<strong>ブロック化</strong>でSPAWNミノを同じ位置の4ブロックへ変換します。SPAWNミノがないときは<strong>ミノ化</strong>を押し、強調表示された形から1つ選ぶとミノに戻せます。選択中のボタンは<strong>やめる</strong>になり、もう一度押すと中止します。UTILSの<strong>SPAWNミノ ⇄ ブロック</strong>やキー割り当て（既定はB）からも実行できます。ブロック化後は固定によるライン消去は行われません。</p></div>
@@ -102,7 +102,7 @@
         <tbody>
           <tr><td>PAINT</td><td>ペン、消しゴム、塗りつぶし、行を塗る、ブロック化／ミノ化。パレットはブロック色として表示されます。</td></tr>
           <tr><td>PIECE</td><td>パレットからミノを出現させ、Hold、ハードドロップ、左右移動、ソフトドロップ、左右回転を操作します。SRS+では180°回転も使えます。左右移動の長押しはDAS・ARRの設定に従って連続移動します。パレットの<strong>削除</strong>でミノを消し、<strong>RESPAWN</strong>で出し直します。PIECE中の <strong>+</strong> は、次ページを作るときに盤面をグレー化します。</td></tr>
-          <tr><td>INPUT</td><td>キューのCURRENTを直接操作します。HOLD・NEXT、配置統計、AIガイド、リプレイボタンを表示します。</td></tr>
+          <tr><td>INPUT</td><td>キューのCURRENTを直接操作します。HOLD・NEXT、B2B・COMBO、せり上がりゲージ、AIガイド、Replayボタンを表示します。</td></tr>
           <tr><td>SELECT</td><td>盤面をドラッグして矩形選択し、コピー、切り取り、左回転、右回転、反転を行います。</td></tr>
         </tbody>
       </table>
@@ -110,16 +110,37 @@
     <p class="note">選択中のPAINTまたはSELECTをもう一度押すと、盤面下の操作トレイを表示／非表示にできます。非表示の間はせり上がり行を編集できます。トレイが収まらないときは文字をアイコンにまとめ、それでも収まらなければ横スクロールできます。</p>
 
     <h3>INPUTで実戦のように操作する</h3>
-    <figure class="shot"><img src="./images/input.png" alt="PCのINPUT画面。左にAIガイド、HOLD、配置統計、右にリプレイボタン、NEXT、∞ 7bagと7bag greyがあり、盤面下部にAIガイドの推奨位置が点線枠で表示されています。"><figcaption>INPUT。HOLDの上にAIガイド、NEXTの上にリプレイボタンがあります。AIガイドを有効にすると、CURRENTの推奨位置が半透明のブロックと点線枠で表示されます。</figcaption></figure>
+    <figure class="shot"><img src="./images/input.png" alt="PCのINPUT画面。左にAIガイド、HOLD、B2B・COMBO、盤面の左端にせり上がりゲージ、右にReplayボタン、NEXT、∞ 7bagと7bag grayがあり、盤面左側にAIガイドの推奨位置が点線枠で表示されています。"><figcaption>INPUT。HOLDの上にAIガイド、下にB2B・COMBO、NEXTの上にReplayボタン、盤面の左にせり上がりゲージがあります。AIガイドを有効にすると、CURRENTの推奨位置が半透明のブロックと点線枠で表示されます。</figcaption></figure>
     <ul>
       <li><strong>INPUT：</strong>レールの<strong>INPUT</strong>から開きます。キューのCURRENTを操作し、ハードドロップすると次のページへ進んで次のCURRENTが出現します。NEXTは近いピースから上へ並びます。</li>
-      <li><strong>HOLD / NEXT：</strong>選ぶと<strong>ピースキュー設定</strong>が開きます。キューはページコメントへ <code>#Q=[](I)OTLJSZ</code> のような形式で保存されます。閉じるときにCURRENTが空ならNEXTの先頭がCURRENTへ移ります。</li>
-      <li><strong>配置統計：</strong>HOLDの下に直前のライン消去・Spinと、B2B、Combo、設置、消去、PCを表示します。TETR.IO リプレイから取り出したページでは、攻撃・相殺・送信も表示します。画面の高さに応じて項目は省略されます。</li>
-      <li><strong>AIガイド：</strong>HOLDの上のボタンでオン／オフします。詳しくは<a href="#ai-guide">INPUTのAIガイド</a>を参照してください。</li>
-      <li><strong>リプレイ：</strong>NEXTの上のボタンで<a href="#replay">TETR.IO リプレイ</a>画面を開きます。</li>
-      <li><strong>∞ 7bag：</strong>ランダムな7種1組のキューを自動補充します。オンの間だけ、直下の<strong>7bag grey</strong>を切り替えられます。</li>
-      <li><strong>7bag grey：</strong>7個ごとにページをまとめ、確定したbagの地形をグレー化します。通常コメントは表示せず、キューと進捗は編集用データとして保持します。ツリーモードではINPUT用の作業分岐を保護します。</li>
+      <li><strong>HOLD / NEXT：</strong>選ぶと<a href="#input-window">INPUTウィンドウ</a>の<strong>ピースキュー</strong>タブが開きます。キューはページコメントへ <code>#Q=[](I)OTLJSZ</code> のような形式で保存されます。閉じるときにCURRENTが空ならNEXTの先頭がCURRENTへ移ります。</li>
+      <li><strong>Hold：</strong>CURRENTとHOLDを入れ替えます。NEXTとCURRENTを使い切った後は、HOLDのミノを取り出して置けます。</li>
+      <li><strong>B2B・COMBO：</strong>HOLDの下に、直前のライン消去・SpinとB2B・COMBOを表示します。連鎖中は緑色になります。キックテーブルがSRS+のときはB2Bを連鎖数で数え、Surgeがチャージされると⚡が付きます。SRSではB2Bは0か1、クラシックではB2Bなしです。TETR.IO リプレイから取り出したページやせり上がりを設定したページでは、ATTACK・CANCEL・SENTも表示します。選ぶとINPUTウィンドウの<strong>B2B / COMBO</strong>タブが開きます。</li>
+      <li><strong>せり上がりゲージ：</strong>盤面の左に、これからせり上がる段数を表示します。INPUTのときだけ表示され、選ぶとINPUTウィンドウの<strong>せり上がり</strong>タブが開きます。</li>
+      <li><strong>AIガイド：</strong>HOLDの上のボタンでオン／オフします。表示されたガイドを盤面で選ぶと、その位置にCURRENTを置きます。詳しくは<a href="#ai-guide">INPUTのAIガイド</a>を参照してください。</li>
+      <li><strong>Replay：</strong>NEXTの上のボタンで<a href="#replay">TETR.IO リプレイ</a>画面を開きます。</li>
+      <li><strong>∞ 7bag：</strong>ランダムな7種1組のキューを自動補充します。オンの間だけ、直下の<strong>7bag gray</strong>を切り替えられます。</li>
+      <li><strong>7bag gray：</strong>7個ごとにページをまとめ、確定したbagの地形をグレー化します。通常コメントは表示せず、キューと進捗は編集用データとして保持します。ツリーモードではINPUT用の作業分岐を保護します。</li>
       <li><strong>RESET：</strong>盤面とCURRENTをリセットします。∞ 7bagがオンのときは、新しいランダムキューで最初から始めます。</li>
+    </ul>
+
+    <h3 id="input-window">INPUTウィンドウ</h3>
+    <p>HOLD・NEXT、B2B・COMBO、せり上がりゲージを選ぶと、そのタブを開いた状態でINPUTウィンドウが開きます。上部のタブで切り替えられます。</p>
+    <figure class="shot"><img src="./images/input-window.png" alt="INPUTウィンドウのせり上がりタブ。右上にShare、その下にピースキュー、B2B / COMBO、せり上がりのタブがあり、区間ごとの段数と穴の列、区間を追加、すべて消去、合計段数が並んでいます。"><figcaption>INPUTウィンドウ（せり上がりタブ）。区間ごとに段数と穴の列を設定します。右上のShareでINPUT状態の共有URLをコピーします。</figcaption></figure>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>タブ</th><th>できること</th></tr></thead>
+        <tbody>
+          <tr><td>ピースキュー</td><td>HOLD・CURRENT・NEXTを編集します。内容はタブを離れるか閉じるときにページコメントへ書き込まれます。</td></tr>
+          <tr><td>B2B / COMBO</td><td>B2BとCOMBOの連鎖数（chain）を入力します。キックテーブルがSRS+なら任意の数、SRSなら0か1を入力でき、クラシックではB2Bを入力できません。変更は1回のUndoで戻せます。</td></tr>
+          <tr><td>せり上がり</td><td>1つの区間が1回分の攻撃です。区間ごとに段数と穴の列（固定またはランダム）を設定し、<strong>区間を追加</strong>・<strong>すべて消去</strong>で増減します。ラインを消さずにミノを置くたびに、下の区間から1つずつせり上がり（1回最大8段）、ラインを消すと先に相殺されます。内容はタブを離れるか閉じるときに反映されます。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Share：</strong>右上のボタンで、現在の盤面・キュー・せり上がり・B2B／COMBO・ルールを1ページの共有URLとしてコピーします。開くとEditのINPUTで同じ状態から続けられます。端末の共有機能が使えるブラウザでは、隣の共有アイコンから送れます。キー割り当ての<strong>INPUT状態の共有URLをコピー</strong>にキーを設定すると、キー操作でもコピーできます。</li>
+      <li><strong>自動保存：</strong>INPUTの状態はブラウザ内の自動保存にも含まれ、再読み込みしても続きから操作できます。</li>
+      <li>送信元とキックテーブルが違う場合は通知が表示されます。自分のキックテーブル設定は変更されません。</li>
     </ul>
 
     <h3>SELECTで範囲を再利用する</h3>
@@ -140,7 +161,7 @@
       <li><strong>編集モード：</strong><strong>スライド</strong>は盤面を上下左右へ動かすトレイ（上へ + グレー、上、左、右、下、完了）を、<strong>コメント</strong>は空にする・引き継ぐのトレイを開きます。</li>
       <li><strong>TETR.IO リプレイ：</strong><strong>TETR.IO Replayを開く</strong>でリプレイ画面へ移動します。</li>
       <li><strong>FLAGS：</strong>キーページ／参照ページ、固定、せり上がり、反転フラグを切り替えます。固定がオンのページでは、次ページへ進むときにライン消去を反映します。</li>
-      <li><strong>パネル：</strong>見出しをドラッグして移動できます。項目を選ぶと閉じます。ユーザー設定の<strong>UTILSメニューを開いたままにする</strong>を有効にすると、盤面を操作しながら続けて項目を選べます。</li>
+      <li><strong>パネル：</strong>見出しをドラッグして移動できます。項目を選ぶか、UTILSボタンをもう一度押すと閉じます。ユーザー設定の<strong>UTILSメニューを開いたままにする</strong>を有効にすると、盤面を操作しながら続けて項目を選べます。</li>
     </ul>
   </section>
 
@@ -280,6 +301,7 @@
     <ul>
       <li>INPUTでHOLDの上の<strong>AIガイド</strong>を選ぶとオン／オフが切り替わります。オンにすると、CURRENTの最善手を半透明のブロックと点線枠で盤面に表示します。</li>
       <li>ボタンには<strong>OFF</strong>、<strong>待機中</strong>、<strong>計算中…</strong>、<strong>表示中</strong>の状態が表示されます。1手置くたびに再計算し、Holdしても表示中のガイドは固定するまで同じ位置に残ります。</li>
+      <li>表示中のガイドを盤面で選ぶと、その位置にCURRENTを置きます。AIがHoldを使う手では、先にHoldしてから置きます。Spinも判定されます。</li>
       <li>使用できない局面では、<strong>キューなし</strong>、<strong>ミノ不一致</strong>、<strong>フラグ非対応</strong>、<strong>NEXT不足</strong>、<strong>消去待ち</strong>、<strong>候補なし</strong>、<strong>プレビュー中</strong>、<strong>AIエラー</strong>などの理由が赤字で表示されます。</li>
       <li>AIメニューのエンジン、Hold使用、NEXT制限、思考時間などの設定と、コメントのB2B・Comboを使って計算します。</li>
     </ul>
@@ -345,7 +367,7 @@
       <table>
         <thead><tr><th>タブ</th><th>主な設定</th></tr></thead>
         <tbody>
-          <tr><td>編集</td><td><strong>消しゴムのドラッグでSPAWNミノも削除する</strong>、<strong>PAINTパレットをミノ画像で表示</strong>、<strong>FLAGSを表示</strong>、<strong>+ボタンでグレー化</strong>、<strong>ブロック表面のマーク</strong></td></tr>
+          <tr><td>編集</td><td><strong>消しゴムのドラッグでSPAWNミノも削除する</strong>、<strong>ドラッグで通過したグレーを変更しない</strong>、<strong>PAINTパレットをミノ画像で表示</strong>、<strong>FLAGSを表示</strong>、<strong>+ボタンでグレー化</strong>、<strong>ブロック表面のマーク</strong></td></tr>
           <tr><td>リスト/ツリー</td><td><strong>上部の空白行を省略</strong>、<strong>+ボタンでグレー化</strong>、<strong>サイドパネルを表示（PC）</strong></td></tr>
           <tr><td>INPUT</td><td><strong>ゴースト表示</strong>、<strong>キックテーブル</strong>、ARR・DAS・DCD・SDF、<strong>ソフトドロップ優先</strong>、<strong>7bagグレー</strong></td></tr>
           <tr><td>キー割り当て</td><td><strong>ショートカットラベル表示</strong>、<strong>ピースコントロール</strong>、<strong>パレットショートカット</strong>、<strong>編集用ショートカット</strong></td></tr>
@@ -358,7 +380,8 @@
       <li><strong>キーの変更：</strong>対象欄を選んでキーを押します。Backspaceで割り当てを解除できます。</li>
       <li><strong>キックテーブル：</strong>「クラシック」「SRS」「SRS+」から選びます。SRS+では180°回転も利用できます。Spinの判定もキックテーブルに従います。</li>
       <li><strong>ARR・DAS・DCD・SDF：</strong>PIECEとINPUTの左右移動とソフトドロップの速さを調整します。ARRを0にすると端まで即移動します。</li>
-      <li><strong>7bagグレー：</strong>INPUTの盤面横にある<strong>7bag grey</strong>と同じ設定です。INPUTで∞ 7bagを使うときに働きます。</li>
+      <li><strong>7bagグレー：</strong>INPUTの盤面横にある<strong>7bag gray</strong>と同じ設定です。INPUTで∞ 7bagを使うときに働きます。</li>
+      <li><strong>ドラッグで通過したグレーを変更しない：</strong>オンにすると、グレー以外のマスから始めたペン・消しゴムのドラッグで、灰色ブロックを塗り替えたり消したりしません。灰色ブロックの上から始めたドラッグは通常どおり変更します。初期設定はオフです。</li>
       <li><strong>FLAGSを表示：</strong>オンにすると、レールのUTILSの隣にFLAGSが表示されます。</li>
       <li><strong>PAINTパレットをミノ画像で表示：</strong>オンにすると、PAINTの色見本を対応するミノ画像で表示します。PIECEのパレット表示には影響しません。</li>
       <li><strong>初期画面：</strong>起動時に開くReader・Edit・List・Tree画面を選びます。<strong>ツリーデータ(#TREE)を含むテト譜はTree画面で開く</strong>がオンなら、ツリー付きのテト譜はTreeで開きます。</li>

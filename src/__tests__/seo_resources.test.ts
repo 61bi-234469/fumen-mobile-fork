@@ -198,8 +198,8 @@ describe('static SEO resources', () => {
         const englishImages = relativeReferences(english).filter(reference => reference.endsWith('.png'));
         const japaneseImagesDirectory = path.join(resources, 'manual', 'images');
         const englishImagesDirectory = path.join(resources, 'manual', 'images', 'en');
-        expect(japaneseImages.length).toBe(11);
-        expect(englishImages.length).toBe(11);
+        expect(japaneseImages.length).toBe(12);
+        expect(englishImages.length).toBe(12);
         expect(japaneseImages.every(reference =>
             path.dirname(path.resolve(path.dirname(japanesePath), reference)) === japaneseImagesDirectory,
         )).toBe(true);

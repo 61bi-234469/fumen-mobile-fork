@@ -23,6 +23,9 @@ import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { Screens } from '../lib/enums';
 import { parseQueueComment } from '../lib/cold_clear/queueParser';
 import { getColdClearQueueCommentAt, getCurrentColdClearQueueComment } from './cold_clear';
+import { embedInputSnapshotsInPages, extractInputSnapshotsFromPages } from '../lib/input_snapshot';
+import { showToast } from '../lib/toast';
+import { i18n } from '../locales/keys';
 
 // INPUT（PIECEの操作重視レイアウト）でNEXTキューを使っている間だけ、戻る／進むをキュー単位にする
 export const shouldRewindByPieceQueueStep = (state: Readonly<State>): boolean => {
@@ -132,8 +135,10 @@ export const mementoActions: Readonly<MementoActions> = {
         // thumbnails for both the outgoing and the restored array references.
         clearThumbnailCache(state.fumen.pages);
 
-        // Extract tree data from restored pages if present
-        const { cleanedPages, tree } = extractTreeFromPages(pages);
+        // Extract tree data from restored pages if present. Redoing a whole load decodes the
+        // loaded fumen again, so its INPUT state tokens are read here as well.
+        const { cleanedPages: treeCleanedPages, tree } = extractTreeFromPages(pages);
+        const cleanedPages = extractInputSnapshotsFromPages(treeCleanedPages).pages;
         clearThumbnailCache(cleanedPages);
 
         const hasTreeState = state.tree.nodes.length > 0 && state.tree.rootId !== null;
@@ -214,7 +219,21 @@ export const mementoActions: Readonly<MementoActions> = {
     },
 };
 
-// ローカルストレージへ保存する形（ツリー有効時は #TREE 埋め込み込み）のページ
+// 自動保存は編集のたびに走るため、INPUT状態を書けないページが出始めたときに1回だけ知らせる
+let inputSnapshotSkipWarned = false;
+const warnIfInputSnapshotsSkipped = (skipped: number[]) => {
+    if (skipped.length === 0) {
+        inputSnapshotSkipWarned = false;
+        return;
+    }
+    if (!inputSnapshotSkipWarned) {
+        inputSnapshotSkipWarned = true;
+        showToast(i18n.InputState.NotSaved(), 8000);
+    }
+};
+
+// ローカルストレージへ保存する形（ツリー有効時は #TREE 埋め込み込み、INPUT状態は isnap= 埋め込み込み）のページ。
+// 汎用エクスポートはこれを通らないので、isnap= は自動保存と専用の共有URLにだけ出る
 export const toPagesForStorage = (state: Readonly<State>): Page[] => {
     const hasTreeData = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
     const tree: SerializedTree | null = hasTreeData ? {
@@ -223,7 +242,14 @@ export const toPagesForStorage = (state: Readonly<State>): Page[] => {
         version: 1,
     } : null;
 
-    return embedTreeInPages(state.fumen.pages, tree, hasTreeData);
+    // isnap= を先に入れる（#TREE= 付きの1ページ目はQuizとして解決できないため）。
+    // 1ページ目が上限を超えるならツリーを優先して isnap= を諦める
+    const embedded = embedInputSnapshotsInPages(state.fumen.pages, {
+        tree: hasTreeData ? tree : null,
+        rotationSystem: state.mode.rotationSystem,
+    });
+    warnIfInputSnapshotsSkipped(embedded.skipped);
+    return embedTreeInPages(embedded.pages, tree, hasTreeData);
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {

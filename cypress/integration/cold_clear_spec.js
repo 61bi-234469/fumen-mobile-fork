@@ -75,6 +75,26 @@ describe('Cold Clear menu', () => {
             .each(block => expect(block.attr('visible')).not.to.equal('true'));
     });
 
+    it('locks the current piece on the INPUT AI guide ghost when it is tapped', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', lng: 'en' });
+        operations.mode.comment.open();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.toggleAiGuide();
+        operations.mode.piece.waitAiGuideReady();
+
+        cy.get(datatest('input-ai-guide-block-0')).should('not.have.attr', 'data-cell', '').then(($block) => {
+            const [x, y] = $block.attr('data-cell').split(',').map(Number);
+            operations.mode.block.click(x, y);
+        });
+
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        operations.mode.piece.waitAiGuideReady();
+    });
+
     it('shows and switches the AI engine from the INPUT AI guide', () => {
         cy.clearLocalStorage();
         visit({ mode: 'edit', lng: 'en' });
@@ -225,7 +245,7 @@ describe('Cold Clear menu', () => {
 
         cy.get(datatest('btn-cold-clear-setup-queue')).click();
         cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
-        cy.get(datatest('mdl-piece-queue')).should('not.exist');
+        cy.get(datatest('mdl-input-window')).should('not.exist');
         cy.get(datatest('input-cold-clear-queue')).should('be.focused');
     });
 

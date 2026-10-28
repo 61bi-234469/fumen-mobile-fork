@@ -41,6 +41,8 @@ import { editorInteractionActions, EditorInteractionActions } from './actions/ed
 import { rectSelectActions, RectSelectActions } from './actions/rect_select';
 import { replayActions, ReplayActions } from './actions/replay';
 import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_analysis';
+import { inputGarbageActions, InputGarbageActions } from './actions/input_garbage';
+import { inputWindowActions, InputWindowActions } from './actions/input_window';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
 import { restoreViewSettings } from './actions/restore_view_settings';
 import { initReplayFileDrop } from './actions/replay_file_drop';
@@ -68,7 +70,9 @@ export type Actions = AnimationActions
     & EditorInteractionActions
     & RectSelectActions
     & ReplayActions
-    & ReplayAnalysisActions;
+    & ReplayAnalysisActions
+    & InputGarbageActions
+    & InputWindowActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -90,6 +94,8 @@ export const actions: Readonly<Actions> = {
     ...rectSelectActions,
     ...replayActions,
     ...replayAnalysisActions,
+    ...inputGarbageActions,
+    ...inputWindowActions,
 };
 
 // Current state getter for shortcut handlers
@@ -324,6 +330,11 @@ const loadUserSettings = () => {
 
     if (settings.paintPaletteMinoDesign !== undefined) {
         main.changePaintPaletteMinoDesign({ enable: settings.paintPaletteMinoDesign });
+        updated = true;
+    }
+
+    if (settings.keepGrayOnPaintDrag !== undefined) {
+        main.changeKeepGrayOnPaintDrag({ enable: settings.keepGrayOnPaintDrag });
         updated = true;
     }
 

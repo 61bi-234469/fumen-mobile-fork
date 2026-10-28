@@ -684,7 +684,10 @@ export const editorRail = (state: State, actions: Actions, layout: EditorLayout)
                 key: 'btn-utils-mode', datatest: 'btn-utils-mode',
                 label: state.mode.flagsHidden ? railLabels.Utils() : i18n.EditorUi.Utilities(), height: cellHeight,
                 selected: state.editorUi.inspector === 'utils',
-                onpress: () => actions.openEditorInspector({ inspector: 'utils' }),
+                // ピン留め中は背景が操作を通すので、ボタン自身で閉じられるよう開閉を切り替える
+                onpress: () => state.editorUi.inspector === 'utils'
+                    ? actions.closeEditorInspector()
+                    : actions.openEditorInspector({ inspector: 'utils' }),
                 children: state.mode.flagsHidden
                     ? labeledCellContent('utils-label', 'widgets', railLabels.Utils())
                     : pairedInspectorContent('utils-stack', 'widgets', railLabels.Utils()),

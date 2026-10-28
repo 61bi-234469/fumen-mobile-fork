@@ -1070,6 +1070,26 @@ export const operations = {
             },
         },
     },
+    // INPUT State シート（左枠ステータスから開く。共有URLのコピー）
+    // INPUT State・せり上がり・ピースキューを切り替える INPUT ウィンドウ
+    inputWindow: {
+        openState: () => {
+            cy.get(datatest('input-stats')).click();
+            cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'state');
+        },
+        selectTab: (tab) => {
+            cy.get(datatest(`tab-input-window-${tab}`)).click();
+            cy.get(datatest('mdl-input-window')).should('have.attr', 'data-tab', tab);
+        },
+        close: () => {
+            cy.get(datatest('btn-input-window-close')).click();
+            cy.get(datatest('mdl-input-window')).should('not.exist');
+        },
+        share: () => {
+            cy.get(datatest('btn-input-share-url')).click();
+            cy.get(datatest('mdl-input-window')).should('not.exist');
+        },
+    },
     inputReplay: {
         openReplay: () => cy.get(datatest('btn-open-replay-input')).click(),
         fieldGauge: () => cy.get(datatest('replay-gauge-input')),

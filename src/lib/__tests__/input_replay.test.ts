@@ -8,10 +8,13 @@ import {
     applyInputGarbageRows,
     cloneInputReplayContext,
     createInputReplayContext,
+    createDefaultInputReplayContext,
     createInputReplayContextFromSnapshot,
+    inputGarbageSegments,
     inputGarbageView,
     inputReplayContextAt,
     selectCurrentGarbageParcels,
+    withInputGarbageSegments,
 } from '../input_replay';
 
 const options = (overrides: Partial<GarbageQueueInitializeParams> = {}): GarbageQueueInitializeParams => ({
@@ -202,6 +205,22 @@ describe('INPUT replay battle context', () => {
         expect(inputGarbageView(transition.context).gauge).toBe(0);
     });
 
+    test('counts B2B by the selected rotation rules while keeping the TETR.IO garbage model', () => {
+        const field = new Field({});
+        for (let y = 0; y < 4; y += 1) {
+            for (let x = 0; x < 9; x += 1) field.setToPlayField(x + y * 10, Piece.Gray);
+        }
+        const stats = { b2bChain: 1, renChain: 1, pieces: 4, lines: 8, perfectClears: 0 };
+
+        const srs = advanceInputReplayContext(context(3, rules(), stats), field, quadI, undefined, 'ppt');
+        expect(srs.context.stats.b2bChain).toBe(1);
+        expect(srs.placement.clearedLines).toBe(4);
+        expect(srs.cancelled).toBe(3);
+
+        const classic = advanceInputReplayContext(context(3, rules(), stats), field, quadI, undefined, 'none');
+        expect(classic.context.stats.b2bChain).toBe(0);
+    });
+
     test('a zero-damage clear still blocks garbage rise', () => {
         const field = new Field({});
         for (let x = 0; x < 9; x += 1) field.setToPlayField(x, Piece.Gray);
@@ -333,5 +352,54 @@ describe('INPUT replay battle context', () => {
 
         expect(inputGarbageView(inputReplayContextAt(pages, 2, tree)!).gauge).toBe(4);
         expect(inputGarbageView(inputReplayContextAt(pages, 1, tree)!).gauge).toBe(2);
+    });
+});
+
+describe('INPUT garbage segments', () => {
+    const stats = { b2bChain: 0, renChain: 0, pieces: 0, lines: 0, perfectClears: 0 };
+    const noClear = { type: Piece.O, rotation: Rotation.Spawn, coordinate: { x: 0, y: 0 } };
+
+    test('a fresh context uses league rules and an empty queue', () => {
+        const context = createDefaultInputReplayContext(stats, 42);
+        expect(inputGarbageSegments(context)).toEqual([]);
+        expect(inputGarbageView(context).gauge).toBe(0);
+        expect(context.garbage.rules).toMatchObject({ b2bCharging: true, b2bChargeAt: 4, garbageCap: 8 });
+    });
+
+    test('round-trips edited segments and tanks one segment per no-clear lock with its fixed hole', () => {
+        const context = withInputGarbageSegments(createDefaultInputReplayContext(stats, 42), [
+            { amount: 3, column: 7 },
+            { amount: 2, column: null },
+        ]);
+        expect(inputGarbageSegments(context)).toEqual([
+            { amount: 3, column: 7 },
+            { amount: 2, column: null },
+        ]);
+        const view = inputGarbageView(context);
+        expect(view.gauge).toBe(5);
+        expect(view.nextTankRows).toEqual([1, 2, 3].map(() => ({ column: 7, size: 1 })));
+
+        const first = advanceInputReplayContext(context, new Field({}), noClear);
+        expect(first.tankRows.map(row => row.column)).toEqual([7, 7, 7]);
+        expect(inputGarbageSegments(first.context)).toEqual([{ amount: 2, column: null }]);
+        expect(first.context.garbage.columns).toBeUndefined();
+
+        const second = advanceInputReplayContext(first.context, new Field({}), noClear);
+        expect(second.tankRows).toHaveLength(2);
+        expect(new Set(second.tankRows.map(row => row.column)).size).toBe(1);
+        expect(inputGarbageSegments(second.context)).toEqual([]);
+    });
+
+    test('editing keeps an existing parcel and drops emptied ones', () => {
+        const base = withInputGarbageSegments(createDefaultInputReplayContext(stats, 42), [
+            { amount: 4, column: null },
+            { amount: 1, column: 2 },
+        ]);
+        const cid = base.garbage.snapshot.queue[0].cid;
+        const edited = withInputGarbageSegments(base, [{ amount: 6, column: 0 }]);
+        expect(edited.garbage.snapshot.queue).toHaveLength(1);
+        expect(edited.garbage.snapshot.queue[0]).toMatchObject({ cid, amount: 6 });
+        expect(edited.garbage.columns).toEqual({ [cid]: 0 });
+        expect(cloneInputReplayContext(edited).garbage.columns).toEqual({ [cid]: 0 });
     });
 });

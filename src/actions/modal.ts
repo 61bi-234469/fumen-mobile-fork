@@ -1,6 +1,6 @@
 import { NextState, sequence } from './commons';
 import { action } from '../actions';
-import { PieceQueueFocus, State, UserSettingsTab } from '../states';
+import { State, UserSettingsTab } from '../states';
 import { coldClearActions } from './cold_clear';
 
 export interface ModalActions {
@@ -14,7 +14,6 @@ export interface ModalActions {
     openListViewMenuModal: (data?: { initialTab?: 'export' | 'import' }) => action;
     openTreeDisableConfirmModal: () => action;
     openColdClearMenuModal: () => action;
-    openPieceQueueModal: (data?: { focus?: PieceQueueFocus }) => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
@@ -24,7 +23,6 @@ export interface ModalActions {
     closeListViewMenuModal: () => action;
     closeTreeDisableConfirmModal: () => action;
     closeColdClearMenuModal: () => action;
-    closePieceQueueModal: () => action;
     closeAllModals: () => action;
 }
 
@@ -102,22 +100,6 @@ export const modalActions: Readonly<ModalActions> = {
             }),
         ]);
     },
-    openPieceQueueModal: (data = {}) => (state): NextState => {
-        return sequence(state, [
-            // スポーンミノがあればカレント枠に反映してから開く
-            coldClearActions.seedQueuePreviewFromSpawnedPiece(),
-            nextState => ({
-                modal: {
-                    ...nextState.modal,
-                    pieceQueue: true,
-                },
-                temporary: {
-                    ...nextState.temporary,
-                    pieceQueueFocus: data.focus ?? 'next',
-                },
-            }),
-        ]);
-    },
     closeListViewMenuModal: () => setModal('listViewMenu', false),
     closeTreeDisableConfirmModal: () => setModal('treeDisableConfirm', false),
     closeColdClearMenuModal: () => (state): NextState => {
@@ -131,14 +113,6 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    // 閉じるときは、カレントが空でもNEXTがあれば繰り上げてからコメントを確定する
-    closePieceQueueModal: () => (state): NextState => {
-        return sequence(state, [
-            coldClearActions.promoteQueueNextToCurrent(),
-            coldClearActions.commitColdClearQueueComment(),
-            setModal('pieceQueue', false),
-        ]);
-    },
     closeAllModals: () => (state): NextState => {
         return {
             modal: {
@@ -151,7 +125,7 @@ export const modalActions: Readonly<ModalActions> = {
                 listViewMenu: false,
                 treeDisableConfirm: false,
                 coldClearMenu: state.coldClear.isRunning ? true : false,
-                pieceQueue: false,
+                inputWindow: false,
             },
         };
     },

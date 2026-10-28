@@ -69,6 +69,7 @@ export const InputAiGuideOverlay: Component<Props> = ({
             value={`input-ai-guide-block-${index}`}
             datatest={`input-ai-guide-block-${index}`}
             data-piece={piece}
+            data-cell={cell === undefined ? '' : `${cell[0]},${cell[1]}`}
             visible={cell !== undefined}
             position={geometry.position}
             size={geometry.size}

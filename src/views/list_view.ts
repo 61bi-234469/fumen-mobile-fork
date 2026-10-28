@@ -659,7 +659,9 @@ export const view: View<State, Actions> = (state, actions) => {
                 : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
-                openUtils: () => actions.openEditorInspector({ inspector: 'utils' }),
+                toggleUtils: () => state.editorUi.inspector === 'utils'
+                    ? actions.closeEditorInspector()
+                    : actions.openEditorInspector({ inspector: 'utils' }),
                 openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) =>
                     actions.openListViewMenuModal(data),
                 openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),

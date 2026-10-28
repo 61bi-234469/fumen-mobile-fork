@@ -2,6 +2,8 @@ import { Piece, Screens } from '../lib/enums';
 import { isModifierKey, matchShortcut } from '../lib/shortcuts';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
+import { isHoldOnlyQueue, parseQueueStateComment } from '../lib/cold_clear/queueParser';
+import { resolvePageCommentText } from '../lib/pages';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import {
     endPieceShortcut,
@@ -46,7 +48,7 @@ type EditShortcutKey = keyof EditShortcuts;
 export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
     [Screens.Editor]: [
         'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
-        'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle',
+        'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle', 'InputShareUrl',
     ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome', 'Insert', 'Copy', 'Cut'],
     [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Menu', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
@@ -198,6 +200,9 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
     case 'MinoBlockToggle':
         actions.toggleSpawnMinoAndBlocks();
         break;
+    case 'InputShareUrl':
+        actions.copyInputShareUrlToClipboard();
+        break;
     }
 };
 
@@ -240,6 +245,18 @@ const hasEditLongPress = (key: EditShortcutKey): boolean => {
 const currentPageHasPiece = (state: State): boolean => {
     const page = state.fumen.pages[state.fumen.currentIndex];
     return page?.piece !== undefined;
+};
+
+// ピースが無く、HOLDだけが残っている（Holdで取り出せる）か。cold_clear はワーカーを読み込むので使わない
+const currentPageIsHoldOnly = (state: State): boolean => {
+    if (currentPageHasPiece(state)) return false;
+    try {
+        return isHoldOnlyQueue(parseQueueStateComment(
+            resolvePageCommentText(state.fumen.pages, state.fumen.currentIndex),
+        ));
+    } catch (e) {
+        return false;
+    }
 };
 
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
@@ -330,7 +347,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
             longPressTimer: null,
             longPressExecuted: false,
         });
-        if (pieceModeShortcut === 'Reset' || currentPageHasPiece(state)) {
+        if (pieceModeShortcut === 'Reset' || currentPageHasPiece(state)
+            || (pieceModeShortcut === 'Hold' && currentPageIsHoldOnly(state))) {
             startPieceShortcut(keyboardHoldId(event.code), pieceModeShortcut, {
                 dasFrames: state.mode.pieceShortcutDasFrames,
                 arrFrames: state.mode.pieceShortcutArrFrames,

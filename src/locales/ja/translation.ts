@@ -23,6 +23,7 @@ export const resources = {
         FailedToImport: '取り込めませんでした',
         FailedToDownloadImage: '画像をダウンロードできませんでした',
         NoImportableClipboardData: 'クリップボードにテト譜・tetgram・盤面データがありません',
+        AutosaveFailed: '自動保存できませんでした。ブラウザの保存領域がいっぱいか、使えない状態です',
     },
     OpenFumen: {
         Title: 'テト譜を開く',
@@ -62,6 +63,11 @@ export const resources = {
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
+        },
+        KeepGrayOnPaintDrag: {
+            Title: 'ドラッグで通過したグレーを変更しない',
+            Description: 'グレー以外から始めたドラッグでは、通過したグレーの色を上書き・削除しません。'
+                + 'グレーの上から始めると通常どおり変更できます。',
         },
         PaintPaletteMinoDesign: {
             Title: 'PAINTパレットをミノ画像で表示',
@@ -117,6 +123,7 @@ export const resources = {
             Copy: 'コピー',
             Cut: '切り取り',
             MinoBlockToggle: 'SPAWNミノ ⇄ ブロック',
+            InputShareUrl: 'INPUT状態の共有URLをコピー',
         },
         PieceShortcuts: {
             Title: 'ピースショートカット',
@@ -411,7 +418,6 @@ export const resources = {
         HideSidePanel: 'サイドパネルを隠す',
     },
     PieceQueue: {
-        Title: 'ピースキュー設定',
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',
         NextLabel: 'NEXT',
@@ -419,8 +425,46 @@ export const resources = {
         OpenSettings: 'ピースキュー設定を開く',
     },
     InputStats: {
-        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
+        SurgeCharged: 'Surgeチャージ済み: いまB2Bが途切れるとSurgeが発生します',
+    },
+    InputWindow: {
+        Title: 'INPUT',
+        Tabs: {
+            State: 'B2B / COMBO',
+            Garbage: 'せり上がり',
+            Queue: 'ピースキュー',
+        },
+        Close: '閉じる',
+    },
+    InputGarbage: {
+        Description: '1つの区間が1回分の攻撃です。ラインを消さずにミノを置くたびに、下の区間から1つずつ'
+            + 'せり上がります（1回最大8段）。ラインを消すと先に相殺されます。',
+        Open: 'せり上がりを編集',
+        Segment: '区間 {{index}}',
+        Amount: '段数',
+        Column: '穴の列',
+        Random: 'ランダム',
+        Decrease: '段数を減らす',
+        Increase: '段数を増やす',
+        Add: '区間を追加',
+        Remove: '区間を削除',
+        Empty: 'せり上がりはありません',
+        Total: '合計 {{count}} 段',
+        ClearAll: 'すべて消去',
+    },
+    InputState: {
+        Open: 'INPUT State を開く',
+        ChainLabel: 'chain',
+        Share: 'Share',
+        NativeShare: 'Share…',
+        Copied: 'INPUT状態の共有URLをコピーしました',
+        FailedToCopy: 'INPUT状態の共有URLをコピーできませんでした',
+        CommentTooLong: 'コメントが長すぎるため、INPUT状態を共有できません',
+        InvalidState: 'INPUT状態が不正なため共有できませんでした',
+        UnsupportedVersion: '新しいバージョンで作られたINPUT状態のため、盤面とキューだけを読み込みました',
+        RotationMismatch: '送信元の回転法則は {{rotation}} です（設定は変更していません）',
+        NotSaved: 'コメントが長すぎるため、一部のページのINPUT状態を自動保存できませんでした',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

@@ -2,13 +2,13 @@
   "source": {
     "run": "31088968213",
     "date": "2026-08-06",
-    "note": "Per-spec durations from the Cypress run summary of the five shards. replay_spec.js and spawn_mino_toggle_spec.js were re-measured locally on 2026-09-28, cold_clear_spec.js on 2026-10-01 (Sold Slear cases), and replay_spec.js again on 2026-10-01 (replay INPUT copy regression, 38 passing, 63 seconds) and on 2026-10-11 (direct round-1 playback and .ttrm drop, 40 passing, 63 seconds); editor_ui_spec.js on 2026-10-03 (bottom bar cases, 59 passing, 78 seconds); cold_clear_spec.js and replay_spec.js on 2026-10-19 (INPUT engine switch and Replay AI ghost, 14 passing in 34 seconds and 42 passing in 77 seconds) (local runs track CI within a few seconds). Refresh with the procedure in cypress/SPEC_MAP.md."
+    "note": "Per-spec durations from the Cypress run summary of the five shards. replay_spec.js and spawn_mino_toggle_spec.js were re-measured locally on 2026-09-28, cold_clear_spec.js on 2026-10-01 (Sold Slear cases), and replay_spec.js again on 2026-10-01 (replay INPUT copy regression, 38 passing, 63 seconds) and on 2026-10-11 (direct round-1 playback and .ttrm drop, 40 passing, 63 seconds); editor_ui_spec.js on 2026-10-03 (bottom bar cases, 59 passing, 78 seconds); cold_clear_spec.js and replay_spec.js on 2026-10-19 (INPUT engine switch and Replay AI ghost, 14 passing in 34 seconds and 42 passing in 77 seconds); cold_clear_spec.js on 2026-10-26 (INPUT AI ghost tap, 16 passing, 36 seconds) (local runs track CI within a few seconds). Refresh with the procedure in cypress/SPEC_MAP.md."
   },
   "defaultSeconds": 60,
   "specs": {
     "append_spec.js": 6,
     "box_spec.js": 21,
-    "cold_clear_spec.js": 34,
+    "cold_clear_spec.js": 36,
     "color_spec.js": 4,
     "comments_spec.js": 55,
     "draw_spec.js": 34,
@@ -25,7 +25,7 @@
     "list_view_menu_spec.js": 20,
     "no_lock_spec.js": 12,
     "open_spec.js": 135,
-    "piece_queue_spec.js": 54,
+    "piece_queue_spec.js": 57,
     "put_piece_spec.js": 87,
     "quiz_spec.js": 65,
     "replay_spec.js": 77,

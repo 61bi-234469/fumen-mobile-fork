@@ -25,8 +25,17 @@ describe('input stats', () => {
 
     test('retains B2B for a QUAD and resets it for an ordinary clear', () => {
         const base = { b2bChain: 1, renChain: 1, pieces: 1, lines: 4, perfectClears: 0 };
-        expect(advanceStats(base, { clearedLines: 4, spin: 'none', perfectClear: false }, 'ppt').b2bChain).toBe(2);
+        expect(advanceStats(base, { clearedLines: 4, spin: 'none', perfectClear: false }, 'tetrioS2').b2bChain)
+            .toBe(2);
         expect(advanceStats(base, { clearedLines: 1, spin: 'none', perfectClear: false }, 'ppt').b2bChain).toBe(0);
+    });
+
+    test('counts a B2B chain only for SRS+, keeps SRS as a flag, and has none for classic', () => {
+        const quad = { clearedLines: 4, spin: 'none' as const, perfectClear: false };
+        const base = { b2bChain: 1, renChain: 1, pieces: 1, lines: 4, perfectClears: 0 };
+        expect(advanceStats(base, quad, 'tetrioS2').b2bChain).toBe(2);
+        expect(advanceStats(base, quad, 'ppt').b2bChain).toBe(1);
+        expect(advanceStats(base, quad, 'none').b2bChain).toBe(0);
     });
 
     test('requires rotation evidence for a PPT T-spin and classifies its front corners', () => {
@@ -192,5 +201,17 @@ describe('input stats', () => {
         };
 
         expect(computeInputStats(pages, 2, { tree, rotationSystem: 'srsPlus' }).pieces).toBe(10);
+    });
+
+    test('seeds the first page B2B level and COMBO even on page 0, capped by the rotation system', () => {
+        const pages: any[] = [{
+            index: 0, field: { obj: new Field({}) }, comment: { text: 'b2b=3 combo=2 | #Q=[](T)IO' },
+            flags: { lock: true },
+        }];
+        expect(computeInputStats(pages, 0, 'srsPlus')).toMatchObject({ b2bChain: 3, renChain: 2 });
+        expect(computeInputStats(pages, 0, 'srs').b2bChain).toBe(1);
+        expect(computeInputStats(pages, 0, 'classic').b2bChain).toBe(0);
+        expect(computeInputStats([{ ...pages[0], comment: { text: 'b2b=3 sbg=1,4,2,0 | #Q=[](T)IO' } }], 0,
+            'srsPlus')).toMatchObject({ b2bChain: 3, pieces: 4, lines: 2 });
     });
 });

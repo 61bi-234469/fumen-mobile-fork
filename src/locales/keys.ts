@@ -28,6 +28,7 @@ export const i18n = {
         FailedToImport: () => t('Toast.FailedToImport'),
         FailedToDownloadImage: () => t('Toast.FailedToDownloadImage'),
         NoImportableClipboardData: () => t('Toast.NoImportableClipboardData'),
+        AutosaveFailed: () => t('Toast.AutosaveFailed'),
     },
     OpenFumen: {
         Title: () => t('OpenFumen.Title'),
@@ -67,6 +68,10 @@ export const i18n = {
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
+        },
+        KeepGrayOnPaintDrag: {
+            Title: () => t('UserSettings.KeepGrayOnPaintDrag.Title'),
+            Description: () => t('UserSettings.KeepGrayOnPaintDrag.Description'),
         },
         PaintPaletteMinoDesign: {
             Title: () => t('UserSettings.PaintPaletteMinoDesign.Title'),
@@ -122,6 +127,7 @@ export const i18n = {
             Copy: () => t('UserSettings.EditShortcuts.Copy'),
             Cut: () => t('UserSettings.EditShortcuts.Cut'),
             MinoBlockToggle: () => t('UserSettings.EditShortcuts.MinoBlockToggle'),
+            InputShareUrl: () => t('UserSettings.EditShortcuts.InputShareUrl'),
         },
         PieceShortcuts: {
             Title: () => t('UserSettings.PieceShortcuts.Title'),
@@ -454,7 +460,6 @@ export const i18n = {
         HideSidePanel: () => t('Navigator.HideSidePanel'),
     },
     PieceQueue: {
-        Title: () => t('PieceQueue.Title'),
         HoldLabel: () => t('PieceQueue.HoldLabel'),
         CurrentLabel: () => t('PieceQueue.CurrentLabel'),
         NextLabel: () => t('PieceQueue.NextLabel'),
@@ -462,11 +467,47 @@ export const i18n = {
         OpenSettings: () => t('PieceQueue.OpenSettings'),
     },
     InputStats: {
-        Pieces: () => t('InputStats.Pieces'), Lines: () => t('InputStats.Lines'),
-        PerfectClears: () => t('InputStats.PerfectClears'),
         Attack: () => t('InputStats.Attack'),
         Cancelled: () => t('InputStats.Cancelled'),
         Sent: () => t('InputStats.Sent'),
+        SurgeCharged: () => t('InputStats.SurgeCharged'),
+    },
+    InputWindow: {
+        Title: () => t('InputWindow.Title'),
+        Tabs: {
+            State: () => t('InputWindow.Tabs.State'),
+            Garbage: () => t('InputWindow.Tabs.Garbage'),
+            Queue: () => t('InputWindow.Tabs.Queue'),
+        },
+        Close: () => t('InputWindow.Close'),
+    },
+    InputGarbage: {
+        Description: () => t('InputGarbage.Description'),
+        Open: () => t('InputGarbage.Open'),
+        Segment: (index: number) => t('InputGarbage.Segment', { index }),
+        Amount: () => t('InputGarbage.Amount'),
+        Column: () => t('InputGarbage.Column'),
+        Random: () => t('InputGarbage.Random'),
+        Decrease: () => t('InputGarbage.Decrease'),
+        Increase: () => t('InputGarbage.Increase'),
+        Add: () => t('InputGarbage.Add'),
+        Remove: () => t('InputGarbage.Remove'),
+        Empty: () => t('InputGarbage.Empty'),
+        Total: (count: number) => t('InputGarbage.Total', { count }),
+        ClearAll: () => t('InputGarbage.ClearAll'),
+    },
+    InputState: {
+        Open: () => t('InputState.Open'),
+        ChainLabel: () => t('InputState.ChainLabel'),
+        Share: () => t('InputState.Share'),
+        NativeShare: () => t('InputState.NativeShare'),
+        Copied: () => t('InputState.Copied'),
+        FailedToCopy: () => t('InputState.FailedToCopy'),
+        CommentTooLong: () => t('InputState.CommentTooLong'),
+        InvalidState: () => t('InputState.InvalidState'),
+        UnsupportedVersion: () => t('InputState.UnsupportedVersion'),
+        RotationMismatch: (rotation: string) => t('InputState.RotationMismatch', { rotation }),
+        NotSaved: () => t('InputState.NotSaved'),
     },
     ColdClear: {
         MenuTitle: () => t('ColdClear.MenuTitle'),

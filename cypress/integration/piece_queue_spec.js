@@ -156,7 +156,7 @@ describe('PIECE queues', () => {
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-infinite-checkbox'))
             .should('have.attr', 'aria-pressed', 'true');
-        cy.get(datatest('mdl-piece-queue')).should('not.exist');
+        cy.get(datatest('mdl-input-window')).should('not.exist');
 
         operations.mode.piece.toggleInfiniteQueue();
         cy.get(datatest('piece-queue-infinite-checkbox'))
@@ -232,9 +232,9 @@ describe('PIECE queues', () => {
         operations.mode.piece.openWithQueues();
 
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'queue');
         cy.get(datatest('btn-piece-queue-add-Z')).click();
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
 
         // 閉じるときにカレントが空ならNEXT先頭 (I) を繰り上げるため、残るNEXTはO・Z。
         cy.get(datatest('piece-queue-next-1')).should('have.attr', 'data-piece', 'Z');
@@ -249,8 +249,8 @@ describe('PIECE queues', () => {
         operations.mode.piece.openWithQueues();
 
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('mdl-piece-queue')).should('be.visible');
-        cy.get(datatest('btn-piece-queue-close')).click();
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'queue');
+        operations.inputWindow.close();
 
         // 繰り上げたカレントは盤面にもスポーンされ、そのままINPUTを続けられる
         cy.get(datatest('img-rotation-spawn')).should('be.visible');
@@ -267,8 +267,8 @@ describe('PIECE queues', () => {
         operations.mode.piece.openWithQueues();
 
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('mdl-piece-queue')).should('be.visible');
-        cy.get(datatest('btn-piece-queue-close')).click();
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'queue');
+        operations.inputWindow.close();
 
         cy.get(datatest('img-rotation-empty')).should('be.visible');
         operations.mode.comment.open();
@@ -293,10 +293,10 @@ describe('PIECE queues', () => {
         // pointerdown action has replaced the page beneath the finger.
         cy.get(datatest('piece-queue-next'))
             .trigger('click', { detail: 1, pointerType: 'touch' });
-        cy.get(datatest('mdl-piece-queue')).should('not.exist');
+        cy.get(datatest('mdl-input-window')).should('not.exist');
 
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'queue');
     });
 
     it('focuses the modal section matching the tapped queue panel', () => {
@@ -308,12 +308,12 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-hold')).click();
         cy.get(datatest('input-piece-queue-hold')).should('be.focused');
         cy.get(datatest('pane-piece-queue-hold')).should('have.css', 'border-top-color', 'rgb(25, 118, 210)');
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
 
         cy.get(datatest('piece-queue-next')).click();
         cy.get(datatest('input-piece-queue-next')).should('be.focused');
         cy.get(datatest('pane-piece-queue-next')).should('have.css', 'border-top-color', 'rgb(25, 118, 210)');
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
     });
 
     it('edits the current piece from the modal', () => {
@@ -323,12 +323,12 @@ describe('PIECE queues', () => {
         operations.mode.piece.openWithQueues();
 
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('mdl-piece-queue')).should('be.visible');
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'queue');
 
         cy.get(datatest('pane-piece-queue-current')).click();
         cy.get(datatest('input-piece-queue-current')).should('be.focused');
         cy.get(datatest('btn-piece-queue-add-S')).click();
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
 
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[T](S)IO');
@@ -345,7 +345,7 @@ describe('PIECE queues', () => {
         cy.get(datatest('piece-queue-next')).click();
         cy.get(datatest('pane-piece-queue-current')).click();
         cy.get(datatest('btn-piece-queue-add-O')).click();
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
         operations.mode.comment.open();
         cy.get(datatest('text-comment')).should('have.value', '#Q=[Z](O)L');
 
@@ -398,7 +398,7 @@ describe('PIECE queues', () => {
 
         // キュー設定の表示・確定を挟んでも、sbgのbag位置を失わない。
         cy.get(datatest('piece-queue-next')).click();
-        cy.get(datatest('btn-piece-queue-close')).click();
+        operations.inputWindow.close();
 
         operations.mode.piece.harddrop();
         operations.mode.piece.harddrop();
@@ -593,6 +593,209 @@ describe('PIECE queues', () => {
         cy.get(datatest('text-pages')).should('contain', '1 / 1');
         mino(Piece.T, Rotation.Spawn)(4, 20).forEach(selector => {
             cy.get(selector).should('have.attr', 'color', Color.T.Highlight2);
+        });
+    });
+
+    it('takes the HOLD piece out with Hold once NEXT has run out', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[O]()').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', 'O');
+        cy.get(datatest('tray-piece-harddrop')).should('be.disabled');
+        cy.get(datatest('tray-piece-hold')).should('not.be.disabled').click();
+
+        cy.get(datatest('piece-queue-hold')).should('have.attr', 'data-piece', '');
+        cy.get(datatest('tray-piece-harddrop')).should('not.be.disabled');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+    });
+
+    it('opens the INPUT window on the tab of the tapped control and switches tabs', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.inputWindow.openState();
+        cy.get(datatest('input-state-b2b')).should('be.visible');
+        // Typed chains reach the HOLD panel (COMBO shows chain - 1; SRS keeps B2B as a flag).
+        cy.get(datatest('input-state-combo-input')).clear().type('3').blur();
+        cy.get(datatest('input-state-combo')).should('have.attr', 'data-value', '3');
+        cy.get(datatest('input-stats-combo')).should('have.attr', 'data-value', '2');
+        cy.get(datatest('input-state-b2b-input')).clear().type('5').blur();
+        cy.get(datatest('input-state-b2b')).should('have.attr', 'data-value', '1');
+        cy.get(datatest('input-stats-b2b')).should('have.attr', 'data-active', 'true');
+        cy.get(datatest('input-state-b2b-input')).should('have.value', '1');
+        // Tabs read Piece queue, State, Garbage from the left.
+        cy.get('[datatest^="tab-input-window-"]').then(($tabs) => {
+            expect([...$tabs].map(tab => tab.getAttribute('datatest'))).to.deep.equal([
+                'tab-input-window-queue', 'tab-input-window-state', 'tab-input-window-garbage',
+            ]);
+        });
+        // The window keeps its size whichever tab is shown.
+        cy.get(datatest('mdl-input-window')).invoke('outerHeight').then((height) => {
+            operations.inputWindow.selectTab('garbage');
+            cy.get(datatest('mdl-input-window')).invoke('outerHeight').should('equal', height);
+        });
+        cy.get(datatest('btn-input-garbage-add')).click();
+        operations.inputWindow.selectTab('queue');
+        cy.get(datatest('input-piece-queue-next')).should('be.focused');
+        cy.get(datatest('btn-piece-queue-add-Z')).click();
+        // Share sits in the shared header, so it is reachable from every tab.
+        cy.get(datatest('btn-input-share-url')).should('be.visible');
+        operations.inputWindow.close();
+
+        // Both edits made in the one window are applied.
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+        cy.get(datatest('piece-queue-next-3')).should('have.attr', 'data-piece', 'Z');
+
+        cy.get(datatest('input-garbage-field-gauge')).click();
+        cy.get(datatest('mdl-input-window')).should('have.attr', 'data-tab', 'garbage');
+        cy.get(datatest('input-garbage-segment-0')).should('have.attr', 'data-amount', '4');
+        operations.inputWindow.close();
+
+        // The gauge belongs to INPUT only: PIECE (select layout) and PAINT hide it, INPUT brings it back.
+        operations.mode.piece.layout('select');
+        cy.get(datatest('input-garbage-field-gauge')).should('not.exist');
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('input-garbage-field-gauge')).should('not.exist');
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+    });
+
+    it('undoes a typed COMBO on its own instead of with the lock before it', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+
+        operations.inputWindow.openState();
+        cy.get(datatest('input-state-combo-input')).clear().type('3').blur();
+        cy.get(datatest('input-stats-combo')).should('have.attr', 'data-value', '2');
+        operations.inputWindow.close();
+
+        operations.mode.tools.undo();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('input-stats-combo')).should('have.attr', 'data-value', '');
+        cy.get(datatest('piece-queue-hold')).should('exist');
+    });
+
+    it('edits incoming garbage from the INPUT gauge and raises it on a no-clear lock', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+        cy.get(datatest('input-garbage-field-gauge')).click();
+        cy.get(datatest('mdl-input-window')).should('be.visible').and('have.attr', 'data-tab', 'garbage');
+        cy.get(datatest('input-garbage-empty')).should('exist');
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('btn-input-garbage-decrease-0')).click();
+        cy.get(datatest('input-garbage-column-0')).select('0');
+        cy.get(datatest('input-garbage-segment-0'))
+            .should('have.attr', 'data-amount', '3')
+            .and('have.attr', 'data-column', '0');
+        cy.get(datatest('input-garbage-total')).should('have.attr', 'data-total', '3');
+        // Closing the window applies the draft.
+        operations.inputWindow.close();
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '3');
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+        [0, 1, 2].forEach((y) => {
+            cy.get(block(0, y)).should('have.attr', 'color', Color.Empty.Normal);
+            cy.get(block(9, y)).should('not.have.attr', 'color', Color.Empty.Normal);
+        });
+        cy.get(block(9, 3)).should('have.attr', 'color', Color.Empty.Normal);
+
+        // Undo restores the queued garbage together with the page.
+        operations.mode.tools.undo();
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '3');
+    });
+
+    it('shares the INPUT moment as a URL that reopens it in INPUT and survives a reload', () => {
+        const holeColumnAt = (y) => cy.document().then((doc) => {
+            const empty = Array.from({ length: 10 }, (_, x) => x)
+                .filter(x => doc.querySelector(block(x, y)).getAttribute('color') === Color.Empty.Normal);
+            expect(empty).to.have.length(1);
+            return empty[0];
+        });
+        const stubClipboardWrite = () => cy.window().then((win) => {
+            const writeText = cy.stub().as('writeText').resolves();
+            Object.defineProperty(win.navigator, 'clipboard', { configurable: true, value: { writeText } });
+        });
+
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOLJSZ').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        // Two attacks: a fixed hole, then a random one that depends on the restored RNG.
+        cy.get(datatest('input-garbage-field-gauge')).click();
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('btn-input-garbage-add')).click();
+        cy.get(datatest('input-garbage-column-0')).select('0');
+        // Leaving the tab applies the draft.
+        operations.inputWindow.selectTab('state');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '8');
+        operations.inputWindow.close();
+
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+
+        stubClipboardWrite();
+        operations.inputWindow.openState();
+        operations.inputWindow.share();
+        cy.get('@writeText').should('have.been.calledOnce');
+
+        cy.get('@writeText').then((writeText) => {
+            const url = writeText.firstCall.args[0];
+            expect(url).to.match(/\/fumen-mobile-fork\/#\?d=v115%40/);
+            const fumen = url.slice(url.indexOf('d=') + 2);
+
+            // The sender's next no-clear lock raises the random-hole attack.
+            operations.mode.piece.harddrop();
+            cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+            holeColumnAt(0).then((senderColumn) => {
+                visit({ fumen });
+                cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+                cy.get(datatest('text-pages')).should('contain', '1 / 1');
+                cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+                cy.get(datatest('piece-queue-next-0')).should('have.attr', 'data-piece', 'O');
+                [0, 1, 2, 3].forEach((y) => {
+                    cy.get(block(0, y)).should('have.attr', 'color', Color.Empty.Normal);
+                });
+
+                operations.mode.piece.harddrop();
+                cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '0');
+                holeColumnAt(0).should('equal', senderColumn);
+
+                // Reloading the same tab restores the autosave (normal startup screen) with the INPUT state kept.
+                cy.reload();
+                cy.get(datatest('text-pages')).should('contain', '2 / 2');
+                operations.screen.writable();
+                cy.get(datatest('btn-piece-layout')).click();
+                cy.get(datatest('editor-rail')).should('have.attr', 'data-piece-layout', 'play');
+                // The ATTACK row only exists while the page carries its garbage context.
+                cy.get(datatest('input-garbage-damage')).should('exist');
+            });
         });
     });
 

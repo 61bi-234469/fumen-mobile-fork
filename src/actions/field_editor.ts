@@ -1,5 +1,5 @@
 import { isMinoPiece, Piece, Rotation, Screens, toPositionIndex, TouchTypes } from '../lib/enums';
-import { action, actions } from '../actions';
+import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
 import { drawBlockActions } from './draw_block';
@@ -19,7 +19,8 @@ import {
 } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
-import { Page } from '../lib/fumen/types';
+import { Move, Page } from '../lib/fumen/types';
+import { inferGuideRotationEvidence } from '../lib/input_guide_placement';
 import { State } from '../states';
 import { createSpawnMove, getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
@@ -32,8 +33,8 @@ import {
     parseSevenBagGrayDisplay, parseSevenBagGrayProgress, withInputRotationEvidence,
 } from '../lib/comment_metadata';
 import {
-    advanceStats, computeInputStats, evaluatePlacement, fromCommentCombo, InputStats, resolveInputRulesPreset,
-    toCommentCombo,
+    advanceStats, capB2bChain, computeInputStats, evaluatePlacement, fromCommentCombo, InputStats,
+    resolveInputRulesPreset, toCommentCombo,
 } from '../lib/input_stats';
 import { advanceSevenBagGrayDisplay } from '../lib/seven_bag_gray';
 import {
@@ -113,8 +114,15 @@ export interface FieldEditorActions {
 
     harddrop(): action;
 
+    // Tapping a ready AI guide ghost in INPUT locks the current piece there (holding first when the AI did).
+    tapInputAiGuide(): action;
+
+    placeInputAiGuideMove(data: { move: Move }): action;
+
     spawnNextPieceFromColdClearQueue(data?: {
         placedPiece?: Piece;
+        // 7bag gray burns the placed mino into the same page, so the queue was not advanced through a quiz ref.
+        advanceQueue?: boolean;
         stats?: InputStats;
         mirrorCommentPageIndex?: number;
     }): action;
@@ -210,6 +218,24 @@ const runWithOverride = (
 };
 
 const FIELD_GRID_WIDTH = 10;
+// A ready AI guide ghost is drawn only in INPUT; its cells are a tap target unless the
+// current piece already covers that cell (dragging the piece keeps priority).
+export const isInputAiGuideCell = (state: State, index: number): boolean => {
+    const guide = state.coldClear?.inputGuide;
+    if (state.editorUi?.primaryTool !== 'piece' || state.editorUi.pieceLayout !== 'play'
+        || !guide?.enabled || guide.status !== 'ready' || guide.move === null) {
+        return false;
+    }
+    const { type, rotation, coordinate } = guide.move;
+    if (!getBlockPositions(type, rotation, coordinate.x, coordinate.y).map(toPositionIndex).includes(index)) {
+        return false;
+    }
+    const piece = state.fumen.pages[state.fumen.currentIndex]?.piece;
+    return piece === undefined || !isMinoPiece(piece.type)
+        || !getBlockPositions(piece.type, piece.rotation, piece.coordinate.x, piece.coordinate.y)
+            .map(toPositionIndex).includes(index);
+};
+
 const clearLastPieceManipulation = (state: State) => ({
     events: { ...state.events, lastPieceManipulation: undefined },
 });
@@ -450,6 +476,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     actions.cancelSpawnMinoPick(),
                     afterState => actions.convertBlocksToSpawnMino({ index })(afterState),
                 ]);
+            }
+            if (isInputAiGuideCell(newState, index)) {
+                return fieldEditorActions.tapInputAiGuide()(newState);
             }
             // The paint eraser deletes a selection it is tapped on, like the SPAWN mino below.
             // SELECT keeps its own left-click behaviour (grab and move the selection).
@@ -1221,6 +1250,43 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
+    tapInputAiGuide: () => (state): NextState => {
+        const guide = state.coldClear.inputGuide;
+        if (guide.status !== 'ready' || guide.move === null) {
+            return undefined;
+        }
+        const move = guide.move;
+        // HOLD入れ替えは配線済みアクションで盤面を確定させ、その後の状態で設置する
+        if (guide.usedHold) {
+            main.swapCurrentPieceWithHoldQueue();
+        }
+        main.placeInputAiGuideMove({ move });
+        return undefined;
+    },
+    placeInputAiGuideMove: ({ move }) => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (page?.piece === undefined || page.piece.type !== move.type || !page.flags.lock) {
+            return undefined;
+        }
+        const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+        const { type, rotation, coordinate } = move;
+        if (!field.canPut(type, rotation, coordinate.x, coordinate.y)
+            || !field.isOnGround(type, rotation, coordinate.x, coordinate.y)) {
+            return undefined;
+        }
+        const preset = resolveInputRulesPreset(state.mode.rotationSystem);
+        const evidence = inferGuideRotationEvidence(field, move, state.mode.rotationSystem, preset);
+        const prevPage = toPrimitivePage(page);
+        page.piece = { type, rotation, coordinate: { ...coordinate } };
+        return sequence(state, [
+            fieldEditorActions.resetInferencePiece(),
+            actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
+            actions.reopenCurrentPage(),
+            nextState => ({ events: { ...nextState.events, lastPieceManipulation: evidence } }),
+            fieldEditorActions.harddrop(),
+        ]);
+    },
     harddrop: () => (state): NextState => {
         // A hard drop is the locking operation, not a player move that invalidates
         // the preceding rotation. softdrop() moves the mino to the floor and clears
@@ -1268,6 +1334,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 if (isInput && inputReplayContext !== undefined) {
                     const transition = advanceInputReplayContext(
                         inputReplayContext, field, piece, rotationEvidence,
+                        resolveInputRulesPreset(nextState.mode.rotationSystem),
                     );
                     return sequence(nextState, [
                         ...(commentWithEvidence === currentComment ? [] : [
@@ -1295,14 +1362,14 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     const progress = page.internal?.sevenBagGrayProgress
                         ?? parseSevenBagGrayProgress(currentComment)
                         ?? { bag: 0, pieces: 0, lines: 0, perfectClears: 0 };
+                    const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
                     const baseStats = {
-                        b2bChain: parsed?.b2b ? 1 : 0,
+                        b2bChain: capB2bChain(parsed?.b2bLevel ?? 0, preset),
                         renChain: fromCommentCombo(parsed?.combo ?? 0),
                         pieces: progress.pieces,
                         lines: progress.lines,
                         perfectClears: progress.perfectClears,
                     };
-                    const preset = resolveInputRulesPreset(nextState.mode.rotationSystem);
                     const result = evaluatePlacement(
                         field, piece, preset, rotationEvidence,
                     );
@@ -1354,6 +1421,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                             stats,
                             mirrorCommentPageIndex: completedBag ? pageIndex : undefined,
                             placedPiece: piece.type,
+                            advanceQueue: true,
                         }),
                         nextStateAfterSpawn => ({
                             events: { ...nextStateAfterSpawn.events, lastInputPlacement: result },
@@ -1399,7 +1467,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 rotationSystem: state.mode.rotationSystem,
             })
             : undefined);
-        const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain >= 1;
+        // INPUT writes the chain itself (b2b=N) so Sold Slear's b2bLevel and a later reload agree with it.
+        const nextB2b = inputStats === undefined ? parsed.b2b : inputStats.b2bChain;
         const nextCombo = inputStats === undefined ? parsed.combo : toCommentCombo(inputStats.renChain);
         // Quizページのrefコメントは取得時点で設置操作が反映済み。
         // メタデータ付き等の非Quizコメントは、直前ページで設置したミノがカレントに残ったままのため
@@ -1410,8 +1479,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         let current = parsed.current;
         let queue = parsed.queue;
         // 7bagグレーは同じページへ設置ミノを焼き込むため、再表示後はQuiz参照ページに見える。
-        // 呼び出し元が配置ミノを明示した場合は、その判定より優先して必ずキューを進める。
-        if ((data.placedPiece !== undefined || !isAdvancedQuizComment) && current !== null) {
+        // その場合だけ呼び出し元が advanceQueue で明示し、判定より優先して必ずキューを進める。
+        // INPUT文脈のロック（placedPiece のみ）は新しいページを挿入するので、Quiz参照なら進行済み。
+        if ((data.advanceQueue === true || !isAdvancedQuizComment) && current !== null) {
             const prevPage = state.fumen.pages[pageIndex - 1];
             const placedPiece = data.placedPiece ?? (
                 prevPage?.flags.lock && prevPage.piece && isMinoPiece(prevPage.piece.type)

@@ -30,6 +30,8 @@ const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
 const B2B_SEGMENT_REGEX = /^b2b=(true|false|0|[1-9]\d{0,5})$/;
 const COMBO_SEGMENT_REGEX = /^combo=(-?\d+)$/;
+// INPUT状態の共有トークン（src/lib/input_snapshot.ts）。中身は読み込み側で検証する
+const INPUT_SNAPSHOT_TOKEN_PREFIX = 'isnap=';
 const METADATA_SEPARATOR = ' | ';
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
@@ -76,6 +78,34 @@ export function parseQueueComment(text: string): ParsedQueue | null {
     };
 }
 
+/** NEXT and CURRENT are used up and only HOLD remains: Hold is the only way to continue. */
+export const isHoldOnlyQueue = (parsed: ParsedQueue | null): boolean => (
+    parsed !== null && parsed.hold !== null && parsed.current === null && parsed.queue.length === 0
+);
+
+/**
+ * Rewrites only the b2b= / combo= tokens of a queue state comment, keeping every other token in place.
+ * Returns null when the text is not a queue state comment.
+ */
+export function withQueueChainTokens(text: string, b2bLevel: number, combo: number): string | null {
+    if (parseQueueStateComment(text) === null) {
+        return null;
+    }
+    const segments = text.split(METADATA_SEPARATOR);
+    const queueSegment = parseQueueOnlyComment(segments[segments.length - 1]) ? segments.pop() : undefined;
+    const kept = segments
+        .map(segment => segment.split(' ')
+            .filter(token => !B2B_SEGMENT_REGEX.test(token) && !COMBO_SEGMENT_REGEX.test(token))
+            .join(' '))
+        .filter(segment => segment !== '');
+    const chain = [
+        ...(b2bLevel > 0 ? [`b2b=${Math.floor(b2bLevel)}`] : []),
+        ...(combo > 0 ? [`combo=${Math.floor(combo)}`] : []),
+    ].join(' ');
+    return [...kept, ...(chain === '' ? [] : [chain]), ...(queueSegment === undefined ? [] : [queueSegment])]
+        .join(METADATA_SEPARATOR);
+}
+
 export function parseQueueStateComment(text: string): ParsedQueueState | null {
     if (!text) {
         return null;
@@ -102,7 +132,8 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
             if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)
                 || parseInputRotationEvidence(token) !== undefined
                 || parseSevenBagGrayProgress(token) !== undefined
-                || parseSevenBagGrayDisplay(token) !== undefined) {
+                || parseSevenBagGrayDisplay(token) !== undefined
+                || token.startsWith(INPUT_SNAPSHOT_TOKEN_PREFIX)) {
                 continue;
             }
 

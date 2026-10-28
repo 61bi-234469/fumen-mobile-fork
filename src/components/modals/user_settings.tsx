@@ -19,6 +19,7 @@ interface UserSettingsModalProps {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
     paintPaletteMinoDesign: boolean;
+    keepGrayOnPaintDrag: boolean;
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
@@ -47,6 +48,7 @@ interface UserSettingsModalProps {
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
         keepPaintPaletteMinoDesign: (data: { enable: boolean }) => void;
+        keepKeepGrayOnPaintDrag: (data: { enable: boolean }) => void;
         keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
@@ -73,7 +75,7 @@ interface UserSettingsModalProps {
 const paletteKeys: (keyof PaletteShortcuts)[] = ['I', 'L', 'O', 'Z', 'T', 'J', 'S', 'Empty', 'Gray', 'Comp'];
 const editShortcutKeys: (keyof EditShortcuts)[] = [
     'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
-    'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle',
+    'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut', 'MinoBlockToggle', 'InputShareUrl',
 ];
 
 const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
@@ -91,6 +93,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
     Copy: i18n.UserSettings.EditShortcuts.Copy,
     Cut: i18n.UserSettings.EditShortcuts.Cut,
     MinoBlockToggle: i18n.UserSettings.EditShortcuts.MinoBlockToggle,
+    InputShareUrl: i18n.UserSettings.EditShortcuts.InputShareUrl,
 };
 
 const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
@@ -141,6 +144,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         ghostVisible,
         deleteSpawnMinoOnPaintDrag,
         paintPaletteMinoDesign,
+        keepGrayOnPaintDrag,
         flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
@@ -583,6 +587,15 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
                                 checked: deleteSpawnMinoOnPaintDrag,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-keep-gray-on-paint-drag',
+                                datatest: 'switch-keep-gray-on-paint-drag',
+                                title: i18n.UserSettings.KeepGrayOnPaintDrag.Title(),
+                                description: i18n.UserSettings.KeepGrayOnPaintDrag.Description(),
+                                checked: keepGrayOnPaintDrag,
+                                onChange: checked => actions.keepKeepGrayOnPaintDrag({ enable: checked }),
                             })}
 
                             {renderSwitch({

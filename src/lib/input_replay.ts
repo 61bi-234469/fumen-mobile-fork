@@ -12,8 +12,10 @@ import type { Move, Page } from './fumen/types';
 import type { SerializedTree } from './fumen/tree_types';
 import { findNodeByPageIndex, getPathToNode } from './fumen/tree_utils';
 import {
+    InputRulesPreset,
     InputStats,
     PlacementResult,
+    capB2bChain,
     evaluatePlacement,
 } from './input_stats';
 import { buildEngineConfig } from './ttrm/engine_config';
@@ -63,6 +65,14 @@ export interface InputReplayGarbageContext {
     options: GarbageQueueInitializeParams;
     rules: InputReplayRules;
     last?: InputReplayLastGarbage;
+    /** Hole columns fixed from the INPUT garbage editor, keyed by the incoming attack's cid. */
+    columns?: { [cid: number]: number };
+}
+
+/** One incoming attack as the INPUT garbage editor shows it; `column: null` keeps TETR.IO's random hole. */
+export interface InputGarbageSegment {
+    amount: number;
+    column: number | null;
 }
 
 export interface InputReplayContext {
@@ -156,6 +166,7 @@ export const cloneInputReplayContext = (context: InputReplayContext): InputRepla
         options: cloneGarbageOptions(context.garbage.options),
         rules: { ...context.garbage.rules },
         last: context.garbage.last === undefined ? undefined : { ...context.garbage.last },
+        columns: context.garbage.columns === undefined ? undefined : { ...context.garbage.columns },
     },
 });
 
@@ -221,10 +232,10 @@ export const inputReplayStatsAt = (
 };
 
 const normalizedRules = (
-    player: PlayerRoundIR,
+    resolvedOptions: { [key: string]: any },
     options: GarbageQueueInitializeParams,
 ): InputReplayRules => {
-    const config = buildEngineConfig(player.resolvedOptions, []);
+    const config = buildEngineConfig(resolvedOptions, []);
     const charging = config.b2b.charging;
     const pc = config.pc;
     return {
@@ -269,8 +280,92 @@ export const createInputReplayContext = (
         frame: cursorFrame,
         pieces: replayPlacedCount(player, pointIndex),
         options: config.garbage,
-        rules: normalizedRules(player, config.garbage),
+        rules: normalizedRules(player.resolvedOptions, config.garbage),
     });
+};
+
+// TETR.IO Tetra League (Season 2) options that affect attack, cancel and tanking.
+const LEAGUE_OPTIONS = {
+    allclear_b2b: 1,
+    allclear_garbage: 5,
+    b2bchaining: false,
+    b2bcharge_base: 3,
+    b2bcharging: true,
+    combotable: 'multiplier',
+    garbageblocking: 'combo blocking',
+    garbagecap: 8,
+    garbagecapmax: 40,
+    garbageholesize: 1,
+    garbageincrease: 0.008,
+    garbagemargin: 10800,
+    garbagemultiplier: 1,
+    garbagespecialbonus: true,
+    garbagespeed: 20,
+    garbagetargetbonus: 'none',
+    kickset: 'SRS+',
+    messiness_change: 1,
+    messiness_inner: 0,
+    messiness_nosame: false,
+    openerphase: 14,
+    roundmode: 'down',
+    spinbonuses: 'all-mini+',
+};
+
+/** A garbage context for an INPUT session that did not come from a replay (league rules, empty queue). */
+export const createDefaultInputReplayContext = (stats: InputStats, seed: number): InputReplayContext => {
+    const resolvedOptions = { ...LEAGUE_OPTIONS, seed };
+    const config = buildEngineConfig(resolvedOptions, []);
+    return createInputReplayContextFromSnapshot({
+        stats: { ...stats, lastAction: undefined },
+        snapshot: new GarbageQueue(config.garbage).snapshot(),
+        frame: 0,
+        options: config.garbage,
+        rules: normalizedRules(resolvedOptions, config.garbage),
+    });
+};
+
+const pendingParcels = (context: InputReplayContext) => context.garbage.snapshot.queue
+    .filter(item => item.confirmed && item.amount > 0)
+    .sort((a, b) => a.frame - b.frame);
+
+export const inputGarbageSegments = (context: InputReplayContext): InputGarbageSegment[] => (
+    pendingParcels(context).map(item => ({
+        amount: item.amount,
+        column: context.garbage.columns?.[item.cid] ?? null,
+    }))
+);
+
+/**
+ * Replaces the incoming attacks with the edited list, oldest first. Existing parcels keep
+ * their identity and timing by position; added ones become ready on the next tank.
+ */
+export const withInputGarbageSegments = (
+    context: InputReplayContext,
+    segments: InputGarbageSegment[],
+): InputReplayContext => {
+    const existing = pendingParcels(context);
+    const speed = context.garbage.options.garbage.speed;
+    let nextCid = context.garbage.snapshot.queue.reduce((max, item) => Math.max(max, item.cid), 0) + 1;
+    let frame = context.garbage.frame - speed;
+    const columns: { [cid: number]: number } = {};
+    const queue = segments
+        .filter(segment => segment.amount > 0)
+        .map((segment, index) => {
+            const previous = existing[index];
+            frame = Math.max(frame, previous?.frame ?? frame);
+            const item = previous === undefined
+                ? { frame, amount: 0, size: context.garbage.options.garbage.holeSize, cid: nextCid,
+                    gameid: 0, confirmed: true }
+                : { ...previous };
+            if (previous === undefined) nextCid += 1;
+            item.amount = Math.floor(segment.amount);
+            if (segment.column !== null) columns[item.cid] = segment.column;
+            return item;
+        });
+    const next = cloneInputReplayContext(context);
+    next.garbage.snapshot = { ...next.garbage.snapshot, queue };
+    next.garbage.columns = Object.keys(columns).length === 0 ? undefined : columns;
+    return next;
 };
 
 const restoreQueue = (context: InputReplayContext): GarbageQueue => {
@@ -313,8 +408,9 @@ const tankNext = (
     const currentAmount = context.garbage.snapshot.queue
         .filter(item => item.confirmed && item.amount > 0)
         .sort((a, b) => a.frame - b.frame)[0]?.amount ?? 0;
+    const columns = context.garbage.columns;
     const rows = queue.tank(frame, Math.min(dynamicCap(context, frame), currentAmount), true)
-        .map(({ column, size }) => ({ column, size }));
+        .map(({ id, column, size }) => ({ size, column: columns?.[id] ?? column }));
     return { frame, rows };
 };
 
@@ -423,6 +519,13 @@ const advanceReplayStats = (
     };
 };
 
+// SRS keeps B2B as a flag and classic has none; their chains never charge a Surge.
+const capReplayAdvance = (advanced: ReplayStatsAdvance, preset: InputRulesPreset): ReplayStatsAdvance => {
+    if (preset === 'tetrioS2') return advanced;
+    const b2bChain = capB2bChain(advanced.stats.b2bChain, preset);
+    return { ...advanced, rawB2b: b2bChain - 1, brokeB2b: false, stats: { ...advanced.stats, b2bChain } };
+};
+
 const calculateAttackChunks = (
     context: InputReplayContext,
     queue: GarbageQueue,
@@ -485,6 +588,19 @@ const countGarbageCleared = (field: Field, piece: Move | undefined): number => {
     return garbageCleared;
 };
 
+const remainingColumns = (
+    context: InputReplayContext,
+    queue: GarbageQueue,
+): InputReplayGarbageContext['columns'] => {
+    const columns = context.garbage.columns;
+    if (columns === undefined) return undefined;
+    const kept: { [cid: number]: number } = {};
+    for (const item of queue.queue) {
+        if (columns[item.cid] !== undefined) kept[item.cid] = columns[item.cid];
+    }
+    return Object.keys(kept).length === 0 ? undefined : kept;
+};
+
 /**
  * Applies one INPUT lock with TETR.IO combo blocking semantics.
  * A clear may cancel FIFO garbage but never tanks; only a no-clear lock tanks all ready rows up to cap.
@@ -494,13 +610,15 @@ export const advanceInputReplayContext = (
     field: Field,
     piece: Move | undefined,
     evidence?: InputRotationEvidence,
+    // Spins and B2B follow the selected rotation rules; the garbage and attack model stays TETR.IO's.
+    preset: InputRulesPreset = 'tetrioS2',
 ): InputReplayTransition => {
     const placement: InputReplayPlacementResult = {
-        ...evaluatePlacement(field, piece, 'tetrioS2', evidence),
+        ...evaluatePlacement(field, piece, preset, evidence),
         garbageCleared: countGarbageCleared(field, piece),
     };
     const queue = restoreQueue(context);
-    const advanced = advanceReplayStats(context.stats, placement, context.garbage.rules);
+    const advanced = capReplayAdvance(advanceReplayStats(context.stats, placement, context.garbage.rules), preset);
     const chunks = calculateAttackChunks(context, queue, placement, advanced);
     const attack = chunks.reduce((sum, amount) => sum + amount, 0);
     let cancelled = 0;
@@ -531,6 +649,7 @@ export const advanceInputReplayContext = (
             options: cloneGarbageOptions(context.garbage.options),
             rules: { ...context.garbage.rules },
             last: { attack, cancelled, sent, risen: tankRows.length },
+            columns: remainingColumns(context, queue),
         },
     };
     return {

@@ -108,10 +108,21 @@ export const evaluatePlacement = (
     };
 };
 
+// Only SRS+ (TETR.IO) counts a B2B chain; SRS (PPT) keeps B2B as an on/off flag and classic has none.
+export const capB2bChain = (b2bChain: number, preset: InputRulesPreset): number => {
+    switch (preset) {
+    case 'tetrioS2': return b2bChain;
+    case 'ppt': return Math.min(1, b2bChain);
+    case 'none': return 0;
+    }
+};
+
 export const advanceStats = (stats: InputStats, result: PlacementResult, preset: InputRulesPreset): InputStats => {
     const difficult = result.clearedLines === 4 || result.spin !== 'none'
         || (preset === 'tetrioS2' && result.perfectClear);
-    const b2bChain = result.clearedLines === 0 ? stats.b2bChain : difficult ? stats.b2bChain + 1 : 0;
+    const b2bChain = capB2bChain(
+        result.clearedLines === 0 ? stats.b2bChain : difficult ? stats.b2bChain + 1 : 0, preset,
+    );
     return {
         b2bChain,
         renChain: result.clearedLines === 0 ? 0 : stats.renChain + 1,
@@ -131,11 +142,12 @@ export const computeInputStats = (
     const currentComment = pages.length === 0 ? '' : resolvePageCommentText(pages, resolvedIndex);
     const sevenBagGray = pages[resolvedIndex]?.internal?.sevenBagGrayProgress
         ?? parseSevenBagGrayProgress(currentComment);
+    const preset = resolveInputRulesPreset(rotationSystem);
     if (sevenBagGray !== undefined) {
         const seed = parseQueueStateComment(currentComment);
         return {
             ...initial,
-            b2bChain: seed?.b2b ? 1 : 0,
+            b2bChain: capB2bChain(seed?.b2bLevel ?? 0, preset),
             renChain: fromCommentCombo(seed?.combo ?? 0),
             pieces: sevenBagGray.pieces,
             lines: sevenBagGray.lines,
@@ -168,18 +180,18 @@ export const computeInputStats = (
         // The boundary page's piece is still active; only completed pages after it are replayed.
         indices = route.slice(boundaryPosition + 1).filter(index => index !== currentIndex);
     } else {
-        if (currentIndex <= 0) return initial;
+        // The first page's b2b=/combo= describe the state before its own piece, so they apply even on page 0.
         const seed = parseQueueStateComment(resolvePageCommentText(pages, 0));
         stats = seed ? {
             ...initial,
-            b2bChain: seed.b2b ? 1 : 0,
+            b2bChain: capB2bChain(seed.b2bLevel, preset),
             renChain: fromCommentCombo(seed.combo),
         } : initial;
+        if (currentIndex <= 0) return stats;
         indices = route.filter(index => index !== currentIndex);
     }
     const pagesObject = new Pages(pages);
     const replayedFields = pagesObject.replayFieldIndices(indices, PageFieldOperation.Command);
-    const preset = resolveInputRulesPreset(rotationSystem);
     for (let position = 0; position < indices.length; position += 1) {
         const index = indices[position];
         const page = pages[index];

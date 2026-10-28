@@ -51,6 +51,7 @@ export interface ScreenActions {
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => action;
     changePaintPaletteMinoDesign: (data: { enable: boolean }) => action;
+    changeKeepGrayOnPaintDrag: (data: { enable: boolean }) => action;
     changeFlagsHidden: (data: { hidden: boolean }) => action;
     changeInitialScreen: (data: { initialScreen: InitialScreenSetting }) => action;
     changeOpenTreeScreenOnTreeData: (data: { enable: boolean }) => action;
@@ -261,6 +262,17 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 paintPaletteMinoDesign: enable,
+            },
+        };
+    },
+    changeKeepGrayOnPaintDrag: ({ enable }) => (state): NextState => {
+        if (state.mode.keepGrayOnPaintDrag === enable) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                keepGrayOnPaintDrag: enable,
             },
         };
     },

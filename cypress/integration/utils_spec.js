@@ -76,6 +76,12 @@ describe('Utils', () => {
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
         cy.get(datatest('overlay-utils')).should('be.visible');
 
+        // ピン留め中もレールのUTILSボタンで開閉できる
+        cy.get(datatest('btn-utils-mode')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+        cy.get(datatest('btn-utils-mode')).click();
+        cy.get(datatest('overlay-utils')).should('be.visible');
+
         cy.get(datatest('btn-inspector-close')).click();
         cy.get(datatest('overlay-utils')).should('not.exist');
 

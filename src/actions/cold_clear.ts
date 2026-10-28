@@ -12,6 +12,7 @@ import {
     parseQueueStateComment,
     buildQueueComment,
     buildQueueStateComment,
+    isHoldOnlyQueue as isHoldOnlyQueueState,
 } from '../lib/cold_clear/queueParser';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 import { fieldToCC, fieldToCells } from '../lib/cold_clear/fieldConverter';
@@ -211,7 +212,7 @@ export interface ColdClearActions {
         hold: Piece | null;
         current: Piece | null;
         queue: Piece[];
-        b2b: boolean;
+        b2b: boolean | number;
         combo: number;
         syncCurrentPiece?: boolean;
     }) => action;
@@ -704,6 +705,8 @@ export interface ColdClearMenuQueueState {
     current: Piece | null;
     queue: Piece[];
     b2b: boolean;
+    // B2B の連鎖数（b2b=N）。キュー編集で書き戻すときに 1 へ潰さないために保持する
+    b2bLevel: number;
     combo: number;
     score: number | null;
 }
@@ -743,6 +746,7 @@ export const resolveCurrentColdClearMenuQueueState = (
             current: null,
             queue: [],
             b2b: false,
+            b2bLevel: 0,
             combo: 0,
             score: null,
         };
@@ -759,6 +763,7 @@ export const resolveCurrentColdClearMenuQueueState = (
         current: parsed.current,
         queue: parsed.queue.slice(),
         b2b: parsed.b2b,
+        b2bLevel: parsed.b2bLevel,
         combo: parsed.combo,
         score: parseScoreFromComment(commentText),
     };
@@ -1313,8 +1318,20 @@ export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolea
         // スポーンミノとホールド (未設定ならNEXT先頭) を入れ替えられるか
         return parsed.hold !== null || parsed.queue.length > 0;
     }
-    // カレント (未設定ならNEXT先頭) をスポーンできるか
-    return parsed.current !== null || parsed.queue.length > 0;
+    // カレント (未設定ならNEXT先頭) をスポーンできるか。NEXTを使い切りHOLDだけ残った場合はHOLDを取り出す
+    return parsed.current !== null || parsed.queue.length > 0 || parsed.hold !== null;
+};
+
+// スポーンミノがなく、NEXTとカレントを使い切ってHOLDだけが残っている状態か
+export const isHoldOnlyQueue = (state: Readonly<State>): boolean => {
+    const pageIndex = state.fumen.currentIndex;
+    const page = state.fumen.pages[pageIndex];
+    if (page?.piece !== undefined && isMinoPiece(page.piece.type)) {
+        return false;
+    }
+    return isHoldOnlyQueueState(
+        parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview),
+    );
 };
 
 const toMove = (result: CCMove): Move | null => ccMoveToMove(result);
@@ -2717,6 +2734,15 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     ) ?? '') ?? undefined,
                     parsed.hold, nextSpawnPiece, parsed.queue.slice(1), parsed.b2b, parsed.combo,
                     parsed.suffix);
+            } else if (parsed.hold !== null) {
+                // NEXTを使い切ってHOLDだけが残った: HOLDを取り出してカレントにする
+                nextSpawnPiece = parsed.hold;
+                nextComment = buildScoredQueueComment(
+                    parseScoreFromComment(resolveCommentTextWithPreview(
+                        state.fumen.pages, pageIndex, state.coldClear.queuePreview,
+                    ) ?? '') ?? undefined,
+                    null, nextSpawnPiece, [], parsed.b2b, parsed.combo,
+                    parsed.suffix);
             } else {
                 showSwapValidationError('missingCurrentPiece');
                 return undefined;
@@ -2893,7 +2919,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: queueState.hold,
             current: page.piece.type,
             queue: queueState.queue,
-            b2b: queueState.b2b,
+            b2b: queueState.b2bLevel,
             combo: queueState.combo,
         })(state);
     },
@@ -2914,7 +2940,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: queueState.hold,
             current: queueState.queue[0],
             queue: queueState.queue.slice(1),
-            b2b: queueState.b2b,
+            b2b: queueState.b2bLevel,
             combo: queueState.combo,
         })(state);
     },

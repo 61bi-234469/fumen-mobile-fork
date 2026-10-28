@@ -20,7 +20,7 @@ interface Props {
     menuShortcutLabel?: string;
     actions: {
         changeToEditorFromListView: () => void;
-        openUtils: () => void;
+        toggleUtils: () => void;
         openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) => void;
         openUserSettingsModal: () => void;
         toggleTreeMode: () => void;
@@ -110,7 +110,7 @@ export const ListViewTools: Component<Props> = (
                 fontSize={metrics.edgeIconSize}
                 colors={palette}
                 actions={{
-                    onclick: () => actions.openUtils(),
+                    onclick: () => actions.toggleUtils(),
                 }}
             />
             {transferButtons}

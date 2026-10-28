@@ -11,13 +11,12 @@ export const PIECE_RAIL_GROUP_GAP_DUAL = 4;
 export const NEXT_PANEL_CHROME_HEIGHT = 26;
 export const INFINITE_TOGGLE_HEIGHT = 32;
 export const INPUT_STATS_GAP = 6;
-export type InputStatsPanelTier = 'hidden' | 'compact' | 'summary' | 'full';
+export type InputStatsPanelTier = 'hidden' | 'compact' | 'summary';
 
 export const getInputStatsPanelTier = (availableHeight: number): InputStatsPanelTier => {
     if (availableHeight < 90) return 'hidden';
     if (availableHeight < 140) return 'compact';
-    if (availableHeight < 200) return 'summary';
-    return 'full';
+    return 'summary';
 };
 
 // 操作重視レイアウト。[PLAY|AI]、PIECE、[PAINT|SELECT]、非常操作の4行を載せる。

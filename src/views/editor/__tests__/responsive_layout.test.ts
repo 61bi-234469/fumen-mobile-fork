@@ -24,7 +24,7 @@ import {
 describe('editor responsive layout', () => {
     test.each([
         [89, 'hidden'], [90, 'compact'], [139, 'compact'], [140, 'summary'],
-        [199, 'summary'], [200, 'full'],
+        [199, 'summary'], [200, 'summary'],
     ])('uses the input stats tier at %ipx', (height, tier) => {
         expect(getInputStatsPanelTier(height)).toBe(tier);
     });

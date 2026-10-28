@@ -23,6 +23,7 @@
         FailedToImport: 'Failed to import',
         FailedToDownloadImage: 'Failed to download image',
         NoImportableClipboardData: 'No fumen / tetgram / field data in clipboard',
+        AutosaveFailed: 'Could not autosave: browser storage is full or blocked',
     },
     OpenFumen: {
         Title: 'Open fumen',
@@ -62,6 +63,11 @@
         },
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when an eraser drag passes over it',
+        },
+        KeepGrayOnPaintDrag: {
+            Title: 'Keep gray blocks that a drag passes over',
+            Description: 'A drag that starts on a non-gray cell does not recolor or erase gray blocks.'
+                + ' Start on a gray block to change it as usual.',
         },
         PaintPaletteMinoDesign: {
             Title: 'Show PAINT palette as mino images',
@@ -117,6 +123,7 @@
             Copy: 'Copy',
             Cut: 'Cut',
             MinoBlockToggle: 'Spawn mino / blocks',
+            InputShareUrl: 'Copy INPUT share URL',
         },
         PieceShortcuts: {
             Title: 'Piece shortcuts',
@@ -428,7 +435,6 @@
         HideSidePanel: 'Hide side panel',
     },
     PieceQueue: {
-        Title: 'Piece queue settings',
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',
         NextLabel: 'NEXT',
@@ -436,8 +442,46 @@
         OpenSettings: 'Open piece queue settings',
     },
     InputStats: {
-        Pieces: 'PIECES', Lines: 'LINES', PerfectClears: 'PC',
         Attack: 'ATTACK', Cancelled: 'CANCEL', Sent: 'SENT',
+        SurgeCharged: 'Surge charged: breaking B2B now releases a Surge',
+    },
+    InputWindow: {
+        Title: 'INPUT',
+        Tabs: {
+            State: 'B2B / COMBO',
+            Garbage: 'Garbage',
+            Queue: 'Piece queue',
+        },
+        Close: 'Close',
+    },
+    InputGarbage: {
+        Description: 'Each segment is one incoming attack. Every lock that clears no line raises the next segment '
+            + 'from the bottom of the list (up to 8 rows at a time); line clears cancel them first.',
+        Open: 'Edit incoming garbage',
+        Segment: 'Segment {{index}}',
+        Amount: 'Lines',
+        Column: 'Hole',
+        Random: 'Random',
+        Decrease: 'Fewer lines',
+        Increase: 'More lines',
+        Add: 'Add segment',
+        Remove: 'Remove segment',
+        Empty: 'No incoming garbage',
+        Total: 'Total {{count}} lines',
+        ClearAll: 'Clear all',
+    },
+    InputState: {
+        Open: 'Open INPUT State',
+        ChainLabel: 'chain',
+        Share: 'Share',
+        NativeShare: 'Share via…',
+        Copied: 'Copied the INPUT share URL',
+        FailedToCopy: 'Failed to copy the INPUT share URL',
+        CommentTooLong: 'The comment is too long to share the INPUT state',
+        InvalidState: 'Could not share: the INPUT state is invalid',
+        UnsupportedVersion: 'This INPUT state was made by a newer version; only the board and queue were loaded',
+        RotationMismatch: 'Shared with {{rotation}} rotation; your rotation setting was not changed',
+        NotSaved: 'Some pages are too long to keep their INPUT state in the autosave',
     },
     ColdClear: {
         MenuTitle: 'Cold Clear',

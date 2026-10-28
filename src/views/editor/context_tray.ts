@@ -9,7 +9,7 @@ import { i18n } from '../../locales/keys';
 import { rectHeight, rectWidth } from '../../lib/rect_selection';
 import { decidePieceColor } from '../../lib/colors';
 import { HighlightType } from '../../state_types';
-import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
+import { canSwapCurrentPieceWithHoldQueue, isHoldOnlyQueue } from '../../actions/cold_clear';
 import {
     endPieceShortcut,
     isPieceShortcutHoldActive,
@@ -387,7 +387,7 @@ const rotationDirection = (rotationName: string): string => ({
 const pieceTray = (state: State, actions: Actions): VNode<{}>[] => {
     const page = state.fumen.pages[state.fumen.currentIndex];
     const canOperate = page?.piece !== undefined;
-    const canHold = canOperate && canSwapCurrentPieceWithHoldQueue(state);
+    const canHold = canOperate ? canSwapCurrentPieceWithHoldQueue(state) : isHoldOnlyQueue(state);
     const rotationName = page?.piece === undefined ? 'empty' : {
         [Rotation.Spawn]: 'spawn',
         [Rotation.Right]: 'right',

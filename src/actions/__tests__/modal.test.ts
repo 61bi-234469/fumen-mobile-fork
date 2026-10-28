@@ -5,11 +5,8 @@
 jest.mock('../../actions', () => ({ actions: {}, main: {} }));
 jest.mock('../cold_clear', () => ({
     coldClearActions: {
-        // openColdClearMenuModal / openPieceQueueModal call this first in their sequence. No-op it.
+        // openColdClearMenuModal calls this first in its sequence. No-op it.
         seedQueuePreviewFromSpawnedPiece: () => () => undefined,
-        // closePieceQueueModal promotes the NEXT head and commits before closing. No-op both.
-        promoteQueueNextToCurrent: () => () => undefined,
-        commitColdClearQueueComment: () => () => undefined,
     },
 }));
 jest.mock('../view_settings', () => ({
@@ -22,7 +19,7 @@ import { State } from '../../states';
 const baseModal = {
     fumen: false, menu: false, append: false, clipboard: false, userSettings: false,
     listViewReplace: false, listViewMenu: false, treeDisableConfirm: false,
-    coldClearMenu: false, pieceQueue: false,
+    coldClearMenu: false, inputWindow: false,
 };
 
 const createState = (overrides: {
@@ -95,24 +92,6 @@ describe('modalActions characterization tests', () => {
         });
     });
 
-    describe('openPieceQueueModal', () => {
-        test('no argument defaults pieceQueueFocus to next', () => {
-            const state = createState();
-            const result = (modalActions.openPieceQueueModal as any)()(state);
-
-            expect(result.modal.pieceQueue).toBe(true);
-            expect(result.temporary.pieceQueueFocus).toBe('next');
-        });
-
-        test('focus argument sets pieceQueueFocus', () => {
-            const state = createState();
-            const result = (modalActions.openPieceQueueModal as any)({ focus: 'hold' })(state);
-
-            expect(result.modal.pieceQueue).toBe(true);
-            expect(result.temporary.pieceQueueFocus).toBe('hold');
-        });
-    });
-
     test('openColdClearMenuModal sets coldClearMenu true', () => {
         const state = createState();
         const result = (modalActions.openColdClearMenuModal as any)()(state);
@@ -130,7 +109,6 @@ describe('modalActions characterization tests', () => {
             ['closeListViewReplaceModal', 'listViewReplace'],
             ['closeListViewMenuModal', 'listViewMenu'],
             ['closeTreeDisableConfirmModal', 'treeDisableConfirm'],
-            ['closePieceQueueModal', 'pieceQueue'],
         ];
 
         test.each(cases)('%s sets only its own modal flag to false', (actionName, flag) => {
@@ -164,7 +142,7 @@ describe('modalActions characterization tests', () => {
                 modal: {
                     fumen: true, menu: true, append: true, clipboard: true, userSettings: true,
                     listViewReplace: true, listViewMenu: true, treeDisableConfirm: true,
-                    coldClearMenu: true, pieceQueue: true,
+                    coldClearMenu: true, inputWindow: true,
                 },
                 coldClearRunning: false,
             });
@@ -178,7 +156,7 @@ describe('modalActions characterization tests', () => {
                 modal: {
                     fumen: true, menu: true, append: true, clipboard: true, userSettings: true,
                     listViewReplace: true, listViewMenu: true, treeDisableConfirm: true,
-                    coldClearMenu: true, pieceQueue: true,
+                    coldClearMenu: true, inputWindow: true,
                 },
                 coldClearRunning: true,
             });

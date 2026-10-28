@@ -10,21 +10,18 @@ import {
 } from '../../lib/piece_queue';
 import { Component, px, style } from '../../lib/types';
 import { i18n } from '../../locales/keys';
-import { PieceQueueFocus, resources } from '../../states';
+import { PieceQueueFocus } from '../../states';
 
-declare const M: any;
-
-interface PieceQueueModalProps {
+interface PieceQueuePaneProps {
     currentQueueState: ColdClearMenuQueueState | null;
     canClearComment: boolean;
     initialFocus: PieceQueueFocus;
     actions: {
-        closePieceQueueModal: () => void;
         previewColdClearQueueComment: (data: {
             hold: Piece | null;
             current: Piece | null;
             queue: Piece[];
-            b2b: boolean;
+            b2b: boolean | number;
             combo: number;
             syncCurrentPiece?: boolean;
         }) => void;
@@ -33,50 +30,26 @@ interface PieceQueueModalProps {
     };
 }
 
-// フィールドのNEXT列に出る個数と合わせる
-const NEXT_PREVIEW_COUNT = 5;
-
 type FocusTarget = 'hold' | 'current' | 'next';
 let focusTarget: FocusTarget = 'next';
+let paneMounted = false;
 
-export const PieceQueueModal: Component<PieceQueueModalProps> = ({
+export const PieceQueuePane: Component<PieceQueuePaneProps> = ({
     currentQueueState,
     canClearComment,
     initialFocus,
     actions,
 }) => {
-    const renderedFocusTarget: FocusTarget = resources.modals.pieceQueue === undefined
-        ? initialFocus : focusTarget;
-    const closeInstance = () => {
-        const modal = resources.modals.pieceQueue;
-        if (modal !== undefined) {
-            modal.close();
-        }
-    };
-    const destroy = () => {
-        resources.modals.pieceQueue = undefined;
-    };
-    const commitAndClose = () => {
-        actions.closePieceQueueModal();
-        closeInstance();
-        destroy();
-    };
-    const oncreate = (element: HTMLDivElement) => {
+    const renderedFocusTarget: FocusTarget = paneMounted ? focusTarget : initialFocus;
+    const oncreate = () => {
+        paneMounted = true;
         focusTarget = initialFocus;
-        const instance = M.Modal.init(element, {
-            onCloseStart: () => {
-                actions.closePieceQueueModal();
-                destroy();
-            },
-        });
-        instance.open();
-        resources.modals.pieceQueue = instance;
-        setFocus(initialFocus);
+        // The pane is created before the window's modal opens; focus once it is displayed.
+        setTimeout(() => setFocus(focusTarget), 0);
     };
 
     const sectionStyle = style({
         margin: '0px',
-        padding: `${px(14)} ${px(20)}`,
     });
     const descriptionStyle = style({
         color: '#6b7280',
@@ -115,7 +88,7 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
             hold: next.hold,
             current: next.current,
             queue: next.queue,
-            b2b: next.b2b,
+            b2b: next.b2bLevel,
             combo: next.combo,
         });
     };
@@ -154,234 +127,178 @@ export const PieceQueueModal: Component<PieceQueueModalProps> = ({
     };
 
     return (
-        <div key="piece-queue-modal-top">
-            <div
-                key="mdl-piece-queue"
-                datatest="mdl-piece-queue"
-                className="modal bottom-sheet"
-                oncreate={oncreate}
-                ondestroy={() => {
-                    closeInstance();
-                    destroy();
-                }}
-            >
-                <div key="piece-queue-modal-content" className="modal-content" style={style({ padding: '0px' })}>
-                    <h4 style={style({
-                        borderBottom: '1px solid #eee',
-                        fontSize: px(20),
-                        margin: '0px',
-                        padding: `${px(14)} ${px(20)}`,
-                    })}>{i18n.PieceQueue.Title()}</h4>
-
-                    <div key="piece-queue-editor" style={sectionStyle}>
-                        {currentQueueState === null
-                            ? <div>
-                                <p style={descriptionStyle}>{i18n.ColdClear.QueueStateUnavailable()}</p>
-                                {canClearComment ? <button
-                                    key="btn-piece-queue-clear-comment"
-                                    datatest="btn-piece-queue-clear-comment"
-                                    onclick={(event: MouseEvent) => {
-                                        event.preventDefault();
-                                        actions.clearCommentForColdClearQueue();
-                                    }}
-                                    style={style({ ...pieceButtonStyle, width: '100%' })}
-                                >{i18n.ColdClear.QueueStateClearAndEdit()}</button> : undefined}
-                            </div>
-                            : <div>
-                                <div style={style({ display: 'flex', gap: px(8) })}>
-                                    <div
-                                        key="piece-queue-hold-pane"
-                                        datatest="pane-piece-queue-hold"
-                                        onclick={() => setFocus('hold')}
-                                        style={paneStyle('hold', '1')}
-                                    >
-                                        <p style={style({
-                                            fontSize: px(11),
-                                            fontWeight: '700',
-                                            margin: `0 0 ${px(4)} 0`,
-                                        })}>
-                                            {i18n.PieceQueue.HoldLabel()}
-                                        </p>
-                                        <input
-                                            datatest="input-piece-queue-hold"
-                                            type="text"
-                                            maxlength={1}
-                                            value={currentQueueState.hold === null
-                                                ? '' : pieceQueuePieceToChar(currentQueueState.hold)}
-                                            onfocus={() => setFocus('hold')}
-                                            onchange={(event: Event) => {
-                                                const value = (event.target as HTMLInputElement).value;
-                                                const parsed = parsePieceHoldText(value);
-                                                if (parsed === undefined) {
-                                                    return;
-                                                }
-                                                updateQueue(queue => ({ ...queue, hold: parsed }));
-                                            }}
-                                            style={inputStyle}
-                                        />
-                                    </div>
-                                    <div
-                                        key="piece-queue-current-pane"
-                                        datatest="pane-piece-queue-current"
-                                        onclick={() => setFocus('current')}
-                                        style={paneStyle('current', '1')}
-                                    >
-                                        <p style={style({
-                                            fontSize: px(11),
-                                            fontWeight: '700',
-                                            margin: `0 0 ${px(4)} 0`,
-                                        })}>
-                                            {i18n.PieceQueue.CurrentLabel()}
-                                        </p>
-                                        <input
-                                            datatest="input-piece-queue-current"
-                                            type="text"
-                                            maxlength={1}
-                                            placeholder={i18n.PieceQueue.CurrentEmpty()}
-                                            value={currentQueueState.current === null
-                                                ? '' : pieceQueuePieceToChar(currentQueueState.current)}
-                                            onfocus={() => setFocus('current')}
-                                            onchange={(event: Event) => {
-                                                const value = (event.target as HTMLInputElement).value;
-                                                const parsed = parsePieceHoldText(value);
-                                                if (parsed === undefined) {
-                                                    return;
-                                                }
-                                                updateQueue(queue => ({ ...queue, current: parsed }), true);
-                                            }}
-                                            style={inputStyle}
-                                        />
-                                    </div>
-                                    <div
-                                        key="piece-queue-next-pane"
-                                        datatest="pane-piece-queue-next"
-                                        onclick={() => setFocus('next')}
-                                        style={paneStyle('next', '2')}
-                                    >
-                                        <p style={style({
-                                            fontSize: px(11),
-                                            fontWeight: '700',
-                                            margin: `0 0 ${px(4)} 0`,
-                                        })}>
-                                            {i18n.PieceQueue.NextLabel()}
-                                        </p>
-                                        <input
-                                            datatest="input-piece-queue-next"
-                                            type="text"
-                                            value={pieceQueueToText(currentQueueState.queue)}
-                                            onfocus={() => setFocus('next')}
-                                            onchange={(event: Event) => {
-                                                const value = (event.target as HTMLInputElement).value;
-                                                const parsed = parsePieceQueueText(value);
-                                                if (parsed === null) {
-                                                    return;
-                                                }
-                                                updateQueue(queue => ({ ...queue, queue: parsed }));
-                                            }}
-                                            style={inputStyle}
-                                        />
-                                        {/* フィールドのNEXT列と同じ向き（先頭が上）に番号付きで並べ、使われる順を示す */}
-                                        <ol
-                                            key="piece-queue-next-preview"
-                                            datatest="piece-queue-next-preview"
-                                            style={style({ listStyle: 'none', margin: `${px(4)} 0 0 0`, padding: '0' })}
-                                        >
-                                            {currentQueueState.queue.slice(0, NEXT_PREVIEW_COUNT).map(
-                                                (piece, index) => <li
-                                                    key={`piece-queue-next-slot-${index + 1}`}
-                                                    datatest={`piece-queue-next-slot-${index + 1}`}
-                                                    style={style({
-                                                        alignItems: 'center',
-                                                        display: 'flex',
-                                                        fontSize: px(11),
-                                                        gap: px(8),
-                                                        lineHeight: px(13),
-                                                    })}
-                                                >
-                                                    <span style={style({
-                                                        color: '#6b7280', minWidth: px(12), textAlign: 'right',
-                                                    })}>{index + 1}</span>
-                                                    <span style={style({
-                                                        color: '#111827',
-                                                        fontWeight: '700',
-                                                    })}>
-                                                        {pieceQueuePieceToChar(piece)}
-                                                    </span>
-                                                </li>,
-                                            )}
-                                        </ol>
-                                    </div>
-                                </div>
-
-                                <div style={style({
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: px(6),
-                                    marginTop: px(10),
-                                })}>
-                                    {PIECE_QUEUE_ORDER.map(piece => <button
-                                        key={`btn-piece-queue-add-${pieceQueuePieceToChar(piece)}`}
-                                        datatest={`btn-piece-queue-add-${pieceQueuePieceToChar(piece)}`}
-                                        onclick={(event: MouseEvent) => {
-                                            event.preventDefault();
-                                            updateQueue((queue) => {
-                                                switch (focusTarget) {
-                                                case 'hold':
-                                                    return { ...queue, hold: piece };
-                                                case 'current':
-                                                    return { ...queue, current: piece };
-                                                default:
-                                                    return { ...queue, queue: queue.queue.concat(piece) };
-                                                }
-                                            }, focusTarget === 'current');
-                                        }}
-                                        style={pieceButtonStyle}
-                                    >{pieceQueuePieceToChar(piece)}</button>)}
-                                    <button
-                                        key="btn-piece-queue-clear"
-                                        datatest="btn-piece-queue-clear"
-                                        onclick={(event: MouseEvent) => {
-                                            event.preventDefault();
-                                            updateQueue((queue) => {
-                                                switch (focusTarget) {
-                                                case 'hold':
-                                                    return { ...queue, hold: null };
-                                                case 'current':
-                                                    return { ...queue, current: null };
-                                                default:
-                                                    return { ...queue, queue: [] };
-                                                }
-                                            }, focusTarget === 'current');
-                                        }}
-                                        style={pieceButtonStyle}
-                                    >{i18n.ColdClear.QueueClearLabel()}</button>
-                                    <button
-                                        key="btn-piece-queue-one-bag"
-                                        datatest="btn-piece-queue-one-bag"
-                                        disabled={renderedFocusTarget !== 'next'}
-                                        onclick={(event: MouseEvent) => {
-                                            event.preventDefault();
-                                            actions.appendColdClearOneBagToComment();
-                                        }}
-                                        style={pieceButtonStyle}
-                                    >{i18n.ColdClear.OneBagAddShortLabel()}</button>
-                                </div>
-                            </div>}
+        <div
+            key="panel-input-window-queue"
+            datatest="panel-input-window-queue"
+            oncreate={oncreate}
+            ondestroy={() => {
+                paneMounted = false;
+            }}
+        >
+            <div key="piece-queue-editor" style={sectionStyle}>
+                {currentQueueState === null
+                    ? <div>
+                        <p style={descriptionStyle}>{i18n.ColdClear.QueueStateUnavailable()}</p>
+                        {canClearComment ? <button
+                            key="btn-piece-queue-clear-comment"
+                            datatest="btn-piece-queue-clear-comment"
+                            onclick={(event: MouseEvent) => {
+                                event.preventDefault();
+                                actions.clearCommentForColdClearQueue();
+                            }}
+                            style={style({ ...pieceButtonStyle, width: '100%' })}
+                        >{i18n.ColdClear.QueueStateClearAndEdit()}</button> : undefined}
                     </div>
-                </div>
+                    : <div>
+                        <div style={style({ display: 'flex', gap: px(8) })}>
+                            <div
+                                key="piece-queue-hold-pane"
+                                datatest="pane-piece-queue-hold"
+                                onclick={() => setFocus('hold')}
+                                style={paneStyle('hold', '1')}
+                            >
+                                <p style={style({
+                                    fontSize: px(11),
+                                    fontWeight: '700',
+                                    margin: `0 0 ${px(4)} 0`,
+                                })}>
+                                    {i18n.PieceQueue.HoldLabel()}
+                                </p>
+                                <input
+                                    datatest="input-piece-queue-hold"
+                                    type="text"
+                                    maxlength={1}
+                                    value={currentQueueState.hold === null
+                                        ? '' : pieceQueuePieceToChar(currentQueueState.hold)}
+                                    onfocus={() => setFocus('hold')}
+                                    onchange={(event: Event) => {
+                                        const value = (event.target as HTMLInputElement).value;
+                                        const parsed = parsePieceHoldText(value);
+                                        if (parsed === undefined) {
+                                            return;
+                                        }
+                                        updateQueue(queue => ({ ...queue, hold: parsed }));
+                                    }}
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div
+                                key="piece-queue-current-pane"
+                                datatest="pane-piece-queue-current"
+                                onclick={() => setFocus('current')}
+                                style={paneStyle('current', '1')}
+                            >
+                                <p style={style({
+                                    fontSize: px(11),
+                                    fontWeight: '700',
+                                    margin: `0 0 ${px(4)} 0`,
+                                })}>
+                                    {i18n.PieceQueue.CurrentLabel()}
+                                </p>
+                                <input
+                                    datatest="input-piece-queue-current"
+                                    type="text"
+                                    maxlength={1}
+                                    placeholder={i18n.PieceQueue.CurrentEmpty()}
+                                    value={currentQueueState.current === null
+                                        ? '' : pieceQueuePieceToChar(currentQueueState.current)}
+                                    onfocus={() => setFocus('current')}
+                                    onchange={(event: Event) => {
+                                        const value = (event.target as HTMLInputElement).value;
+                                        const parsed = parsePieceHoldText(value);
+                                        if (parsed === undefined) {
+                                            return;
+                                        }
+                                        updateQueue(queue => ({ ...queue, current: parsed }), true);
+                                    }}
+                                    style={inputStyle}
+                                />
+                            </div>
+                            <div
+                                key="piece-queue-next-pane"
+                                datatest="pane-piece-queue-next"
+                                onclick={() => setFocus('next')}
+                                style={paneStyle('next', '2')}
+                            >
+                                <p style={style({
+                                    fontSize: px(11),
+                                    fontWeight: '700',
+                                    margin: `0 0 ${px(4)} 0`,
+                                })}>
+                                    {i18n.PieceQueue.NextLabel()}
+                                </p>
+                                <input
+                                    datatest="input-piece-queue-next"
+                                    type="text"
+                                    value={pieceQueueToText(currentQueueState.queue)}
+                                    onfocus={() => setFocus('next')}
+                                    onchange={(event: Event) => {
+                                        const value = (event.target as HTMLInputElement).value;
+                                        const parsed = parsePieceQueueText(value);
+                                        if (parsed === null) {
+                                            return;
+                                        }
+                                        updateQueue(queue => ({ ...queue, queue: parsed }));
+                                    }}
+                                    style={inputStyle}
+                                />
+                            </div>
+                        </div>
 
-                <div key="piece-queue-modal-footer" className="modal-footer">
-                    <a
-                        href="#"
-                        key="btn-piece-queue-close"
-                        datatest="btn-piece-queue-close"
-                        className="waves-effect waves-teal btn-flat"
-                        onclick={(event: MouseEvent) => {
-                            event.preventDefault();
-                            commitAndClose();
-                        }}
-                    >{i18n.ColdClear.CloseButton()}</a>
-                </div>
+                        <div style={style({
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: px(6),
+                            marginTop: px(10),
+                        })}>
+                            {PIECE_QUEUE_ORDER.map(piece => <button
+                                key={`btn-piece-queue-add-${pieceQueuePieceToChar(piece)}`}
+                                datatest={`btn-piece-queue-add-${pieceQueuePieceToChar(piece)}`}
+                                onclick={(event: MouseEvent) => {
+                                    event.preventDefault();
+                                    updateQueue((queue) => {
+                                        switch (focusTarget) {
+                                        case 'hold':
+                                            return { ...queue, hold: piece };
+                                        case 'current':
+                                            return { ...queue, current: piece };
+                                        default:
+                                            return { ...queue, queue: queue.queue.concat(piece) };
+                                        }
+                                    }, focusTarget === 'current');
+                                }}
+                                style={pieceButtonStyle}
+                            >{pieceQueuePieceToChar(piece)}</button>)}
+                            <button
+                                key="btn-piece-queue-clear"
+                                datatest="btn-piece-queue-clear"
+                                onclick={(event: MouseEvent) => {
+                                    event.preventDefault();
+                                    updateQueue((queue) => {
+                                        switch (focusTarget) {
+                                        case 'hold':
+                                            return { ...queue, hold: null };
+                                        case 'current':
+                                            return { ...queue, current: null };
+                                        default:
+                                            return { ...queue, queue: [] };
+                                        }
+                                    }, focusTarget === 'current');
+                                }}
+                                style={pieceButtonStyle}
+                            >{i18n.ColdClear.QueueClearLabel()}</button>
+                            <button
+                                key="btn-piece-queue-one-bag"
+                                datatest="btn-piece-queue-one-bag"
+                                disabled={renderedFocusTarget !== 'next'}
+                                onclick={(event: MouseEvent) => {
+                                    event.preventDefault();
+                                    actions.appendColdClearOneBagToComment();
+                                }}
+                                style={pieceButtonStyle}
+                            >{i18n.ColdClear.OneBagAddShortLabel()}</button>
+                        </div>
+                    </div>}
             </div>
         </div>
     );

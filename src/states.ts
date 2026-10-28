@@ -22,7 +22,7 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
 
 export type EditShortcuts = {
     [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome'
-        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut' | 'MinoBlockToggle']: string;
+        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut' | 'MinoBlockToggle' | 'InputShareUrl']: string;
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
@@ -31,6 +31,7 @@ export const defaultEditShortcuts: EditShortcuts = {
     Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'KeyN',
     Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
     MinoBlockToggle: 'KeyB',
+    InputShareUrl: '',
 };
 
 export type PieceShortcuts = {
@@ -67,6 +68,7 @@ export type PieceAction = 'spawn' | 'drag';
 export type EditorInspector = 'none' | 'utils' | 'flags';
 export type PaletteSelection = Piece | 'comp';
 export type PieceQueueFocus = 'hold' | 'current' | 'next';
+export type InputWindowTab = 'state' | 'garbage' | 'queue';
 // PIECE状態の右列レイアウト。'select'＝カレントミノ選択重視（パレット表示）、
 // 'play'＝テトリス操作重視（HOLD/NEXTキュー表示）
 export type PieceLayoutMode = 'play' | 'select';
@@ -161,6 +163,7 @@ import { initialRectSelectState } from './lib/rect_selection';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { InputRotationEvidence } from './lib/comment_metadata';
 import { PlacementResult } from './lib/input_stats';
+import { InputGarbageSegment } from './lib/input_replay';
 import { ReplayIR } from './lib/ttrm/types';
 
 export type ReplayPhase = 'empty' | 'parsing' | 'playing' | 'failed';
@@ -358,13 +361,14 @@ export interface State {
         listViewMenu: boolean;
         treeDisableConfirm: boolean;
         coldClearMenu: boolean;
-        pieceQueue: boolean;
+        inputWindow: boolean;
     };
     temporary: {
         userSettings: {
             ghostVisible: boolean;
             deleteSpawnMinoOnPaintDrag: boolean;
             paintPaletteMinoDesign: boolean;
+            keepGrayOnPaintDrag: boolean;
             initialScreen: InitialScreenSetting;
             openTreeScreenOnTreeData: boolean;
             utilsMenuPinned: boolean;
@@ -388,7 +392,12 @@ export interface State {
             flagsHidden: boolean;
         };
         userSettingsTab: UserSettingsTab;
+        inputWindowTab: InputWindowTab;
+        // Queueタブを開いたときだけ、閉じる際にキューを確定する
+        inputWindowQueueVisited: boolean;
         pieceQueueFocus: PieceQueueFocus;
+        // INPUTウィンドウのせり上がりタブで編集中の区間（タブを離れるか閉じるまでページには反映しない）
+        inputGarbageSegments: InputGarbageSegment[];
     };
     handlers: {
         animation?: ReturnType<typeof setInterval>;
@@ -402,6 +411,8 @@ export interface State {
         // 右クリックストロークの種別。'erase' は消しゴム継続、'suppressed' は選択プレビュー取消で
         // 消費済み。ストローク補間の内側でも右クリック中だと分かるようにするために持つ。
         rightStroke?: 'erase' | 'suppressed';
+        // keepGrayOnPaintDrag が有効で、グレー以外のセルからストロークを始めたとき true
+        preserveGray?: boolean;
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
@@ -420,6 +431,8 @@ export interface State {
         ghostVisible: boolean;
         deleteSpawnMinoOnPaintDrag: boolean;
         paintPaletteMinoDesign: boolean;
+        // 非グレーから始めた塗りドラッグでは、通過したグレーを上書き・削除しない
+        keepGrayOnPaintDrag: boolean;
         flagsHidden: boolean;
         initialScreen: InitialScreenSetting;
         openTreeScreenOnTreeData: boolean;
@@ -577,13 +590,14 @@ export const initState: Readonly<State> = {
         listViewMenu: false,
         treeDisableConfirm: false,
         coldClearMenu: false,
-        pieceQueue: false,
+        inputWindow: false,
     },
     temporary: {
         userSettings: {
             ghostVisible: true,
             deleteSpawnMinoOnPaintDrag: true,
             paintPaletteMinoDesign: false,
+            keepGrayOnPaintDrag: false,
             initialScreen: 'reader',
             openTreeScreenOnTreeData: true,
             utilsMenuPinned: false,
@@ -607,7 +621,10 @@ export const initState: Readonly<State> = {
             flagsHidden: true,
         },
         userSettingsTab: 'edit',
+        inputWindowTab: 'state',
+        inputWindowQueueVisited: false,
         pieceQueueFocus: 'next',
+        inputGarbageSegments: [],
     },
     handlers: {
         animation: undefined,
@@ -633,6 +650,7 @@ export const initState: Readonly<State> = {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
         paintPaletteMinoDesign: false,
+        keepGrayOnPaintDrag: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
@@ -740,7 +758,7 @@ export const resources = {
         listViewMenu: undefined as any,
         treeDisableConfirm: undefined as any,
         coldClearMenu: undefined as any,
-        pieceQueue: undefined as any,
+        inputWindow: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

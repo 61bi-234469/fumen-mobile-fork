@@ -28,6 +28,7 @@ const baseUserSettings = {
     ghostVisible: true,
     deleteSpawnMinoOnPaintDrag: true,
     paintPaletteMinoDesign: false,
+    keepGrayOnPaintDrag: false,
     flagsHidden: true,
     initialScreen: 'reader',
     openTreeScreenOnTreeData: true,
@@ -56,6 +57,7 @@ const createState = (override: any = {}) => ({
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
         paintPaletteMinoDesign: false,
+        keepGrayOnPaintDrag: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,
@@ -219,6 +221,15 @@ describe('userSettingsActions', () => {
             const state = createState({ modal: { userSettings: false } });
 
             expect(userSettingsActions.keepPaintPaletteMinoDesign({ enable: true })(state)).toBeUndefined();
+        });
+    });
+
+    describe('keepKeepGrayOnPaintDrag', () => {
+        test('updates temporary while the modal is open', () => {
+            const state = createState();
+            const next = userSettingsActions.keepKeepGrayOnPaintDrag({ enable: true })(state);
+
+            expect(next.temporary.userSettings.keepGrayOnPaintDrag).toBe(true);
         });
     });
 
@@ -402,7 +413,8 @@ describe('userSettingsActions', () => {
         beforeEach(() => {
             const actionNames = [
                 'changeGhostVisible', 'changeLoop', 'changeShortcutLabelVisible', 'changeGradient',
-                'changeDeleteSpawnMinoOnPaintDrag', 'changePaintPaletteMinoDesign', 'changeFlagsHidden',
+                'changeDeleteSpawnMinoOnPaintDrag', 'changePaintPaletteMinoDesign', 'changeKeepGrayOnPaintDrag',
+                'changeFlagsHidden',
                 'changeInitialScreen',
                 'changeOpenTreeScreenOnTreeData', 'changeUtilsMenuPinned',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
@@ -429,6 +441,7 @@ describe('userSettingsActions', () => {
                 editorSidePanel: true,
                 flagsHidden: false,
                 paintPaletteMinoDesign: true,
+                keepGrayOnPaintDrag: true,
                 utilsMenuPinned: true,
             };
 
@@ -450,6 +463,7 @@ describe('userSettingsActions', () => {
             }));
             expect(mockActions.changeFlagsHidden).toHaveBeenCalledWith({ hidden: false });
             expect(mockActions.changePaintPaletteMinoDesign).toHaveBeenCalledWith({ enable: true });
+            expect(mockActions.changeKeepGrayOnPaintDrag).toHaveBeenCalledWith({ enable: true });
             expect(mockActions.changeUtilsMenuPinned).toHaveBeenCalledWith({ enable: true });
         });
     });

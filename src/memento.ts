@@ -315,6 +315,7 @@ interface UserSettings {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
     paintPaletteMinoDesign: boolean;
+    keepGrayOnPaintDrag: boolean;
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
@@ -483,6 +484,7 @@ export const localStorageWrapper = {
             ghostVisible: safer.boolean(obj.ghostVisible),
             deleteSpawnMinoOnPaintDrag: safer.boolean(obj.deleteSpawnMinoOnPaintDrag),
             paintPaletteMinoDesign: safer.boolean(obj.paintPaletteMinoDesign),
+            keepGrayOnPaintDrag: safer.boolean(obj.keepGrayOnPaintDrag),
             flagsHidden: safer.boolean(obj.flagsHidden),
             initialScreen: initialScreenSettingFrom(obj),
             openTreeScreenOnTreeData: safer.boolean(obj.openTreeScreenOnTreeData),

@@ -2,7 +2,7 @@ import { UserSettingsTab } from '../../states';
 import { i18n } from '../../locales/keys';
 
 export type SettingId =
-    | 'delete-spawn-mino-on-paint-drag' | 'paint-palette-mino-design' | 'flags-hidden'
+    | 'delete-spawn-mino-on-paint-drag' | 'keep-gray-on-paint-drag' | 'paint-palette-mino-design' | 'flags-hidden'
     | 'gradient' | 'gray-after-line-clear' | 'trim-top-blank' | 'editor-side-panel'
     | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
@@ -27,6 +27,11 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'delete-spawn-mino-on-paint-drag': {
         type: 'switch', datatestBase: 'switch-delete-spawn-mino-on-paint-drag',
         title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title,
+    },
+    'keep-gray-on-paint-drag': {
+        type: 'switch', datatestBase: 'switch-keep-gray-on-paint-drag',
+        title: i18n.UserSettings.KeepGrayOnPaintDrag.Title,
+        description: i18n.UserSettings.KeepGrayOnPaintDrag.Description,
     },
     'paint-palette-mino-design': {
         type: 'switch', datatestBase: 'switch-paint-palette-mino-design',
@@ -67,7 +72,7 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
 
 export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
     edit: [
-        'delete-spawn-mino-on-paint-drag', 'paint-palette-mino-design', 'flags-hidden', 'gradient',
+        'delete-spawn-mino-on-paint-drag', 'keep-gray-on-paint-drag', 'paint-palette-mino-design', 'flags-hidden', 'gradient',
         'gray-after-line-clear',
     ],
     view: ['trim-top-blank', 'gray-after-line-clear', 'editor-side-panel'],

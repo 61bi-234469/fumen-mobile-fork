@@ -69,6 +69,10 @@ export const i18n = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: () => t('UserSettings.DeleteSpawnMinoOnPaintDrag.Title'),
         },
+        KeepGrayOnPaintDrag: {
+            Title: () => t('UserSettings.KeepGrayOnPaintDrag.Title'),
+            Description: () => t('UserSettings.KeepGrayOnPaintDrag.Description'),
+        },
         PaintPaletteMinoDesign: {
             Title: () => t('UserSettings.PaintPaletteMinoDesign.Title'),
         },

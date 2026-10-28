@@ -64,6 +64,11 @@
         DeleteSpawnMinoOnPaintDrag: {
             Title: 'Delete spawn mino when an eraser drag passes over it',
         },
+        KeepGrayOnPaintDrag: {
+            Title: 'Keep gray blocks that a drag passes over',
+            Description: 'A drag that starts on a non-gray cell does not recolor or erase gray blocks.'
+                + ' Start on a gray block to change it as usual.',
+        },
         PaintPaletteMinoDesign: {
             Title: 'Show PAINT palette as mino images',
         },

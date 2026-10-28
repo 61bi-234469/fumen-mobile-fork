@@ -368,6 +368,7 @@ export interface State {
             ghostVisible: boolean;
             deleteSpawnMinoOnPaintDrag: boolean;
             paintPaletteMinoDesign: boolean;
+            keepGrayOnPaintDrag: boolean;
             initialScreen: InitialScreenSetting;
             openTreeScreenOnTreeData: boolean;
             utilsMenuPinned: boolean;
@@ -410,6 +411,8 @@ export interface State {
         // 右クリックストロークの種別。'erase' は消しゴム継続、'suppressed' は選択プレビュー取消で
         // 消費済み。ストローク補間の内側でも右クリック中だと分かるようにするために持つ。
         rightStroke?: 'erase' | 'suppressed';
+        // keepGrayOnPaintDrag が有効で、グレー以外のセルからストロークを始めたとき true
+        preserveGray?: boolean;
         inferences: number[];
         prevPage?: PrimitivePage;
         updated: boolean;
@@ -428,6 +431,8 @@ export interface State {
         ghostVisible: boolean;
         deleteSpawnMinoOnPaintDrag: boolean;
         paintPaletteMinoDesign: boolean;
+        // 非グレーから始めた塗りドラッグでは、通過したグレーを上書き・削除しない
+        keepGrayOnPaintDrag: boolean;
         flagsHidden: boolean;
         initialScreen: InitialScreenSetting;
         openTreeScreenOnTreeData: boolean;
@@ -592,6 +597,7 @@ export const initState: Readonly<State> = {
             ghostVisible: true,
             deleteSpawnMinoOnPaintDrag: true,
             paintPaletteMinoDesign: false,
+            keepGrayOnPaintDrag: false,
             initialScreen: 'reader',
             openTreeScreenOnTreeData: true,
             utilsMenuPinned: false,
@@ -644,6 +650,7 @@ export const initState: Readonly<State> = {
         ghostVisible: true,
         deleteSpawnMinoOnPaintDrag: true,
         paintPaletteMinoDesign: false,
+        keepGrayOnPaintDrag: false,
         flagsHidden: true,
         initialScreen: 'reader',
         openTreeScreenOnTreeData: true,

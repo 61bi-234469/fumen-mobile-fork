@@ -68,6 +68,16 @@ describe('user settings PAINT palette design', () => {
         localStorage.setItem('user-settings@1', JSON.stringify({ paintPaletteMinoDesign: 'true' }));
         expect(localStorageWrapper.loadUserSettings().paintPaletteMinoDesign).toBeUndefined();
     });
+
+    test('loads a boolean keepGrayOnPaintDrag value and rejects invalid ones', () => {
+        expect(localStorageWrapper.loadUserSettings().keepGrayOnPaintDrag).toBeUndefined();
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ keepGrayOnPaintDrag: true }));
+        expect(localStorageWrapper.loadUserSettings().keepGrayOnPaintDrag).toBe(true);
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ keepGrayOnPaintDrag: 'true' }));
+        expect(localStorageWrapper.loadUserSettings().keepGrayOnPaintDrag).toBeUndefined();
+    });
 });
 
 describe('user settings UTILS menu pinning', () => {

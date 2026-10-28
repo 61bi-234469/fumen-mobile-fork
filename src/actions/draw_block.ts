@@ -234,6 +234,7 @@ const startDrawingField = (state: State, index: number, isField: boolean): NextS
             events: {
                 ...state.events,
                 piece,
+                preserveGray: state.mode.keepGrayOnPaintDrag && block.piece !== Piece.Gray,
                 prevPage: toPrimitivePage(state.fumen.pages[state.fumen.currentIndex]),
                 updated: false,
             },
@@ -255,6 +256,11 @@ const moveDrawingField = (state: State, index: number, isField: boolean): NextSt
     // pieceに変化がないときは、表示を更新しない
     const block = isField ? state.field[index] : state.sentLine[index];
     if (block.piece === piece) {
+        return undefined;
+    }
+
+    // Gray blocks stay as they are unless the stroke itself started on gray.
+    if (state.events.preserveGray && block.piece === Piece.Gray) {
         return undefined;
     }
 
@@ -302,6 +308,7 @@ const endDrawingField = (state: State): NextState => {
         events: {
             ...state.events,
             piece: undefined,
+            preserveGray: undefined,
             prevPage: undefined,
             updated: false,
         },

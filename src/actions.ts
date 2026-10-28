@@ -333,6 +333,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.keepGrayOnPaintDrag !== undefined) {
+        main.changeKeepGrayOnPaintDrag({ enable: settings.keepGrayOnPaintDrag });
+        updated = true;
+    }
+
     if (settings.flagsHidden !== undefined) {
         main.changeFlagsHidden({ hidden: settings.flagsHidden });
         updated = true;

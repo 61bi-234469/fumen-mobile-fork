@@ -19,6 +19,7 @@ interface UserSettingsModalProps {
     ghostVisible: boolean;
     deleteSpawnMinoOnPaintDrag: boolean;
     paintPaletteMinoDesign: boolean;
+    keepGrayOnPaintDrag: boolean;
     flagsHidden: boolean;
     initialScreen: InitialScreenSetting;
     openTreeScreenOnTreeData: boolean;
@@ -47,6 +48,7 @@ interface UserSettingsModalProps {
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepDeleteSpawnMinoOnPaintDrag: (data: { enable: boolean }) => void;
         keepPaintPaletteMinoDesign: (data: { enable: boolean }) => void;
+        keepKeepGrayOnPaintDrag: (data: { enable: boolean }) => void;
         keepFlagsHidden: (data: { hidden: boolean }) => void;
         keepInitialScreen: (data: { initialScreen: InitialScreenSetting }) => void;
         keepOpenTreeScreenOnTreeData: (data: { enable: boolean }) => void;
@@ -142,6 +144,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         ghostVisible,
         deleteSpawnMinoOnPaintDrag,
         paintPaletteMinoDesign,
+        keepGrayOnPaintDrag,
         flagsHidden,
         initialScreen,
         openTreeScreenOnTreeData,
@@ -584,6 +587,15 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                 title: i18n.UserSettings.DeleteSpawnMinoOnPaintDrag.Title(),
                                 checked: deleteSpawnMinoOnPaintDrag,
                                 onChange: checked => actions.keepDeleteSpawnMinoOnPaintDrag({ enable: checked }),
+                            })}
+
+                            {renderSwitch({
+                                key: 'switch-row-keep-gray-on-paint-drag',
+                                datatest: 'switch-keep-gray-on-paint-drag',
+                                title: i18n.UserSettings.KeepGrayOnPaintDrag.Title(),
+                                description: i18n.UserSettings.KeepGrayOnPaintDrag.Description(),
+                                checked: keepGrayOnPaintDrag,
+                                onChange: checked => actions.keepKeepGrayOnPaintDrag({ enable: checked }),
                             })}
 
                             {renderSwitch({

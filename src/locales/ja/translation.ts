@@ -64,6 +64,11 @@ export const resources = {
         DeleteSpawnMinoOnPaintDrag: {
             Title: '消しゴムのドラッグでSPAWNミノも削除する',
         },
+        KeepGrayOnPaintDrag: {
+            Title: 'ドラッグで通過したグレーを変更しない',
+            Description: 'グレー以外から始めたドラッグでは、通過したグレーの色を上書き・削除しません。'
+                + 'グレーの上から始めると通常どおり変更できます。',
+        },
         PaintPaletteMinoDesign: {
             Title: 'PAINTパレットをミノ画像で表示',
         },

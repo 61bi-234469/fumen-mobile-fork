@@ -318,11 +318,10 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 2 } : undefined,
     });
     const inputReplayContext = state.fumen.pages[state.fumen.currentIndex]?.internal?.inputReplayContext;
-    // INPUTでは常にゲージを出す。タップでせり上がりを編集でき、文脈がなければ空のゲージにする
-    const replayGarbage = inputReplayContext === undefined
-        ? !layout.pieceQueue.visible ? undefined : {
-            gauge: 0, cap: EMPTY_INPUT_GARBAGE_CAP, maxGauge: EMPTY_INPUT_GARBAGE_CAP, reservedTanks: [],
-        }
+    // ゲージはINPUTだけに出す（PAINT/SELECT/PIECEでは出さない）。
+    // INPUTでは常に出し、タップでせり上がりを編集でき、文脈がなければ空のゲージにする
+    const replayGarbage = !layout.pieceQueue.visible ? undefined : inputReplayContext === undefined
+        ? { gauge: 0, cap: EMPTY_INPUT_GARBAGE_CAP, maxGauge: EMPTY_INPUT_GARBAGE_CAP, reservedTanks: [] }
         : {
             ...inputGarbageView(inputReplayContext),
             last: inputReplayContext.garbage.last,

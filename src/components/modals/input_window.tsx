@@ -90,6 +90,10 @@ export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
     };
 
     const nativeShareAvailable = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+    const shareButtonStyle = {
+        alignItems: 'center', color: EDITOR_ACTIVE_COLOR, display: 'flex', fontSize: px(13), height: px(32),
+        lineHeight: px(32), padding: '0 8px', textTransform: 'none',
+    } as const;
 
     const pane = () => {
         switch (tab) {
@@ -117,14 +121,48 @@ export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
                  className="modal modal-fixed-footer" oncreate={oncreate}
                  style={style({ height: `min(${px(460)}, 75%)`, maxWidth: px(480), width: '92%' })}>
                 {/* A fixed height keeps the window still when tabs of different lengths swap in. */}
-                <div key="modal-content" className="modal-content" style={style({ paddingTop: '0' })}>
+                {/* A column so a pane can fill the fixed height and pin controls to its bottom. No bottom
+                    padding: a sticky bottom row stops at the padding edge and rows would show beneath it. */}
+                <div key="modal-content" className="modal-content" style={style({
+                    display: 'flex', flexDirection: 'column', paddingBottom: '0', paddingTop: '0',
+                })}>
+                    {/* Above the panes' waves-effect buttons (z-index 1) and the garbage add row (2). */}
                     <div key="header" style={style({
-                        background: '#fff', paddingTop: px(12), position: 'sticky', top: '0', zIndex: 1,
+                        background: '#fff', flexShrink: 0, paddingTop: px(12), position: 'sticky', top: '0', zIndex: 3,
                     })}>
-                        <div key="title" style={style({
-                            color: '#333', fontSize: px(20), fontWeight: '500', lineHeight: px(28),
-                        })}>
-                            {i18n.InputWindow.Title()}
+                        {/* Share lives up here, away from Close, so finishing an edit never shares by mistake. */}
+                        <div key="title-row" style={style({ alignItems: 'center', display: 'flex', gap: px(4) })}>
+                            <div key="title" style={style({
+                                color: '#333', flexGrow: 1, fontSize: px(20), fontWeight: '500', lineHeight: px(28),
+                            })}>
+                                {i18n.InputWindow.Title()}
+                            </div>
+                            <a href="#" key="btn-share" datatest="btn-input-share-url"
+                               className="waves-effect waves-teal btn-flat"
+                               title={i18n.InputState.Share()}
+                               style={style(shareButtonStyle)}
+                               onclick={(event: MouseEvent) => {
+                                   event.preventDefault();
+                                   share(false);
+                               }}>
+                                <i key="icon" className="material-icons notranslate"
+                                   style={style({ fontSize: px(20), marginRight: px(4) })}>link</i>
+                                {i18n.InputState.Share()}
+                            </a>
+                            {nativeShareAvailable ? (
+                                <a href="#" key="btn-share-native" datatest="btn-input-share-native"
+                                   className="waves-effect waves-teal btn-flat"
+                                   title={i18n.InputState.NativeShare()}
+                                   aria-label={i18n.InputState.NativeShare()}
+                                   style={style({ ...shareButtonStyle, padding: '0 6px' })}
+                                   onclick={(event: MouseEvent) => {
+                                       event.preventDefault();
+                                       share(true);
+                                   }}>
+                                    <i key="icon" className="material-icons notranslate"
+                                       style={style({ fontSize: px(20) })}>share</i>
+                                </a>
+                            ) : undefined as any}
                         </div>
                         <div key="tabs" role="tablist" style={style({
                             borderBottom: 'solid 1px #ddd', display: 'flex', marginTop: px(8),
@@ -154,7 +192,9 @@ export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
                             ))}
                         </div>
                     </div>
-                    <div key="pane" style={style({ color: '#333', marginTop: px(12) })}>
+                    <div key="pane" style={style({
+                        color: '#333', display: 'flex', flex: '1 0 auto', flexDirection: 'column', marginTop: px(12),
+                    })}>
                         {pane()}
                     </div>
                 </div>
@@ -167,24 +207,6 @@ export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
                            close();
                        }}>
                         {i18n.InputWindow.Close()}
-                    </a>
-                    {nativeShareAvailable ? (
-                        <a href="#" key="btn-share-native" datatest="btn-input-share-native"
-                           className="waves-effect waves-teal btn-flat"
-                           onclick={(event: MouseEvent) => {
-                               event.preventDefault();
-                               share(true);
-                           }}>
-                            {i18n.InputState.NativeShare()}
-                        </a>
-                    ) : undefined as any}
-                    <a href="#" key="btn-share" datatest="btn-input-share-url"
-                       className="waves-effect waves-light btn"
-                       onclick={(event: MouseEvent) => {
-                           event.preventDefault();
-                           share(false);
-                       }}>
-                        {i18n.InputState.Share()}
                     </a>
                 </div>
             </div>

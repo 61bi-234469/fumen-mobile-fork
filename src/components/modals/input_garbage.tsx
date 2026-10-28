@@ -102,11 +102,15 @@ export const InputGarbagePane: Component<InputGarbagePaneProps> = ({ segments, a
     ));
 
     return (
-        <div key="panel-input-window-garbage" datatest="panel-input-window-garbage">
+        <div key="panel-input-window-garbage" datatest="panel-input-window-garbage"
+             style={style({ display: 'flex', flex: '1 0 auto', flexDirection: 'column' })}>
             <p key="description" style={style({ color: '#616161', fontSize: px(13) })}>
                 {i18n.InputGarbage.Description()}
             </p>
-            <div key="segments" datatest="input-garbage-segments">
+            {/* Rows gather just above the add row, which stays at the bottom however many are added. */}
+            <div key="segments" datatest="input-garbage-segments" style={style({
+                display: 'flex', flex: '1 0 auto', flexDirection: 'column', justifyContent: 'flex-end',
+            })}>
                 {segments.length === 0
                     ? <p key="empty" datatest="input-garbage-empty" style={style({ color: '#9e9e9e' })}>
                         {i18n.InputGarbage.Empty()}
@@ -117,7 +121,9 @@ export const InputGarbagePane: Component<InputGarbagePaneProps> = ({ segments, a
             <div
                 key="summary"
                 style={style({
-                    alignItems: 'center', columnGap: px(8), display: 'flex', flexWrap: 'wrap', marginTop: px(8),
+                    alignItems: 'center', background: '#fff', bottom: '0', columnGap: px(8), display: 'flex',
+                    // Above the rows' waves-effect buttons (z-index 1) as they scroll beneath it.
+                    flexWrap: 'wrap', paddingBottom: px(12), paddingTop: px(8), position: 'sticky', zIndex: 2,
                 })}
             >
                 <button

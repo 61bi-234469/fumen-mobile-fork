@@ -658,6 +658,15 @@ describe('PIECE queues', () => {
         cy.get(datatest('mdl-input-window')).should('have.attr', 'data-tab', 'garbage');
         cy.get(datatest('input-garbage-segment-0')).should('have.attr', 'data-amount', '4');
         operations.inputWindow.close();
+
+        // The gauge belongs to INPUT only: PIECE (select layout) and PAINT hide it, INPUT brings it back.
+        operations.mode.piece.layout('select');
+        cy.get(datatest('input-garbage-field-gauge')).should('not.exist');
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('input-garbage-field-gauge')).should('not.exist');
+        operations.mode.piece.open();
+        operations.mode.piece.layout('play');
+        cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
     });
 
     it('edits incoming garbage from the INPUT gauge and raises it on a no-clear lock', () => {

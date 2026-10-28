@@ -18,7 +18,12 @@ export interface InputWindowActions {
     setInputChainCounters: (data: { b2bChain?: number; renChain?: number }) => action;
 }
 
-const toCount = (value: number): number => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+// Five digits: some players do keep B2B in the thousands. The queue comment parser takes up to six digits.
+export const INPUT_CHAIN_MAX = 99999;
+
+const toCount = (value: number): number => (
+    Number.isFinite(value) ? Math.min(INPUT_CHAIN_MAX, Math.max(0, Math.floor(value))) : 0
+);
 
 const enterTab = (tab: InputWindowTab) => (state: State): NextState => {
     const select = (nextState: State): NextState => ({
@@ -110,9 +115,11 @@ export const inputWindowActions: Readonly<InputWindowActions> = {
         }
         const task = toSinglePageTask(pageIndex, previousPage, page);
         return sequence(state, [
-            actions.registerHistoryTask({ task }),
+            // A deliberate setup step like applying garbage: INPUT's queue-unit undo stops here instead of
+            // also taking back the previous lock. The merged comment change must keep that stop.
+            actions.registerHistoryTask({ task, pieceSpawn: true }),
             ...(nextComment === null || nextComment === comment ? [] : [
-                actions.setCommentText({ pageIndex, text: nextComment, mergeKey: task.key }),
+                actions.setCommentText({ pageIndex, text: nextComment, mergeKey: task.key, pieceSpawn: true }),
             ]),
             actions.reopenCurrentPage(),
         ]);

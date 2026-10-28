@@ -4,6 +4,7 @@ import { i18n } from '../../locales/keys';
 import { InputStateDescription } from '../../lib/input_snapshot';
 import { InputRulesPreset, capB2bChain } from '../../lib/input_stats';
 import { shownB2b, shownCombo } from '../../views/editor/input_stats_panel';
+import { INPUT_CHAIN_MAX } from '../../actions/input_window';
 
 interface InputStatePaneProps {
     description: InputStateDescription;
@@ -15,7 +16,7 @@ interface InputStatePaneProps {
 
 // The number edited is the chain itself; the large value is how the HOLD panel shows it.
 const row = (
-    key: string, label: string, shown: string, chain: number, max: number | undefined,
+    key: string, label: string, shown: string, chain: number, max: number,
     onchange: (chain: number) => void,
 ) => (
     <div
@@ -54,7 +55,7 @@ const row = (
                         input.value = String(chain);
                         onchange(Number.isFinite(value) ? value : 0);
                     }}
-                    style={style({ height: px(28), margin: '0', textAlign: 'center', width: px(56) })}
+                    style={style({ height: px(28), margin: '0', textAlign: 'center', width: px(72) })}
                 />
             </label>
         </span>
@@ -65,13 +66,13 @@ export const InputStatePane: Component<InputStatePaneProps> = ({ description, pr
     const { stats } = description;
     const b2bChain = capB2bChain(stats.b2bChain, preset);
     // SRS keeps B2B as a flag and classic has none.
-    const b2bMax = preset === 'tetrioS2' ? undefined : preset === 'ppt' ? 1 : 0;
+    const b2bMax = preset === 'tetrioS2' ? INPUT_CHAIN_MAX : preset === 'ppt' ? 1 : 0;
 
     return (
         <div key="panel-input-window-state" datatest="panel-input-window-state">
             {row('input-state-b2b', 'B2B', shownB2b(b2bChain, preset), b2bChain, b2bMax,
                 chain => actions.setInputChainCounters({ b2bChain: chain }))}
-            {row('input-state-combo', 'COMBO', shownCombo(stats.renChain), stats.renChain, undefined,
+            {row('input-state-combo', 'COMBO', shownCombo(stats.renChain), stats.renChain, INPUT_CHAIN_MAX,
                 chain => actions.setInputChainCounters({ renChain: chain }))}
         </div>
     );

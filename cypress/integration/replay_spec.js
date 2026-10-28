@@ -813,6 +813,8 @@ describe('TETR.IO Replay', () => {
         operations.replay.seek(CANCEL_FRAME);
         operations.replay.openInEditor();
         operations.inputReplay.fieldGauge().should('have.attr', 'data-gauge', '2');
+        // INPUT locks follow the selected rotation rules; SRS+ is the one that matches TETR.IO.
+        operations.menu.setRotationSystem('srsPlus');
 
         // 元リプレイ同様、Spawnで床へ下ろし、Rightでさらに下ろしてから
         // Reverseへ回してT-spin doubleへ入れる。

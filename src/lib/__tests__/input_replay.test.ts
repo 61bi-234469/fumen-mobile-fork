@@ -205,6 +205,22 @@ describe('INPUT replay battle context', () => {
         expect(inputGarbageView(transition.context).gauge).toBe(0);
     });
 
+    test('counts B2B by the selected rotation rules while keeping the TETR.IO garbage model', () => {
+        const field = new Field({});
+        for (let y = 0; y < 4; y += 1) {
+            for (let x = 0; x < 9; x += 1) field.setToPlayField(x + y * 10, Piece.Gray);
+        }
+        const stats = { b2bChain: 1, renChain: 1, pieces: 4, lines: 8, perfectClears: 0 };
+
+        const srs = advanceInputReplayContext(context(3, rules(), stats), field, quadI, undefined, 'ppt');
+        expect(srs.context.stats.b2bChain).toBe(1);
+        expect(srs.placement.clearedLines).toBe(4);
+        expect(srs.cancelled).toBe(3);
+
+        const classic = advanceInputReplayContext(context(3, rules(), stats), field, quadI, undefined, 'none');
+        expect(classic.context.stats.b2bChain).toBe(0);
+    });
+
     test('a zero-damage clear still blocks garbage rise', () => {
         const field = new Field({});
         for (let x = 0; x < 9; x += 1) field.setToPlayField(x, Piece.Gray);

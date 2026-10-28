@@ -646,7 +646,7 @@ describe('PIECE queues', () => {
         operations.inputWindow.selectTab('queue');
         cy.get(datatest('input-piece-queue-next')).should('be.focused');
         cy.get(datatest('btn-piece-queue-add-Z')).click();
-        // Share sits in the shared footer, so it is reachable from every tab.
+        // Share sits in the shared header, so it is reachable from every tab.
         cy.get(datatest('btn-input-share-url')).should('be.visible');
         operations.inputWindow.close();
 
@@ -667,6 +667,27 @@ describe('PIECE queues', () => {
         operations.mode.piece.open();
         operations.mode.piece.layout('play');
         cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+    });
+
+    it('undoes a typed COMBO on its own instead of with the lock before it', () => {
+        visit({ mode: 'edit' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+        operations.mode.piece.harddrop();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+
+        operations.inputWindow.openState();
+        cy.get(datatest('input-state-combo-input')).clear().type('3').blur();
+        cy.get(datatest('input-stats-combo')).should('have.attr', 'data-value', '2');
+        operations.inputWindow.close();
+
+        operations.mode.tools.undo();
+        cy.get(datatest('text-pages')).should('contain', '2 / 2');
+        cy.get(datatest('input-stats-combo')).should('have.attr', 'data-value', '');
+        cy.get(datatest('piece-queue-hold')).should('exist');
     });
 
     it('edits incoming garbage from the INPUT gauge and raises it on a no-clear lock', () => {

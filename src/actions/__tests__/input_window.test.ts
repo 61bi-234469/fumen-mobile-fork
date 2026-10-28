@@ -133,6 +133,16 @@ describe('inputWindowActions', () => {
         expect(calls).toEqual([]);
     });
 
+    test('caps typed counts at five digits so the queue comment stays parseable', () => {
+        const state = run(createState('#Q=[](T)IO'), inputWindowActions.setInputChainCounters({
+            b2bChain: 1000000, renChain: 123456,
+        }) as any);
+
+        const stats = computeInputStats(state.fumen.pages, 0, 'srsPlus');
+        expect([stats.b2bChain, stats.renChain]).toEqual([99999, 99999]);
+        expect(state.fumen.pages[0].comment.text).toBe('b2b=99999 combo=99999 | #Q=[](T)IO');
+    });
+
     test('caps B2B at the rules of the selected rotation system', () => {
         const srs = { ...createState(), mode: { rotationSystem: 'srs' } } as unknown as State;
         const state = run(srs, inputWindowActions.setInputChainCounters({ b2bChain: 5 }) as any);

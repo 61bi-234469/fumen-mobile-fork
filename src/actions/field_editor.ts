@@ -1275,8 +1275,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             || !field.isOnGround(type, rotation, coordinate.x, coordinate.y)) {
             return undefined;
         }
-        const preset = page.internal?.inputReplayContext !== undefined
-            ? 'tetrioS2' : resolveInputRulesPreset(state.mode.rotationSystem);
+        const preset = resolveInputRulesPreset(state.mode.rotationSystem);
         const evidence = inferGuideRotationEvidence(field, move, state.mode.rotationSystem, preset);
         const prevPage = toPrimitivePage(page);
         page.piece = { type, rotation, coordinate: { ...coordinate } };
@@ -1335,6 +1334,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 if (isInput && inputReplayContext !== undefined) {
                     const transition = advanceInputReplayContext(
                         inputReplayContext, field, piece, rotationEvidence,
+                        resolveInputRulesPreset(nextState.mode.rotationSystem),
                     );
                     return sequence(nextState, [
                         ...(commentWithEvidence === currentComment ? [] : [

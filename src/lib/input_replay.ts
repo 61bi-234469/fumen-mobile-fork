@@ -12,8 +12,10 @@ import type { Move, Page } from './fumen/types';
 import type { SerializedTree } from './fumen/tree_types';
 import { findNodeByPageIndex, getPathToNode } from './fumen/tree_utils';
 import {
+    InputRulesPreset,
     InputStats,
     PlacementResult,
+    capB2bChain,
     evaluatePlacement,
 } from './input_stats';
 import { buildEngineConfig } from './ttrm/engine_config';
@@ -517,6 +519,13 @@ const advanceReplayStats = (
     };
 };
 
+// SRS keeps B2B as a flag and classic has none; their chains never charge a Surge.
+const capReplayAdvance = (advanced: ReplayStatsAdvance, preset: InputRulesPreset): ReplayStatsAdvance => {
+    if (preset === 'tetrioS2') return advanced;
+    const b2bChain = capB2bChain(advanced.stats.b2bChain, preset);
+    return { ...advanced, rawB2b: b2bChain - 1, brokeB2b: false, stats: { ...advanced.stats, b2bChain } };
+};
+
 const calculateAttackChunks = (
     context: InputReplayContext,
     queue: GarbageQueue,
@@ -601,13 +610,15 @@ export const advanceInputReplayContext = (
     field: Field,
     piece: Move | undefined,
     evidence?: InputRotationEvidence,
+    // Spins and B2B follow the selected rotation rules; the garbage and attack model stays TETR.IO's.
+    preset: InputRulesPreset = 'tetrioS2',
 ): InputReplayTransition => {
     const placement: InputReplayPlacementResult = {
-        ...evaluatePlacement(field, piece, 'tetrioS2', evidence),
+        ...evaluatePlacement(field, piece, preset, evidence),
         garbageCleared: countGarbageCleared(field, piece),
     };
     const queue = restoreQueue(context);
-    const advanced = advanceReplayStats(context.stats, placement, context.garbage.rules);
+    const advanced = capReplayAdvance(advanceReplayStats(context.stats, placement, context.garbage.rules), preset);
     const chunks = calculateAttackChunks(context, queue, placement, advanced);
     const attack = chunks.reduce((sum, amount) => sum + amount, 0);
     let cancelled = 0;

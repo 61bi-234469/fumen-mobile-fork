@@ -53,7 +53,7 @@ export const defaultPieceShortcuts: PieceShortcuts = {
 
 export type RotationSystem = 'classic' | 'srs' | 'srsPlus';
 
-export type UserSettingsTab = 'edit' | 'view' | 'input' | 'keys' | 'general';
+export type UserSettingsTab = 'edit' | 'input' | 'keys' | 'general';
 
 export type { InitialScreenSetting } from './lib/initial_screen';
 
@@ -387,8 +387,6 @@ export interface State {
             sevenBagGrayEnabled: boolean;
             pageRotationLimit: number;
             grayAfterLineClear: boolean;
-            trimTopBlank: boolean;
-            editorSidePanel: boolean;
             flagsHidden: boolean;
         };
         userSettingsTab: UserSettingsTab;
@@ -616,8 +614,6 @@ export const initState: Readonly<State> = {
             sevenBagGrayEnabled: false,
             pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
             grayAfterLineClear: false,
-            trimTopBlank: false,
-            editorSidePanel: false,
             flagsHidden: true,
         },
         userSettingsTab: 'edit',

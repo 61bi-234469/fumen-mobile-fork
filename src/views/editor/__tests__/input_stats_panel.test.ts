@@ -37,6 +37,23 @@ describe('inputStatsPanel', () => {
         Object.values(labels).forEach(label => expect(label).toBe(label.toUpperCase()));
     });
 
+    it('names the kick table only in the summary tier', () => {
+        const rulesRowOf = (vnode: any) => vnode.children.find(
+            (row: any) => row.attributes && row.attributes.datatest === 'input-stats-rules',
+        );
+        const summary = inputStatsPanel(
+            stats, 'summary', { last: undefined }, { preset: 'none', rotationSystem: 'classic' },
+        );
+        expect(rulesRowOf(summary).attributes['data-preset']).toBe('none');
+        expect(rulesRowOf(summary).children[0]).toBe('CLASSIC');
+        const srsPlus = inputStatsPanel(
+            stats, 'summary', undefined, { preset: 'tetrioS2', rotationSystem: 'srsPlus' },
+        );
+        expect(rulesRowOf(srsPlus).children[0]).toBe('SRS+');
+        expect(rulesRowOf(inputStatsPanel(stats, 'summary', undefined, { preset: 'none' }))).toBeUndefined();
+        expect(rulesRowOf(inputChainPanel(stats, { preset: 'none', rotationSystem: 'classic' }))).toBeUndefined();
+    });
+
     it('counts B2B and COMBO like s2-bot-lab', () => {
         expect([0, 1, 5].map(chain => shownB2b(chain))).toEqual(['—', '0', '4']);
     });

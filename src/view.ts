@@ -21,7 +21,7 @@ import { resolveInputRulesPreset } from './lib/input_stats';
 import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { embedTreeInPages, getPathToNode } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
-import { canShowSidePanel, getSidePanelWidth } from './views/editor/side_panel_layout';
+import { getSidePanelWidth } from './views/editor/side_panel_layout';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
@@ -31,7 +31,7 @@ import {
     canClearCommentForColdClearQueue,
     resolveColdClearSearchSetupNeeds,
 } from './actions/cold_clear';
-import { availableAiEngines, resolveAiEngine } from './lib/ai_engine';
+import { aiEngineRotationMismatch, availableAiEngines, resolveAiEngine } from './lib/ai_engine';
 
 export const view: View<State, Actions> = (state, actions) => {
     const searchBlockedByHoldQueue = isColdClearSearchBlockedByHoldQueue(state);
@@ -127,9 +127,6 @@ export const view: View<State, Actions> = (state, actions) => {
             rotationSystem: state.temporary.userSettings.rotationSystem,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
-            trimTopBlank: state.temporary.userSettings.trimTopBlank,
-            editorSidePanel: state.temporary.userSettings.editorSidePanel,
-            sidePanelAvailable: canShowSidePanel(state),
             currentTab: state.temporary.userSettingsTab,
         }) : undefined as any,
 
@@ -171,6 +168,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 tab: state.temporary.inputWindowTab,
                 description: context === undefined ? undefined : describeInputState(context),
                 preset: resolveInputRulesPreset(state.mode.rotationSystem),
+                rotationSystem: state.mode.rotationSystem,
                 garbageSegments: state.temporary.inputGarbageSegments,
                 pieceQueueFocus: state.temporary.pieceQueueFocus,
             });
@@ -187,7 +185,9 @@ export const view: View<State, Actions> = (state, actions) => {
             engine: resolveAiEngine(state.coldClear.engine),
             engineSwitchable: availableAiEngines().length > 1,
             soldSlearBudget: state.coldClear.soldSlearBudget,
-            rotationSystemMismatch: state.mode.rotationSystem !== 'srsPlus',
+            rotationSystemMismatch: aiEngineRotationMismatch(
+                resolveAiEngine(state.coldClear.engine), state.mode.rotationSystem,
+            ),
             isRunning: state.coldClear.isRunning,
             progress: state.coldClear.progress,
             topBranchCount: state.coldClear.topBranchCount,

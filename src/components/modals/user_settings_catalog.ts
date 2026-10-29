@@ -3,8 +3,8 @@ import { i18n } from '../../locales/keys';
 
 export type SettingId =
     | 'delete-spawn-mino-on-paint-drag' | 'keep-gray-on-paint-drag' | 'paint-palette-mino-design' | 'flags-hidden'
-    | 'gradient' | 'gray-after-line-clear' | 'trim-top-blank' | 'editor-side-panel'
-    | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible' | 'rotation-system'
+    | 'gradient' | 'gray-after-line-clear'
+    | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
     | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
     | 'initial-screen' | 'loop' | 'page-rotation-limit';
@@ -44,17 +44,12 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'gray-after-line-clear': {
         type: 'switch', datatestBase: 'switch-gray-after-line-clear', title: i18n.TreeView.GrayAfterLineClear,
     },
-    'trim-top-blank': { type: 'switch', datatestBase: 'switch-trim-top-blank', title: i18n.ListView.TrimTopBlank },
-    'editor-side-panel': {
-        type: 'switch', datatestBase: 'switch-editor-side-panel', title: i18n.UserSettings.EditorSidePanel,
-    },
     'open-tree-screen-on-tree-data': {
         type: 'switch', datatestBase: 'switch-open-tree-screen-on-tree-data',
         title: i18n.UserSettings.OpenTreeScreenOnTreeData.Title,
     },
     'piece-shortcuts': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Title },
     'ghost-visible': { type: 'switch', datatestBase: 'switch-ghost-visible', title: i18n.UserSettings.Ghost.Title },
-    'rotation-system': { type: 'custom', title: i18n.UserSettings.RotationSystem.Title },
     'piece-arr': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.ArrFrames },
     'piece-das': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.DasFrames },
     'piece-dcd': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.DasCutFrames },
@@ -70,14 +65,15 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'page-rotation-limit': { type: 'custom', title: i18n.UserSettings.PageRotation.Title },
 };
 
+// キックテーブルはタブの外（モーダル上部）に常設するのでカタログには置かない。
+// List/Tree の表示設定（上部空白省略・サイドパネル）は各画面の専用UIだけで切り替える。
 export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
     edit: [
         'delete-spawn-mino-on-paint-drag', 'keep-gray-on-paint-drag', 'paint-palette-mino-design', 'flags-hidden', 'gradient',
         'gray-after-line-clear',
     ],
-    view: ['trim-top-blank', 'gray-after-line-clear', 'editor-side-panel'],
     input: [
-        'ghost-visible', 'rotation-system', 'piece-arr', 'piece-das', 'piece-dcd', 'piece-sdf',
+        'ghost-visible', 'piece-arr', 'piece-das', 'piece-dcd', 'piece-sdf',
         'piece-softdrop-priority',
     ],
     keys: ['palette-shortcuts', 'edit-shortcuts', 'piece-shortcuts', 'shortcut-label'],

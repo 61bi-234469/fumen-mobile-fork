@@ -293,6 +293,38 @@ describe('Cold Clear menu', () => {
             cy.get(datatest('toggle-cold-clear-hold-allowed')).should('exist');
         });
 
+        it('warns when the kick table does not match the engine and links to the settings', () => {
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', lng: 'en' });
+            operations.menu.setRotationSystem('classic');
+            operations.mode.comment.open();
+            cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+            ensureTreeGraphView();
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
+
+            // Cold Clear assumes SRS, so Classic gets the warning too
+            cy.get(datatest('txt-ai-rotation-warning')).should('have.attr', 'data-engine', 'coldClear');
+            cy.get(datatest('btn-ai-open-rotation-settings')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('not.exist');
+            cy.get(datatest('mdl-user-settings')).should('be.visible');
+            cy.get(datatest('group-rotation-system')).should('be.visible');
+            cy.get(datatest('segment-rotation-system-srs')).click();
+            cy.get(datatest('btn-save')).click();
+            cy.get(datatest('mdl-user-settings')).should('not.exist');
+            cy.get('.modal-overlay').should('not.exist');
+
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
+            cy.get(datatest('txt-ai-rotation-warning')).should('not.exist');
+
+            // Sold Slear assumes SRS+; the choice itself is not blocked
+            operations.aiMenu.switchEngineTo('soldSlear');
+            cy.get(datatest('txt-ai-engine-notice')).should('exist');
+            cy.get(datatest('txt-ai-rotation-warning')).should('have.attr', 'data-engine', 'soldSlear');
+            cy.get(datatest('btn-ai-open-rotation-settings')).scrollIntoView().should('be.visible');
+        });
+
         it('runs a sequence search and adds the result pages to the tree', () => {
             cy.clearLocalStorage();
             openAiMenuWithQueue('#Q=[](T)SILZ');

@@ -53,7 +53,6 @@
         Title: 'User Settings',
         Tabs: {
             Edit: 'Edit',
-            View: 'List & Tree',
             Input: 'Input',
             Keys: 'Keys',
             General: 'General',
@@ -99,6 +98,12 @@
             Classic: () => 'Classic',
             Srs: () => 'SRS',
             SrsPlus: () => 'SRS+',
+            SrsPlusOnly: 'SRS+',
+            Effects: {
+                Classic: 'Classic — classic colors. No spin detection or B2B.',
+                Srs: 'SRS — guideline colors. T-Spin detection, B2B as on/off (PPT rules).',
+                SrsPlus: 'SRS+ — TETR.IO S2 rules. 180° rotation, All-Mini+, B2B chain, Sold Slear.',
+            },
         },
         ShortcutInput: {
             Placeholder: 'Press a key',
@@ -157,7 +162,6 @@
             Unit: 'pages',
             Unlimited: 'Unlimited',
         },
-        EditorSidePanel: 'Show side panel',
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',
@@ -371,7 +375,6 @@
         },
     },
     ListView: {
-        AllSettings: 'All settings',
         TrimTopBlank: 'Trim top blank',
         ViewSettings: 'View settings',
         Zoom: 'Zoom',
@@ -474,6 +477,8 @@
     },
     InputState: {
         Open: 'Open INPUT State',
+        Rules: 'Rules',
+        OpenRotationSettings: 'Change kick table',
         ChainLabel: 'chain',
         Share: 'Share',
         NativeShare: 'Share via…',
@@ -573,6 +578,8 @@
         EngineSwitchBusy: 'AI: The engine cannot be switched while a search or replay analysis is running',
         SoldSlearNotice: 'Preview build · assumes SRS+',
         SoldSlearRotationWarning: 'Sold Slear assumes SRS+. Some suggested moves may not be reachable with the current rotation system.',
+        ColdClearRotationWarning: 'Cold Clear assumes SRS. With Classic, some suggested moves may not be reachable.',
+        OpenRotationSettings: 'Change kick table',
         SoldSlearNeedsNext: 'Sold Slear needs at least one NEXT piece',
         SoldSlearPlacedRank: 'Sold Slear: rank {{rank}} of {{total}} candidates',
         SoldSlearPlacedOutside: 'Sold Slear: not among the {{total}} candidates',

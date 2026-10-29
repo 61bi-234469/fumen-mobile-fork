@@ -623,6 +623,10 @@ describe('PIECE queues', () => {
 
         operations.inputWindow.openState();
         cy.get(datatest('input-state-b2b')).should('be.visible');
+        // The State tab names the kick table that scores the chains (SRS by default)
+        cy.get(datatest('input-state-rules')).should('have.attr', 'data-value', 'srs');
+        cy.get(datatest('input-state-rules-value')).should('have.text', 'SRS');
+        cy.get(datatest('input-stats-rules')).should('have.attr', 'data-preset', 'ppt');
         // Typed chains reach the HOLD panel (COMBO shows chain - 1; SRS keeps B2B as a flag).
         cy.get(datatest('input-state-combo-input')).clear().type('3').blur();
         cy.get(datatest('input-state-combo')).should('have.attr', 'data-value', '3');
@@ -667,6 +671,34 @@ describe('PIECE queues', () => {
         operations.mode.piece.open();
         operations.mode.piece.layout('play');
         cy.get(datatest('replay-gauge-input')).should('have.attr', 'data-gauge', '4');
+    });
+
+    it('opens the kick table settings from the INPUT State tab', () => {
+        visit({ mode: 'edit', lng: 'en' });
+        cy.get(datatest('btn-paint-mode')).click();
+        cy.get(datatest('text-comment')).clear().type('#Q=[](T)IOL').blur();
+        operations.mode.piece.open();
+        operations.mode.piece.spawn.T();
+        operations.mode.piece.layout('play');
+
+        operations.inputWindow.openState();
+        cy.get(datatest('btn-input-state-open-rotation-settings')).click();
+        // The window closes first, then the settings open on the kick table header
+        cy.get(datatest('mdl-input-window')).should('not.exist');
+        cy.get(datatest('mdl-user-settings')).should('be.visible');
+        cy.get(datatest('group-rotation-system')).should('be.visible');
+        cy.get(datatest('segment-rotation-system-classic')).click();
+        cy.get(datatest('btn-save')).click();
+        cy.get(datatest('mdl-user-settings')).should('not.exist');
+        cy.get('.modal-overlay').should('not.exist');
+
+        // Classic has no chain scoring, which the panel now says
+        cy.get(datatest('input-stats-rules')).should('have.attr', 'data-preset', 'none')
+            .and('have.text', 'CLASSIC');
+        operations.inputWindow.openState();
+        cy.get(datatest('input-state-rules-value')).should('have.text', 'Classic');
+        cy.get(datatest('input-state-b2b-input')).should('be.disabled');
+        operations.inputWindow.close();
     });
 
     it('undoes a typed COMBO on its own instead of with the lock before it', () => {

@@ -58,7 +58,6 @@ export const i18n = {
         Title: () => t('UserSettings.Title'),
         Tabs: {
             Edit: () => t('UserSettings.Tabs.Edit'),
-            View: () => t('UserSettings.Tabs.View'),
             Input: () => t('UserSettings.Tabs.Input'),
             Keys: () => t('UserSettings.Tabs.Keys'),
             General: () => t('UserSettings.Tabs.General'),
@@ -103,6 +102,12 @@ export const i18n = {
             Classic: () => t('UserSettings.RotationSystem.Classic'),
             Srs: () => t('UserSettings.RotationSystem.Srs'),
             SrsPlus: () => t('UserSettings.RotationSystem.SrsPlus'),
+            SrsPlusOnly: () => t('UserSettings.RotationSystem.SrsPlusOnly'),
+            Effects: {
+                Classic: () => t('UserSettings.RotationSystem.Effects.Classic'),
+                Srs: () => t('UserSettings.RotationSystem.Effects.Srs'),
+                SrsPlus: () => t('UserSettings.RotationSystem.Effects.SrsPlus'),
+            },
         },
         ShortcutInput: {
             Placeholder: () => t('UserSettings.ShortcutInput.Placeholder'),
@@ -161,7 +166,6 @@ export const i18n = {
             Unit: () => t('UserSettings.PageRotation.Unit'),
             Unlimited: () => t('UserSettings.PageRotation.Unlimited'),
         },
-        EditorSidePanel: () => t('UserSettings.EditorSidePanel'),
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),
@@ -396,7 +400,6 @@ export const i18n = {
         },
     },
     ListView: {
-        AllSettings: () => t('ListView.AllSettings'),
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
         Zoom: () => t('ListView.Zoom'),
@@ -500,6 +503,8 @@ export const i18n = {
     },
     InputState: {
         Open: () => t('InputState.Open'),
+        Rules: () => t('InputState.Rules'),
+        OpenRotationSettings: () => t('InputState.OpenRotationSettings'),
         ChainLabel: () => t('InputState.ChainLabel'),
         Share: () => t('InputState.Share'),
         NativeShare: () => t('InputState.NativeShare'),
@@ -600,6 +605,8 @@ export const i18n = {
         EngineSwitchBusy: () => t('ColdClear.EngineSwitchBusy'),
         SoldSlearNotice: () => t('ColdClear.SoldSlearNotice'),
         SoldSlearRotationWarning: () => t('ColdClear.SoldSlearRotationWarning'),
+        ColdClearRotationWarning: () => t('ColdClear.ColdClearRotationWarning'),
+        OpenRotationSettings: () => t('ColdClear.OpenRotationSettings'),
         SoldSlearNeedsNext: () => t('ColdClear.SoldSlearNeedsNext'),
         SoldSlearPlacedRank: (rank: number, total: number) =>
             t('ColdClear.SoldSlearPlacedRank', { rank, total }),

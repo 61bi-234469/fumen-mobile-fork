@@ -434,10 +434,6 @@ const renderPanelContent = (
                     onGrayAfterLineClearToggle: () => actions.setTreeState({
                         grayAfterLineClear: !state.tree.grayAfterLineClear,
                     }),
-                    onOpenAllSettings: () => {
-                        actions.setListViewSettingsOpened({ opened: false });
-                        actions.openUserSettingsModal({ initialTab: 'edit' });
-                    },
                     onZoomChange: (percent: number) => {
                         const newScale = percent / 100;
                         if (isTreeTabActive) {

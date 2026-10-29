@@ -79,7 +79,7 @@ describe('Editor side panel', () => {
         // デフォルト OFF: パネルは存在しない
         cy.get(datatest('editor-side-panel')).should('not.exist');
 
-        // ユーザー設定 View タブで ON にするとパネルが表示される
+        // ナビゲータ上部の切替で ON にするとパネルが表示される
         operations.editorPanel.enable();
         cy.get(datatest('editor-side-panel')).should('be.visible');
         cy.get(datatest('editor-panel-tab-list')).should('be.visible');

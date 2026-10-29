@@ -1,6 +1,8 @@
 // AI エンジンの識別子と、エンジンごとに UI・探索入力を切り替えるための能力表。
 // ビルドフラグで明示的に無効化されたエンジンは選べない。
 
+import { RotationSystem } from '../states';
+
 declare const __SOLD_SLEAR_ENABLED__: boolean;
 
 export type AiEngineId = 'coldClear' | 'soldSlear';
@@ -66,3 +68,10 @@ const CAPABILITIES: Record<AiEngineId, AiEngineCapabilities> = {
 };
 
 export const aiEngineCapabilities = (engine: AiEngineId): AiEngineCapabilities => CAPABILITIES[engine];
+
+// エンジンが前提にするキックテーブルと合わないとき true。Cold Clear は SRS 系（SRS+ のキック差は
+// 使わない）で、Classic だけが外れる。Sold Slear は TETR.IO S2 由来なので SRS+ 以外が外れる。
+// 不一致でも探索は動くので、UI は警告と設定への導線だけを出す。
+export const aiEngineRotationMismatch = (engine: AiEngineId, rotationSystem: RotationSystem): boolean => (
+    engine === 'soldSlear' ? rotationSystem !== 'srsPlus' : rotationSystem === 'classic'
+);

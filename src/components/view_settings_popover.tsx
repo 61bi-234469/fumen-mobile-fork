@@ -20,7 +20,6 @@ interface Props {
         onGrayAfterLineClearToggle: () => void;
         onZoomChange: (percent: number) => void;
         onZoomReset: () => void;
-        onOpenAllSettings: () => void;
     };
 }
 
@@ -143,6 +142,7 @@ export const ViewSettingsPopover: Component<Props> = (
 
     return div({
         key: 'view-settings-popover',
+        datatest: 'view-settings-popover',
         className: 'corner-glass',
         style: rootStyle,
     }, [
@@ -186,15 +186,5 @@ export const ViewSettingsPopover: Component<Props> = (
                 },
             }),
         ]),
-        div({ key: 'settings-divider-all', style: settingsDividerStyle }),
-        h('button', {
-            key: 'btn-view-all-settings',
-            datatest: 'btn-view-all-settings',
-            style: style({
-                border: 'none', backgroundColor: 'transparent', color: '#2563EB', cursor: 'pointer',
-                fontSize: px(13), fontWeight: 600, padding: '10px 16px', textAlign: 'left',
-            }),
-            onclick: () => actions.onOpenAllSettings(),
-        }, i18n.ListView.AllSettings()),
     ]);
 };

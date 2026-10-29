@@ -53,7 +53,6 @@ export const resources = {
         Title: 'ユーザー設定',
         Tabs: {
             Edit: '編集',
-            View: 'List/Tree',
             Input: 'INPUT',
             Keys: 'キー設定',
             General: '全般',
@@ -99,6 +98,12 @@ export const resources = {
             Classic: () => 'クラシック',
             Srs: () => 'SRS',
             SrsPlus: () => 'SRS+',
+            SrsPlusOnly: 'SRS+',
+            Effects: {
+                Classic: 'Classic — クラシック配色。スピン判定と B2B はなし',
+                Srs: 'SRS — ガイドライン配色。T-Spin を判定し、B2B は ON/OFF（PPT ルール）',
+                SrsPlus: 'SRS+ — TETR.IO S2 ルール。180°回転、All-Mini+、B2B 連鎖、Sold Slear に対応',
+            },
         },
         ShortcutInput: {
             Placeholder: 'キーを押す',
@@ -157,7 +162,6 @@ export const resources = {
             Unit: 'ページ',
             Unlimited: '無制限',
         },
-        EditorSidePanel: 'サイドパネルを表示',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
@@ -354,7 +358,6 @@ export const resources = {
         },
     },
     ListView: {
-        AllSettings: 'すべての設定',
         TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
         Zoom: 'ズーム',
@@ -457,6 +460,8 @@ export const resources = {
     },
     InputState: {
         Open: 'INPUT State を開く',
+        Rules: 'ルール',
+        OpenRotationSettings: 'キックテーブルを変更',
         ChainLabel: 'chain',
         Share: 'Share',
         NativeShare: 'Share…',
@@ -556,6 +561,8 @@ export const resources = {
         EngineSwitchBusy: 'AI: 探索中またはリプレイ解析中はエンジンを切り替えられません',
         SoldSlearNotice: '開発版・SRS+ 前提',
         SoldSlearRotationWarning: 'Sold Slear は SRS+ を前提にしています。現在の回転法則では提案手に到達できないことがあります。',
+        ColdClearRotationWarning: 'Cold Clear は SRS を前提にしています。Classic では提案手に到達できないことがあります。',
+        OpenRotationSettings: 'キックテーブルを変更',
         SoldSlearNeedsNext: 'Sold Slear には NEXT が1個以上必要です',
         SoldSlearPlacedRank: 'Sold Slear: 候補{{total}}件中 {{rank}}位',
         SoldSlearPlacedOutside: 'Sold Slear: 候補{{total}}件の中にありません',

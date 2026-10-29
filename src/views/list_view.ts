@@ -664,7 +664,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     : actions.openEditorInspector({ inspector: 'utils' }),
                 openListViewMenuModal: (data: { initialTab: 'export' | 'import' }) =>
                     actions.openListViewMenuModal(data),
-                openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
+                openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'general' }),
                 toggleTreeMode: () => state.tree.enabled
                     ? actions.openTreeDisableConfirmModal()
                     : actions.toggleTreeMode(),
@@ -1085,10 +1085,6 @@ export const view: View<State, Actions> = (state, actions) => {
                     onGrayAfterLineClearToggle: () => actions.setTreeState({
                         grayAfterLineClear: !grayAfterLineClear,
                     }),
-                    onOpenAllSettings: () => {
-                        actions.setListViewSettingsOpened({ opened: false });
-                        actions.openUserSettingsModal({ initialTab: 'view' });
-                    },
                     onZoomChange: (percent: number) => {
                         const scale = percent / 100;
                         if (isTreeView) {

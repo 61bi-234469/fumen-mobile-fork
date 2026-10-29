@@ -36,8 +36,6 @@ export interface UserSettingsActions {
     keepSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     keepPageRotationLimit: (data: { limit: number }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
-    keepTrimTopBlank: (data: { enable: boolean }) => action;
-    keepEditorSidePanel: (data: { enable: boolean }) => action;
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
@@ -87,8 +85,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
                     pageRotationLimit: state.mode.pageRotationLimit,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
-                    trimTopBlank: state.listView.trimTopBlank,
-                    editorSidePanel: state.editorPanel.enabled,
                 },
             },
         };
@@ -145,15 +141,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePageRotationLimit({
                 limit: state.temporary.userSettings.pageRotationLimit,
             }),
-            // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
+            // viewSettings系（グレー化）はsetTreeStateがpersistViewSettingsで永続化する。
+            // 上部空白省略とサイドパネルは専用UIだけで切り替える
             actions.setTreeState({
                 grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
-            }),
-            actions.setListViewTrimTopBlank({
-                enabled: state.temporary.userSettings.trimTopBlank,
-            }),
-            actions.setEditorSidePanelEnabled({
-                enabled: state.temporary.userSettings.editorSidePanel,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -295,8 +286,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
     keepSevenBagGrayEnabled: ({ enable }) => keepTemporary({ sevenBagGrayEnabled: enable }),
     keepPageRotationLimit: ({ limit }) => keepTemporary({ pageRotationLimit: normalizePageRotationLimit(limit) }),
-    keepTrimTopBlank: ({ enable }) => keepTemporary({ trimTopBlank: enable }),
-    keepEditorSidePanel: ({ enable }) => keepTemporary({ editorSidePanel: enable }),
     setUserSettingsTab: ({ tab }) => (state): NextState => {
         if (state.temporary.userSettingsTab === tab) {
             return undefined;

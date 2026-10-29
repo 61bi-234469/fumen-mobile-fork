@@ -202,6 +202,8 @@ export const i18n = {
         UtilsModes: () => t('EditorUi.UtilsModes'),
         UtilsPages: () => t('EditorUi.UtilsPages'),
         ClearPast: () => t('EditorUi.ClearPast'), ClearToEnd: () => t('EditorUi.ClearToEnd'),
+        ClearOthers: () => t('EditorUi.ClearOthers'),
+        ResetAllPages: () => t('EditorUi.ResetAllPages'),
         CommentPlaceholder: () => t('EditorUi.CommentPlaceholder'),
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         ToBlack: () => t('EditorUi.ToBlack'),

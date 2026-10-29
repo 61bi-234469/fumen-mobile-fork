@@ -25,9 +25,11 @@ jest.mock('../../actions', () => ({
 
 jest.mock('../../states', () => ({ resources: {} }));
 
+const registerHistoryTask = jest.fn((_: unknown) => () => undefined);
+
 jest.mock('../memento', () => ({
     mementoActions: {
-        registerHistoryTask: noopAction,
+        registerHistoryTask: (data: unknown) => registerHistoryTask(data),
     },
 }));
 
@@ -154,6 +156,72 @@ describe('pageActions.applyPageRotation', () => {
 
         expect(next.fumen.pages).toHaveLength(4);
         expect(next.fumen.currentIndex).toBe(3);
+    });
+});
+
+describe('pageActions.clearOthers', () => {
+    const makeState = ({ pageCount, currentIndex }: { pageCount: number, currentIndex: number }) => {
+        const pages = Array.from({ length: pageCount }).map((_, index) => ({
+            index,
+            field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+            comment: index === 0 ? { text: 'first' } : { ref: 0 },
+            flags: { ...flags, colorize: index === 0 },
+        }));
+        return {
+            play: { status: AnimationState.Pause },
+            events: { inferences: [] },
+            mode: { ghostVisible: false, touch: TouchTypes.Drawing, pageRotationLimit: 0 },
+            cache: {},
+            tree: { enabled: false, rootId: null, nodes: [], activeNodeId: null },
+            fumen: { currentIndex, pages, maxPage: pageCount },
+            history: { undoCount: 0, redoCount: 0 },
+        } as any;
+    };
+
+    beforeEach(() => {
+        registerHistoryTask.mockClear();
+    });
+
+    test('keeps only the current page as a self-contained first page', () => {
+        const state = makeState({ pageCount: 5, currentIndex: 2 });
+
+        const next = pageActions.clearOthers()(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(1);
+        expect(next.fumen.maxPage).toBe(1);
+        expect(next.fumen.currentIndex).toBe(0);
+        expect(next.fumen.pages[0].field.obj).toBeDefined();
+        expect(next.fumen.pages[0].comment.text).toBe('first');
+        // 先頭ページのcolorizeを引き継ぐ
+        expect(next.fumen.pages[0].flags.colorize).toBe(true);
+    });
+
+    test('registers both deletions under one history key so a single undo restores them', () => {
+        const state = makeState({ pageCount: 5, currentIndex: 2 });
+
+        pageActions.clearOthers()(state);
+
+        expect(registerHistoryTask).toHaveBeenCalledTimes(2);
+        const [first, second] = registerHistoryTask.mock.calls.map(([data]) => data as any);
+        expect(first.mergeKey).toBeDefined();
+        expect(first.task.key).toBe(first.mergeKey);
+        expect(second.mergeKey).toBe(first.mergeKey);
+        expect(second.task.key).toBe(first.mergeKey);
+    });
+
+    test('only drops the pages that exist on either side', () => {
+        expect((pageActions.clearOthers()(makeState({ pageCount: 3, currentIndex: 0 })) as any).fumen.pages)
+            .toHaveLength(1);
+        expect((pageActions.clearOthers()(makeState({ pageCount: 3, currentIndex: 2 })) as any).fumen.pages)
+            .toHaveLength(1);
+        expect(registerHistoryTask).toHaveBeenCalledTimes(2);
+    });
+
+    test('does nothing on a single page', () => {
+        const next = pageActions.clearOthers()(makeState({ pageCount: 1, currentIndex: 0 })) as any;
+
+        expect(next?.fumen).toBeUndefined();
+        expect(registerHistoryTask).not.toHaveBeenCalled();
     });
 });
 

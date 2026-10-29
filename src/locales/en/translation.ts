@@ -186,6 +186,8 @@
         UtilsCurrentPage: 'Apply to this page', UtilsAllPages: 'Apply to all pages', UtilsModes: 'Editing modes',
         UtilsPages: 'Delete',
         ClearPast: 'Pages before this', ClearToEnd: 'Pages after this',
+        ClearOthers: 'All other pages',
+        ResetAllPages: 'Reset all',
         CommentPlaceholder: 'Comment',
         AllMirror: 'Mirror', ToGray: 'Convert to gray', ToBlack: 'Delete non-gray',
         ResetAllComments: 'Reset comments', ReplaceComments: 'Replace comments',

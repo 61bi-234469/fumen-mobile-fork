@@ -189,6 +189,8 @@ export const resources = {
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         UtilsPages: '削除',
         ClearPast: 'このページより前', ClearToEnd: 'このページより後',
+        ClearOthers: 'このページ以外',
+        ResetAllPages: 'すべてリセット',
         CommentPlaceholder: 'Comment',
         AllMirror: '左右反転', ToGray: 'グレー化', ToBlack: 'グレー以外を削除',
         ResetAllComments: 'コメントをリセット', ReplaceComments: 'コメントを置換',

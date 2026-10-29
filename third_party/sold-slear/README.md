@@ -39,9 +39,13 @@ and credits in normal builds.
   search value for each of the 16 returned candidates (in `ranking.returnedIdentities` order);
   `rootChildValues` lists every root move with its value, highest first, so moves outside the
   16 candidates also get a score. The app shows these values as move scores.
-- The owner's record for the flag (s2-bot-lab commits `121ed92`, `dd563bd`): identical status,
-  selection and full ranking with it on 8,160 saved native requests and 200 WASM requests under
-  the GUI champion profile, with values equal to `rootValues` for every returned candidate.
+- The owner's record for the flag (s2-bot-lab commits `121ed92`, `dd563bd`):
+  - native, under the native development champion profile (the same weights at 4,096 selections
+    with batched expansion K=8, not the profile shipped here): identical status, selection and full
+    ranking with the flag on all 8,160 saved gate requests;
+  - WASM, under the GUI champion profile shipped here (2,048 selections, tree reuse): identical
+    results with the flag on the first 200 of those requests, and the view's values equal
+    `rootValues` for every returned candidate.
 - Checked on 2026-10-30 for this copy: the profile in `profile.ts` serializes identically to
   s2-bot-lab `createChampionProfile` (SELECTION 2,048, THINK TIME off), and s2-bot-lab's own
   `src-js/cc2-wasm-engine.mjs` returns the same moves as `engine.test.ts` expects.
@@ -56,7 +60,10 @@ transcribed from `src-js/champion-identity.mjs` (`CHAMPION_PROFILE_ARGS`) and
 - The standard budget is the champion's 2,048 selections with tree reuse
   (`tree_reuse_floor` 256): when a request continues the previous one in the same worker, the
   search keeps that tree, so a move needs fewer new selections. Results therefore depend on the
-  request sequence within a worker, as in the s2-bot-lab GUI.
+  request sequence within a worker, as in the s2-bot-lab GUI. In this app only the replay AI
+  analysis keeps one worker across positions; the sequence search, top branches, placed-piece
+  evaluation and the INPUT AI guide start a new worker for each position, so they always search
+  from scratch.
 - Time budgets drop `tree_reuse_floor`, as the champion's THINK TIME does.
 
 ## Rebuild

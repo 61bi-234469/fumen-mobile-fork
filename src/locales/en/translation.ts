@@ -153,6 +153,12 @@
                 Off: 'Left/Right',
                 On: 'Soft drop',
             },
+            SpawnRotation: {
+                Title: 'Spawn rotation',
+                Description: 'HOLD: a piece that spawns while a rotate key or button is held spawns already rotated.',
+                Off: 'OFF',
+                Hold: 'HOLD',
+            },
         },
         PieceControls: {
             Title: 'Piece controls',

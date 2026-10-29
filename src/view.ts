@@ -124,6 +124,7 @@ export const view: View<State, Actions> = (state, actions) => {
             pieceShortcutDasCutFrames: state.temporary.userSettings.pieceShortcutDasCutFrames,
             pieceShortcutSdf: state.temporary.userSettings.pieceShortcutSdf,
             pieceShortcutSoftDropPriority: state.temporary.userSettings.pieceShortcutSoftDropPriority,
+            pieceSpawnRotation: state.temporary.userSettings.pieceSpawnRotation,
             rotationSystem: state.temporary.userSettings.rotationSystem,
             pageRotationLimit: state.temporary.userSettings.pageRotationLimit,
             grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,

@@ -6,6 +6,7 @@ export type SettingId =
     | 'gradient' | 'gray-after-line-clear'
     | 'open-tree-screen-on-tree-data' | 'piece-shortcuts' | 'ghost-visible'
     | 'piece-arr' | 'piece-das' | 'piece-dcd' | 'piece-sdf' | 'piece-softdrop-priority'
+    | 'piece-spawn-rotation'
     | 'palette-shortcuts' | 'edit-shortcuts' | 'shortcut-label'
     | 'initial-screen' | 'loop' | 'page-rotation-limit';
 
@@ -55,6 +56,7 @@ export const settingsCatalog: Record<SettingId, SettingDefinition> = {
     'piece-dcd': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.DasCutFrames },
     'piece-sdf': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.Sdf },
     'piece-softdrop-priority': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.SoftDropPriority.Title },
+    'piece-spawn-rotation': { type: 'custom', title: i18n.UserSettings.PieceShortcuts.SpawnRotation.Title },
     'palette-shortcuts': { type: 'custom', title: i18n.UserSettings.PaletteShortcuts.Title },
     'edit-shortcuts': { type: 'custom', title: i18n.UserSettings.EditShortcuts.Title },
     'shortcut-label': {
@@ -74,7 +76,7 @@ export const tabLayout: Record<UserSettingsTab, SettingId[]> = {
     ],
     input: [
         'ghost-visible', 'piece-arr', 'piece-das', 'piece-dcd', 'piece-sdf',
-        'piece-softdrop-priority',
+        'piece-softdrop-priority', 'piece-spawn-rotation',
     ],
     keys: ['palette-shortcuts', 'edit-shortcuts', 'piece-shortcuts', 'shortcut-label'],
     // 実際の描画順に合わせる。open-tree-screen-on-tree-data は初期画面の従属項目として直下に置く。

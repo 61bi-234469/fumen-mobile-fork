@@ -6,6 +6,7 @@ import {
     startDasHold,
     startSoftDropHold,
 } from './piece_das';
+import { pressRotation, releaseRotation, SpawnRotationDirection } from './spawn_rotation';
 
 export type PieceShortcutKey = keyof PieceShortcuts;
 
@@ -68,6 +69,12 @@ export const executePieceShortcut = (
     }
 };
 
+const ROTATE_KEY_DIRECTIONS: { [key in PieceShortcutKey]?: SpawnRotationDirection } = {
+    RotateRight: 'cw',
+    RotateLeft: 'ccw',
+    Rotate180: '180',
+};
+
 /**
  * Start one logical PIECE input using the same lifecycle for keyboard and touch.
  * The action getter is evaluated on every timer tick so a hold always operates
@@ -81,6 +88,7 @@ export const startPieceShortcut = (
 ) => {
     // A reused input ID must not leave a previous kind of hold running.
     endPieceHold(id);
+    releaseRotation(id);
     setPieceShortcutSoftDropPriority(options.softDropPriority);
 
     if (key === 'MoveLeft') {
@@ -117,12 +125,18 @@ export const startPieceShortcut = (
         return;
     }
 
+    const rotationDirection = ROTATE_KEY_DIRECTIONS[key];
+    if (rotationDirection !== undefined) {
+        // Remember the rotate input until it is released so a piece that spawns meanwhile can be pre-rotated.
+        pressRotation(id, rotationDirection);
+    }
     executePieceShortcut(key, getActions());
 };
 
 /** Stop all continuous work belonging to one logical PIECE input. */
 export const endPieceShortcut = (id: string) => {
     endPieceHold(id);
+    releaseRotation(id);
 };
 
 /** Return whether a logical PIECE input currently owns a continuous hold. */

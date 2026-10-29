@@ -10,6 +10,7 @@ import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
 import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
 import { SDF_MAX, SDF_MIN } from '../../lib/piece_das';
+import type { SpawnRotationMode } from '../../lib/spawn_rotation';
 import { tabLayout } from './user_settings_catalog';
 import { EDITOR_ACTIVE_COLOR } from '../../views/editor/editor_control_style';
 
@@ -34,6 +35,7 @@ interface UserSettingsModalProps {
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number;
     pieceShortcutSoftDropPriority: boolean;
+    pieceSpawnRotation: SpawnRotationMode;
     rotationSystem: RotationSystem;
     pageRotationLimit: number;
     grayAfterLineClear: boolean;
@@ -60,6 +62,7 @@ interface UserSettingsModalProps {
         keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
         keepPieceShortcutSdf: (data: { sdf: number }) => void;
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
+        keepPieceSpawnRotation: (data: { mode: SpawnRotationMode }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
@@ -160,6 +163,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasCutFrames,
         pieceShortcutSdf,
         pieceShortcutSoftDropPriority,
+        pieceSpawnRotation,
         rotationSystem,
         pageRotationLimit,
         grayAfterLineClear,
@@ -896,6 +900,41 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             onSelect: () => actions.keepPieceShortcutSoftDropPriority({
                                                 enable: true,
                                             }),
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(12) })}>
+                                    <div datatest="label-piece-spawn-rotation" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.SpawnRotation.Title()}
+                                    </div>
+                                    <div datatest="note-piece-spawn-rotation" style={style({
+                                        color: '#666', fontSize: px(12), marginTop: px(2),
+                                    })}>
+                                        {i18n.UserSettings.PieceShortcuts.SpawnRotation.Description()}
+                                    </div>
+                                    <div datatest="group-piece-spawn-rotation" role="radiogroup"
+                                         aria-label={i18n.UserSettings.PieceShortcuts.SpawnRotation.Title()}
+                                         style={style({
+                                             border: 'solid 1px #bbb',
+                                             borderRadius: px(4),
+                                             display: 'inline-flex',
+                                             marginTop: px(6),
+                                             overflow: 'hidden',
+                                         })}>
+                                        {renderSegment({
+                                            datatest: 'segment-piece-spawn-rotation-off',
+                                            label: i18n.UserSettings.PieceShortcuts.SpawnRotation.Off(),
+                                            selected: pieceSpawnRotation === 'off',
+                                            first: true,
+                                            onSelect: () => actions.keepPieceSpawnRotation({ mode: 'off' }),
+                                        })}
+                                        {renderSegment({
+                                            datatest: 'segment-piece-spawn-rotation-hold',
+                                            label: i18n.UserSettings.PieceShortcuts.SpawnRotation.Hold(),
+                                            selected: pieceSpawnRotation === 'hold',
+                                            first: false,
+                                            onSelect: () => actions.keepPieceSpawnRotation({ mode: 'hold' }),
                                         })}
                                     </div>
                                 </div>

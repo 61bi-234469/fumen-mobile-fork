@@ -153,6 +153,12 @@ export const resources = {
                 Off: '左右',
                 On: 'ソフトドロップ',
             },
+            SpawnRotation: {
+                Title: '出現時の先行回転',
+                Description: 'HOLD: 回転キー・ボタンを押したままミノが出現すると、その向きに回した状態で出現します。',
+                Off: 'OFF',
+                Hold: 'HOLD',
+            },
         },
         PieceControls: {
             Title: 'ピースコントロール',

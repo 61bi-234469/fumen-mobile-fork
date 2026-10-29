@@ -157,6 +157,12 @@ export const i18n = {
                 Off: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Off'),
                 On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
             },
+            SpawnRotation: {
+                Title: () => t('UserSettings.PieceShortcuts.SpawnRotation.Title'),
+                Description: () => t('UserSettings.PieceShortcuts.SpawnRotation.Description'),
+                Off: () => t('UserSettings.PieceShortcuts.SpawnRotation.Off'),
+                Hold: () => t('UserSettings.PieceShortcuts.SpawnRotation.Hold'),
+            },
         },
         PieceControls: {
             Title: () => t('UserSettings.PieceControls.Title'),

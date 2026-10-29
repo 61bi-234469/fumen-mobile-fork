@@ -44,6 +44,7 @@ const baseUserSettings = {
     pieceShortcutDasCutFrames: 0,
     pieceShortcutSdf: Infinity,
     pieceShortcutSoftDropPriority: false,
+    pieceSpawnRotation: 'off',
     rotationSystem: 'srs',
     sevenBagGrayEnabled: false,
     pageRotationLimit: 0,
@@ -71,6 +72,7 @@ const createState = (override: any = {}) => ({
         pieceShortcutDasCutFrames: 0,
         pieceShortcutSdf: Infinity,
         pieceShortcutSoftDropPriority: false,
+        pieceSpawnRotation: 'off',
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         sevenBagGrayEnabled: false,
@@ -271,6 +273,21 @@ describe('userSettingsActions', () => {
         });
     });
 
+    describe('keepPieceSpawnRotation', () => {
+        test('updates the temporary mode', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceSpawnRotation({ mode: 'hold' })(state);
+
+            expect(next.temporary.userSettings.pieceSpawnRotation).toBe('hold');
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPieceSpawnRotation({ mode: 'hold' })(state)).toBeUndefined();
+        });
+    });
+
     describe('shared Space shortcut', () => {
         test('keeps page insertion when assigning Space to hard drop', () => {
             const state = createState();
@@ -387,7 +404,7 @@ describe('userSettingsActions', () => {
                 'changeOpenTreeScreenOnTreeData', 'changeUtilsMenuPinned',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
-                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
+                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority', 'changePieceSpawnRotation',
                 'changeRotationSystem',
                 'changeSevenBagGrayEnabled', 'changePageRotationLimit',
                 'setTreeState', 'reopenCurrentPage',
@@ -417,6 +434,7 @@ describe('userSettingsActions', () => {
             expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
             expect(mockActions.changePieceShortcutDasCut).toHaveBeenCalledWith({ dasCutFrames: 2.5 });
             expect(mockActions.changePieceShortcutSoftDropPriority).toHaveBeenCalledWith({ enable: false });
+            expect(mockActions.changePieceSpawnRotation).toHaveBeenCalledWith({ mode: 'off' });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });

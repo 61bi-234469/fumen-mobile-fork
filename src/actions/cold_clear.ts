@@ -2790,7 +2790,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             () => {
                 // HOLD入れ替えは同じNEXTキュー単位の中でカレントを差し替えるだけなので、
                 // キュー単位Undoの巻き戻し先（境界）にはしない。
-                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece, historyBoundary: false });
+                runtimeActions.spawnPiece({
+                    srs, piece: nextSpawnPiece, historyBoundary: false, spawnRotationApplies: true,
+                });
                 return undefined;
             },
             carryReadyInputGuideAcrossHold,

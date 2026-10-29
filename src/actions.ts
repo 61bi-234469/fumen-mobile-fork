@@ -44,6 +44,7 @@ import { replayAnalysisActions, ReplayAnalysisActions } from './actions/replay_a
 import { inputGarbageActions, InputGarbageActions } from './actions/input_garbage';
 import { inputWindowActions, InputWindowActions } from './actions/input_window';
 import { isValidSdf, millisecondsToFrames, registerPieceDragGuard } from './lib/piece_das';
+import { isValidSpawnRotationMode } from './lib/spawn_rotation';
 import { restoreViewSettings } from './actions/restore_view_settings';
 import { initReplayFileDrop } from './actions/replay_file_drop';
 import { chooseStartupFumen, loadTabSourceUrlKey, toUrlFumenKey } from './lib/autosave_session';
@@ -454,6 +455,10 @@ const loadUserSettings = () => {
     }
     if (settings.pieceShortcutSoftDropPriority !== undefined) {
         main.changePieceShortcutSoftDropPriority({ enable: settings.pieceShortcutSoftDropPriority });
+        updated = true;
+    }
+    if (isValidSpawnRotationMode(settings.pieceSpawnRotation)) {
+        main.changePieceSpawnRotation({ mode: settings.pieceSpawnRotation });
         updated = true;
     }
 

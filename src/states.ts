@@ -10,6 +10,7 @@ import {
 } from './lib/enums';
 import type { AiEngineId } from './lib/ai_engine';
 import type { SoldSlearBudgetId } from './lib/sold_slear/budget';
+import { DEFAULT_SPAWN_ROTATION, SpawnRotationMode } from './lib/spawn_rotation';
 
 export type PaletteShortcuts = {
     [key in 'I' | 'L' | 'O' | 'Z' | 'T' | 'J' | 'S' | 'Empty' | 'Gray' | 'Comp']: string;
@@ -383,6 +384,7 @@ export interface State {
             pieceShortcutDasCutFrames: number;
             pieceShortcutSdf: number;
             pieceShortcutSoftDropPriority: boolean;
+            pieceSpawnRotation: SpawnRotationMode;
             rotationSystem: RotationSystem;
             sevenBagGrayEnabled: boolean;
             pageRotationLimit: number;
@@ -449,6 +451,7 @@ export interface State {
         pieceShortcutDasCutFrames: number;
         pieceShortcutSdf: number;
         pieceShortcutSoftDropPriority: boolean;
+        pieceSpawnRotation: SpawnRotationMode;
         gifFrameDelayMs: number;
         rotationSystem: RotationSystem;
         sevenBagGrayEnabled: boolean;
@@ -610,6 +613,7 @@ export const initState: Readonly<State> = {
             pieceShortcutDasCutFrames: DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES,
             pieceShortcutSdf: DEFAULT_PIECE_SHORTCUT_SDF,
             pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
+            pieceSpawnRotation: DEFAULT_SPAWN_ROTATION,
             rotationSystem: 'srs',
             sevenBagGrayEnabled: false,
             pageRotationLimit: DEFAULT_PAGE_ROTATION_LIMIT,
@@ -662,6 +666,7 @@ export const initState: Readonly<State> = {
         pieceShortcutDasCutFrames: DEFAULT_PIECE_SHORTCUT_DAS_CUT_FRAMES,
         pieceShortcutSdf: DEFAULT_PIECE_SHORTCUT_SDF,
         pieceShortcutSoftDropPriority: DEFAULT_PIECE_SHORTCUT_SOFT_DROP_PRIORITY,
+        pieceSpawnRotation: DEFAULT_SPAWN_ROTATION,
         gifFrameDelayMs: DEFAULT_GIF_FRAME_DELAY_MS,
         rotationSystem: 'srs',
         sevenBagGrayEnabled: false,

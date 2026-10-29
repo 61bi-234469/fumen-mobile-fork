@@ -13,6 +13,7 @@ import { clearThumbnailCache } from '../lib/thumbnail';
 import { guideLineColorFromRotationSystem, synchronizeFirstPageColorize } from '../lib/rotation_system';
 import { inspectorAfterToolChange } from '../lib/editor_interaction';
 import { Page } from '../lib/fumen/types';
+import type { SpawnRotationMode } from '../lib/spawn_rotation';
 
 const focusCommentInput = () => {
     if (typeof document === 'undefined') {
@@ -70,6 +71,7 @@ export interface ScreenActions {
     changePieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     changePieceShortcutSdf: (data: { sdf: number }) => action;
     changePieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
+    changePieceSpawnRotation: (data: { mode: SpawnRotationMode }) => action;
     changeGifFrameDelay: (data: { delayMs: number }) => action;
 }
 
@@ -464,6 +466,9 @@ export const modeActions: Readonly<ScreenActions> = {
     }),
     changePieceShortcutSoftDropPriority: ({ enable }) => (state): NextState => ({
         mode: { ...state.mode, pieceShortcutSoftDropPriority: enable },
+    }),
+    changePieceSpawnRotation: ({ mode }) => (state): NextState => ({
+        mode: { ...state.mode, pieceSpawnRotation: mode },
     }),
     changeGifFrameDelay: ({ delayMs }) => (state): NextState => {
         return {

@@ -316,13 +316,13 @@ describe('replayAnalysisActions', () => {
             expect(analysisKeyOf(otherBudget)).not.toEqual(soldSlearKey);
         });
 
-        test('色付き盤面・S2 の B2B・実手の spin を付けて 16 候補で解析する', () => {
+        test('色付き盤面・S2 の B2B・実手の spin を付けて全候補で解析する', () => {
             const state = soldSlearState();
             const next = replayAnalysisActions.startReplayAnalysis()(state) as any;
             const request = __mockWrapper.analyzePosition.mock.calls[0][0];
             expect(analysisOf(next).engine).toEqual('soldSlear');
             expect(request.fieldCells).toHaveLength(400);
-            expect(request.candidateCount).toEqual(16);
+            expect(request.candidateCount).toEqual(5000);
             expect(request.soldSlearBudget).toEqual('standard');
             expect(typeof request.b2bLevel).toEqual('number');
             expect(['none', 'mini', 'normal']).toContain(request.placedSpin);

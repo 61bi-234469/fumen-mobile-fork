@@ -576,7 +576,7 @@
         SoldSlearPlacedOutside: 'Sold Slear: not among the {{total}} candidates',
         SoldSlearBudgetLabel: 'Search budget',
         SoldSlearBudgetStandard: 'Standard',
-        SoldSlearBudgetStandardDetail: 'Standard (512, same move every time)',
+        SoldSlearBudgetStandardDetail: 'Standard (2,048, same move every time)',
         SoldSlearBudgetTime: '{{ms}}ms',
     },
 };

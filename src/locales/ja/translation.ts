@@ -559,7 +559,7 @@ export const resources = {
         SoldSlearPlacedOutside: 'Sold Slear: 候補{{total}}件の中にありません',
         SoldSlearBudgetLabel: '探索量',
         SoldSlearBudgetStandard: '標準',
-        SoldSlearBudgetStandardDetail: '標準（512・常に同じ手）',
+        SoldSlearBudgetStandardDetail: '標準（2,048・常に同じ手）',
         SoldSlearBudgetTime: '{{ms}}ms',
     },
 };

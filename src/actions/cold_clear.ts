@@ -1732,7 +1732,7 @@ const buildSessionQueueComment = (
 );
 
 // Sold Slear の置いたミノ評価。候補内の順位をトーストで示し、候補内ならスコアをコメントに書く。
-// 候補外ではコメントを書き換えない（候補数は固定上限で、B2B レベルも残したいため）。
+// 候補外（全 root 手に無い手）ではコメントを書き換えない（B2B レベルも残したいため）。
 function finishSoldSlearPlacedEvaluation(
     state: Readonly<State>, session: PlacedRunSession, results: CCMove[],
 ): NextState {

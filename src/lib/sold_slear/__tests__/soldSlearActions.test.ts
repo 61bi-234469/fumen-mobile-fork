@@ -285,7 +285,7 @@ describe('Sold Slear in the Cold Clear actions', () => {
         const running = makeState({ piece, runId, commentText: comment, isRunning: true, runType: 'placed' });
 
         coldClearActions.onColdClearInitDone({ runId })(running);
-        expect(lastWrapper().requestTopMoves).toHaveBeenCalledWith(16);
+        expect(lastWrapper().requestTopMoves).toHaveBeenCalledWith(5000);
 
         coldClearActions.onColdClearTopMovesResult({
             runId,

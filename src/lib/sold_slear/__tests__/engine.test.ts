@@ -7,10 +7,10 @@ import { createSoldSlearEngine, SoldSlearEngine } from '../engine';
 import { createSoldSlearProfile } from '../profile';
 import { BOARD_CELL_COUNT, buildF14DecideRequest } from '../request';
 
-// 同梱 WASM を実際に動かす smoke test。512 selections は決定的なので、期待手は
-// 同じ要求を s2-bot-lab（commit 61c0efd）の src-js/cc2-wasm-engine.mjs に与えた結果で固定する。
+// 同梱 WASM を実際に動かす smoke test。選択予算は決定的なので、期待手は
+// 同じ要求を s2-bot-lab（commit 8dccbcd）の src-js/cc2-wasm-engine.mjs に与えた結果で固定する。
 const WASM_PATH = path.join(__dirname, '..', '..', 'sold_slear_wasm', 'cold_clear_2_s2.wasm');
-const WASM_SHA256 = '28a2487f84a6ffec764d8151058ede23dcbbc6f0beb49c41e6f4432bce53a6aa';
+const WASM_SHA256 = '8b4591144a4e141d25c0a76f94c9059a073b712fc8f1a9dd91c65d97640cb061';
 
 const cellsWithBottomRow = (row: string): string => row + '_'.repeat(BOARD_CELL_COUNT - row.length);
 
@@ -44,12 +44,18 @@ describe('Sold Slear WASM engine', () => {
         const outcome = decisionToMoves(decision, 'I');
         expect(outcome.kind).toBe('moves');
         if (outcome.kind === 'moves') {
-            expect(outcome.moves.length).toBeGreaterThan(1);
-            expect(outcome.moves.length).toBeLessThanOrEqual(16);
             expect(outcome.moves[0].s2!.identity).toBe(REFERENCE_SELECTED_IDENTITY);
-            // 要求の diagnostics.rootValues により、すべての候補に探索値が付く
-            expect(decision.diagnostics!.rootValues).toHaveLength(decision.ranking!.returnedIdentities!.length);
+            // 要求の diagnostics.rootValues により、返却候補すべてに探索値が付く
+            const returned = decision.ranking!.returnedIdentities!.length;
+            expect(returned).toBe(16);
+            expect(decision.diagnostics!.rootValues).toHaveLength(returned);
+            // rootChildValues により、返却 16 候補の外の root 手（HOLD する手を含む）も探索値付きで並ぶ
+            expect(outcome.moves.length).toBe(REFERENCE_ROOT_CHILD_COUNT);
+            expect(outcome.returnedCount).toBe(REFERENCE_ROOT_CHILD_COUNT);
+            expect(outcome.moves.some(move => move.hold)).toBe(true);
             expect(outcome.moves.every(move => Number.isFinite(move.score))).toBe(true);
+            const extra = outcome.moves.slice(returned).map(move => move.score!);
+            expect(extra).toEqual(extra.slice().sort((a, b) => b - a));
         }
     });
 
@@ -63,7 +69,7 @@ describe('Sold Slear WASM engine', () => {
         expect(engine.decide(request!).status).toBe('move');
     });
 
-    // 右端 1 列だけ空いた 8 段の上で HOLD に I がある。512 selections では推奨手が HOLD する手になる
+    // 右端 1 列だけ空いた 8 段の上で HOLD に I がある。標準予算では推奨手が HOLD する手になる
     test('the best non-HOLD candidate is still found when the recommendation uses HOLD', () => {
         const { request } = buildF14DecideRequest({
             cells: cellsWithBottomRow('GGGGGGGGG_'.repeat(8)),
@@ -85,3 +91,5 @@ describe('Sold Slear WASM engine', () => {
 
 // s2-bot-lab の createF14DecideRequest + createCc2WasmSession(...).decideF14 で同じ局面を解いた結果
 const REFERENCE_SELECTED_IDENTITY = '{"location":{"orientation":"north","type":"I","x":7,"y":0},"spin":"none"}';
+// 同じ結果の diagnostics.rootChildValues の root 手数。すべてアプリの 23 行に収まる
+const REFERENCE_ROOT_CHILD_COUNT = 34;

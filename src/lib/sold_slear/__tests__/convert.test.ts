@@ -82,6 +82,38 @@ describe('Sold Slear move conversion', () => {
         expect(mismatched.moves.every(move => move.score === undefined)).toBe(true);
     });
 
+    test('appends the root moves outside the returned candidates in value order', () => {
+        const ids = [identity('T', 'north', 4, 0), identity('T', 'north', 1, 0)];
+        const extraHigh = identity('L', 'north', 7, 0);
+        const extraLow = identity('T', 'south', 7, 1);
+        const unfit = identity('I', 'east', 4, 22);
+        const withChildren: F14Decision = {
+            ...decision(ids, ids[0]),
+            ranking: { identities: ids, returnedIdentities: ids },
+            diagnostics: {
+                rootValues: [3.5, 2.25],
+                rootChildValues: {
+                    children: [
+                        { identity: ids[0], value: 3.5 },
+                        { identity: extraHigh, value: 2.5 },
+                        { identity: ids[1], value: 2.25 },
+                        { identity: unfit, value: 1 },
+                        { identity: extraLow, value: -4 },
+                        { identity: 'broken', value: Number.NaN },
+                    ],
+                },
+            },
+        };
+        const outcome = decisionToMoves(withChildren, 'T');
+        if (outcome.kind !== 'moves') {
+            throw new Error('expected moves');
+        }
+        expect(outcome.moves.map(move => move.s2.identity)).toEqual([ids[0], ids[1], extraHigh, extraLow]);
+        expect(outcome.moves.map(move => move.score)).toEqual([3.5, 2.25, 2.5, -4]);
+        expect(outcome.moves[2].hold).toBe(true);
+        expect(outcome.returnedCount).toBe(5);
+    });
+
     test('replay analysis takes the best value over all candidates and ranks by value', () => {
         const move = (score?: number) => ({ score, hold: false, piece: 2, rotation: 0, x: 4, y: 0 });
         // 推奨手（先頭）が rescue で最大値でない局面

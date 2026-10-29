@@ -144,7 +144,7 @@ export const inputStatsPanel = (
         key: 'input-stats', datatest: 'input-stats', ...panelAttributes(options.open),
         style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer' }),
     }, [
-        ...(options.rotationSystem === undefined
+        ...(options.rotationSystem === undefined || tier !== 'summary'
             ? [] : [rulesRow(options.rotationSystem, options.preset ?? 'tetrioS2')]),
         ...chainRows(stats, options),
         div({ key: 'input-stats-action', datatest: 'input-stats-action',

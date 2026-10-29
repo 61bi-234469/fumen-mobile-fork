@@ -52,6 +52,9 @@ describe('inputStatsPanel', () => {
         expect(rulesRowOf(srsPlus).children[0]).toBe('SRS+');
         expect(rulesRowOf(inputStatsPanel(stats, 'summary', undefined, { preset: 'none' }))).toBeUndefined();
         expect(rulesRowOf(inputChainPanel(stats, { preset: 'none', rotationSystem: 'classic' }))).toBeUndefined();
+        expect(rulesRowOf(inputStatsPanel(
+            stats, 'compact', undefined, { preset: 'none', rotationSystem: 'classic' },
+        ))).toBeUndefined();
     });
 
     it('counts B2B and COMBO like s2-bot-lab', () => {

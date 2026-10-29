@@ -1008,7 +1008,13 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     key="btn-ai-open-rotation-settings"
                                     datatest="btn-ai-open-rotation-settings"
                                     style={rotationSettingsButtonStyle}
+                                    // 探索中はメニューを閉じられない（closeColdClearMenuModal が拒否する）ので、
+                                    // 設定だけが重なって開き、探索中に回転法則を変えられてしまう
+                                    disabled={isRunning}
                                     onclick={() => {
+                                        if (isRunning) {
+                                            return;
+                                        }
                                         // Menu モーダルの設定ボタンと同じく、閉じてから開く（M.Modal を重ねない）
                                         actions.closeColdClearMenuModal();
                                         actions.openUserSettingsModal({ initialTab: 'input' });

@@ -590,7 +590,7 @@ export const i18n = {
             EngineError: () => t('ColdClear.InputGuideStatus.EngineError'),
         },
         EngineColdClear: () => t('ColdClear.EngineColdClear'),
-        EngineSoldSlear: () => t('ColdClear.EngineSoldSlear'),
+        EngineSoldSlear: (version: string) => t('ColdClear.EngineSoldSlear', { version }),
         EngineSwitchAria: (name: string) => t('ColdClear.EngineSwitchAria', { name }),
         EngineColdClearShort: () => t('ColdClear.EngineColdClearShort'),
         EngineSoldSlearShort: () => t('ColdClear.EngineSoldSlearShort'),

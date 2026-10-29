@@ -5,6 +5,9 @@ import { SoldSlearBudget } from './budget';
 // src-js/champion-parameters.mjs（createChampionProfile）、commit 8dccbcd。
 // WASM を更新するときはここと third_party/sold-slear/README.md を合わせる。
 
+// 画面に出す版。s2-bot-lab の GUI と同じく champion ごとに 1.0, 1.1, ... と進む
+export const SOLD_SLEAR_VERSION = '1.4';
+
 export const F14_COMPAT_RULESET_ID =
     'tetrio-s2-v19-2c47b3df945f6714449b92d1b44346ef4bf0e1a20e95be8ed10c28be75c66a60-beta-1-5-0';
 export const F14_COMPAT_CONFIG_HASH =

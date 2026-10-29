@@ -563,7 +563,7 @@
             EngineError: 'AI error',
         },
         EngineColdClear: 'Cold Clear',
-        EngineSoldSlear: 'Sold Slear',
+        EngineSoldSlear: 'Sold Slear {{version}}',
         EngineSwitchAria: 'Switch AI engine (current: {{name}})',
         EngineColdClearShort: 'CC',
         EngineSoldSlearShort: 'SS',

@@ -546,7 +546,7 @@ export const resources = {
             EngineError: 'AIエラー',
         },
         EngineColdClear: 'Cold Clear',
-        EngineSoldSlear: 'Sold Slear',
+        EngineSoldSlear: 'Sold Slear {{version}}',
         EngineSwitchAria: 'AIエンジンを切り替え（現在: {{name}}）',
         EngineColdClearShort: 'CC',
         EngineSoldSlearShort: 'SS',

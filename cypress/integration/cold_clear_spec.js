@@ -272,7 +272,7 @@ describe('Cold Clear menu', () => {
             cy.get(datatest('txt-ai-engine-notice')).should('not.exist');
 
             operations.aiMenu.switchEngineTo('soldSlear');
-            cy.get(datatest('btn-ai-engine-switch')).should('contain', 'Sold Slear');
+            cy.get(datatest('btn-ai-engine-switch')).should('contain', 'Sold Slear 1.4');
             cy.get(datatest('toggle-cold-clear-hold-allowed')).should('not.exist');
             cy.get(datatest('select-cold-clear-weights-preset')).should('not.exist');
             cy.get(datatest('toggle-cold-clear-speculate')).should('not.exist');

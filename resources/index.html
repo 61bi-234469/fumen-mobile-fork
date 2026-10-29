@@ -232,6 +232,12 @@
         .settings-modal .switch input:checked:not(:disabled) + .lever:after { background-color: #1976d2; }
         .settings-modal input:checked:not(:disabled) ~ .lever:active::before,
         .settings-modal input:checked:not(:disabled).tabbed:focus ~ .lever::before { background-color: rgba(25, 118, 210, .15); }
+        /* Switch rows: one clickable row per setting so the label reads as tied to its far-right switch */
+        .settings-modal .settings-switch-row { margin: 2px -8px; border-radius: 6px; border-bottom: 1px solid #eee; }
+        .settings-modal .settings-switch-row:last-child { border-bottom-color: transparent; }
+        @media (hover: hover) {
+            .settings-modal .settings-switch-row:not(.is-disabled):hover { background-color: #f1f6fc; }
+        }
         .settings-modal .btn-settings-save { background-color: #1976d2; }
         .settings-modal .btn-settings-save:hover, .settings-modal .btn-settings-save:focus { background-color: #1565c0; }
         @media only screen and (max-width: 600px) { .settings-modal { width: 92%; } }

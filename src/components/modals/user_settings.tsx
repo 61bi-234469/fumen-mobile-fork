@@ -211,7 +211,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    // 名前を左、スイッチを右に置く
+    // 名前を左、スイッチを右に置く。行全体を1つのlabelにして、どこを押しても切り替わるようにする
+    // （名前とスイッチが離れていても対応が分かるよう、行のホバー表示と区切り線は index.html の CSS）
     const renderSwitch = ({
         key, datatest, title, description, checked, onChange, disabled = false,
     }: {
@@ -237,35 +238,37 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         };
         const inputId = `user-settings-${datatest}`;
         return (
-            <div key={key} class="switch" style={style({
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: px(12),
-                margin: '10px 0',
-            })}>
-                <div key={`${key}-text`} style={style({ flex: '1 1 auto', minWidth: 0 })}>
-                    <label key={`${key}-title`} for={inputId} style={style({
-                        display: 'block',
-                        color: '#333',
-                        fontSize: px(15),
-                        lineHeight: 1.4,
-                        cursor: disabled ? 'default' : 'pointer',
-                    })}>
-                        {title}
-                    </label>
-                    {description !== undefined && <div key={`${key}-description`} style={style({
-                        color: '#666', fontSize: px(12), marginTop: px(2),
-                    })}>
-                        {description}
-                    </div>}
-                </div>
+            <div key={key} class={`switch settings-switch-row${disabled ? ' is-disabled' : ''}`}>
+                <label key={`${key}-row`} for={inputId} style={style({
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: px(12),
+                    padding: '8px 8px',
+                    cursor: disabled ? 'default' : 'pointer',
+                })}>
+                    <span key={`${key}-text`} style={style({ flex: '1 1 auto', minWidth: 0 })}>
+                        <span key={`${key}-title`} style={style({
+                            display: 'block',
+                            color: '#333',
+                            fontSize: px(15),
+                            lineHeight: 1.4,
+                        })}>
+                            {title}
+                        </span>
+                        {description !== undefined && <span key={`${key}-description`} style={style({
+                            display: 'block', color: '#666', fontSize: px(12), marginTop: px(2),
+                        })}>
+                            {description}
+                        </span>}
+                    </span>
 
-                <label key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
-                    <input type="checkbox" id={inputId} dataTest={datatest} checked={checked} disabled={disabled}
-                           onupdate={onupdate} onchange={onchange}/>
-                    <span class="lever"/>
+                    <span key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
+                        <input type="checkbox" id={inputId} dataTest={datatest} checked={checked}
+                               disabled={disabled} onupdate={onupdate} onchange={onchange}/>
+                        <span class="lever"/>
+                    </span>
                 </label>
             </div>
         );

@@ -668,7 +668,8 @@ describe('User settings appearance', () => {
         // 「無効／有効」などの名前は、どのスイッチにも出さない
         cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 3)
             .each(([input]) => {
-                const text = input.closest('label').textContent.trim();
+                // 行全体が label なので、名前を含まないスイッチ部分（input と lever の親）だけを見る
+                const text = input.parentElement.textContent.trim();
                 expect(text, input.getAttribute('datatest')).to.equal('');
             });
 

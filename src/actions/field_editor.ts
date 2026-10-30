@@ -29,6 +29,7 @@ import { legacyModeForPaintTool } from '../lib/editor_interaction';
 import { activeSelectionRect, isIndexInRect } from '../lib/rect_selection';
 import { buildQueueStateComment, parseQueueStateComment } from '../lib/cold_clear/queueParser';
 import { activateDasCut, cutDasHolds } from '../lib/piece_das';
+import { heldSpawnRotation, SpawnRotationDirection } from '../lib/spawn_rotation';
 import {
     parseSevenBagGrayDisplay, parseSevenBagGrayProgress, withInputRotationEvidence,
 } from '../lib/comment_metadata';
@@ -83,7 +84,11 @@ export interface FieldEditorActions {
 
     // historyBoundaryをfalseにすると、INPUT + NEXTキューのキュー単位Undoの巻き戻し先にならない。
     // HOLD入れ替えのように、同じキュー単位の中でカレントを差し替えるだけの操作で使う。
-    spawnPiece(data: { piece: Piece, srs: boolean, historyBoundary?: boolean }): action;
+    // spawnRotationApplies はゲームの流れで次のミノが出現するときだけ true にする（出現時の先行回転）。
+    // PIECEトレイでミノを選ぶ・RESETのような明示的なスポーンでは回転させない。
+    spawnPiece(data: {
+        piece: Piece, srs: boolean, historyBoundary?: boolean, spawnRotationApplies?: boolean,
+    }): action;
 
     clearPiece(): action;
 
@@ -733,7 +738,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             }),
         ]);
     },
-    spawnPiece: ({ piece, srs, historyBoundary = true }) => (state): NextState => {
+    spawnPiece: ({ piece, srs, historyBoundary = true, spawnRotationApplies = false }) => (state): NextState => {
         if (piece === Piece.Gray || piece === Piece.Empty) {
             throw new ViewError(`Unsupported piece: ${piece}`);
         }
@@ -745,7 +750,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        const next = createSpawnMove(piece, srs);
+        const spawnMove = createSpawnMove(piece, srs);
+        const next = spawnRotationApplies ? applySpawnRotation(state, pageIndex, spawnMove) : spawnMove;
 
         const currentMove = page.piece;
         if (currentMove !== undefined
@@ -874,43 +880,24 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        const pagesObj = new Pages(pages);
-        const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
-
-        const rotationSystem = state.mode.rotationSystem;
-        const testObj = rotationSystem === 'classic'
-            ? classicTestLeftRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y)
-            : rotationSystem === 'srsPlus'
-                ? testLeftRotationSrsPlus(piece.type, piece.rotation)
-                : testLeftRotation(piece.type, piece.rotation);
-        const nextRotation = testObj.rotation;
-        const test = testCallback(field, piece.type, nextRotation);
-
-        const coordinate = piece.coordinate;
-        const testPositions = testObj.test.map((value) => {
-            return [value[0] + coordinate.x, value[1] + coordinate.y];
-        });
-
-        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
-        if (kickIndex === -1) {
+        const field = new Pages(pages).getField(pageIndex, PageFieldOperation.Command);
+        const rotated = rotateWithKicks(state.mode.rotationSystem, field, piece, 'ccw');
+        if (rotated === undefined) {
             return undefined;
         }
-        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
-        page.piece = {
-            ...piece,
-            rotation: nextRotation,
-            coordinate: {
-                x: element[0],
-                y: element[1],
-            },
-        };
+        page.piece = rotated.piece;
         cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
-            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: 'ccw' } } }),
+            () => ({
+                events: {
+                    ...state.events,
+                    lastPieceManipulation: { kickIndex: rotated.kickIndex, direction: 'ccw' },
+                },
+            }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -928,52 +915,29 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        const pagesObj = new Pages(pages);
-        const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
-
-        const rotationSystem = state.mode.rotationSystem;
-        const testObj = rotationSystem === 'classic'
-            ? classicTestRightRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y)
-            : rotationSystem === 'srsPlus'
-                ? testRightRotationSrsPlus(piece.type, piece.rotation)
-                : testRightRotation(piece.type, piece.rotation);
-        const nextRotation = testObj.rotation;
-        const test = testCallback(field, piece.type, nextRotation);
-
-        const coordinate = piece.coordinate;
-        const testPositions = testObj.test.map((value) => {
-            return [value[0] + coordinate.x, value[1] + coordinate.y];
-        });
-
-        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
-        if (kickIndex === -1) {
+        const field = new Pages(pages).getField(pageIndex, PageFieldOperation.Command);
+        const rotated = rotateWithKicks(state.mode.rotationSystem, field, piece, 'cw');
+        if (rotated === undefined) {
             return undefined;
         }
-        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
-        page.piece = {
-            ...piece,
-            rotation: nextRotation,
-            coordinate: {
-                x: element[0],
-                y: element[1],
-            },
-        };
+        page.piece = rotated.piece;
         cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
-            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: 'cw' } } }),
+            () => ({
+                events: {
+                    ...state.events,
+                    lastPieceManipulation: { kickIndex: rotated.kickIndex, direction: 'cw' },
+                },
+            }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
     },
     rotateTo180: () => (state): NextState => {
-        if (state.mode.rotationSystem !== 'srsPlus') {
-            return undefined;
-        }
-
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -986,38 +950,24 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return undefined;
         }
 
-        const pagesObj = new Pages(pages);
-        const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
-
-        const testObj = test180Rotation(piece.type, piece.rotation);
-        const nextRotation = testObj.rotation;
-        const test = testCallback(field, piece.type, nextRotation);
-
-        const coordinate = piece.coordinate;
-        const testPositions = testObj.test.map((value) => {
-            return [value[0] + coordinate.x, value[1] + coordinate.y];
-        });
-
-        const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
-        if (kickIndex === -1) {
+        const field = new Pages(pages).getField(pageIndex, PageFieldOperation.Command);
+        const rotated = rotateWithKicks(state.mode.rotationSystem, field, piece, '180');
+        if (rotated === undefined) {
             return undefined;
         }
-        const element = testPositions[kickIndex];
 
         const prevPage = toPrimitivePage(page);
-        page.piece = {
-            ...piece,
-            rotation: nextRotation,
-            coordinate: {
-                x: element[0],
-                y: element[1],
-            },
-        };
+        page.piece = rotated.piece;
         cutDasHolds(state.mode.pieceShortcutDasCutFrames);
 
         return sequence(state, [
             fieldEditorActions.resetInferencePiece(),
-            () => ({ events: { ...state.events, lastPieceManipulation: { kickIndex, direction: '180' } } }),
+            () => ({
+                events: {
+                    ...state.events,
+                    lastPieceManipulation: { kickIndex: rotated.kickIndex, direction: '180' },
+                },
+            }),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
         ]);
@@ -1542,10 +1492,68 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.spawnPiece({
                 piece: spawnPiece,
                 srs: state.mode.rotationSystem !== 'classic',
+                spawnRotationApplies: true,
             }),
             actions.changePieceAction({ pieceAction: 'drag' }),
         ]);
     },
+};
+
+// Rotates a piece with the active rotation system's kick table. Returns undefined when the
+// direction is unsupported (180 outside SRS+) or every kick position is blocked.
+const rotateWithKicks = (
+    rotationSystem: State['mode']['rotationSystem'],
+    field: Field,
+    piece: Move,
+    direction: SpawnRotationDirection,
+): { piece: Move, kickIndex: number } | undefined => {
+    const { type, rotation, coordinate } = piece;
+    let testObj: { rotation: Rotation, test: number[][] };
+    if (direction === '180') {
+        if (rotationSystem !== 'srsPlus') {
+            return undefined;
+        }
+        testObj = test180Rotation(type, rotation);
+    } else if (direction === 'ccw') {
+        testObj = rotationSystem === 'classic'
+            ? classicTestLeftRotation(type, rotation, field, coordinate.x, coordinate.y)
+            : rotationSystem === 'srsPlus'
+                ? testLeftRotationSrsPlus(type, rotation)
+                : testLeftRotation(type, rotation);
+    } else {
+        testObj = rotationSystem === 'classic'
+            ? classicTestRightRotation(type, rotation, field, coordinate.x, coordinate.y)
+            : rotationSystem === 'srsPlus'
+                ? testRightRotationSrsPlus(type, rotation)
+                : testRightRotation(type, rotation);
+    }
+
+    const test = testCallback(field, type, testObj.rotation);
+    const testPositions = testObj.test.map(value => [value[0] + coordinate.x, value[1] + coordinate.y]);
+    const kickIndex = testPositions.findIndex(position => test(position[0], position[1]));
+    if (kickIndex === -1) {
+        return undefined;
+    }
+    const element = testPositions[kickIndex];
+    return {
+        kickIndex,
+        piece: { ...piece, rotation: testObj.rotation, coordinate: { x: element[0], y: element[1] } },
+    };
+};
+
+// A piece that spawns while a rotate input is held starts rotated (spawn rotation). It is applied to
+// the spawn move itself, so it adds no history entry, does not cut DAS (no key was newly pressed) and
+// leaves no rotation evidence (the player did not rotate it, so it cannot make a T-spin).
+const applySpawnRotation = (state: State, pageIndex: number, spawn: Move): Move => {
+    if (state.mode.pieceSpawnRotation !== 'hold') {
+        return spawn;
+    }
+    const direction = heldSpawnRotation();
+    if (direction === null) {
+        return spawn;
+    }
+    const field = new Pages(state.fumen.pages).getField(pageIndex, PageFieldOperation.Command);
+    return rotateWithKicks(state.mode.rotationSystem, field, spawn, direction)?.piece ?? spawn;
 };
 
 const testCallback = (field: Field, piece: Piece, rotation: Rotation) => {

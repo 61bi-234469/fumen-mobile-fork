@@ -70,6 +70,7 @@ import {
 } from '../lib/ai_engine';
 import { normalizeSoldSlearBudgetId, SoldSlearBudgetId } from '../lib/sold_slear/budget';
 import { advanceF14Chain, toF14Spin } from '../lib/sold_slear/chain';
+import { analysisScoresOf } from '../lib/sold_slear/convert';
 
 declare const M: any;
 
@@ -1732,7 +1733,9 @@ const buildSessionQueueComment = (
 );
 
 // Sold Slear の置いたミノ評価。候補内の順位をトーストで示し、候補内ならスコアをコメントに書く。
-// 候補外ではコメントを書き換えない（候補数は固定上限で、B2B レベルも残したいため）。
+// 候補の並び（推奨手が先頭、続けて CC2 順位、返却外の手は値順）は値の順位ではないので、順位は
+// リプレイ解析と同じく探索値から求める（同値は同順位）。
+// 候補外（全 root 手に無い手）ではコメントを書き換えない（B2B レベルも残したいため）。
 function finishSoldSlearPlacedEvaluation(
     state: Readonly<State>, session: PlacedRunSession, results: CCMove[],
 ): NextState {
@@ -1747,13 +1750,14 @@ function finishSoldSlearPlacedEvaluation(
         session.combo,
         session.queueSuffix,
     );
+    const rank = placedIndex < 0 ? null : analysisScoresOf(results, placedIndex)?.rank ?? placedIndex + 1;
     terminateSession(session);
     currentSession = null;
 
     M.toast({
-        html: placedIndex < 0
+        html: rank === null
             ? i18n.ColdClear.SoldSlearPlacedOutside(results.length)
-            : i18n.ColdClear.SoldSlearPlacedRank(placedIndex + 1, results.length),
+            : i18n.ColdClear.SoldSlearPlacedRank(rank, results.length),
         classes: 'top-toast',
         displayLength: 2500,
     });
@@ -2786,7 +2790,9 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             () => {
                 // HOLD入れ替えは同じNEXTキュー単位の中でカレントを差し替えるだけなので、
                 // キュー単位Undoの巻き戻し先（境界）にはしない。
-                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece, historyBoundary: false });
+                runtimeActions.spawnPiece({
+                    srs, piece: nextSpawnPiece, historyBoundary: false, spawnRotationApplies: true,
+                });
                 return undefined;
             },
             carryReadyInputGuideAcrossHold,

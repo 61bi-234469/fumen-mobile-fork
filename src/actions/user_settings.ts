@@ -7,6 +7,7 @@ import {
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 import { normalizeGifFrameDelayMs } from '../lib/gif_export';
+import type { SpawnRotationMode } from '../lib/spawn_rotation';
 
 export interface UserSettingsActions {
     copyUserSettingsToTemporary: () => action;
@@ -29,6 +30,7 @@ export interface UserSettingsActions {
     keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => action;
     keepPieceShortcutSdf: (data: { sdf: number }) => action;
     keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => action;
+    keepPieceSpawnRotation: (data: { mode: SpawnRotationMode }) => action;
     setGifFrameDelay: (data: { delayMs: number }) => action;
     setSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     setUtilsMenuPinned: (data: { enable: boolean }) => action;
@@ -36,8 +38,6 @@ export interface UserSettingsActions {
     keepSevenBagGrayEnabled: (data: { enable: boolean }) => action;
     keepPageRotationLimit: (data: { limit: number }) => action;
     keepGrayAfterLineClear: (data: { enable: boolean }) => action;
-    keepTrimTopBlank: (data: { enable: boolean }) => action;
-    keepEditorSidePanel: (data: { enable: boolean }) => action;
     setUserSettingsTab: (data: { tab: UserSettingsTab }) => action;
 }
 
@@ -83,12 +83,11 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
                     pieceShortcutSdf: state.mode.pieceShortcutSdf,
                     pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
+                    pieceSpawnRotation: state.mode.pieceSpawnRotation,
                     rotationSystem: state.mode.rotationSystem,
                     sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,
                     pageRotationLimit: state.mode.pageRotationLimit,
                     grayAfterLineClear: state.tree.grayAfterLineClear,
-                    trimTopBlank: state.listView.trimTopBlank,
-                    editorSidePanel: state.editorPanel.enabled,
                 },
             },
         };
@@ -136,6 +135,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePieceShortcutSoftDropPriority({
                 enable: state.temporary.userSettings.pieceShortcutSoftDropPriority,
             }),
+            actions.changePieceSpawnRotation({
+                mode: state.temporary.userSettings.pieceSpawnRotation,
+            }),
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
             }),
@@ -145,15 +147,10 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changePageRotationLimit({
                 limit: state.temporary.userSettings.pageRotationLimit,
             }),
-            // viewSettings系はそれぞれのアクションがpersistViewSettingsで永続化する
+            // viewSettings系（グレー化）はsetTreeStateがpersistViewSettingsで永続化する。
+            // 上部空白省略とサイドパネルは専用UIだけで切り替える
             actions.setTreeState({
                 grayAfterLineClear: state.temporary.userSettings.grayAfterLineClear,
-            }),
-            actions.setListViewTrimTopBlank({
-                enabled: state.temporary.userSettings.trimTopBlank,
-            }),
-            actions.setEditorSidePanelEnabled({
-                enabled: state.temporary.userSettings.editorSidePanel,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -278,6 +275,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepPieceShortcutDasCut: ({ dasCutFrames }) => keepTemporary({ pieceShortcutDasCutFrames: dasCutFrames }),
     keepPieceShortcutSdf: ({ sdf }) => keepTemporary({ pieceShortcutSdf: sdf }),
     keepPieceShortcutSoftDropPriority: ({ enable }) => keepTemporary({ pieceShortcutSoftDropPriority: enable }),
+    keepPieceSpawnRotation: ({ mode }) => keepTemporary({ pieceSpawnRotation: mode }),
     setGifFrameDelay: ({ delayMs }) => (state): NextState => sequence(state, [
         actions.changeGifFrameDelay({ delayMs: normalizeGifFrameDelayMs(delayMs) }),
         saveToLocalStorage,
@@ -295,8 +293,6 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
     keepGrayAfterLineClear: ({ enable }) => keepTemporary({ grayAfterLineClear: enable }),
     keepSevenBagGrayEnabled: ({ enable }) => keepTemporary({ sevenBagGrayEnabled: enable }),
     keepPageRotationLimit: ({ limit }) => keepTemporary({ pageRotationLimit: normalizePageRotationLimit(limit) }),
-    keepTrimTopBlank: ({ enable }) => keepTemporary({ trimTopBlank: enable }),
-    keepEditorSidePanel: ({ enable }) => keepTemporary({ editorSidePanel: enable }),
     setUserSettingsTab: ({ tab }) => (state): NextState => {
         if (state.temporary.userSettingsTab === tab) {
             return undefined;
@@ -332,6 +328,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         pieceShortcutDasCutFrames: state.mode.pieceShortcutDasCutFrames,
         pieceShortcutSdf: state.mode.pieceShortcutSdf === Infinity ? 'Infinity' : state.mode.pieceShortcutSdf,
         pieceShortcutSoftDropPriority: state.mode.pieceShortcutSoftDropPriority,
+        pieceSpawnRotation: state.mode.pieceSpawnRotation,
         gifFrameDelayMs: state.mode.gifFrameDelayMs,
         rotationSystem: state.mode.rotationSystem,
         sevenBagGrayEnabled: state.mode.sevenBagGrayEnabled,

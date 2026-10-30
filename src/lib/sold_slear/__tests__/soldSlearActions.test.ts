@@ -285,7 +285,7 @@ describe('Sold Slear in the Cold Clear actions', () => {
         const running = makeState({ piece, runId, commentText: comment, isRunning: true, runType: 'placed' });
 
         coldClearActions.onColdClearInitDone({ runId })(running);
-        expect(lastWrapper().requestTopMoves).toHaveBeenCalledWith(16);
+        expect(lastWrapper().requestTopMoves).toHaveBeenCalledWith(5000);
 
         coldClearActions.onColdClearTopMovesResult({
             runId,
@@ -296,6 +296,34 @@ describe('Sold Slear in the Cold Clear actions', () => {
         })(running);
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({ html: 'rank 2/2' }));
         expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'score=-1.50 | b2b=3 | #Q=[](T)SZ' });
+    });
+
+    // 推奨手（rescue で値が最大でない）が先頭、返却外の手が後ろに並んでも、順位は探索値で決まる
+    test('ranks the placed piece by value, not by its position in the candidate list', () => {
+        const piece = { type: Piece.T, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } };
+        const comment = '#Q=[](T)SZ';
+        const run = (results: any[]) => {
+            (global as any).M.toast.mockClear();
+            const start = coldClearActions.evaluatePlacedSpawnMinoScore()(makeState({
+                piece, commentText: comment,
+            })) as any;
+            const runId = start.coldClear.runId;
+            initColdClearActions({
+                setCommentText: jest.fn(),
+                coldClearFinishSearch: jest.fn(),
+                changeToDrawerScreen: jest.fn(),
+                changeToDrawingToolMode: jest.fn(),
+            } as any);
+            const running = makeState({ piece, runId, commentText: comment, isRunning: true, runType: 'placed' });
+            coldClearActions.onColdClearInitDone({ runId })(running);
+            coldClearActions.onColdClearTopMovesResult({ runId, results })(running);
+        };
+        const move = (x: number, score: number) => ({ x, score, hold: false, piece: 2, rotation: 0, y: 0 });
+
+        run([move(4, -5), move(1, -2), move(7, -3)]);
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({ html: 'rank 3/3' }));
+        run([move(1, -5), move(7, -2), move(4, -2)]);
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({ html: 'rank 1/3' }));
     });
 
     test('leaves the comment alone when the placed piece is not among the candidates', () => {

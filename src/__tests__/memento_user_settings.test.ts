@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 
 import { localStorageWrapper } from '../memento';
+import { DEFAULT_SPAWN_ROTATION } from '../lib/spawn_rotation';
 
 describe('user settings initial screen migration', () => {
     beforeEach(() => {
@@ -131,6 +132,32 @@ describe('user settings page rotation', () => {
 
         localStorage.setItem('user-settings@1', JSON.stringify({ pageRotationLimit: '30' }));
         expect(localStorageWrapper.loadUserSettings().pageRotationLimit).toBeUndefined();
+    });
+});
+
+describe('user settings spawn rotation', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('loads off and hold', () => {
+        localStorage.setItem('user-settings@1', JSON.stringify({ pieceSpawnRotation: 'hold' }));
+        expect(localStorageWrapper.loadUserSettings().pieceSpawnRotation).toBe('hold');
+
+        localStorage.setItem('user-settings@1', JSON.stringify({ pieceSpawnRotation: 'off' }));
+        expect(localStorageWrapper.loadUserSettings().pieceSpawnRotation).toBe('off');
+    });
+
+    test('rejects unknown values so the default off is kept', () => {
+        for (const value of ['tap', 'HOLD', true, 1, null]) {
+            localStorage.setItem('user-settings@1', JSON.stringify({ pieceSpawnRotation: value }));
+            expect(localStorageWrapper.loadUserSettings().pieceSpawnRotation).toBeUndefined();
+        }
+    });
+
+    test('is undefined for older settings and defaults to off', () => {
+        expect(localStorageWrapper.loadUserSettings().pieceSpawnRotation).toBeUndefined();
+        expect(DEFAULT_SPAWN_ROTATION).toBe('off');
     });
 });
 

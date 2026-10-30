@@ -319,6 +319,20 @@ export const editorOverlay = (state: State, actions: Actions, layout?: EditorLay
                     disabled: state.fumen.maxPage - 1 <= state.fumen.currentIndex,
                     onclick: () => closeAndRun(actions.clearToEnd),
                 }),
+                overlayButton({
+                    key: 'btn-clear-others', datatest: 'btn-clear-others',
+                    label: i18n.EditorUi.ClearOthers(), iconName: 'filter_1',
+                    danger: true,
+                    disabled: state.fumen.maxPage <= 1,
+                    onclick: () => closeAndRun(actions.clearOthers),
+                }),
+                overlayButton({
+                    key: 'btn-reset-all-pages', datatest: 'btn-reset-all-pages',
+                    label: i18n.EditorUi.ResetAllPages(), iconName: 'insert_drive_file',
+                    danger: true,
+                    // メニューの「New」と同じく新規fumenを読み込み直す
+                    onclick: () => closeAndRun(actions.executeNewFumen),
+                }),
             ],
         }),
         ...(isEditorView ? [

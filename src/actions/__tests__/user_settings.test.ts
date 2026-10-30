@@ -44,12 +44,11 @@ const baseUserSettings = {
     pieceShortcutDasCutFrames: 0,
     pieceShortcutSdf: Infinity,
     pieceShortcutSoftDropPriority: false,
+    pieceSpawnRotation: 'off',
     rotationSystem: 'srs',
     sevenBagGrayEnabled: false,
     pageRotationLimit: 0,
     grayAfterLineClear: false,
-    trimTopBlank: false,
-    editorSidePanel: false,
 };
 
 const createState = (override: any = {}) => ({
@@ -73,6 +72,7 @@ const createState = (override: any = {}) => ({
         pieceShortcutDasCutFrames: 0,
         pieceShortcutSdf: Infinity,
         pieceShortcutSoftDropPriority: false,
+        pieceSpawnRotation: 'off',
         gifFrameDelayMs: 500,
         rotationSystem: 'srs',
         sevenBagGrayEnabled: false,
@@ -105,13 +105,14 @@ describe('userSettingsActions', () => {
     });
 
     describe('copyUserSettingsToTemporary', () => {
-        test('copies view settings (gray/trim) into temporary', () => {
+        test('copies the gray view setting into temporary and leaves List/Tree display settings alone', () => {
             const state = createState();
             const next = userSettingsActions.copyUserSettingsToTemporary()(state);
 
             expect(next.temporary.userSettings.grayAfterLineClear).toBe(true);
-            expect(next.temporary.userSettings.trimTopBlank).toBe(true);
-            expect(next.temporary.userSettings.editorSidePanel).toBe(true);
+            // Trim and the side panel are switched from their own UI, not from the modal
+            expect('trimTopBlank' in next.temporary.userSettings).toBe(false);
+            expect('editorSidePanel' in next.temporary.userSettings).toBe(false);
         });
 
         test('preserves fractional DAS and ARR frame values', () => {
@@ -248,37 +249,6 @@ describe('userSettingsActions', () => {
         });
     });
 
-    describe('keepTrimTopBlank', () => {
-        test('updates temporary while the modal is open', () => {
-            const state = createState();
-
-            const trimNext = userSettingsActions.keepTrimTopBlank({ enable: true })(state);
-            expect(trimNext.temporary.userSettings.trimTopBlank).toBe(true);
-
-        });
-
-        test('does nothing when the modal is closed', () => {
-            const state = createState({ modal: { userSettings: false } });
-
-            expect(userSettingsActions.keepTrimTopBlank({ enable: true })(state)).toBeUndefined();
-        });
-    });
-
-    describe('keepEditorSidePanel', () => {
-        test('updates temporary while the modal is open', () => {
-            const state = createState();
-            const next = userSettingsActions.keepEditorSidePanel({ enable: true })(state);
-
-            expect(next.temporary.userSettings.editorSidePanel).toBe(true);
-        });
-
-        test('does nothing when the modal is closed', () => {
-            const state = createState({ modal: { userSettings: false } });
-
-            expect(userSettingsActions.keepEditorSidePanel({ enable: true })(state)).toBeUndefined();
-        });
-    });
-
     describe('keepPieceShortcutArr', () => {
         test('updates temporary while the modal is open', () => {
             const state = createState();
@@ -300,6 +270,21 @@ describe('userSettingsActions', () => {
             const next = userSettingsActions.keepPieceShortcutSoftDropPriority({ enable: true })(state);
 
             expect(next.temporary.userSettings.pieceShortcutSoftDropPriority).toBe(true);
+        });
+    });
+
+    describe('keepPieceSpawnRotation', () => {
+        test('updates the temporary mode', () => {
+            const state = createState();
+            const next = userSettingsActions.keepPieceSpawnRotation({ mode: 'hold' })(state);
+
+            expect(next.temporary.userSettings.pieceSpawnRotation).toBe('hold');
+        });
+
+        test('does nothing when the modal is closed', () => {
+            const state = createState({ modal: { userSettings: false } });
+
+            expect(userSettingsActions.keepPieceSpawnRotation({ mode: 'hold' })(state)).toBeUndefined();
         });
     });
 
@@ -343,9 +328,9 @@ describe('userSettingsActions', () => {
     describe('setUserSettingsTab', () => {
         test('switches the active tab', () => {
             const state = createState();
-            const next = userSettingsActions.setUserSettingsTab({ tab: 'view' })(state);
+            const next = userSettingsActions.setUserSettingsTab({ tab: 'general' })(state);
 
-            expect(next.temporary.userSettingsTab).toBe('view');
+            expect(next.temporary.userSettingsTab).toBe('general');
         });
 
         test('switches to the input tab', () => {
@@ -419,10 +404,10 @@ describe('userSettingsActions', () => {
                 'changeOpenTreeScreenOnTreeData', 'changeUtilsMenuPinned',
                 'changePaletteShortcuts', 'changeEditShortcuts', 'changePieceShortcuts',
                 'changePieceShortcutDas', 'changePieceShortcutArr', 'changePieceShortcutDasCut',
-                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority',
+                'changePieceShortcutSdf', 'changePieceShortcutSoftDropPriority', 'changePieceSpawnRotation',
                 'changeRotationSystem',
                 'changeSevenBagGrayEnabled', 'changePageRotationLimit',
-                'setTreeState', 'setListViewTrimTopBlank', 'setEditorSidePanelEnabled', 'reopenCurrentPage',
+                'setTreeState', 'reopenCurrentPage',
             ];
             for (const name of actionNames) {
                 mockActions[name] = jest.fn(() => () => undefined);
@@ -437,8 +422,6 @@ describe('userSettingsActions', () => {
                 pieceShortcutArrFrames: 1.5,
                 pieceShortcutDasCutFrames: 2.5,
                 grayAfterLineClear: true,
-                trimTopBlank: true,
-                editorSidePanel: true,
                 flagsHidden: false,
                 paintPaletteMinoDesign: true,
                 keepGrayOnPaintDrag: true,
@@ -451,11 +434,13 @@ describe('userSettingsActions', () => {
             expect(mockActions.changePieceShortcutArr).toHaveBeenCalledWith({ arrFrames: 1.5 });
             expect(mockActions.changePieceShortcutDasCut).toHaveBeenCalledWith({ dasCutFrames: 2.5 });
             expect(mockActions.changePieceShortcutSoftDropPriority).toHaveBeenCalledWith({ enable: false });
+            expect(mockActions.changePieceSpawnRotation).toHaveBeenCalledWith({ mode: 'off' });
             expect(mockActions.setTreeState).toHaveBeenCalledWith({
                 grayAfterLineClear: true,
             });
-            expect(mockActions.setListViewTrimTopBlank).toHaveBeenCalledWith({ enabled: true });
-            expect(mockActions.setEditorSidePanelEnabled).toHaveBeenCalledWith({ enabled: true });
+            // The modal no longer writes List/Tree display settings (their actions are not even mocked)
+            expect(mockActions.setListViewTrimTopBlank).toBeUndefined();
+            expect(mockActions.setEditorSidePanelEnabled).toBeUndefined();
             expect(saveUserSettingsMock).toHaveBeenCalled();
             expect(saveUserSettingsMock.mock.calls[0][0]).toEqual(expect.objectContaining({
                 paintPaletteMinoDesign: false,

@@ -281,7 +281,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             changeToListViewScreen: actions.changeToListViewScreen,
             changeToTreeViewScreen: actions.changeToTreeViewScreen,
             openMenuModal: actions.openMenuModal,
-            openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'view' }),
+            openUserSettingsModal: () => actions.openUserSettingsModal({ initialTab: 'general' }),
             startAnimation: actions.startAnimation,
             pauseAnimation: actions.pauseAnimation,
             backPage: actions.backPage,

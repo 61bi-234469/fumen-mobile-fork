@@ -35,6 +35,10 @@ export interface F14Decision {
     diagnostics?: {
         // 各候補の探索値。returnedIdentities と同じ並び
         rootValues?: number[];
+        // 返却候補の外も含む全 root 手の探索値（高い順）
+        rootChildValues?: {
+            children?: { identity?: unknown; value?: unknown }[];
+        };
     };
 }
 
@@ -177,7 +181,7 @@ export type DecisionOutcome =
     | { kind: 'noMove' }
     | { kind: 'error'; message: string };
 
-// identity → 探索値。並びや個数が合わない応答からは値を取らない
+// identity → 探索値。並びや個数が合わない rootValues からは値を取らない
 const rootValuesByIdentity = (decision: F14Decision): Map<string, number> => {
     const returned = decision.ranking?.returnedIdentities;
     const values = decision.diagnostics?.rootValues;
@@ -193,8 +197,23 @@ const rootValuesByIdentity = (decision: F14Decision): Map<string, number> => {
     return map;
 };
 
-// 推奨手（rescue 適用後の最終選択）を先頭に、残りは CC2 順位順に並べる。
-// 盤面へ適用できない候補（23 行を超えるなど）は除外する。score は各候補の探索値で、
+// 全 root 手の [identity, 探索値]（値の高い順）。値の欠けた子は除く
+const rootChildValuesOf = (decision: F14Decision): [string, number][] => {
+    const children = decision.diagnostics?.rootChildValues?.children;
+    if (!Array.isArray(children)) {
+        return [];
+    }
+    const entries: [string, number][] = [];
+    for (const child of children) {
+        if (typeof child?.identity === 'string' && typeof child.value === 'number' && Number.isFinite(child.value)) {
+            entries.push([child.identity, child.value]);
+        }
+    }
+    return entries;
+};
+
+// 推奨手（rescue 適用後の最終選択）を先頭に、返却候補を CC2 順位順に、続けて返却候補の外の root 手を
+// 探索値の高い順に並べる。盤面へ適用できない候補（23 行を超えるなど）は除外する。score は各候補の探索値で、
 // rescue が働いた局面では推奨手が最大とは限らない。
 export const decisionToMoves = (decision: F14Decision, current: PieceLetter): DecisionOutcome => {
     if (decision.status === 'root-no-move') {
@@ -209,6 +228,16 @@ export const decisionToMoves = (decision: F14Decision, current: PieceLetter): De
         ? [selected, ...identities.filter(identity => identity !== selected)]
         : identities.slice();
     const values = rootValuesByIdentity(decision);
+    const listed = new Set(ordered);
+    for (const [identity, value] of rootChildValuesOf(decision)) {
+        if (!values.has(identity)) {
+            values.set(identity, value);
+        }
+        if (!listed.has(identity)) {
+            listed.add(identity);
+            ordered.push(identity);
+        }
+    }
     const moves: SoldSlearMove[] = [];
     for (const identity of ordered) {
         const move = identityToMove(identity, current);

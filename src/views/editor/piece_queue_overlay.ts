@@ -37,8 +37,8 @@ export interface InputAiEngineView {
 
 // AI ガイド欄の下段（エンジン名の行）の高さ。上段は残りで状態を出す
 const INPUT_AI_ENGINE_ROW_HEIGHT = 13;
-// 「Cold Clear ⇄」が 1 行に収まる列幅。これより細い列では CC / SS と略す
-const INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH = 66;
+// 「Cold Clear ⇄」「Sold Slear 1.4 ⇄」が 1 行に収まる列幅。これより細い列では CC / SS と略す
+const INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH: Record<AiEngineId, number> = { coldClear: 66, soldSlear: 80 };
 
 const inputGuideReasonText = (reason: InputGuideUnavailableReason | undefined): string => {
     switch (reason) {
@@ -343,7 +343,7 @@ export const pieceQueueOverlays = ({
     })]);
     // 下段：いま動いているエンジン。押すと切り替える（AI メニュー・リプレイ解析と共通の設定）
     const engineName = aiEngineDisplayName(inputAiEngine.engine);
-    const engineLabel = width >= INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH
+    const engineLabel = width >= INPUT_AI_ENGINE_FULL_NAME_MIN_WIDTH[inputAiEngine.engine]
         ? engineName : aiEngineShortName(inputAiEngine.engine);
     const engineTitle = inputAiEngine.switchable
         ? i18n.ColdClear.EngineSwitchAria(engineName) : i18n.ColdClear.EngineCurrent(engineName);

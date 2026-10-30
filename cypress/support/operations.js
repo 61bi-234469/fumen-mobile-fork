@@ -866,10 +866,10 @@ export const operations = {
             cy.get(datatest('switch-loop')).check({ force: true });
             cy.get(datatest('btn-save')).click();
         },
+        // キックテーブルはタブの外（モーダル上部）のセグメントで選ぶ
         setRotationSystem: (value) => {
             operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('input');
-            cy.get(datatest(`radio-rotation-system-${value}`)).check({ force: true });
+            cy.get(datatest(`segment-rotation-system-${value}`)).click();
             cy.get(datatest('btn-save')).click();
         },
         // PAINTパレットのミノデザイン表示を切り替える (フィールドタブ)
@@ -955,18 +955,26 @@ export const operations = {
         },
     },
     editorPanel: {
-        // ユーザー設定 View タブでサイドパネル(PC)の表示を切り替える
+        // ナビゲータ上部の切替でサイドパネル(PC)の表示を切り替える（設定モーダルには項目がない）。
+        // 今の状態を見て必要なときだけ押すので、enable/disable は何度呼んでも同じ結果になる
+        setEnabled: (enabled) => {
+            cy.get('body').then(($body) => {
+                const shown = $body.find(datatest('editor-side-panel')).length > 0;
+                if (shown !== enabled) {
+                    cy.get(datatest('navigator-side-panel-toggle')).click();
+                }
+            });
+            if (enabled) {
+                cy.get(datatest('editor-side-panel')).should('exist');
+            } else {
+                cy.get(datatest('editor-side-panel')).should('not.exist');
+            }
+        },
         enable: () => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('view');
-            cy.get(datatest('switch-editor-side-panel')).check({ force: true });
-            cy.get(datatest('btn-save')).click();
+            operations.editorPanel.setEnabled(true);
         },
         disable: () => {
-            operations.menu.openUserSettings();
-            operations.menu.selectUserSettingsTab('view');
-            cy.get(datatest('switch-editor-side-panel')).uncheck({ force: true });
-            cy.get(datatest('btn-save')).click();
+            operations.editorPanel.setEnabled(false);
         },
         // パネル内のタブ切替 ('list' | 'tree')
         selectTab: (tab) => {

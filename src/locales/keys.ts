@@ -58,7 +58,6 @@ export const i18n = {
         Title: () => t('UserSettings.Title'),
         Tabs: {
             Edit: () => t('UserSettings.Tabs.Edit'),
-            View: () => t('UserSettings.Tabs.View'),
             Input: () => t('UserSettings.Tabs.Input'),
             Keys: () => t('UserSettings.Tabs.Keys'),
             General: () => t('UserSettings.Tabs.General'),
@@ -103,6 +102,12 @@ export const i18n = {
             Classic: () => t('UserSettings.RotationSystem.Classic'),
             Srs: () => t('UserSettings.RotationSystem.Srs'),
             SrsPlus: () => t('UserSettings.RotationSystem.SrsPlus'),
+            SrsPlusOnly: () => t('UserSettings.RotationSystem.SrsPlusOnly'),
+            Effects: {
+                Classic: () => t('UserSettings.RotationSystem.Effects.Classic'),
+                Srs: () => t('UserSettings.RotationSystem.Effects.Srs'),
+                SrsPlus: () => t('UserSettings.RotationSystem.Effects.SrsPlus'),
+            },
         },
         ShortcutInput: {
             Placeholder: () => t('UserSettings.ShortcutInput.Placeholder'),
@@ -152,6 +157,12 @@ export const i18n = {
                 Off: () => t('UserSettings.PieceShortcuts.SoftDropPriority.Off'),
                 On: () => t('UserSettings.PieceShortcuts.SoftDropPriority.On'),
             },
+            SpawnRotation: {
+                Title: () => t('UserSettings.PieceShortcuts.SpawnRotation.Title'),
+                Description: () => t('UserSettings.PieceShortcuts.SpawnRotation.Description'),
+                Off: () => t('UserSettings.PieceShortcuts.SpawnRotation.Off'),
+                Hold: () => t('UserSettings.PieceShortcuts.SpawnRotation.Hold'),
+            },
         },
         PieceControls: {
             Title: () => t('UserSettings.PieceControls.Title'),
@@ -161,7 +172,6 @@ export const i18n = {
             Unit: () => t('UserSettings.PageRotation.Unit'),
             Unlimited: () => t('UserSettings.PageRotation.Unlimited'),
         },
-        EditorSidePanel: () => t('UserSettings.EditorSidePanel'),
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),
@@ -202,6 +212,8 @@ export const i18n = {
         UtilsModes: () => t('EditorUi.UtilsModes'),
         UtilsPages: () => t('EditorUi.UtilsPages'),
         ClearPast: () => t('EditorUi.ClearPast'), ClearToEnd: () => t('EditorUi.ClearToEnd'),
+        ClearOthers: () => t('EditorUi.ClearOthers'),
+        ResetAllPages: () => t('EditorUi.ResetAllPages'),
         CommentPlaceholder: () => t('EditorUi.CommentPlaceholder'),
         AllMirror: () => t('EditorUi.AllMirror'), ToGray: () => t('EditorUi.ToGray'),
         ToBlack: () => t('EditorUi.ToBlack'),
@@ -394,7 +406,6 @@ export const i18n = {
         },
     },
     ListView: {
-        AllSettings: () => t('ListView.AllSettings'),
         TrimTopBlank: () => t('ListView.TrimTopBlank'),
         ViewSettings: () => t('ListView.ViewSettings'),
         Zoom: () => t('ListView.Zoom'),
@@ -498,6 +509,8 @@ export const i18n = {
     },
     InputState: {
         Open: () => t('InputState.Open'),
+        Rules: () => t('InputState.Rules'),
+        OpenRotationSettings: () => t('InputState.OpenRotationSettings'),
         ChainLabel: () => t('InputState.ChainLabel'),
         Share: () => t('InputState.Share'),
         NativeShare: () => t('InputState.NativeShare'),
@@ -590,7 +603,7 @@ export const i18n = {
             EngineError: () => t('ColdClear.InputGuideStatus.EngineError'),
         },
         EngineColdClear: () => t('ColdClear.EngineColdClear'),
-        EngineSoldSlear: () => t('ColdClear.EngineSoldSlear'),
+        EngineSoldSlear: (version: string) => t('ColdClear.EngineSoldSlear', { version }),
         EngineSwitchAria: (name: string) => t('ColdClear.EngineSwitchAria', { name }),
         EngineColdClearShort: () => t('ColdClear.EngineColdClearShort'),
         EngineSoldSlearShort: () => t('ColdClear.EngineSoldSlearShort'),
@@ -598,6 +611,8 @@ export const i18n = {
         EngineSwitchBusy: () => t('ColdClear.EngineSwitchBusy'),
         SoldSlearNotice: () => t('ColdClear.SoldSlearNotice'),
         SoldSlearRotationWarning: () => t('ColdClear.SoldSlearRotationWarning'),
+        ColdClearRotationWarning: () => t('ColdClear.ColdClearRotationWarning'),
+        OpenRotationSettings: () => t('ColdClear.OpenRotationSettings'),
         SoldSlearNeedsNext: () => t('ColdClear.SoldSlearNeedsNext'),
         SoldSlearPlacedRank: (rank: number, total: number) =>
             t('ColdClear.SoldSlearPlacedRank', { rank, total }),

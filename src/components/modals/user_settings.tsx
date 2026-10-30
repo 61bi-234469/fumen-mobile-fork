@@ -10,6 +10,7 @@ import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
 import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
 import { SDF_MAX, SDF_MIN } from '../../lib/piece_das';
+import type { SpawnRotationMode } from '../../lib/spawn_rotation';
 import { tabLayout } from './user_settings_catalog';
 import { EDITOR_ACTIVE_COLOR } from '../../views/editor/editor_control_style';
 
@@ -34,12 +35,10 @@ interface UserSettingsModalProps {
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number;
     pieceShortcutSoftDropPriority: boolean;
+    pieceSpawnRotation: SpawnRotationMode;
     rotationSystem: RotationSystem;
     pageRotationLimit: number;
     grayAfterLineClear: boolean;
-    trimTopBlank: boolean;
-    editorSidePanel: boolean;
-    sidePanelAvailable: boolean;
     currentTab: UserSettingsTab;
     actions: {
         closeUserSettingsModal: () => void;
@@ -63,11 +62,10 @@ interface UserSettingsModalProps {
         keepPieceShortcutDasCut: (data: { dasCutFrames: number }) => void;
         keepPieceShortcutSdf: (data: { sdf: number }) => void;
         keepPieceShortcutSoftDropPriority: (data: { enable: boolean }) => void;
+        keepPieceSpawnRotation: (data: { mode: SpawnRotationMode }) => void;
         keepRotationSystem: (data: { rotationSystem: RotationSystem }) => void;
         keepPageRotationLimit: (data: { limit: number }) => void;
         keepGrayAfterLineClear: (data: { enable: boolean }) => void;
-        keepTrimTopBlank: (data: { enable: boolean }) => void;
-        keepEditorSidePanel: (data: { enable: boolean }) => void;
         setUserSettingsTab: (data: { tab: UserSettingsTab }) => void;
     };
 }
@@ -129,11 +127,17 @@ const rotationSystemLabels: Record<RotationSystem, () => string> = {
     srsPlus: i18n.UserSettings.RotationSystem.SrsPlus,
 };
 
+// 選択中のキックテーブルが何に波及するか（配色・回転・INPUTの採点・AI）の1行説明
+const rotationSystemEffects: Record<RotationSystem, () => string> = {
+    classic: i18n.UserSettings.RotationSystem.Effects.Classic,
+    srs: i18n.UserSettings.RotationSystem.Effects.Srs,
+    srsPlus: i18n.UserSettings.RotationSystem.Effects.SrsPlus,
+};
+
 const tabKeys: UserSettingsTab[] = Object.keys(tabLayout) as UserSettingsTab[];
 
 const tabLabels: Record<UserSettingsTab, () => string> = {
     edit: i18n.UserSettings.Tabs.Edit,
-    view: i18n.UserSettings.Tabs.View,
     input: i18n.UserSettings.Tabs.Input,
     keys: i18n.UserSettings.Tabs.Keys,
     general: i18n.UserSettings.Tabs.General,
@@ -159,12 +163,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         pieceShortcutDasCutFrames,
         pieceShortcutSdf,
         pieceShortcutSoftDropPriority,
+        pieceSpawnRotation,
         rotationSystem,
         pageRotationLimit,
         grayAfterLineClear,
-        trimTopBlank,
-        editorSidePanel,
-        sidePanelAvailable,
         currentTab,
         actions,
     },
@@ -209,7 +211,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     };
 
     // switch要素の共通レンダラ(temporaryの値とcheckboxを同期する)
-    // 名前を左、スイッチを右に置く
+    // 名前を左、スイッチを右に置く。行全体を1つのlabelにして、どこを押しても切り替わるようにする
+    // （名前とスイッチが離れていても対応が分かるよう、行のホバー表示と区切り線は index.html の CSS）
     const renderSwitch = ({
         key, datatest, title, description, checked, onChange, disabled = false,
     }: {
@@ -235,35 +238,37 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         };
         const inputId = `user-settings-${datatest}`;
         return (
-            <div key={key} class="switch" style={style({
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: px(12),
-                margin: '10px 0',
-            })}>
-                <div key={`${key}-text`} style={style({ flex: '1 1 auto', minWidth: 0 })}>
-                    <label key={`${key}-title`} for={inputId} style={style({
-                        display: 'block',
-                        color: '#333',
-                        fontSize: px(15),
-                        lineHeight: 1.4,
-                        cursor: disabled ? 'default' : 'pointer',
-                    })}>
-                        {title}
-                    </label>
-                    {description !== undefined && <div key={`${key}-description`} style={style({
-                        color: '#666', fontSize: px(12), marginTop: px(2),
-                    })}>
-                        {description}
-                    </div>}
-                </div>
+            <div key={key} class={`switch settings-switch-row${disabled ? ' is-disabled' : ''}`}>
+                <label key={`${key}-row`} for={inputId} style={style({
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: px(12),
+                    padding: '8px 8px',
+                    cursor: disabled ? 'default' : 'pointer',
+                })}>
+                    <span key={`${key}-text`} style={style({ flex: '1 1 auto', minWidth: 0 })}>
+                        <span key={`${key}-title`} style={style({
+                            display: 'block',
+                            color: '#333',
+                            fontSize: px(15),
+                            lineHeight: 1.4,
+                        })}>
+                            {title}
+                        </span>
+                        {description !== undefined && <span key={`${key}-description`} style={style({
+                            display: 'block', color: '#666', fontSize: px(12), marginTop: px(2),
+                        })}>
+                            {description}
+                        </span>}
+                    </span>
 
-                <label key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
-                    <input type="checkbox" id={inputId} dataTest={datatest} checked={checked} disabled={disabled}
-                           onupdate={onupdate} onchange={onchange}/>
-                    <span class="lever"/>
+                    <span key={`${key}-control`} style={style({ flexShrink: 0, whiteSpace: 'nowrap' })}>
+                        <input type="checkbox" id={inputId} dataTest={datatest} checked={checked}
+                               disabled={disabled} onupdate={onupdate} onchange={onchange}/>
+                        <span class="lever"/>
+                    </span>
                 </label>
             </div>
         );
@@ -271,8 +276,10 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
 
     // ショートカット割当グリッドの共通レンダラ（パレット/編集/PIECEで共有）
     // 未割り当ての欄はプレースホルダ、割り当て済みの欄は右に×ボタンを出す（Backspace/Deleteでも消せる）
+    // unavailable が値を返す行は、今のキックテーブルでは使えない操作。入力を止めて×の代わりにバッジを出す
+    // （割当は保持し、使えるテーブルに戻せばそのまま効く）
     const renderShortcutGrid = <K extends string>({
-        keys, getCode, renderLabel, labelMinWidth, onKeyDown, onClear, inputDatatest,
+        keys, getCode, renderLabel, labelMinWidth, onKeyDown, onClear, inputDatatest, unavailable,
     }: {
         keys: K[];
         getCode: (key: K) => string;
@@ -281,6 +288,7 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         onKeyDown: (key: K, e: KeyboardEvent) => void;
         onClear: (key: K) => void;
         inputDatatest: (key: K) => string;
+        unavailable?: (key: K) => { badge: string, datatest: string } | undefined;
     }) => (
         <div style={style({
             display: 'grid',
@@ -291,8 +299,11 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
             {keys.map((key) => {
                 const code = getCode(key);
                 const inputName = inputDatatest(key);
+                const blocked = unavailable === undefined ? undefined : unavailable(key);
                 return [
-                    <div key={`${inputName}-label`} style={style({ fontWeight: 'bold', minWidth: px(labelMinWidth) })}>
+                    <div key={`${inputName}-label`} style={style({
+                        fontWeight: 'bold', minWidth: px(labelMinWidth), color: blocked ? '#9e9e9e' : undefined,
+                    })}>
                         {renderLabel(key)}
                     </div>,
                     <input
@@ -300,18 +311,23 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         type="text"
                         datatest={inputName}
                         readonly
+                        disabled={blocked !== undefined}
                         value={code ? displayShortcut(code) : ''}
                         placeholder={i18n.UserSettings.ShortcutInput.Placeholder()}
                         onkeydown={(e: KeyboardEvent) => onKeyDown(key, e)}
                         style={style({
-                            cursor: 'pointer',
+                            cursor: blocked ? 'default' : 'pointer',
                             textAlign: 'center',
-                            color: '#333',
+                            color: blocked ? '#9e9e9e' : '#333',
                             marginBottom: px(0),
                             height: px(32),
                         })}
                     />,
-                    code
+                    blocked
+                        ? <span key={`${inputName}-clear`} datatest={blocked.datatest} style={unavailableBadgeStyle}>
+                            {blocked.badge}
+                        </span>
+                        : code
                         ? <button
                             key={`${inputName}-clear`}
                             type="button"
@@ -338,6 +354,19 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
     );
 
     const noteStyle = style({ color: '#888', fontSize: px(12) });
+
+    // 「このキックテーブルでは使えない」印。×ボタンの列に収まる小さなチップ
+    const unavailableBadgeStyle = style({
+        backgroundColor: '#eceff1',
+        borderRadius: px(10),
+        color: '#607d8b',
+        fontSize: px(11),
+        fontWeight: 'bold',
+        lineHeight: px(20),
+        padding: '0 6px',
+        textAlign: 'center',
+        whiteSpace: 'nowrap',
+    });
 
     // 名前・数値入力・単位（・値が0のときだけ出す補足）を1行に並べる（ARR/DAS/DCD/最大ページ数で共有）
     const renderNumberField = ({
@@ -564,6 +593,37 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                         {i18n.UserSettings.Title()}
                     </div>
 
+                    {/* キックテーブルは配色・回転・INPUTの採点・AIに波及する横断設定なので、タブの外に常設する */}
+                    <div key="user-settings-rotation-system" datatest="group-rotation-system"
+                         style={style({ marginTop: px(12) })}>
+                        <div style={style({
+                            alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: px(10),
+                        })}>
+                            <div style={style({ fontWeight: 'bold' })}>
+                                {i18n.UserSettings.RotationSystem.Title()}
+                            </div>
+                            <div role="radiogroup" aria-label={i18n.UserSettings.RotationSystem.Title()}
+                                 style={style({
+                                     border: 'solid 1px #bbb',
+                                     borderRadius: px(4),
+                                     display: 'inline-flex',
+                                     overflow: 'hidden',
+                                 })}>
+                                {rotationSystemValues.map((value, index) => renderSegment({
+                                    datatest: `segment-rotation-system-${value}`,
+                                    label: rotationSystemLabels[value](),
+                                    selected: value === rotationSystem,
+                                    first: index === 0,
+                                    onSelect: () => onchangeRotationSystem(value),
+                                }))}
+                            </div>
+                        </div>
+                        <div datatest="txt-rotation-system-effects" data-value={rotationSystem}
+                             style={style({ color: '#666', fontSize: px(12), marginTop: px(6) })}>
+                            {rotationSystemEffects[rotationSystem]()}
+                        </div>
+                    </div>
+
                     <div key="user-settings-tabs" style={tabHeaderStyle}>
                         {tabKeys.map(tab => (
                             <a href="#" key={`tab-user-settings-${tab}`} datatest={`tab-user-settings-${tab}`}
@@ -615,8 +675,8 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                             })}
 
                             {renderSwitch({
-                                key: 'switch-row-gray-after-line-clear-edit',
-                                datatest: 'switch-gray-after-line-clear-edit',
+                                key: 'switch-row-gray-after-line-clear',
+                                datatest: 'switch-gray-after-line-clear',
                                 title: i18n.TreeView.GrayAfterLineClear(),
                                 checked: grayAfterLineClear,
                                 onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
@@ -655,35 +715,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                             </details>
                         </div>
 
-                        <div key="panel-user-settings-view" datatest="panel-user-settings-view"
-                             style={panelStyle('view')}>
-                            {renderSwitch({
-                                key: 'switch-row-trim-top-blank',
-                                datatest: 'switch-trim-top-blank',
-                                title: i18n.ListView.TrimTopBlank(),
-                                checked: trimTopBlank,
-                                onChange: checked => actions.keepTrimTopBlank({ enable: checked }),
-                            })}
-
-                            {renderSwitch({
-                                key: 'switch-row-gray-after-line-clear-view',
-                                datatest: 'switch-gray-after-line-clear-view',
-                                title: i18n.TreeView.GrayAfterLineClear(),
-                                checked: grayAfterLineClear,
-                                onChange: checked => actions.keepGrayAfterLineClear({ enable: checked }),
-                            })}
-
-                            {/* サイドパネルを出せない幅・環境では、設定しても効かないので項目ごと隠す */}
-                            {sidePanelAvailable && renderSwitch({
-                                key: 'switch-row-editor-side-panel',
-                                datatest: 'switch-editor-side-panel',
-                                title: i18n.UserSettings.EditorSidePanel(),
-                                checked: editorSidePanel,
-                                onChange: checked => actions.keepEditorSidePanel({ enable: checked }),
-                            })}
-
-                        </div>
-
                         <div key="panel-user-settings-keys" datatest="panel-user-settings-keys"
                              style={panelStyle('keys')}>
                             {renderSwitch({
@@ -708,6 +739,13 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         onKeyDown: onkeydownPieceShortcut,
                                         onClear: shortcut => actions.keepPieceShortcut({ shortcut, code: '' }),
                                         inputDatatest: shortcut => `input-piece-shortcut-${shortcut}`,
+                                        // 180°回転はSRS+だけ。ヘッダーの選択（保存前の値）に追従する
+                                        unavailable: shortcut => shortcut === 'Rotate180' && rotationSystem !== 'srsPlus'
+                                            ? {
+                                                badge: i18n.UserSettings.RotationSystem.SrsPlusOnly(),
+                                                datatest: 'badge-piece-shortcut-rotate180',
+                                            }
+                                            : undefined,
                                     })}
                                 </div>
                             </details>
@@ -759,22 +797,6 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     checked: ghostVisible,
                                     onChange: checked => actions.keepGhostVisible({ visible: checked }),
                                 })}
-
-                                <div>
-                                    <h6>{i18n.UserSettings.RotationSystem.Title()}</h6>
-
-                                    {rotationSystemValues.map((value) => {
-                                        return <label>
-                                            <input name="rotation-system" type="radio"
-                                                   checked={value === rotationSystem}
-                                                   dataTest={`radio-rotation-system-${value}`}
-                                                   onchange={() => onchangeRotationSystem(value)}/>
-                                            <span style={style({ marginRight: px(20) })}>
-                                                {rotationSystemLabels[value]()}
-                                            </span>
-                                        </label>;
-                                    })}
-                                </div>
 
                                 <h6 datatest="heading-piece-handling">
                                     {i18n.UserSettings.PieceShortcuts.Handling()}
@@ -881,6 +903,41 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                             onSelect: () => actions.keepPieceShortcutSoftDropPriority({
                                                 enable: true,
                                             }),
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div style={style({ marginTop: px(12) })}>
+                                    <div datatest="label-piece-spawn-rotation" style={style({ fontWeight: 'bold' })}>
+                                        {i18n.UserSettings.PieceShortcuts.SpawnRotation.Title()}
+                                    </div>
+                                    <div datatest="note-piece-spawn-rotation" style={style({
+                                        color: '#666', fontSize: px(12), marginTop: px(2),
+                                    })}>
+                                        {i18n.UserSettings.PieceShortcuts.SpawnRotation.Description()}
+                                    </div>
+                                    <div datatest="group-piece-spawn-rotation" role="radiogroup"
+                                         aria-label={i18n.UserSettings.PieceShortcuts.SpawnRotation.Title()}
+                                         style={style({
+                                             border: 'solid 1px #bbb',
+                                             borderRadius: px(4),
+                                             display: 'inline-flex',
+                                             marginTop: px(6),
+                                             overflow: 'hidden',
+                                         })}>
+                                        {renderSegment({
+                                            datatest: 'segment-piece-spawn-rotation-off',
+                                            label: i18n.UserSettings.PieceShortcuts.SpawnRotation.Off(),
+                                            selected: pieceSpawnRotation === 'off',
+                                            first: true,
+                                            onSelect: () => actions.keepPieceSpawnRotation({ mode: 'off' }),
+                                        })}
+                                        {renderSegment({
+                                            datatest: 'segment-piece-spawn-rotation-hold',
+                                            label: i18n.UserSettings.PieceShortcuts.SpawnRotation.Hold(),
+                                            selected: pieceSpawnRotation === 'hold',
+                                            first: false,
+                                            onSelect: () => actions.keepPieceSpawnRotation({ mode: 'hold' }),
                                         })}
                                     </div>
                                 </div>

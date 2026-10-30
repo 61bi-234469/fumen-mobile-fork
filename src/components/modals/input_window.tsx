@@ -6,7 +6,7 @@ import { InputGarbageSegment } from '../../lib/input_replay';
 import { InputStateDescription } from '../../lib/input_snapshot';
 import { InputRulesPreset } from '../../lib/input_stats';
 import { i18n } from '../../locales/keys';
-import { InputWindowTab, PieceQueueFocus, resources } from '../../states';
+import { InputWindowTab, PieceQueueFocus, resources, RotationSystem, UserSettingsTab } from '../../states';
 import { EDITOR_ACTIVE_COLOR } from '../../views/editor/editor_control_style';
 import { InputGarbagePane } from './input_garbage';
 import { InputStatePane } from './input_state';
@@ -19,6 +19,7 @@ interface InputWindowModalProps {
     // undefined when the current page cannot be shared (same resolution as the share action)
     description: InputStateDescription | undefined;
     preset: InputRulesPreset;
+    rotationSystem: RotationSystem;
     garbageSegments: InputGarbageSegment[];
     currentQueueState: ColdClearMenuQueueState | null;
     canClearComment: boolean;
@@ -27,6 +28,7 @@ interface InputWindowModalProps {
         selectInputWindowTab: (data: { tab: InputWindowTab }) => void;
         closeInputWindow: () => void;
         setInputChainCounters: (data: { b2bChain?: number; renChain?: number }) => void;
+        openUserSettingsModal: (data?: { initialTab?: UserSettingsTab }) => void;
         copyInputShareUrlToClipboard: (data?: { native?: boolean }) => void;
         updateInputGarbageDraft: (data: { segments: InputGarbageSegment[] }) => void;
         previewColdClearQueueComment: (data: {
@@ -102,6 +104,12 @@ export const InputWindowModal: Component<InputWindowModalProps> = (props) => {
                 actions,
                 description: props.description,
                 preset: props.preset,
+                rotationSystem: props.rotationSystem,
+                // Closing applies the garbage draft and commits the queue, as the close button does.
+                openRotationSettings: () => {
+                    close();
+                    actions.openUserSettingsModal({ initialTab: 'input' });
+                },
             });
         case 'garbage':
             return InputGarbagePane({ actions, segments: props.garbageSegments });

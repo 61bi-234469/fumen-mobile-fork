@@ -30,8 +30,10 @@ if (urls.length > 75) {
 // measured 1,993,248 bytes, CI 1,992,272: the garbage modal, segment editing and its strings added about 11 KB).
 // Raised from 1.91 MiB for the INPUT State sheet and share URL (local build measured 2,020,573 bytes,
 // 1,993,269 before: the isnap= serializer and validator, the sheet and their strings added about 27 KB to main).
-if (totalBytes > 1.94 * 1024 * 1024) {
-    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.94 MiB`);
+// Raised from 1.94 MiB for the settings kick table, spawn rotation and switch rows (local build measured
+// 2,036,589 bytes, CI 2,035,607: the kick table, the spawn rotation setting and their strings).
+if (totalBytes > 1.97 * 1024 * 1024) {
+    throw new Error(`Precache is ${totalBytes} bytes; the limit is 1.97 MiB`);
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);

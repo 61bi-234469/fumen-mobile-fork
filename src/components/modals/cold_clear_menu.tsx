@@ -1,6 +1,6 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { resources } from '../../states';
+import { resources, UserSettingsTab } from '../../states';
 import { Piece } from '../../lib/enums';
 import { i18n } from '../../locales/keys';
 import {
@@ -40,7 +40,7 @@ interface ColdClearMenuModalProps {
     // 選べるエンジンが 2 つ以上あるときだけ、見出しを切替ボタンにする
     engineSwitchable: boolean;
     soldSlearBudget: SoldSlearBudgetId;
-    // Sold Slear は SRS+ 前提。回転法則が違うときに注意を出す
+    // エンジンが前提にするキックテーブルと違うときに注意と設定への導線を出す（aiEngineRotationMismatch）
     rotationSystemMismatch: boolean;
     isRunning: boolean;
     progress: { current: number; total: number } | null;
@@ -71,6 +71,7 @@ interface ColdClearMenuModalProps {
         setColdClearThinkMs: (data: { thinkMs: number }) => void;
         toggleAiEngine: () => void;
         setSoldSlearBudget: (data: { budget: string }) => void;
+        openUserSettingsModal: (data?: { initialTab?: UserSettingsTab }) => void;
         previewColdClearQueueComment: (data: {
             hold: Piece | null;
             current: Piece | null;
@@ -419,6 +420,18 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         fontWeight: 700,
         color: '#92400e',
         backgroundColor: '#fef3c7',
+    });
+    const rotationSettingsButtonStyle = style({
+        height: px(30),
+        margin: `0px 0px ${px(8)}`,
+        padding: `0px ${px(12)}`,
+        border: '1px solid #cbd5e1',
+        borderRadius: '6px',
+        background: '#fff',
+        color: '#2563eb',
+        fontSize: px(13),
+        fontWeight: 700,
+        cursor: 'pointer',
     });
     const setupRowStyle = style({
         display: 'flex',
@@ -979,9 +992,36 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         {engine === 'soldSlear'
                             ? <div key="txt-ai-engine-notice" datatest="txt-ai-engine-notice">
                                 <span style={noticeChipStyle}>{i18n.ColdClear.SoldSlearNotice()}</span>
-                                {rotationSystemMismatch
-                                    ? <p style={warningStyle}>{i18n.ColdClear.SoldSlearRotationWarning()}</p>
-                                    : undefined}
+                            </div>
+                            : undefined}
+
+                        {rotationSystemMismatch
+                            ? <div key="txt-ai-rotation-warning" datatest="txt-ai-rotation-warning"
+                                   data-engine={engine}>
+                                <p style={warningStyle}>
+                                    {engine === 'soldSlear'
+                                        ? i18n.ColdClear.SoldSlearRotationWarning()
+                                        : i18n.ColdClear.ColdClearRotationWarning()}
+                                </p>
+                                <button
+                                    type="button"
+                                    key="btn-ai-open-rotation-settings"
+                                    datatest="btn-ai-open-rotation-settings"
+                                    style={rotationSettingsButtonStyle}
+                                    // 探索中はメニューを閉じられない（closeColdClearMenuModal が拒否する）ので、
+                                    // 設定だけが重なって開き、探索中に回転法則を変えられてしまう
+                                    disabled={isRunning}
+                                    onclick={() => {
+                                        if (isRunning) {
+                                            return;
+                                        }
+                                        // Menu モーダルの設定ボタンと同じく、閉じてから開く（M.Modal を重ねない）
+                                        actions.closeColdClearMenuModal();
+                                        actions.openUserSettingsModal({ initialTab: 'input' });
+                                    }}
+                                >
+                                    {i18n.ColdClear.OpenRotationSettings()}
+                                </button>
                             </div>
                             : undefined}
 

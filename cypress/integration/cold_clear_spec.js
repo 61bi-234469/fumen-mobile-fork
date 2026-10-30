@@ -272,7 +272,7 @@ describe('Cold Clear menu', () => {
             cy.get(datatest('txt-ai-engine-notice')).should('not.exist');
 
             operations.aiMenu.switchEngineTo('soldSlear');
-            cy.get(datatest('btn-ai-engine-switch')).should('contain', 'Sold Slear');
+            cy.get(datatest('btn-ai-engine-switch')).should('contain', 'Sold Slear 1.4');
             cy.get(datatest('toggle-cold-clear-hold-allowed')).should('not.exist');
             cy.get(datatest('select-cold-clear-weights-preset')).should('not.exist');
             cy.get(datatest('toggle-cold-clear-speculate')).should('not.exist');
@@ -293,6 +293,38 @@ describe('Cold Clear menu', () => {
             cy.get(datatest('toggle-cold-clear-hold-allowed')).should('exist');
         });
 
+        it('warns when the kick table does not match the engine and links to the settings', () => {
+            cy.clearLocalStorage();
+            visit({ mode: 'edit', lng: 'en' });
+            operations.menu.setRotationSystem('classic');
+            operations.mode.comment.open();
+            cy.get(datatest('text-comment')).clear().type('#Q=[](T)SILZJO').blur();
+            ensureTreeGraphView();
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
+
+            // Cold Clear assumes SRS, so Classic gets the warning too
+            cy.get(datatest('txt-ai-rotation-warning')).should('have.attr', 'data-engine', 'coldClear');
+            cy.get(datatest('btn-ai-open-rotation-settings')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('not.exist');
+            cy.get(datatest('mdl-user-settings')).should('be.visible');
+            cy.get(datatest('group-rotation-system')).should('be.visible');
+            cy.get(datatest('segment-rotation-system-srs')).click();
+            cy.get(datatest('btn-save')).click();
+            cy.get(datatest('mdl-user-settings')).should('not.exist');
+            cy.get('.modal-overlay').should('not.exist');
+
+            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('mdl-cold-clear-menu')).should('be.visible');
+            cy.get(datatest('txt-ai-rotation-warning')).should('not.exist');
+
+            // Sold Slear assumes SRS+; the choice itself is not blocked
+            operations.aiMenu.switchEngineTo('soldSlear');
+            cy.get(datatest('txt-ai-engine-notice')).should('exist');
+            cy.get(datatest('txt-ai-rotation-warning')).should('have.attr', 'data-engine', 'soldSlear');
+            cy.get(datatest('btn-ai-open-rotation-settings')).scrollIntoView().should('be.visible');
+        });
+
         it('runs a sequence search and adds the result pages to the tree', () => {
             cy.clearLocalStorage();
             openAiMenuWithQueue('#Q=[](T)SILZ');
@@ -307,18 +339,19 @@ describe('Cold Clear menu', () => {
                 .should('have.length.within', 3, 5);
         });
 
-        it('adds up to 16 top branches', () => {
+        // 返却 16 候補の外の root 手も探索値を持つので、16 を超えて分岐を追加できる
+        it('adds up to 20 top branches, beyond the 16 returned candidates', () => {
             cy.clearLocalStorage();
             openAiMenuWithQueue('#Q=[](T)SILZJO');
             operations.aiMenu.switchEngineTo('soldSlear');
 
             cy.get(datatest('input-cold-clear-top-branch-count')).scrollIntoView()
-                .should('have.attr', 'max', '16');
-            cy.get(datatest('input-cold-clear-top-branch-count')).clear().type('3').blur();
+                .should('have.attr', 'max', '20');
+            cy.get(datatest('input-cold-clear-top-branch-count')).clear().type('18').blur();
             cy.get(datatest('btn-cold-clear-top-branches-search')).click();
 
             cy.get(datatest('mdl-cold-clear-menu'), { timeout: 30000 }).should('not.exist');
-            cy.get('[datatest^="tree-node-"]', { timeout: 30000 }).should('have.length', 4);
+            cy.get('[datatest^="tree-node-"]', { timeout: 30000 }).should('have.length', 19);
         });
 
         it('reports the placed piece rank and writes its score when it is a candidate', () => {

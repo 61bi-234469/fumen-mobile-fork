@@ -37,6 +37,13 @@ describe('Utils', () => {
             cy.get(datatest('btn-mirror')).should('not.exist');
         });
 
+        cy.get(datatest('utils-scope-pages')).within(() => {
+            cy.get(datatest('btn-clear-past')).should('exist');
+            cy.get(datatest('btn-clear-to-end')).should('exist');
+            cy.get(datatest('btn-clear-others')).should('exist');
+            cy.get(datatest('btn-reset-all-pages')).should('exist');
+        });
+
         cy.get(datatest('utils-scope-editing-modes')).within(() => {
             cy.get(datatest('btn-slide-mode')).should('exist');
             cy.get(datatest('btn-comment-mode')).should('exist');
@@ -129,6 +136,62 @@ describe('Utils', () => {
 
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
         cy.get(block(1, 0)).should('have.attr', 'color', Color.Empty.Normal);
+    });
+
+    it('deletes every page except the current one and restores them with one undo', () => {
+        visit({ mode: 'edit' });
+
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        operations.mode.tools.nextPage();
+        operations.mode.block.click(1, 0);
+        operations.mode.tools.nextPage();
+        operations.mode.block.click(2, 0);
+        operations.mode.tools.backPage();
+
+        operations.mode.utils.open();
+        cy.get(datatest('btn-clear-others')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+
+        cy.get(datatest('text-pages')).should('have.text', '1 / 1');
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        cy.get(block(1, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        cy.get(block(2, 0)).should('have.attr', 'color', Color.Empty.Normal);
+
+        operations.mode.utils.open();
+        cy.get(datatest('btn-clear-others')).should('be.disabled');
+        cy.get(datatest('btn-inspector-close')).click();
+
+        // 前後の削除は1回のUndoでまとめて戻り、Redoでまとめてやり直せる
+        operations.mode.tools.undo();
+        cy.get(datatest('text-pages')).should('have.text', '2 / 3');
+        cy.get(block(1, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        operations.mode.tools.nextPage();
+        cy.get(block(2, 0)).should('have.attr', 'color', Color.Gray.Normal);
+        operations.mode.tools.backPage();
+        operations.mode.tools.backPage();
+        cy.get(block(1, 0)).should('have.attr', 'color', Color.Empty.Normal);
+
+        operations.mode.tools.redo();
+        cy.get(datatest('text-pages')).should('have.text', '1 / 1');
+        cy.get(block(1, 0)).should('have.attr', 'color', Color.Gray.Normal);
+    });
+
+    it('resets every page like New in the menu', () => {
+        visit({ mode: 'edit' });
+
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        operations.mode.tools.nextPage();
+        operations.mode.block.click(1, 0);
+
+        operations.mode.utils.open();
+        cy.get(datatest('btn-reset-all-pages')).click();
+        cy.get(datatest('overlay-utils')).should('not.exist');
+
+        expectFumen('v115@vhAAgH');
     });
 
     it('resets the comments of every page', () => {

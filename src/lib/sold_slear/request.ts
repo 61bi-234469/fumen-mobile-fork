@@ -56,8 +56,9 @@ export interface F14DecideRequest {
         time: { logicalFrame: number; frameSemantics: 'engine-frame'; piecesPlaced: number; fidelity: 'exact' };
         incoming: { pendingRows: number; dueThisLockRows: number };
     };
-    // 候補ごとの探索値（diagnostics.rootValues）を応答に載せる。探索そのものは変わらない
-    diagnostics: { rootValues: true };
+    // 返却候補の探索値（rootValues）と、返却 16 候補の外も含む全 root 手の探索値（rootChildValues）を
+    // 応答に載せる。どちらも表示用で、探索・選択手は変わらない
+    diagnostics: { rootValues: true; rootChildValues: true };
 }
 
 export type RequestBuildError = 'shortQueue' | 'invalidBoard' | 'invalidPiece';
@@ -139,7 +140,7 @@ export const buildF14DecideRequest = (
                 // incoming を 0 に限る。せり上がり予告は渡さない
                 incoming: { pendingRows: 0, dueThisLockRows: 0 },
             },
-            diagnostics: { rootValues: true },
+            diagnostics: { rootValues: true, rootChildValues: true },
         },
     };
 };

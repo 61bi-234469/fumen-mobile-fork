@@ -2,6 +2,7 @@ import { Color, datatest, leftTap, mino, Piece, rightTap, Rotation, visit } from
 import { operations } from '../support/operations';
 
 const initialScreenRadio = (value) => datatest(`radio-initial-screen-${value}`);
+const pieceShortcutInput = (shortcut) => datatest(`input-piece-shortcut-${shortcut}`);
 
 describe('User settings', () => {
     it('separates soft and hard drop shortcuts and configures DAS/ARR in frames', () => {
@@ -15,7 +16,6 @@ describe('User settings', () => {
                 'input-piece-shortcut-Hold',
                 'input-piece-shortcut-Reset',
                 'switch-ghost-visible',
-                'radio-rotation-system-classic',
                 'heading-piece-handling',
                 'input-piece-arr',
                 'input-piece-das',
@@ -263,7 +263,6 @@ describe('User settings', () => {
         cy.get(datatest('mdl-user-settings')).should('be.visible');
         cy.get(datatest('switch-delete-spawn-mino-on-paint-drag')).should('be.checked');
         cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'block');
-        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'none');
         cy.get(datatest('panel-user-settings-input')).should('have.css', 'display', 'none');
 
         // タブ切替
@@ -281,11 +280,11 @@ describe('User settings', () => {
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-list-view-menu')).should('not.exist');
 
-        // リストビューの右上から開く(リスト/ツリービュータブが初期表示)
+        // リストビューの右上から開く(List/Tree の表示設定は右下のポップオーバーにあるので全般タブが初期表示)
         cy.get(datatest('btn-list-view')).click();
         cy.get(datatest('btn-list-view-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
-        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-general')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
@@ -323,28 +322,26 @@ describe('User settings', () => {
         cy.get(datatest('list-view-tools')).should('be.visible');
     });
 
-    it('Gray after line clear: tabs stay in sync and setting persists', () => {
+    it('Gray after line clear: lives on the Edit tab only and the setting persists', () => {
         cy.clearLocalStorage();
 
         visit({ mode: 'edit' });
 
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-edit')).should('not.be.checked');
-        cy.get(datatest('switch-gray-after-line-clear-edit')).check({ force: true });
-
-        // 同一設定なのでリスト/ツリービュータブ側も連動する
-        cy.get(datatest('switch-gray-after-line-clear-view')).should('be.checked');
+        cy.get(datatest('panel-user-settings-edit')).find(datatest('switch-gray-after-line-clear'))
+            .should('not.be.checked');
+        cy.get(datatest('switch-gray-after-line-clear')).should('have.length', 1).check({ force: true });
         cy.get(datatest('btn-save')).click();
 
         // 保存後に開き直しても有効のまま
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-edit')).should('be.checked');
+        cy.get(datatest('switch-gray-after-line-clear')).should('be.checked');
 
         // キャンセルで閉じても保存値は変わらない
-        cy.get(datatest('switch-gray-after-line-clear-edit')).uncheck({ force: true });
+        cy.get(datatest('switch-gray-after-line-clear')).uncheck({ force: true });
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('switch-gray-after-line-clear-edit')).should('be.checked');
+        cy.get(datatest('switch-gray-after-line-clear')).should('be.checked');
         cy.get(datatest('btn-cancel')).click();
     });
 
@@ -526,26 +523,75 @@ describe('User settings layout', () => {
         cy.get(datatest('btn-cancel')).click();
     });
 
-    it('hides the side panel option on mobile', () => {
+    it('has no List/Tree tab: those settings live in the view settings popover', () => {
         cy.clearLocalStorage();
-        visit({ mode: 'edit' });
+        visit({ mode: 'edit', lng: 'en' });
 
-        // サイドパネルを出せない環境では項目ごと隠す
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-view')).click();
-        cy.get(datatest('switch-trim-top-blank')).should('exist');
-        cy.get(datatest('switch-editor-side-panel')).should('not.exist');
+        cy.get('[datatest^="tab-user-settings-"]').then(($tabs) => {
+            expect([...$tabs].map(tab => tab.getAttribute('datatest'))).to.deep.equal([
+                'tab-user-settings-edit', 'tab-user-settings-input', 'tab-user-settings-keys',
+                'tab-user-settings-general',
+            ]);
+        });
+        cy.get(datatest('mdl-user-settings')).should('not.contain', 'Trim top blank')
+            .and('not.contain', 'Show side panel');
+        cy.get(datatest('btn-cancel')).click();
+
+        // The popover keeps the List/Tree settings and no longer links to the modal
+        cy.get(datatest('btn-list-view')).click();
+        cy.get(datatest('btn-view-settings')).click();
+        cy.get(datatest('range-view-zoom')).should('be.visible');
+        cy.get(datatest('view-settings-popover')).should('contain', 'Trim top blank')
+            .and('not.contain', 'All settings');
+    });
+
+    it('keeps the kick table above the tabs, explains it, and persists the choice', () => {
+        cy.clearLocalStorage();
+        visit({ mode: 'edit', lng: 'en' });
+
+        cy.get(datatest('btn-editor-user-settings')).click();
+        // Visible whichever tab is open
+        cy.get(datatest('group-rotation-system')).should('be.visible');
+        cy.get(datatest('segment-rotation-system-srs')).should('have.attr', 'aria-checked', 'true');
+        cy.get(datatest('txt-rotation-system-effects')).should('have.attr', 'data-value', 'srs')
+            .and('contain', 'SRS');
+        cy.get(datatest('tab-user-settings-general')).click();
+        // Switching tabs may scroll the modal; the header is still the one element above every panel
+        cy.get(datatest('group-rotation-system')).scrollIntoView().should('be.visible');
+        cy.get(datatest('panel-user-settings-input')).find(datatest('segment-rotation-system-srs'))
+            .should('not.exist');
+
+        cy.get(datatest('segment-rotation-system-srsPlus')).click();
+        cy.get(datatest('segment-rotation-system-srsPlus')).should('have.attr', 'aria-checked', 'true');
+        cy.get(datatest('txt-rotation-system-effects')).should('have.attr', 'data-value', 'srsPlus')
+            .and('contain', '180');
+        cy.get(datatest('btn-save')).click();
+
+        visit({ mode: 'edit', lng: 'en', reload: true });
+        cy.get(datatest('btn-editor-user-settings')).click();
+        cy.get(datatest('segment-rotation-system-srsPlus')).should('have.attr', 'aria-checked', 'true');
         cy.get(datatest('btn-cancel')).click();
     });
 
-    it('shows the side panel option without a PC suffix on a PC-width viewport', () => {
+    it('greys out the Rotate 180 key unless SRS+ is selected, before saving', () => {
         cy.clearLocalStorage();
-        cy.viewport(1280, 800);
-        visit({ mode: 'edit', mobile: false });
+        visit({ mode: 'edit', lng: 'en' });
+
         cy.get(datatest('btn-editor-user-settings')).click();
-        cy.get(datatest('tab-user-settings-view')).click();
-        cy.get(datatest('switch-editor-side-panel')).should('exist')
-            .parents('.switch').should('have.text', 'Show side panel');
+        cy.get(datatest('tab-user-settings-keys')).click();
+        cy.get(datatest('details-user-settings-piece-controls')).find('summary').click();
+        // Default SRS: the row keeps its key but cannot be edited, and says why
+        cy.get(pieceShortcutInput('Rotate180')).should('be.disabled').and('have.value', 'A');
+        cy.get(datatest('badge-piece-shortcut-rotate180')).should('have.text', 'SRS+');
+        cy.get(pieceShortcutInput('RotateLeft')).should('not.be.disabled');
+
+        // The header is read before Save
+        cy.get(datatest('segment-rotation-system-srsPlus')).click();
+        cy.get(pieceShortcutInput('Rotate180')).should('not.be.disabled');
+        cy.get(datatest('badge-piece-shortcut-rotate180')).should('not.exist');
+        cy.get(datatest('segment-rotation-system-classic')).click();
+        cy.get(pieceShortcutInput('Rotate180')).should('be.disabled');
         cy.get(datatest('btn-cancel')).click();
     });
 });
@@ -591,11 +637,11 @@ describe('User settings appearance', () => {
 
     beforeEach(() => cy.clearLocalStorage());
 
-    it('opens on the View tab from the Reader gear', () => {
+    it('opens on the General tab from the Reader gear', () => {
         visit({});
         cy.get(datatest('tools')).find(datatest('btn-reader-user-settings')).click();
         cy.get(datatest('mdl-user-settings')).should('be.visible');
-        cy.get(datatest('panel-user-settings-view')).should('have.css', 'display', 'block');
+        cy.get(datatest('panel-user-settings-general')).should('have.css', 'display', 'block');
         cy.get(datatest('panel-user-settings-edit')).should('have.css', 'display', 'none');
         cy.get(datatest('btn-cancel')).click();
         cy.get(datatest('mdl-user-settings')).should('not.exist');
@@ -622,7 +668,8 @@ describe('User settings appearance', () => {
         // 「無効／有効」などの名前は、どのスイッチにも出さない
         cy.get(datatest('mdl-user-settings')).find('.switch input[type=checkbox]').should('have.length.greaterThan', 3)
             .each(([input]) => {
-                const text = input.closest('label').textContent.trim();
+                // 行全体が label なので、名前を含まないスイッチ部分（input と lever の親）だけを見る
+                const text = input.parentElement.textContent.trim();
                 expect(text, input.getAttribute('datatest')).to.equal('');
             });
 

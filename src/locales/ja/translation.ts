@@ -53,7 +53,6 @@ export const resources = {
         Title: 'ユーザー設定',
         Tabs: {
             Edit: '編集',
-            View: 'List/Tree',
             Input: 'INPUT',
             Keys: 'キー設定',
             General: '全般',
@@ -99,6 +98,12 @@ export const resources = {
             Classic: () => 'クラシック',
             Srs: () => 'SRS',
             SrsPlus: () => 'SRS+',
+            SrsPlusOnly: 'SRS+',
+            Effects: {
+                Classic: 'Classic — クラシック配色。スピン判定と B2B はなし',
+                Srs: 'SRS — ガイドライン配色。T-Spin を判定し、B2B は ON/OFF（PPT ルール）',
+                SrsPlus: 'SRS+ — TETR.IO S2 ルール。180°回転、All-Mini+、B2B 連鎖、Sold Slear に対応',
+            },
         },
         ShortcutInput: {
             Placeholder: 'キーを押す',
@@ -148,6 +153,12 @@ export const resources = {
                 Off: '左右',
                 On: 'ソフトドロップ',
             },
+            SpawnRotation: {
+                Title: '出現時の先行回転',
+                Description: 'HOLD: 回転キー・ボタンを押したままミノが出現すると、その向きに回した状態で出現します。',
+                Off: 'OFF',
+                Hold: 'HOLD',
+            },
         },
         PieceControls: {
             Title: 'ピースコントロール',
@@ -157,7 +168,6 @@ export const resources = {
             Unit: 'ページ',
             Unlimited: '無制限',
         },
-        EditorSidePanel: 'サイドパネルを表示',
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',
@@ -189,6 +199,8 @@ export const resources = {
         UtilsCurrentPage: 'このページに適用', UtilsAllPages: '全ページに適用', UtilsModes: '編集モード',
         UtilsPages: '削除',
         ClearPast: 'このページより前', ClearToEnd: 'このページより後',
+        ClearOthers: 'このページ以外',
+        ResetAllPages: 'すべてリセット',
         CommentPlaceholder: 'Comment',
         AllMirror: '左右反転', ToGray: 'グレー化', ToBlack: 'グレー以外を削除',
         ResetAllComments: 'コメントをリセット', ReplaceComments: 'コメントを置換',
@@ -352,7 +364,6 @@ export const resources = {
         },
     },
     ListView: {
-        AllSettings: 'すべての設定',
         TrimTopBlank: '上部の空白行を省略',
         ViewSettings: '表示設定',
         Zoom: 'ズーム',
@@ -455,6 +466,8 @@ export const resources = {
     },
     InputState: {
         Open: 'INPUT State を開く',
+        Rules: 'ルール',
+        OpenRotationSettings: 'キックテーブルを変更',
         ChainLabel: 'chain',
         Share: 'Share',
         NativeShare: 'Share…',
@@ -546,7 +559,7 @@ export const resources = {
             EngineError: 'AIエラー',
         },
         EngineColdClear: 'Cold Clear',
-        EngineSoldSlear: 'Sold Slear',
+        EngineSoldSlear: 'Sold Slear {{version}}',
         EngineSwitchAria: 'AIエンジンを切り替え（現在: {{name}}）',
         EngineColdClearShort: 'CC',
         EngineSoldSlearShort: 'SS',
@@ -554,12 +567,14 @@ export const resources = {
         EngineSwitchBusy: 'AI: 探索中またはリプレイ解析中はエンジンを切り替えられません',
         SoldSlearNotice: '開発版・SRS+ 前提',
         SoldSlearRotationWarning: 'Sold Slear は SRS+ を前提にしています。現在の回転法則では提案手に到達できないことがあります。',
+        ColdClearRotationWarning: 'Cold Clear は SRS を前提にしています。Classic では提案手に到達できないことがあります。',
+        OpenRotationSettings: 'キックテーブルを変更',
         SoldSlearNeedsNext: 'Sold Slear には NEXT が1個以上必要です',
         SoldSlearPlacedRank: 'Sold Slear: 候補{{total}}件中 {{rank}}位',
         SoldSlearPlacedOutside: 'Sold Slear: 候補{{total}}件の中にありません',
         SoldSlearBudgetLabel: '探索量',
         SoldSlearBudgetStandard: '標準',
-        SoldSlearBudgetStandardDetail: '標準（512・常に同じ手）',
+        SoldSlearBudgetStandardDetail: '標準（2,048・常に同じ手）',
         SoldSlearBudgetTime: '{{ms}}ms',
     },
 };

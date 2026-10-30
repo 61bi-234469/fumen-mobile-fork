@@ -216,7 +216,10 @@ const pieceActionButton = ({
         // Keep a continuous hold alive until the corresponding pointerup arrives.
         if (isPieceShortcutHoldActive(holdId)) {
             event.preventDefault();
+            return;
         }
+        // No pointerup follows a cancel, so release a held rotate input or every later spawn would be pre-rotated.
+        endPieceShortcut(holdId);
     };
     return trayButtonView({
         key, datatest, label, iconName, disabled, shortcutLabel,

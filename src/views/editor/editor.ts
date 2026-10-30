@@ -348,7 +348,9 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             : inputStatsPanel({
                 ...computedInputStats,
                 lastAction: state.events.lastInputPlacement ?? computedInputStats.lastAction,
-            }, inputStatsTier, inputStatsGarbage, { surgeChargeAt, preset: chainPreset, open: openInputState });
+            }, inputStatsTier, inputStatsGarbage, {
+                surgeChargeAt, preset: chainPreset, open: openInputState, rotationSystem: state.mode.rotationSystem,
+            });
     const queueOverlays = layout.pieceQueue.visible ? pieceQueueOverlays({
         queueState,
         statsPanel,

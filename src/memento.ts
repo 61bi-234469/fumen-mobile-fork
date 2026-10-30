@@ -5,6 +5,7 @@ import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
+import { isValidSpawnRotationMode, SpawnRotationMode } from './lib/spawn_rotation';
 import lodash from 'lodash';
 import { showToast } from './lib/toast';
 import { i18n } from './locales/keys';
@@ -331,6 +332,7 @@ interface UserSettings {
     pieceShortcutDasCutFrames: number;
     pieceShortcutSdf: number | string;
     pieceShortcutSoftDropPriority: boolean;
+    pieceSpawnRotation: SpawnRotationMode;
     pieceShortcutDasMs?: number;
     pieceShortcutArrMs?: number;
     gifFrameDelayMs: number;
@@ -386,6 +388,10 @@ const safer = {
     // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
     rotationSystem: (value: any): RotationSystem => {
         return value === 'classic' || value === 'srs' || value === 'srsPlus' ? value : 'srs';
+    },
+    // 未知の値は復元せず、既定値（off）のままにする。
+    spawnRotation: (value: any): SpawnRotationMode | undefined => {
+        return isValidSpawnRotationMode(value) ? value : undefined;
     },
     editorSidePanelTab: (value: any): EditorSidePanelTab | undefined => {
         return value === 'list' || value === 'tree' ? value : undefined;
@@ -500,6 +506,7 @@ export const localStorageWrapper = {
             pieceShortcutDasCutFrames: safer.number(obj.pieceShortcutDasCutFrames),
             pieceShortcutSdf: obj.pieceShortcutSdf === 'Infinity' ? Infinity : safer.number(obj.pieceShortcutSdf),
             pieceShortcutSoftDropPriority: safer.boolean(obj.pieceShortcutSoftDropPriority),
+            pieceSpawnRotation: safer.spawnRotation(obj.pieceSpawnRotation),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
             pieceShortcutArrMs: safer.number(obj.pieceShortcutArrMs),
             gifFrameDelayMs: safer.number(obj.gifFrameDelayMs),

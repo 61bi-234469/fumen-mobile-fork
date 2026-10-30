@@ -33,9 +33,9 @@ project. Builds can opt out with `SOLD_SLEAR_ENABLED=false` (see `webpack.config
   - [chouhy/cold-clear-2](https://github.com/chouhy/cold-clear-2) at
     `b20a92b0ed3230dd910d0674f7a09c552a34dd46` (non-T mini spin retention and the all-spin
     weight preset), under the same dual license files (`LICENSE-MIT`, `LICENSE-APACHE`)
-  - [61bi-234469/s2-bot-lab](https://github.com/61bi-234469/s2-bot-lab) at
-    `61c0efdf438e7acc05abf7335a2397ebbab06872` (the s2-bot-lab modifications and the build),
-    MIT, Copyright (c) 2026 61bi-234469
+  - [61bi-234469/s2-bot-lab](https://github.com/61bi-234469/s2-bot-lab), built from its
+    development repository at `8dccbcdf66d1a4a359c44e9170b6a19ce51e0ebd` (the s2-bot-lab
+    modifications and the build), MIT, Copyright (c) 2026 61bi-234469
 - **License choice for this distribution**: MIT (texts in `third_party/sold-slear/`:
   `LICENSE-MIT-cold-clear-2`, `LICENSE-s2-bot-lab`; Apache-2.0 text in `third_party/licenses/`)
 - **`instant` 0.1.13 (patched)**: BSD-3-Clause, Copyright (c) 2019 Sébastien Crozet

@@ -31,6 +31,7 @@ import {
 import { SerializedTree } from '../lib/fumen/tree_types';
 import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
+import { generateKey } from '../lib/random';
 import { createPageFromClipboardField, parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
 import { showToast } from '../lib/toast';
@@ -92,6 +93,7 @@ export interface PageActions {
     lastPage: () => action;
     clearToEnd: () => action;
     clearPast: () => action;
+    clearOthers: () => action;
     applyPageRotation: () => action;
     changeToRef: (data: { index: number }) => action;
     changeToKey: (data: { index: number }) => action;
@@ -612,6 +614,18 @@ export const pageActions: Readonly<PageActions> = {
             actions.clearInferencePiece(),
             actions.commitCommentText(),
             clearPast({ pageIndex: state.fumen.currentIndex }),
+            actions.reopenCurrentPage(),
+        ]);
+    },
+    clearOthers: () => (state): NextState => {
+        // 後ろ→前の順に削除し、同じ履歴キーで1回のUndoにまとめる
+        const historyKey = generateKey();
+        return sequence(state, [
+            actions.fixInferencePiece(),
+            actions.clearInferencePiece(),
+            actions.commitCommentText(),
+            clearToEnd({ historyKey, pageIndex: state.fumen.currentIndex }),
+            removeLeadingPages({ historyKey, dropCount: state.fumen.currentIndex, nextIndex: 0 }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -1382,7 +1396,16 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
     ]);
 };
 
-const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<State>): NextState => {
+// historyKeyを渡すと、同じキーで直前に登録された履歴へ結合する
+const registerKeyedHistoryTask = (task: OperationTask, historyKey?: string) => (
+    historyKey === undefined
+        ? mementoActions.registerHistoryTask({ task })
+        : mementoActions.registerHistoryTask({ task: { ...task, key: historyKey }, mergeKey: historyKey })
+);
+
+const clearToEnd = (
+    { pageIndex, historyKey }: { pageIndex: number, historyKey?: string },
+) => (state: Readonly<State>): NextState => {
     const fumen = state.fumen;
     const pages = fumen.pages;
 
@@ -1440,7 +1463,7 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
-            mementoActions.registerHistoryTask({ task }),
+            registerKeyedHistoryTask(task, historyKey),
         ]);
     }
 
@@ -1464,14 +1487,14 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                 currentIndex: nextIndex,
             },
         }),
-        actions.registerHistoryTask({ task }),
+        registerKeyedHistoryTask(task, historyKey),
     ]);
 };
 
 // 先頭からdropCount枚を削除する。残る先頭ページ (旧index=dropCount) はKey化・コメント確定・
 // colorize継承を行ってから消すため、後続ページの参照が壊れない。
 const removeLeadingPages = (
-    { dropCount, nextIndex }: { dropCount: number, nextIndex: number },
+    { dropCount, nextIndex, historyKey }: { dropCount: number, nextIndex: number, historyKey?: string },
 ) => (state: Readonly<State>): NextState => {
     const fumen = state.fumen;
     const pages = fumen.pages;
@@ -1552,7 +1575,7 @@ const removeLeadingPages = (
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
-            mementoActions.registerHistoryTask({ task }),
+            registerKeyedHistoryTask(task, historyKey),
             actions.reopenCurrentPage(),
         ]);
     }
@@ -1599,7 +1622,7 @@ const removeLeadingPages = (
                 currentIndex: nextIndex,
             },
         }),
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, nextIndex + pageIndex) }),
+        registerKeyedHistoryTask(toPageTaskStack(tasks, nextIndex + pageIndex), historyKey),
         actions.reopenCurrentPage(),
     ]);
 };

@@ -6,6 +6,8 @@ import { px, style } from '../../lib/types';
 import { CSSProperties } from 'typestyle/lib/types';
 import { i18n } from '../../locales/keys';
 import { InputStatsPanelTier } from './responsive_layout';
+import { rotationSystemLabel } from '../../lib/input_snapshot';
+import { RotationSystem } from '../../states';
 
 export interface InputGarbagePanelState {
     last?: { attack: number; cancelled: number; sent: number; risen: number };
@@ -14,6 +16,8 @@ export interface InputGarbagePanelState {
 export interface InputChainPanelOptions {
     // Rules of the selected rotation system; only SRS+ counts a B2B chain (default).
     preset?: InputRulesPreset;
+    // Named in the summary tier so a silent B2B under Classic/SRS is explained; the compact tier has no room.
+    rotationSystem?: RotationSystem;
     // TETR.IO B2B charging threshold (Surge); undefined when the rules have no charging.
     surgeChargeAt?: number;
     // Opens the INPUT State sheet; the panel becomes a button when given.
@@ -61,6 +65,15 @@ const chainRows = (stats: InputStats, options: InputChainPanelOptions) => {
             displayRen(stats.renChain)),
     ];
 };
+
+// Which kick table scores the chains, as the settings call it (Classic / SRS / SRS+).
+const rulesRow = (rotationSystem: RotationSystem, preset: InputRulesPreset) => div({
+    key: 'input-stats-rules', datatest: 'input-stats-rules', 'data-preset': preset,
+    style: style({
+        color: CHAIN_IDLE_COLOR, fontSize: px(10), fontWeight: '700', letterSpacing: '.06em', lineHeight: px(14),
+        textAlign: 'center', whiteSpace: 'nowrap',
+    }),
+}, rotationSystemLabel(rotationSystem).toUpperCase());
 
 const panelStyle: CSSProperties = {
     boxSizing: 'border-box', marginTop: px(6), padding: '2px 0', width: '100%',
@@ -131,6 +144,8 @@ export const inputStatsPanel = (
         key: 'input-stats', datatest: 'input-stats', ...panelAttributes(options.open),
         style: style({ ...panelStyle, cursor: options.open === undefined ? undefined : 'pointer' }),
     }, [
+        ...(options.rotationSystem === undefined || tier !== 'summary'
+            ? [] : [rulesRow(options.rotationSystem, options.preset ?? 'tetrioS2')]),
         ...chainRows(stats, options),
         div({ key: 'input-stats-action', datatest: 'input-stats-action',
             'data-lines': String(action?.clearedLines ?? 0), 'data-spin': action?.spin ?? 'none',

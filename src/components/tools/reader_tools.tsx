@@ -8,6 +8,7 @@ import { EditShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { chooseToolbarTier, ToolbarLayout } from './toolbar_layout';
 import { AppActionCluster } from './app_action_cluster';
+import { i18n } from '../../locales/keys';
 
 interface Props {
     currentPage: number;
@@ -17,6 +18,7 @@ interface Props {
     animationState: AnimationState;
     palette: ColorPalette;
     loop: boolean;
+    pageStripOpen: boolean;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
     actions: {
@@ -31,6 +33,7 @@ interface Props {
         nextPage: (data: { loop: boolean }) => void;
         firstPage: () => void;
         lastPage: () => void;
+        togglePageStrip: () => void;
     };
 }
 
@@ -45,6 +48,7 @@ export const ReaderTools: Component<Props> = (
         loop,
         editShortcuts,
         shortcutLabelVisible,
+        pageStripOpen,
         actions,
     },
 ) => {
@@ -99,7 +103,9 @@ export const ReaderTools: Component<Props> = (
                     }} enable={loop || 1 < currentPage}/>,
 
         <ToolText key="text-pages" datatest="text-pages" height={buttonHeight}
-                  minWidth={fit.pageMinWidth} fontSize={fit.pageFontSize} title={fit.pageTitle}>
+                  minWidth={fit.pageMinWidth} fontSize={fit.pageFontSize} title={fit.pageTitle}
+                  buttonTitle={i18n.PageStrip.Open()} enable={1 < maxPage} expanded={pageStripOpen}
+                  onclick={() => actions.togglePageStrip()}>
             {fit.pageText}
         </ToolText>,
 

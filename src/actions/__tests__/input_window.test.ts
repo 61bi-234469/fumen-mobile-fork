@@ -82,6 +82,13 @@ describe('inputWindowActions', () => {
         expect(calls).toEqual([]);
     });
 
+    test('opening the window closes the page thumbnail strip', () => {
+        const opened = { ...createState(), pageStrip: { open: true } } as any;
+        const state = run(opened, inputWindowActions.openInputWindow({ tab: 'state' }) as any);
+
+        expect((state as any).pageStrip.open).toBe(false);
+    });
+
     test('opening the queue tab seeds the queue and keeps the tapped slot focus', () => {
         const state = run(createState(), inputWindowActions.openInputWindow({ tab: 'queue', focus: 'hold' }) as any);
 

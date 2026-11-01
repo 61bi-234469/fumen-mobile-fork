@@ -445,6 +445,12 @@
         ShowSidePanel: 'Show side panel',
         HideSidePanel: 'Hide side panel',
     },
+    PageStrip: {
+        Open: 'Show page thumbnails',
+        Label: 'Page thumbnails',
+        Item: 'Page {{page}}',
+        Close: 'Close',
+    },
     PieceQueue: {
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',

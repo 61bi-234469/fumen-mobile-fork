@@ -278,4 +278,17 @@ describe('pageActions.openPage', () => {
         expect(next.fumen.currentIndex).toBe(1);
         expect(next.tree).toBeUndefined();
     });
+
+    test('closes the page thumbnail strip once only one page is left', () => {
+        const noTree = { enabled: false, rootId: null, nodes: [], activeNodeId: null };
+        const single = {
+            ...makeState(noTree),
+            pageStrip: { open: true },
+            fumen: { currentIndex: 0, maxPage: 1, pages: [makePage(0)] },
+        };
+        expect((pageActions.openPage({ index: 0 })(single) as any).pageStrip.open).toBe(false);
+
+        const several = { ...makeState(noTree), pageStrip: { open: true } };
+        expect((pageActions.openPage({ index: 1 })(several) as any).pageStrip).toBeUndefined();
+    });
 });

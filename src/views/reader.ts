@@ -14,6 +14,7 @@ import { ReaderTools } from '../components/tools/reader_tools';
 import { HighlightType } from '../state_types';
 import { page_slider } from '../components/page_slider';
 import { navigatorElement } from './navigator';
+import { PageThumbnailStrip } from '../components/page_thumbnail_strip';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -288,11 +289,33 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             nextPage: actions.nextPage,
             firstPage: actions.firstPage,
             lastPage: actions.lastPage,
+            togglePageStrip: actions.togglePageStrip,
         },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
+        pageStripOpen: state.pageStrip.open,
         animationState: state.play.status,
         loop: state.mode.loop,
+    });
+};
+
+// ページ表示タップで開くサムネイルスライダー。ツールバーの真上に重ねる
+const pageThumbnailStrip = (state: State, actions: Actions, toolsHeight: number) => {
+    const modalOpen = Object.values(state.modal).some(flag => flag);
+    if (!state.pageStrip.open || state.fumen.maxPage < 2 || modalOpen) {
+        return [];
+    }
+    return PageThumbnailStrip({
+        pages: state.fumen.pages,
+        currentIndex: state.fumen.currentIndex,
+        guideLineColor: state.fumen.guideLineColor,
+        bottom: toolsHeight,
+        width: state.display.width,
+        tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId } : undefined,
+        actions: {
+            openPageWhenChange: actions.openPageWhenChange,
+            closePageStrip: actions.closePageStrip,
+        },
     });
 };
 
@@ -364,6 +387,8 @@ export const view: View<State, Actions> = (state, actions) => {
             getComment(state, actions, layout),
 
             Tools(state, actions, layout.tools.size.height, palette),
+
+            ...pageThumbnailStrip(state, actions, layout.tools.size.height),
         ]),
     ]);
 };

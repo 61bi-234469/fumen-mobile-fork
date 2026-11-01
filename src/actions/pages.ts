@@ -1,5 +1,5 @@
 ﻿import { action, actions, main } from '../actions';
-import { NextState, sequence } from './commons';
+import { closePageStripState, NextState, sequence } from './commons';
 import { AnimationState, Piece, TouchTypes } from '../lib/enums';
 import { Move, Page, PreCommand } from '../lib/fumen/types';
 import { Block } from '../state_types';
@@ -75,6 +75,8 @@ export interface PageActions {
     reopenCurrentPage: () => action;
     openPage: (data: { index: number }) => action;
     openPageWhenChange: (data: { index: number }) => action;
+    togglePageStrip: () => action;
+    closePageStrip: () => action;
     insertPage: (data: { index: number; skipGrayAfterLineClear?: boolean }) => action;
     insertRefPage: (data: { index: number }) => action;
     insertKeyPage: (data: { index: number; skipGrayAfterLineClear?: boolean }) => action;
@@ -278,6 +280,9 @@ export const pageActions: Readonly<PageActions> = {
                     },
                 };
             },
+            // 1ページになったらサムネイルスライダーは役目がないので閉じる
+            newState => newState.pageStrip?.open && newState.fumen.maxPage < 2
+                ? pageActions.closePageStrip()(newState) : undefined,
         ]);
     },
     openPageWhenChange: ({ index }) => (state): NextState => {
@@ -287,6 +292,18 @@ export const pageActions: Readonly<PageActions> = {
 
         return pageActions.openPage({ index })(state);
     },
+    togglePageStrip: () => (state): NextState => {
+        if (!state.pageStrip.open && state.fumen.maxPage < 2) {
+            return undefined;
+        }
+        return {
+            pageStrip: {
+                ...state.pageStrip,
+                open: !state.pageStrip.open,
+            },
+        };
+    },
+    closePageStrip: () => (state): NextState => closePageStripState(state),
     insertPage: ({ index, skipGrayAfterLineClear = false }) => (state): NextState => {
         const fumen = state.fumen;
         const pages = fumen.pages;

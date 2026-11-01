@@ -7,6 +7,7 @@ import { EditShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { chooseToolbarTier, ToolbarLayout, ToolbarSeparator } from './toolbar_layout';
 import { AppActionCluster } from './app_action_cluster';
+import { i18n } from '../../locales/keys';
 
 interface Props {
     height: number;
@@ -20,6 +21,7 @@ interface Props {
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
     loop: boolean;
+    pageStripOpen: boolean;
     actions: {
         openFumenModal: () => void;
         openUserSettingsModal: () => void;
@@ -32,6 +34,7 @@ interface Props {
         nextPage: (data: { loop: boolean }) => void;
         firstPage: () => void;
         lastPage: () => void;
+        togglePageStrip: () => void;
         duplicatePageOnly: (data: { index: number }) => void;
         duplicatePageToGray: (data: { index: number }) => void;
         undo: () => void;
@@ -52,6 +55,7 @@ export const EditorTools: Component<Props> = (
         editShortcuts,
         shortcutLabelVisible,
         loop,
+        pageStripOpen,
         actions,
     },
 ) => {
@@ -107,7 +111,9 @@ export const EditorTools: Component<Props> = (
                     }} enable={loop || 1 < currentPage}/>,
 
         <ToolText key="text-pages" datatest="text-pages" height={buttonHeight}
-                  minWidth={fit.pageMinWidth} fontSize={fit.pageFontSize} title={fit.pageTitle}>
+                  minWidth={fit.pageMinWidth} fontSize={fit.pageFontSize} title={fit.pageTitle}
+                  buttonTitle={i18n.PageStrip.Open()} enable={1 < maxPage} expanded={pageStripOpen}
+                  onclick={() => actions.togglePageStrip()}>
             {fit.pageText}
         </ToolText>,
 

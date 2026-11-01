@@ -7,7 +7,7 @@ const branchedTreeFumen = 'v115@bhzhPeAgWWBFLLwCSIMSAT2J8DJzF7BTPvtCXPvtCX?1bxEB
 const strip = () => cy.get(datatest('page-thumbnail-strip'));
 
 describe('Page thumbnail strip', () => {
-    it('jumps between pages from the Reader and keeps the strip open', () => {
+    it('jumps to a tapped page from the Reader and closes the strip', () => {
         visit({ fumen: emptyPagesFumen(6) });
 
         operations.pageStrip.open();
@@ -18,9 +18,11 @@ describe('Page thumbnail strip', () => {
 
         operations.pageStrip.select(4);
         cy.get(datatest('text-pages')).should('have.text', '4 / 6');
-        strip().should('be.visible');
-        operations.pageStrip.expectCurrent(4);
+        strip().should('not.exist');
 
+        // ツールバーのページ送りでは開いたまま強調が追従する
+        operations.pageStrip.open();
+        operations.pageStrip.expectCurrent(4);
         cy.get(datatest('btn-next-page')).click();
         cy.get(datatest('text-pages')).should('have.text', '5 / 6');
         operations.pageStrip.expectCurrent(5);
@@ -103,6 +105,8 @@ describe('Page thumbnail strip', () => {
 
         operations.pageStrip.select(6);
         cy.get(datatest('text-pages')).should('have.text', '6 / 7');
+        strip().should('not.exist');
+        operations.pageStrip.open();
         operations.pageStrip.expectCurrent(6);
     });
 });

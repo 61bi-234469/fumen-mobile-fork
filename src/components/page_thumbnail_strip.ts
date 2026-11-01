@@ -215,7 +215,10 @@ export const PageThumbnailStrip = (
         position: cells !== undefined
             ? { left: cells[index].x * cellSize.width, top: cells[index].y * cellSize.height }
             : undefined,
-        onselect: () => actions.openPageWhenChange({ index }),
+        onselect: () => {
+            actions.openPageWhenChange({ index });
+            actions.closePageStrip();
+        },
     }));
 
     const content = cells !== undefined

@@ -77,14 +77,14 @@ describe('PageThumbnailStrip', () => {
         expect(items[0].children[0].attributes.width).toBe(PAGE_STRIP_THUMBNAIL_WIDTH);
     });
 
-    test('tapping a thumbnail opens that page without closing the strip', () => {
+    test('tapping a thumbnail opens that page and closes the strip', () => {
         const { roots, openPageWhenChange, closePageStrip } = render();
         const items = byDatatest(roots, 'page-thumbnail-item');
 
         items[4].attributes.onclick({ stopPropagation: () => undefined });
 
         expect(openPageWhenChange).toHaveBeenCalledWith({ index: 4 });
-        expect(closePageStrip).not.toHaveBeenCalled();
+        expect(closePageStrip).toHaveBeenCalledTimes(1);
     });
 
     test('the scrim and close button close the strip', () => {

@@ -310,6 +310,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
     }
 
     if (event.key === 'Escape') {
+        // 一番手前に出ているので、インスペクタや矩形選択より先に閉じる
+        if (state.pageStrip?.open) {
+            actions.closePageStrip();
+            event.preventDefault();
+            return;
+        }
         if (state.editorUi.inspector !== 'none') {
             actions.closeEditorInspector();
             event.preventDefault();

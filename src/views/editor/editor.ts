@@ -32,6 +32,7 @@ import { inputChainPanel, inputStatsPanel } from './input_stats_panel';
 import { inputGarbageView } from '../../lib/input_replay';
 import { gaugeColumnWidth, replayGauge } from '../../components/replay/replay_gauge';
 import { InputAiGuideOverlay } from '../../components/input_ai_guide_overlay';
+import { PageThumbnailStrip } from '../../components/page_thumbnail_strip';
 import { availableAiEngines, resolveAiEngine } from '../../lib/ai_engine';
 import { i18n } from '../../locales/keys';
 
@@ -594,6 +595,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             nextPage: actions.nextPage,
             firstPage: actions.firstPage,
             lastPage: actions.lastPage,
+            togglePageStrip: actions.togglePageStrip,
             duplicatePageOnly: state.editorUi.primaryTool === 'piece'
                 && state.editorUi.pieceLayout === 'select'
                 ? actions.duplicatePageToGray
@@ -604,9 +606,30 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
+        pageStripOpen: state.pageStrip.open,
         undoCount: state.history.undoCount,
         redoCount: state.history.redoCount,
         inferenceCount: state.events.inferences.length,
+    });
+};
+
+// ページ表示タップで開くサムネイルスライダー。ツールバーの真上に重ねる
+const pageThumbnailStrip = (state: State, actions: Actions, toolsHeight: number) => {
+    const modalOpen = Object.values(state.modal).some(flag => flag);
+    if (!state.pageStrip.open || state.fumen.maxPage < 2 || modalOpen) {
+        return [];
+    }
+    return PageThumbnailStrip({
+        pages: state.fumen.pages,
+        currentIndex: state.fumen.currentIndex,
+        guideLineColor: state.fumen.guideLineColor,
+        bottom: toolsHeight,
+        width: state.display.width,
+        tree: state.tree.enabled ? { nodes: state.tree.nodes, rootId: state.tree.rootId } : undefined,
+        actions: {
+            openPageWhenChange: actions.openPageWhenChange,
+            closePageStrip: actions.closePageStrip,
+        },
     });
 };
 
@@ -738,6 +761,8 @@ export const view: View<State, Actions> = (state, actions) => {
                 }) : undefined as any,
 
             Tools(state, actions, layout.tools.size.height, palette),
+
+            ...pageThumbnailStrip(state, actions, layout.tools.size.height),
         ]),
     ]);
 };

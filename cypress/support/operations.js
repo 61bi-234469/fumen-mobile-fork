@@ -937,6 +937,21 @@ export const operations = {
             comments ? commentsToggle.check({ force: true }) : commentsToggle.uncheck({ force: true });
         },
     },
+    // ページ表示（text-pages）タップで開くサムネイルスライダー
+    pageStrip: {
+        open: () => {
+            cy.get(datatest('text-pages')).click();
+            cy.get(datatest('page-thumbnail-strip')).should('be.visible');
+        },
+        select: (pageNumber) => {
+            cy.get(`${datatest('page-thumbnail-item')}[data-page="${pageNumber}"]`).click();
+        },
+        expectCurrent: (pageNumber) => {
+            cy.get(`${datatest('page-thumbnail-item')}[aria-current="page"]`)
+                .should('have.length', 1)
+                .and('have.attr', 'data-page', `${pageNumber}`);
+        },
+    },
     tree: {
         setScope: (scope) => {
             cy.get(datatest('btn-tree-scope-chip')).click();

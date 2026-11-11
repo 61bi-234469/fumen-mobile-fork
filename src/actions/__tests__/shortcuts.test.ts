@@ -359,6 +359,34 @@ describe('clipboard insert shortcut', () => {
         expect(undo).not.toHaveBeenCalled();
     });
 
+    describe('page thumbnail strip', () => {
+        let closePageStrip: jest.Mock;
+        let closeEditorInspector: jest.Mock;
+
+        beforeEach(() => {
+            closePageStrip = jest.fn();
+            closeEditorInspector = jest.fn();
+            (state as any).pageStrip = { open: true };
+            (state.editorUi as any).inspector = 'flags';
+            Object.assign(actions, { closePageStrip, closeEditorInspector });
+        });
+
+        test('Escape closes the strip before the inspector', () => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+            window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', bubbles: true }));
+
+            expect(closePageStrip).toHaveBeenCalledTimes(1);
+            expect(closeEditorInspector).not.toHaveBeenCalled();
+        });
+
+        test('page shortcuts keep working while the strip is open', () => {
+            dispatchPageShortcut('Digit1');
+
+            expect(backPage).toHaveBeenCalledWith({ loop: false });
+            expect(closePageStrip).not.toHaveBeenCalled();
+        });
+    });
+
     describe('Replay fixed shortcuts', () => {
         beforeEach(() => {
             state.mode.screen = Screens.Replay;

@@ -132,6 +132,7 @@ export const modeActions: Readonly<ScreenActions> = {
                 return undefined;
             },
             setTreeAutoFocus,
+            actions.closePageStrip(),
             () => ({
                 mode: {
                     ...state.mode,
@@ -212,8 +213,10 @@ export const modeActions: Readonly<ScreenActions> = {
         }
         // 画面が変わるとフィールドのタップ経路も変わるため、
         // SPAWNミノ⇄ペイントの対象選択待ちは持ち越さない。
+        // ツールバーの並びも変わるので、サムネイルスライダーも閉じる。
         return sequence(state, [
             actions.cancelSpawnMinoPick(),
+            actions.closePageStrip(),
             newState => ({
                 mode: {
                     ...newState.mode,

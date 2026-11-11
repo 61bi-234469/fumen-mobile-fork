@@ -4,10 +4,12 @@ type ThumbnailSource = () => string;
 interface RegisteredThumbnail {
     source: ThumbnailSource;
     visible: boolean;
+    root: Element | null;
 }
 
 const registrations = new Map<ThumbnailElement, RegisteredThumbnail>();
 const observers = new Map<Element | null, IntersectionObserver>();
+const observedCounts = new Map<Element | null, number>();
 
 const applySource = (element: ThumbnailElement, source: ThumbnailSource): void => {
     const value = source();
@@ -74,15 +76,33 @@ export const lazyThumbnail = (source: ThumbnailSource) => {
                 applySource(element, source);
                 return;
             }
-            registrations.set(element, { source, visible: false });
-            getObserver(findScrollRoot(element)).observe(element);
+            const root = findScrollRoot(element);
+            registrations.set(element, { source, root, visible: false });
+            getObserver(root).observe(element);
+            observedCounts.set(root, (observedCounts.get(root) ?? 0) + 1);
         },
         onupdate: update,
         ondestroy: (element: ThumbnailElement) => {
+            const registration = registrations.get(element);
             registrations.delete(element);
             observers.forEach((observer) => {
                 observer.unobserve(element);
             });
+            if (!registration) {
+                return;
+            }
+            // 開閉するスクロール枠（サムネイルスライダーなど）の observer を残さない
+            const { root } = registration;
+            const remaining = (observedCounts.get(root) ?? 1) - 1;
+            if (0 < remaining) {
+                observedCounts.set(root, remaining);
+                return;
+            }
+            observedCounts.delete(root);
+            if (root !== null) {
+                observers.get(root)?.disconnect();
+                observers.delete(root);
+            }
         },
     };
 };

@@ -482,6 +482,10 @@ export interface State {
         tab: EditorSidePanelTab;
         width: number | null;
     };
+    // ページ表示タップで開くサムネイルスライダー。保存しない一時UI
+    pageStrip: {
+        open: boolean;
+    };
     editorUi: {
         primaryTool: PrimaryTool;
         previousPrimaryTool?: Exclude<PrimaryTool, 'piece'>;
@@ -696,6 +700,9 @@ export const initState: Readonly<State> = {
         enabled: false,
         tab: 'list',
         width: null,
+    },
+    pageStrip: {
+        open: false,
     },
     editorUi: {
         primaryTool: 'paint',

@@ -1,5 +1,5 @@
 import { action, actions } from '../actions';
-import { NextState, sequence } from './commons';
+import { closePageStripState, NextState, sequence } from './commons';
 import { coldClearActions } from './cold_clear';
 import { currentInputGarbageSegments, inputGarbageActions } from './input_garbage';
 import { toPrimitivePage, toSinglePageTask } from '../history_task';
@@ -43,6 +43,7 @@ const enterTab = (tab: InputWindowTab) => (state: State): NextState => {
 // せり上がりの下書きはタブを離れるか閉じるときに適用し、State と共有URLが常に適用後の内容を示すようにする。
 export const inputWindowActions: Readonly<InputWindowActions> = {
     openInputWindow: ({ tab, focus }) => (state): NextState => sequence(state, [
+        closePageStripState,
         nextState => ({
             modal: { ...nextState.modal, inputWindow: true },
             temporary: {

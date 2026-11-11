@@ -470,6 +470,12 @@ export const i18n = {
         ShowSidePanel: () => t('Navigator.ShowSidePanel'),
         HideSidePanel: () => t('Navigator.HideSidePanel'),
     },
+    PageStrip: {
+        Open: () => t('PageStrip.Open'),
+        Label: () => t('PageStrip.Label'),
+        Item: (page: number) => t('PageStrip.Item', { page }),
+        Close: () => t('PageStrip.Close'),
+    },
     PieceQueue: {
         HoldLabel: () => t('PieceQueue.HoldLabel'),
         CurrentLabel: () => t('PieceQueue.CurrentLabel'),

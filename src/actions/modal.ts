@@ -1,4 +1,4 @@
-import { NextState, sequence } from './commons';
+import { closePageStripState, NextState, sequence } from './commons';
 import { action } from '../actions';
 import { State, UserSettingsTab } from '../states';
 import { coldClearActions } from './cold_clear';
@@ -30,6 +30,7 @@ type ModalName = keyof State['modal'];
 
 const setModal = (name: ModalName, open: boolean) =>
     (state: Readonly<State>): NextState => ({
+        ...(open ? closePageStripState(state) : {}),
         modal: {
             ...state.modal,
             [name]: open,
@@ -53,6 +54,7 @@ export const modalActions: Readonly<ModalActions> = {
     openClipboardModal: () => setModal('clipboard', true),
     openUserSettingsModal: (data = {}) => (state): NextState => {
         return {
+            ...closePageStripState(state),
             modal: {
                 ...state.modal,
                 userSettings: true,
@@ -77,6 +79,7 @@ export const modalActions: Readonly<ModalActions> = {
 
         // 取り込み・書き出しのどちらを出すかは入口で決まるので、保存はしない
         return {
+            ...closePageStripState(state),
             modal: {
                 ...state.modal,
                 listViewMenu: true,
@@ -93,6 +96,7 @@ export const modalActions: Readonly<ModalActions> = {
             // スポーンミノがあればカレント枠に反映してから開く
             coldClearActions.seedQueuePreviewFromSpawnedPiece(),
             nextState => ({
+                ...closePageStripState(nextState),
                 modal: {
                     ...nextState.modal,
                     coldClearMenu: true,
@@ -115,6 +119,7 @@ export const modalActions: Readonly<ModalActions> = {
     },
     closeAllModals: () => (state): NextState => {
         return {
+            ...closePageStripState(state),
             modal: {
                 append: false,
                 fumen: false,

@@ -428,6 +428,12 @@ export const resources = {
         ShowSidePanel: 'サイドパネルを表示',
         HideSidePanel: 'サイドパネルを隠す',
     },
+    PageStrip: {
+        Open: 'ページ一覧を表示',
+        Label: 'ページ一覧',
+        Item: '{{page}}ページ',
+        Close: '閉じる',
+    },
     PieceQueue: {
         HoldLabel: 'HOLD',
         CurrentLabel: 'CURRENT',

@@ -1,4 +1,4 @@
-import { NextState, sequence } from './commons';
+import { closePageStripState, NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
 import { decode } from '../lib/fumen/fumen';
 import { i18n } from '../locales/keys';
@@ -343,6 +343,8 @@ export const utilsActions: Readonly<UtilsActions> = {
         saveTabSourceUrlKey(sourceUrlKey);
 
         return sequence(state, [
+            // 読み込みで画面が直接切り替わることがあるので、開いたままのサムネイルスライダーは閉じる
+            closePageStripState,
             // INPUT を開くときは、ページを開いてからレイアウトを切り替える（openReceivedInputSnapshot）
             actions.setPages({ pages: cleanedPages, index: openIndex, open: !openInput }),
             () => ({ tree: treeState }),

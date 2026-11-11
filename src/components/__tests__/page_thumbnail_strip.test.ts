@@ -130,6 +130,39 @@ describe('PageThumbnailStrip', () => {
         expect(element.scrollLeft).toBeGreaterThan(0);
     });
 
+    test('returns focus to the page counter only when the strip held it', () => {
+        const { roots } = render();
+        const ondestroy = byDatatest(roots, 'page-thumbnail-strip')[0].attributes.ondestroy;
+        const counter = document.createElement('span');
+        counter.setAttribute('datatest', 'text-pages');
+        counter.tabIndex = 0;
+        const element = document.createElement('div');
+        const item = document.createElement('div');
+        item.tabIndex = 0;
+        element.appendChild(item);
+        const outside = document.createElement('button');
+        document.body.append(counter, element, outside);
+
+        outside.focus();
+        ondestroy(element);
+        expect(document.activeElement).toBe(outside);
+
+        item.focus();
+        ondestroy(element);
+        expect(document.activeElement).toBe(counter);
+
+        [counter, element, outside].forEach(node => node.remove());
+    });
+
+    test('keeps room for the close button inside the scrolled content', () => {
+        const row = findAll(render().roots[1], node => node.attributes?.key === 'page-thumbnail-row')[0];
+        expect(row.attributes.style).toMatchObject({ width: 'max-content', paddingRight: '36px' });
+
+        const treeRoots = render({ tree: { nodes: branchedNodes, rootId: 'root' } }).roots;
+        const tree = byDatatest(treeRoots, 'page-thumbnail-tree')[0];
+        expect(tree.attributes.style).toMatchObject({ paddingRight: '36px' });
+    });
+
     test('places tree pages on a depth x lane grid without connector lines', () => {
         const { roots } = render({ tree: { nodes: branchedNodes, rootId: 'root' } });
         const items = byDatatest(roots, 'page-thumbnail-item');

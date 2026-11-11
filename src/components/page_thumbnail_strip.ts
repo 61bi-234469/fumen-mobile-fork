@@ -126,6 +126,15 @@ const keepCurrentVisible = (container: HTMLElement, center: boolean) => {
     }
 };
 
+// フォーカスを持ったまま閉じると行き場がなくなるので、開いたページ表示へ戻す
+const returnFocusToPageCounter = (element: HTMLElement) => {
+    if (!element.contains(document.activeElement)) {
+        return;
+    }
+    const counter = document.querySelector('[datatest="text-pages"]') as HTMLElement | null;
+    counter?.focus();
+};
+
 const thumbnailItem = (
     { pages, index, isCurrent, guideLineColor, thumbnailWidth, position, onselect }: {
         pages: Page[];
@@ -229,6 +238,7 @@ export const PageThumbnailStrip = (
                 position: 'relative',
                 width: px((Math.max(...cells.map(cell => cell.x)) + 1) * cellSize.width),
                 height: px((Math.max(...cells.map(cell => cell.y)) + 1) * cellSize.height),
+                paddingRight: px(CLOSE_BUTTON_SPACE),
             }),
         }, items)
         : div({
@@ -237,6 +247,9 @@ export const PageThumbnailStrip = (
                 display: 'flex',
                 flexDirection: 'row',
                 gap: px(ITEM_GAP_X),
+                // 末尾の余白を中身の幅に含め、最後のページが閉じるボタンの下に入らないようにする
+                width: 'max-content',
+                paddingRight: px(CLOSE_BUTTON_SPACE),
             }),
         }, items);
 
@@ -262,6 +275,7 @@ export const PageThumbnailStrip = (
             'aria-label': i18n.PageStrip.Label(),
             onkeydown: stopStripOwnedKey,
             onkeyup: stopStripOwnedKey,
+            ondestroy: returnFocusToPageCounter,
             style: style({
                 position: 'fixed',
                 left: 0,
@@ -285,7 +299,7 @@ export const PageThumbnailStrip = (
                 },
                 style: style({
                     overflow: 'auto',
-                    padding: `${PADDING}px ${CLOSE_BUTTON_SPACE}px ${PADDING}px ${PADDING + 2}px`,
+                    padding: `${PADDING}px 0 ${PADDING}px ${PADDING + 2}px`,
                     maxHeight: treeMode ? px(Math.round(cellSize.height * TREE_VISIBLE_ROWS) + PADDING * 2) : undefined,
                     boxSizing: 'border-box',
                 }),

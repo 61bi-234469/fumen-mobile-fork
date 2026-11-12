@@ -24,6 +24,7 @@ export const page_slider: Component<Props> = ({ datatest, size, maxPage, current
     };
 
     return div({
+        key: 'page-slider-row',
         className: 'range-field',
         style: style({
             width: px(size.width),

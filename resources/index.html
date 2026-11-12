@@ -98,6 +98,16 @@
             overflow: hidden;
         }
 
+        /*
+         * An icon is the ligature of an English word (e.g. "content_paste"). Whenever the icon font is not
+         * applied for a moment, that word is drawn as plain text and spills over the neighbouring controls.
+         * Keep it inside the icon's own box. Height is left alone: some icons inherit a tall line-height.
+         */
+        .material-icons {
+            width: 1em;
+            overflow: hidden;
+        }
+
         .top-toast {
             position: fixed;
             top: 0;

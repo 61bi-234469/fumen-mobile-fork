@@ -189,8 +189,21 @@ module.exports = (_env, argv = {}) => {
                 /\.wasm$/,
                 /^(?:LICENSE|THIRD_PARTY_LICENSES\.md|vendor\.bundle\.js\.LICENSE\.txt)$/,
                 /^(?:robots\.txt|sitemap\.xml|browserconfig\.xml|google47229da306c3f676\.html)$/,
+                // Browsers fall back to the WOFF only when the WOFF2 cannot be used; runtime-cached below.
+                /^material-iconfont\/material-icons\.woff$/,
             ],
             runtimeCaching: [{
+                // The file name has no content hash, so refresh it in the background after a package upgrade.
+                urlPattern: /\/material-iconfont\/material-icons\.woff$/,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                    cacheName: `${cacheId}-icon-font-fallback`,
+                    expiration: {
+                        // Production and /preview/ share the origin and this cache.
+                        maxEntries: 2,
+                    },
+                },
+            }, {
                 urlPattern: /\.wasm$/,
                 handler: 'CacheFirst',
                 options: {

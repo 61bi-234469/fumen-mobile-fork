@@ -19,6 +19,8 @@ const forbidden = [
     /^(?:LICENSE|THIRD_PARTY_LICENSES\.md|vendor\.bundle\.js\.LICENSE\.txt)$/,
     /^(?:robots\.txt|sitemap\.xml|browserconfig\.xml|google47229da306c3f676\.html)$/,
     /material-icons-(?:outlined|round|sharp|two-tone)/,
+    // Runtime-cached instead: only browsers without WOFF2 support fetch it.
+    /^material-iconfont\/material-icons\.woff$/,
 ];
 const forbiddenUrls = urls.filter((url) => forbidden.some((pattern) => pattern.test(url)));
 
@@ -42,6 +44,15 @@ if (totalBytes > 1.97 * 1024 * 1024) {
 }
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);
+}
+// Every icon is drawn with this font, so it must work offline right after installation.
+for (const requiredUrl of ['material-iconfont/filled.css', 'material-iconfont/material-icons.woff2']) {
+    if (!urls.includes(requiredUrl)) {
+        throw new Error(`Missing ${requiredUrl} from precache`);
+    }
+}
+if (!serviceWorker.includes('icon-font-fallback')) {
+    throw new Error('The service worker has no runtime cache for the WOFF icon font fallback');
 }
 const webManifest = JSON.parse(fs.readFileSync(path.join(destination, 'manifest.json'), 'utf8'));
 if (!Array.isArray(webManifest.icons) || webManifest.icons.length === 0) {

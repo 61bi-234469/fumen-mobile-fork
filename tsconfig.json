@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": [
       "dom",
-      "es2015"
+      "es2020"
     ],
     "baseUrl": ".",
     "paths": {
@@ -14,7 +14,9 @@
     "skipLibCheck": true,
     "jsx": "react",
     "jsxFactory": "h",
-    "target": "es5",
+    // vendor already ships ES2022 syntax from @haelp/teto, so older output buys no browser support.
+    // Stay below ES2022, which changes class field semantics (useDefineForClassFields).
+    "target": "es2020",
     "module": "commonjs",
     "sourceMap": true,
     "strict": true,

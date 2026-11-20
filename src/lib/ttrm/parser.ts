@@ -7,7 +7,7 @@ export class TtrmError extends Error {
     constructor(readonly stage: string, message: string) {
         super(message);
         this.name = 'TtrmError';
-        // ES5 target: restore the prototype chain so instanceof works.
+        // Kept from the former ES5 target, where instanceof needed the prototype chain restored.
         Object.setPrototypeOf(this, TtrmError.prototype);
     }
 }

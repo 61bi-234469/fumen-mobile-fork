@@ -6,7 +6,10 @@ import { encode } from './lib/fumen/fumen';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { isValidSpawnRotationMode, SpawnRotationMode } from './lib/spawn_rotation';
-import lodash from 'lodash';
+// Per-method imports keep the full Lodash build out of the vendor bundle.
+import isBoolean from 'lodash/isBoolean';
+import isNumber from 'lodash/isNumber';
+import isString from 'lodash/isString';
 import { showToast } from './lib/toast';
 import { i18n } from './locales/keys';
 
@@ -377,13 +380,13 @@ const safer = {
         return safeString && re.test(safeString) ? safeString : undefined;
     },
     string: (value: any): string | undefined => {
-        return lodash.isString(value) ? value : undefined;
+        return isString(value) ? value : undefined;
     },
     boolean: (value: any): boolean | undefined => {
-        return lodash.isBoolean(value) ? value : undefined;
+        return isBoolean(value) ? value : undefined;
     },
     number: (value: any): number | undefined => {
-        return lodash.isNumber(value) && !isNaN(value) ? value : undefined;
+        return isNumber(value) && !isNaN(value) ? value : undefined;
     },
     // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
     rotationSystem: (value: any): RotationSystem => {

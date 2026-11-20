@@ -3,9 +3,7 @@ const path = require('path');
 
 const destination = path.resolve(__dirname, '..', 'dest');
 const serviceWorkerPath = path.join(destination, 'sw.js');
-const mainBundlePath = path.join(destination, 'main.bundle.js');
 const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
-const mainBundle = fs.readFileSync(mainBundlePath, 'utf8');
 const manifestMatch = serviceWorker.match(/precacheAndRoute\((\[.*?\]),\{\}\)/);
 
 if (!manifestMatch) {
@@ -14,7 +12,14 @@ if (!manifestMatch) {
 
 const urls = Array.from(manifestMatch[1].matchAll(/url:"([^"]+)"/g), (match) => match[1]);
 const totalBytes = urls.reduce((total, url) => total + fs.statSync(path.join(destination, url)).size, 0);
-const forbidden = [/^manual\//, /^third_party\//, /\.wasm$/, /material-icons-(?:outlined|round|sharp|two-tone)/];
+const forbidden = [
+    /^(?:manual|third_party)\//,
+    /^icons\/(?:favicon[-.]|ms-icon-|apple-icon(?:-precomposed)?\.png$)/,
+    /\.wasm$/,
+    /^(?:LICENSE|THIRD_PARTY_LICENSES\.md|vendor\.bundle\.js\.LICENSE\.txt)$/,
+    /^(?:robots\.txt|sitemap\.xml|browserconfig\.xml|google47229da306c3f676\.html)$/,
+    /material-icons-(?:outlined|round|sharp|two-tone)/,
+];
 const forbiddenUrls = urls.filter((url) => forbidden.some((pattern) => pattern.test(url)));
 
 if (urls.length > 75) {
@@ -38,8 +43,31 @@ if (totalBytes > 1.97 * 1024 * 1024) {
 if (forbiddenUrls.length > 0) {
     throw new Error(`Precache contains excluded assets: ${forbiddenUrls.join(', ')}`);
 }
-if (/prev state|next state/.test(mainBundle)) {
-    throw new Error('Production main bundle still contains Hyperapp logger state labels');
+const webManifest = JSON.parse(fs.readFileSync(path.join(destination, 'manifest.json'), 'utf8'));
+if (!Array.isArray(webManifest.icons) || webManifest.icons.length === 0) {
+    throw new Error('No install icons found in manifest.json');
+}
+const indexHtml = fs.readFileSync(path.join(destination, 'index.html'), 'utf8');
+const appleIconLinks = indexHtml.matchAll(/<link\b(?=[^>]*\srel="apple-touch-icon")[^>]*\shref="([^"]+)"/g);
+const appleIcons = Array.from(appleIconLinks, ([, href]) => href);
+if (appleIcons.length === 0) {
+    throw new Error('No Apple Touch Icon links found in index.html');
+}
+const installIcons = webManifest.icons.map(({ src }) => src).concat(appleIcons);
+for (const icon of installIcons) {
+    if (!urls.includes(icon)) {
+        throw new Error(`Missing offline install icon from precache: ${icon}`);
+    }
+}
+const bundlePaths = fs.readdirSync(destination).filter(file => file.endsWith('.bundle.js'));
+if (bundlePaths.length === 0) {
+    throw new Error('No application bundles found in dest');
+}
+for (const bundlePath of bundlePaths) {
+    const bundle = fs.readFileSync(path.join(destination, bundlePath), 'utf8');
+    if (/%c (?:prev|next) state/.test(bundle)) {
+        throw new Error(`Production ${bundlePath} still contains Hyperapp logger state labels`);
+    }
 }
 
 for (const requiredPath of [
@@ -51,7 +79,7 @@ for (const requiredPath of [
         throw new Error(`Missing required Material Icons asset: ${requiredPath}`);
     }
 }
-if (!fs.readFileSync(path.join(destination, 'index.html'), 'utf8').includes('material-iconfont/filled.css')) {
+if (!indexHtml.includes('material-iconfont/filled.css')) {
     throw new Error('index.html does not use the Filled Material Icons stylesheet');
 }
 

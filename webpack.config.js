@@ -98,7 +98,7 @@ module.exports = (_env, argv = {}) => {
                     /sold_slear[\\/]sold_slear\.worker\.ts$/,
                     /ttrm[\\/](ReplayWorkerWrapper|replay\.worker)\.ts$/,
                 ],
-                use: [{ loader: 'ts-loader', options: { ignoreDiagnostics: [1343] } }],
+                use: [{ loader: 'ts-loader', options: { compilerOptions: { module: 'esnext' } } }],
             },
             {
                 test: /\.css$/i,
@@ -182,8 +182,14 @@ module.exports = (_env, argv = {}) => {
             clientsClaim: true,
             skipWaiting: true,
             offlineGoogleAnalytics: true,
-            // The root LICENSE is for redistribution, not offline use, so keep it out of the precache.
-            exclude: [/^manual\//, /^third_party\//, /\.wasm$/, /^LICENSE$/],
+            exclude: [
+                /^(?:manual|third_party)\//,
+                // Keep manifest and apple-touch-icon assets available for offline installation.
+                /^icons\/(?:favicon[-.]|ms-icon-|apple-icon(?:-precomposed)?\.png$)/,
+                /\.wasm$/,
+                /^(?:LICENSE|THIRD_PARTY_LICENSES\.md|vendor\.bundle\.js\.LICENSE\.txt)$/,
+                /^(?:robots\.txt|sitemap\.xml|browserconfig\.xml|google47229da306c3f676\.html)$/,
+            ],
             runtimeCaching: [{
                 urlPattern: /\.wasm$/,
                 handler: 'CacheFirst',

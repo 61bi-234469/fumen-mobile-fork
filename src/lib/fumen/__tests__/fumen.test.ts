@@ -862,6 +862,43 @@ describe('fumen', () => {
     });
 
     describe('encodeSync', () => {
+        test('preserves the encoding across field reference changes', async () => {
+            const flags = { lock: true, mirror: false, colorize: true, rise: false, quiz: false };
+            const opening = new Field({ field: PlayField.load('XXX____XXX') });
+            const reset = new Field({ field: PlayField.load('________LX') });
+            const pages: Page[] = [
+                {
+                    flags,
+                    index: 0,
+                    field: { obj: opening },
+                    piece: { type: Piece.I, rotation: Rotation.Spawn, coordinate: { x: 4, y: 0 } },
+                    comment: { text: 'opening' },
+                },
+                {
+                    index: 1,
+                    field: { ref: 0 },
+                    flags: { ...flags, rise: true, mirror: true },
+                    commands: { pre: { sent: { type: 'sentBlock', x: 0, y: 0, piece: Piece.Gray } } },
+                    comment: { ref: 0 },
+                },
+                { flags, index: 2, field: { obj: reset }, comment: {} },
+                { flags, index: 3, field: { ref: 2 }, comment: {} },
+                {
+                    index: 4,
+                    field: { ref: 0 },
+                    flags: { ...flags, lock: false, rise: true, mirror: true },
+                    commands: { pre: { block: { type: 'block', x: 5, y: 1, piece: Piece.T } } },
+                    comment: { text: 'return' },
+                },
+                { flags, index: 5, field: { ref: 0 }, comment: { ref: 4 } },
+                { flags, index: 6, field: { ref: 2 }, comment: {} },
+            ];
+
+            const expected = 'bhC8DeC8JeRQYHAPJtJEJmhCAlhA8IeAINjhglKeAg?HvhAAgHWhwwLegWKeAI6GAyo2hES2BAAvhAAgHjhglKeAgH';
+            expect(encodeSync(pages)).toBe(expected);
+            await expect(encode(pages, true)).resolves.toBe(expected);
+        });
+
         test('matches encode in both sync and async modes', async () => {
             const pages = await decode('v115@vhGSSYXAFLDmClcJSAVDEHBEooRBMoAVBUtfBAXsBA?AANrBmnBAAAAAA');
             const expected = encodeSync(pages);

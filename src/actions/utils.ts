@@ -196,7 +196,7 @@ export const utilsActions: Readonly<UtilsActions> = {
     forceReload: () => (state): NextState => {
         (async () => {
             try {
-                await memento.saveImmediately(toPagesForStorage(state));
+                memento.saveImmediately(toPagesForStorage(state));
             } catch (e) {
                 console.error(e);
             }
@@ -209,9 +209,11 @@ export const utilsActions: Readonly<UtilsActions> = {
         return sequence(state, [
             actions.commitCommentText(),
             (newState) => {
-                const pages = toPagesForStorage(newState);
-                warnIfTreeCommentOverLimit(pages);
-                memento.flush(pages).catch(error => console.error(error));
+                memento.flush(() => {
+                    const pages = toPagesForStorage(newState);
+                    warnIfTreeCommentOverLimit(pages);
+                    return pages;
+                });
                 return undefined;
             },
         ]);

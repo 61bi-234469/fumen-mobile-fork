@@ -2,7 +2,8 @@ import { HistoryTask, isOperationTask, toDecoratorOperationTask } from './histor
 import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
 import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
-import { encode } from './lib/fumen/fumen';
+import { encodeSync } from './lib/fumen/fumen';
+import { createAutosaveScheduler } from './lib/autosave_scheduler';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { isValidSpawnRotationMode, SpawnRotationMode } from './lib/spawn_rotation';
@@ -12,28 +13,6 @@ import isNumber from 'lodash/isNumber';
 import isString from 'lodash/isString';
 import { showToast } from './lib/toast';
 import { i18n } from './locales/keys';
-
-interface SaverProp {
-    saveKey: string;
-    pages: Page[];
-}
-
-type SaverObj = { save: (key: string) => Promise<void> };
-
-const saverState = {
-    isWorking: false,
-    last: {
-        key: generateKey(),
-        saverObj: undefined as (SaverObj | undefined),
-    },
-};
-
-const sequentialEncode = async (pages: Page[]): Promise<string> => {
-    saverState.isWorking = true;
-    const data = await encode(pages, true);
-    saverState.isWorking = false;
-    return `v115@${data}`;
-};
 
 // 自動保存は編集のたびに走るため、失敗し始めたときに1回だけ知らせ、成功したら再び知らせられるようにする
 let fumenSaveFailureNotified = false;
@@ -48,44 +27,12 @@ const notifyFumenSaveResult = (saved: boolean) => {
     }
 };
 
-const toSaver = ({ saveKey, pages }: SaverProp, saveCallback: (data: string) => void) => {
-    let isSaved = false;
-    return {
-        save: async (key: string) => {
-            if (isSaved || key !== saveKey) {
-                return;
-            }
-            isSaved = true;
-
-            const data = await sequentialEncode(pages);
-            setTimeout(() => saveCallback(data), 0);
-
-            const last = saverState.last;
-            if (last.saverObj !== undefined) {
-                await last.saverObj.save(last.key);
-            }
-        },
-    };
+const writeFumen = (pages: Page[], sourceUrlKey: string | undefined) => {
+    notifyFumenSaveResult(localStorageWrapper.saveFumen(`v115@${encodeSync(pages)}`, sourceUrlKey));
 };
 
-const saver = (() => {
-    return (pages: Page[], sourceUrlKey: string | undefined, onSaved: () => void) => {
-        const key = generateKey();
-        const saverObj: SaverObj = toSaver({
-            pages,
-            saveKey: key,
-        }, (data: string) => {
-            notifyFumenSaveResult(localStorageWrapper.saveFumen(data, sourceUrlKey));
-            onSaved();
-        });
-        saverState.last = { key, saverObj };
-
-        setTimeout(() => {
-            saverObj.save(saverState.last.key)
-                .catch(error => console.error(error));
-        }, saverState.isWorking ? 3000 : 0);
-    };
-})();
+// 保存ページの組み立て（ツリー・INPUT状態の埋め込み）ごと遅らせるので、ページ数が多いときの編集のたびの負担が減る
+const autosaveScheduler = createAutosaveScheduler();
 
 interface Result {
     pages: Page[];
@@ -193,33 +140,31 @@ export const memento = (() => {
 
     // 保存データがどのURLの d= から始まったか（toUrlFumenKey）。それ以外から読み込んだときは undefined
     let autosaveSourceUrlKey: string | undefined;
-    // 自動保存を依頼して、まだ書き込まれていないページ
-    let unsavedPages: Page[] | undefined;
-
-    const saveImmediately = async (pages: Page[]): Promise<void> => {
-        notifyFumenSaveResult(localStorageWrapper.saveFumen(await sequentialEncode(pages), autosaveSourceUrlKey));
+    const writeBuiltFumen = (buildPages: () => Page[], sourceUrlKey: string | undefined) => {
+        try {
+            writeFumen(buildPages(), sourceUrlKey);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     return {
         // 即時保存。強制リロードのように直後にページが破棄される場面で、遅延保存の取りこぼしを防ぐ
-        saveImmediately,
-        // 自動保存
-        save: (pages: Page[]) => {
-            unsavedPages = pages;
-            saver(pages, autosaveSourceUrlKey, () => {
-                if (unsavedPages === pages) {
-                    unsavedPages = undefined;
-                }
-            });
+        saveImmediately: (pages: Page[]) => {
+            // 待機中の保存は古い状態なので、後から上書きさせない
+            autosaveScheduler.cancel();
+            writeFumen(pages, autosaveSourceUrlKey);
+        },
+        // 自動保存。ページは書き込む直前に組み立てる
+        save: (buildPages: () => Page[]) => {
+            const sourceUrlKey = autosaveSourceUrlKey;
+            autosaveScheduler.schedule(() => writeBuiltFumen(buildPages, sourceUrlKey));
         },
         // 書き込み待ちの自動保存があるときだけ、すぐに保存する。
-        // 起動時の読み込み前（初期状態の空ページ）や保存済みの状態で書き込むと、保存データを不要に上書きしてしまう
-        flush: async (pages: Page[]): Promise<void> => {
-            if (unsavedPages === undefined) {
-                return;
-            }
-            unsavedPages = undefined;
-            await saveImmediately(pages);
+        // 起動時の読み込み前（初期状態の空ページ）や保存済みの状態で書き込むと、保存データを不要に上書きしてしまう。
+        // pagehide でも書き込めるよう、同期で完了させる
+        flush: (buildPages: () => Page[]) => {
+            autosaveScheduler.flush(() => writeBuiltFumen(buildPages, autosaveSourceUrlKey));
         },
         setAutosaveSource: (sourceUrlKey: string | undefined) => {
             autosaveSourceUrlKey = sourceUrlKey;

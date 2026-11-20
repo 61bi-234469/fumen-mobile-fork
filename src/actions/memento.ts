@@ -253,8 +253,10 @@ export const toPagesForStorage = (state: Readonly<State>): Page[] => {
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {
-    const pages = toPagesForStorage(state);
-    warnIfTreeCommentOverLimit(pages);
-    memento.save(pages);
+    memento.save(() => {
+        const pages = toPagesForStorage(state);
+        warnIfTreeCommentOverLimit(pages);
+        return pages;
+    });
     return undefined;
 };

@@ -204,26 +204,48 @@ export class Pages {
             return [];
         }
 
-        // `None` returns before the page's pre-command, so it is precisely the
-        // state from which a forward replay must start.
-        return this.replayRange(this.getField(fromIndex, PageFieldOperation.None), fromIndex, toIndex - 1, operation);
+        const values: Field[] = [];
+        this.forEachReplayedField(
+            Array.from({ length: toIndex - fromIndex }, (_, offset) => fromIndex + offset),
+            operation,
+            field => values.push(field),
+        );
+        return values;
     }
 
-    /** Replay ordered page indices, restarting only at discontinuities (tree branches). */
+    /** Replay ordered page indices, restarting at discontinuities (tree branches) and at new field sources. */
     replayFieldIndices(indices: number[], operation: PageFieldOperation = PageFieldOperation.None): Field[] {
-        if (indices.length === 0) return [];
         const values: Field[] = [];
-        let start = 0;
-        while (start < indices.length) {
-            let end = start;
-            while (end + 1 < indices.length && indices[end + 1] === indices[end] + 1) end += 1;
-            const fromIndex = indices[start];
-            const toIndex = indices[end];
-            const field = this.getField(fromIndex, PageFieldOperation.None);
-            values.push(...this.replayRange(field, fromIndex, toIndex, operation));
-            start = end + 1;
-        }
+        this.forEachReplayedField(indices, operation, field => values.push(field));
         return values;
+    }
+
+    /**
+     * Calls `callback` with the same field as `getField(index, operation)` for each index, in order.
+     *
+     * A page continues from the previous page only when both resolve from the same field source
+     * (`getField` replays from the page's own `field.obj` or from its `field.ref`, and never
+     * re-reads an intermediate page's `field.obj`). Anything else restarts through `getField`.
+     * Fields are not retained, so long exports do not hold every page at once.
+     */
+    forEachReplayedField(
+        indices: number[],
+        operation: PageFieldOperation,
+        callback: (field: Field, index: number) => void,
+    ): void {
+        let previous: { index: number, source: number | undefined, field: Field } | undefined;
+        for (const index of indices) {
+            const { obj, ref } = this.pages[index].field;
+            const source = obj !== undefined ? index : ref;
+            const continues = previous !== undefined && previous.index === index - 1
+                && source !== undefined && source < index && source === previous.source;
+            // `None` returns before the page's pre-command, so it is precisely the
+            // state from which a forward replay must start.
+            const field = continues ? previous!.field : this.getField(index, PageFieldOperation.None);
+            const [value] = this.replayRange(field, index, index, operation);
+            previous = { index, source, field };
+            callback(value, index);
+        }
     }
 
     // TODO: Add test

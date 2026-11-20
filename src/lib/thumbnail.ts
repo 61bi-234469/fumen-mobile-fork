@@ -4,6 +4,7 @@ import { decideBackgroundColor, decidePieceColor } from './colors';
 import { HighlightType } from '../state_types';
 import { FieldConstants, Piece, Rotation } from './enums';
 import { getBlocks } from './piece';
+import { Field } from './fumen/field';
 
 export const THUMBNAIL_WIDTH = 100;
 export const THUMBNAIL_HEIGHT = 230;
@@ -12,10 +13,12 @@ const MAX_THUMBNAIL_RENDER_SCALE = 2;
 
 const thumbnailCache = new WeakMap<Page[], Map<string, string>>();
 const thumbnailHeightCache = new WeakMap<Page[], Map<number, number>>();
+const bulkMeasuredPages = new WeakSet<Page[]>();
 
 export function clearThumbnailCache(pages: Page[]): void {
     thumbnailCache.delete(pages);
     thumbnailHeightCache.delete(pages);
+    bulkMeasuredPages.delete(pages);
 }
 
 const normalizeThumbnailRenderScale = (renderScale: number | undefined): number => {
@@ -167,24 +170,43 @@ export function getThumbnailHeight(
         return cached;
     }
 
+    // Callers (List with trimming, GIF and image export) ask for every page, so measure them all in one
+    // forward replay instead of resolving each page from its reference point. Tried once per pages array:
+    // a broken reference stops the replay, and the pages it did not reach are then measured one by one.
     const pagesObj = new Pages(pages);
-    const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
-    const page = pages[pageIndex];
-    const fieldArray = buildFieldArray(field, page);
+    if (!bulkMeasuredPages.has(pages)) {
+        bulkMeasuredPages.add(pages);
+        const heights = cache;
+        try {
+            pagesObj.forEachReplayedField(
+                pages.map((_, index) => index),
+                PageFieldOperation.Command,
+                (field, index) => heights.set(index, trimmedThumbnailHeight(field, pages[index])),
+            );
+        } catch {
+            // Keep the heights measured before the broken page.
+        }
+        const measured = cache.get(pageIndex);
+        if (measured !== undefined) {
+            return measured;
+        }
+    }
 
-    const topFilledRow = findTopFilledRow(fieldArray);
-    const visibleTopRow = topFilledRow === null
-        ? 0
-        : Math.min(FieldConstants.Height - 1, topFilledRow + 1);
-    const visibleRows = visibleTopRow + 1;
-
-    const height = visibleRows * BLOCK_SIZE;
+    const height = trimmedThumbnailHeight(pagesObj.getField(pageIndex, PageFieldOperation.Command), pages[pageIndex]);
     cache.set(pageIndex, height);
     return height;
 }
 
+const trimmedThumbnailHeight = (field: Field, page: Page | undefined): number => {
+    const topFilledRow = findTopFilledRow(buildFieldArray(field, page));
+    const visibleTopRow = topFilledRow === null
+        ? 0
+        : Math.min(FieldConstants.Height - 1, topFilledRow + 1);
+    return (visibleTopRow + 1) * BLOCK_SIZE;
+};
+
 const buildFieldArray = (
-    field: import('./fumen/field').Field,
+    field: Field,
     page?: Page,
 ): (number | undefined)[] => {
     // tslint:disable-next-line:prefer-array-literal
@@ -313,7 +335,8 @@ export function generateListViewExportImage(
         offset += rowHeights[row] + EXPORT_GAP;
     }
 
-    for (let i = 0; i < pageCount; i += 1) {
+    const indices = pages.map((_, index) => index);
+    pagesObj.forEachReplayedField(indices, PageFieldOperation.Command, (field, i) => {
         const col = i % EXPORT_COLUMNS;
         const row = Math.floor(i / EXPORT_COLUMNS);
 
@@ -327,12 +350,12 @@ export function generateListViewExportImage(
             : undefined;
 
         // Draw thumbnail
-        drawThumbnail(ctx, pages, i, x, y, guideLineColor, trimTopBlank, visibleTopRow);
+        drawThumbnail(ctx, pages, i, x, y, guideLineColor, trimTopBlank, visibleTopRow, field);
 
         if (metadataHeight > 0) {
             drawExportMetadata(ctx, pagesObj, i, x, y + thumbnailHeight, metadataHeight, options);
         }
-    }
+    });
 
     return canvas.toDataURL('image/png');
 }
@@ -346,9 +369,10 @@ export function drawThumbnail(
     guideLineColor: boolean,
     trimTopBlank: boolean,
     visibleTopRowOverride?: number,
+    // The page's field after its pre-command, when the caller already replays the pages in order.
+    resolvedField?: Field,
 ): void {
-    const pagesObj = new Pages(pages);
-    const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+    const field = resolvedField ?? new Pages(pages).getField(pageIndex, PageFieldOperation.Command);
     const page = pages[pageIndex];
 
     const fieldArray = buildFieldArray(field, page);

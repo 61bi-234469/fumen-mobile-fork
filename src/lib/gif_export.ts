@@ -1,6 +1,7 @@
 /* tslint:disable:no-bitwise */
 import { Page } from './fumen/types';
-import { Pages } from './pages';
+import { PageFieldOperation, Pages } from './pages';
+import { Field } from './fumen/field';
 import { decideBackgroundColor, decidePieceColor } from './colors';
 import { FieldConstants, Piece } from './enums';
 import { HighlightType } from '../state_types';
@@ -93,14 +94,15 @@ export function generateGifBlob(
     const pagesObj = new Pages(pages);
     const encoder = new GifEncoder(layout.width * GIF_SCALE, layout.height * GIF_SCALE, delayCentiseconds);
 
-    for (let i = 0; i < pages.length; i += 1) {
+    // One forward replay instead of resolving every frame's field from its reference point.
+    pagesObj.forEachReplayedField(pages.map((_, index) => index), PageFieldOperation.Command, (field, i) => {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.scale(GIF_SCALE, GIF_SCALE);
-        drawGifFrame(ctx, pages, pagesObj, i, guideLineColor, trimTopBlank, layout, options);
+        drawGifFrame(ctx, pages, pagesObj, i, field, guideLineColor, trimTopBlank, layout, options);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         encoder.addFrame(imageData.data);
-    }
+    });
 
     return new Blob([encoder.finish()], { type: 'image/gif' });
 }
@@ -110,6 +112,7 @@ const drawGifFrame = (
     pages: Page[],
     pagesObj: Pages,
     pageIndex: number,
+    field: Field,
     guideLineColor: boolean,
     trimTopBlank: boolean,
     layout: GifFrameLayout,
@@ -124,7 +127,7 @@ const drawGifFrame = (
         ? Math.max(0, Math.round(thumbnailHeight / BLOCK_SIZE) - 1)
         : undefined;
 
-    drawThumbnail(ctx, pages, pageIndex, layout.fieldX, fieldY, guideLineColor, trimTopBlank, visibleTopRow);
+    drawThumbnail(ctx, pages, pageIndex, layout.fieldX, fieldY, guideLineColor, trimTopBlank, visibleTopRow, field);
 
     if (layout.commentY !== null) {
         drawGifMetadata(ctx, pagesObj, pageIndex, layout.fieldX, layout.commentY, layout.commentHeight, options);

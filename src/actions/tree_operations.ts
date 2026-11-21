@@ -13,6 +13,7 @@ import {
     SerializedTree,
     TreeDragMode,
     TreeDragState,
+    TreeDropTarget,
     TreeOperationScope,
     TREE_VIEW_SCALE_RANGE,
     initialTreeDragState,
@@ -35,6 +36,8 @@ import {
     moveSubtreeToParent,
     moveDescendantsToParent,
     moveDescendantsToInsertPosition,
+    moveChildToSlot,
+    resolveLaneReorderUnit,
     canDeleteNode,
     canMoveScope,
     canMoveNode,
@@ -319,7 +322,7 @@ export interface TreeOperationActions {
         buttonType: 'insert' | 'branch' | null;
     }) => action;
     endTreeDrag: () => action;
-    executeTreeDrop: () => action;
+    executeTreeDrop: (data?: { target?: TreeDropTarget | null }) => action;
 
     // Internal state setters
     setTreeState: (data: Partial<State['tree']>) => action;
@@ -342,17 +345,21 @@ export const toTreeOperationTask = (
     prevSnapshot: TreeOperationSnapshot,
     nextSnapshot: TreeOperationSnapshot,
 ): OperationTask => {
+    // Pages without #TREE= normally keep the current tree (page-only tasks run in Tree mode too),
+    // so a treeless snapshot says explicitly that restoring it turns Tree mode off.
     return {
         replay: (pages: Page[]) => {
             return {
                 pages: nextSnapshot.pages.map(toPage),
                 index: nextSnapshot.currentIndex,
+                treeDisabled: nextSnapshot.tree.rootId === null,
             };
         },
         revert: (pages: Page[]) => {
             return {
                 pages: prevSnapshot.pages.map(toPage),
                 index: prevSnapshot.currentIndex,
+                treeDisabled: prevSnapshot.tree.rootId === null,
             };
         },
         fixed: false,
@@ -503,6 +510,13 @@ export const createSnapshot = (
     };
 };
 
+// A snapshot of pages with Tree mode off. toTreeOperationTask restores it with the tree disabled.
+export const createTreelessSnapshot = (pages: Page[], currentIndex: number): TreeOperationSnapshot => ({
+    currentIndex,
+    tree: { nodes: [], rootId: null, version: 1 },
+    pages: pages.map(toPrimitivePage),
+});
+
 export const rebuildPageRefsForOrder = (
     pages: Page[],
     originalPages: Page[],
@@ -576,31 +590,6 @@ export const rebuildPageRefsForOrder = (
             }
         }
 
-        if (page.comment.ref !== undefined) {
-            const mappedRef = oldIndexToNewIndex.get(page.comment.ref);
-            if (mappedRef !== undefined && mappedRef < newIndex) {
-                const originalReferenceSpan = originalPages
-                    .slice(page.comment.ref, page.index + 1)
-                    .map(originalPage => originalPage.index);
-                const reorderedReferenceSpan = pages
-                    .slice(mappedRef, newIndex + 1)
-                    .map(reorderedPage => reorderedPage.index);
-                const referenceSpanPreserved = originalReferenceSpan.length === reorderedReferenceSpan.length
-                    && originalReferenceSpan.every((oldIndex, position) => (
-                        oldIndex === reorderedReferenceSpan[position]
-                    ));
-
-                const pageIsQuiz = page.flags.quiz || Quiz.isQuizComment(originalComments.get(page.index) ?? '');
-                if (!pageIsQuiz || referenceSpanPreserved) {
-                    newPage.comment = { ...page.comment, ref: mappedRef };
-                } else {
-                    newPage.comment = { text: originalComments.get(page.index) ?? '' };
-                }
-            } else {
-                newPage.comment = { text: originalComments.get(page.index) ?? '' };
-            }
-        }
-
         return newPage;
     });
 
@@ -620,6 +609,57 @@ export const rebuildPageRefsForOrder = (
             field: { obj: originalField.copy() },
         };
     });
+
+    // The fumen format stores no comment-ref target: a page without its own comment
+    // inherits the nearest preceding one, replaying quiz operations from there. Point
+    // every inheriting page at that page, or give it its own text when the inherited
+    // comment would differ from what the page showed before the reorder.
+    let lastOwnCommentIndex = -1;
+    let runStart = 0;
+    for (let newIndex = 0; newIndex < newPages.length; newIndex += 1) {
+        const oldIndex = pages[newIndex].index;
+        if (newIndex > 0 && oldIndex !== pages[newIndex - 1].index + 1) {
+            runStart = newIndex;
+        }
+
+        const current = newPages[newIndex];
+        if (current.comment.text !== undefined) {
+            lastOwnCommentIndex = newIndex;
+            continue;
+        }
+
+        const withComment = (comment: Page['comment'], quiz: boolean): Page => ({
+            ...current,
+            comment,
+            flags: { ...current.flags, quiz },
+        });
+        const originalText = originalComments.get(oldIndex) ?? '';
+
+        if (lastOwnCommentIndex >= 0) {
+            const source = newPages[lastOwnCommentIndex];
+            const inheritsQuiz = Quiz.isQuizComment(source.comment.text ?? '');
+            newPages[newIndex] = withComment({ ref: lastOwnCommentIndex }, inheritsQuiz);
+
+            // An untouched run back to the same source replays exactly as before.
+            const originalRef = pages[newIndex].comment.ref;
+            const sourceMovedTogether = originalRef !== undefined
+                && newIndex - (oldIndex - originalRef) === lastOwnCommentIndex
+                && runStart <= lastOwnCommentIndex;
+            if (sourceMovedTogether) {
+                continue;
+            }
+
+            const inheritedText = inheritsQuiz
+                ? resolvePageCommentText(newPages, newIndex)
+                : source.comment.text;
+            if (inheritedText === originalText) {
+                continue;
+            }
+        }
+
+        newPages[newIndex] = withComment({ text: originalText }, Quiz.isQuizComment(originalText));
+        lastOwnCommentIndex = newIndex;
+    }
 
     return recomputeQuizFlags(newPages);
 };
@@ -770,14 +810,22 @@ interface TreeCommitInput {
  * normalize step (and its DFS-order side effects on currentIndex) happens
  * exactly once here.
  */
+const getTreeDropTargetFromDragState = (dragState: TreeDragState): TreeDropTarget | null => {
+    if (dragState.targetButtonParentId !== null && dragState.targetButtonType !== null) {
+        return { kind: 'button', nodeId: dragState.targetButtonParentId, type: dragState.targetButtonType };
+    }
+    return dragState.dropSlotIndex !== null ? { kind: 'lane', slotIndex: dragState.dropSlotIndex } : null;
+};
+
 const commitTreeOperation = (state: State, input: TreeCommitInput): NextState => {
     const normalized = normalizeTreeAndPages(input.tree, input.pages, input.currentIndex, input.activeNodeId);
     const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
     const task = toTreeOperationTask(input.prevSnapshot, nextSnapshot);
     const { mementoActions } = require('./memento');
 
+    // Apply the result before registering the task: registerHistoryTask schedules the
+    // autosave from the state it receives, so the other order stores the pre-operation tree.
     return sequence(state, [
-        mementoActions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -793,6 +841,7 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
                 ...(input.resetDragState ? { dragState: initialTreeDragState } : {}),
             },
         }),
+        mementoActions.registerHistoryTask({ task }),
         actions.reopenCurrentPage(),
     ]);
 };
@@ -879,10 +928,12 @@ const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState =>
 // Tree operations may replace pages, change their order, or switch the editor to a
 // different page. Commit the editor's transient state first so selection previews, COMP
 // results, and comments cannot be lost or leak into the target page.
+// Full-screen List/Tree views have no editable field to settle. Keeping their
+// existing action path intact also preserves their tree-history semantics.
+const isEditorScreen = (state: State): boolean => state.mode === undefined || state.mode.screen === Screens.Editor;
+
 const withSettledEditorPage = (operation: action) => (state: State): NextState => {
-    // Full-screen List/Tree views have no editable field to settle. Keeping their
-    // existing action path intact also preserves their tree-history semantics.
-    if (state.mode !== undefined && state.mode.screen !== Screens.Editor) {
+    if (!isEditorScreen(state)) {
         return operation(state);
     }
     const settled = sequence(state, [
@@ -897,12 +948,16 @@ const withSettledEditorPage = (operation: action) => (state: State): NextState =
     return { ...settled, ...result };
 };
 
-const selectTreeNodeAndReopen = (nodeId: TreeNodeId) => (state: State): NextState => (
-    sequence(state, [
+// openPage drops the rectangle selection and other page-local editor state only while
+// currentIndex still points at the page being left, so it must run before currentIndex moves.
+const openTreeNodePage = (nodeId: TreeNodeId) => (state: State): NextState => {
+    const node = findNode(getOrCreateTree(state), nodeId);
+    if (!node || isVirtualNode(node)) return undefined;
+    return sequence(state, [
+        actions.openPage({ index: node.pageIndex }),
         selectTreeNodeState(nodeId),
-        actions.reopenCurrentPage(),
-    ])
-);
+    ]);
+};
 
 export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
@@ -915,22 +970,28 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             // Initialize tree from pages if not already done
             const tree = createTreeFromPages(state.fumen.pages);
             const currentNode = findNodeByPageIndex(tree, state.fumen.currentIndex);
-            return {
-                tree: {
-                    ...state.tree,
-                    enabled: true,
-                    nodes: tree.nodes,
-                    rootId: tree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-                listView: {
-                    ...state.listView,
-                    dragState: {
-                        draggingIndex: null,
-                        dropTargetIndex: null,
+            const { saveToMemento } = require('./memento');
+            // Enabling is not an undo step, but autosave embeds #TREE= only while the tree is
+            // enabled, so save now or a reload restores the pages with Tree mode off.
+            return sequence(state, [
+                () => ({
+                    tree: {
+                        ...state.tree,
+                        enabled: true,
+                        nodes: tree.nodes,
+                        rootId: tree.rootId,
+                        activeNodeId: currentNode?.id ?? null,
                     },
-                },
-            };
+                    listView: {
+                        ...state.listView,
+                        dragState: {
+                            draggingIndex: null,
+                            dropTargetIndex: null,
+                        },
+                    },
+                }),
+                saveToMemento,
+            ]);
         }
 
         // Disable tree mode: register history so undo can restore the tree
@@ -948,16 +1009,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             return page;
         }));
 
-        const nextSnapshot: TreeOperationSnapshot = {
-            tree: { nodes: [], rootId: null, version: 2 },
-            pages: cleanedPages.map(toPrimitivePage),
-            currentIndex: state.fumen.currentIndex,
-        };
+        const nextSnapshot = createTreelessSnapshot(cleanedPages, state.fumen.currentIndex);
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -971,6 +1027,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     },
 
@@ -1038,7 +1095,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const { mementoActions } = require('./memento');
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1053,6 +1109,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: state.tree.activeNodeId,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -1068,10 +1125,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     }),
 
     /** Select a tree node and synchronize the current editor page. */
-    activateTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
+    activateTreeNode: ({ nodeId }) => withSettledEditorPage(openTreeNodePage(nodeId)),
 
     /** Select a tree node and navigate to its page. */
-    selectTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
+    selectTreeNode: ({ nodeId }) => withSettledEditorPage(openTreeNodePage(nodeId)),
 
     /**
      * Add a branch from the current node
@@ -1131,7 +1188,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * INPUT + 7bag gray must not settle a page which has later dependents.
      * Fork an independent pre-placement workspace; in tree mode it is a child branch.
      */
-    forkSevenBagGrayInputPage: () => (state): NextState => {
+    forkSevenBagGrayInputPage: () => withSettledEditorPage((state): NextState => {
         const workspace = createSevenBagGrayWorkspacePage(state);
         if (workspace === undefined) return undefined;
 
@@ -1140,7 +1197,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const pages = [...state.fumen.pages, workspace];
             const task = toInsertPageTask(insertIndex, [toPrimitivePage(workspace)], state.fumen.currentIndex);
             return sequence(state, [
-                actions.registerHistoryTask({ task }),
                 () => ({
                     fumen: {
                         ...state.fumen,
@@ -1149,6 +1205,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         currentIndex: insertIndex,
                     },
                 }),
+                actions.registerHistoryTask({ task }),
                 actions.reopenCurrentPage(),
             ]);
         }
@@ -1165,7 +1222,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: workspace.index,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     /**
      * Add a new top-level page under the virtual root
@@ -1214,7 +1271,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         pages,
         focusFirstAdded = false,
         addAsChildChain = false,
-    }) => (state): NextState => {
+    }) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled || pages.length === 0) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1267,7 +1324,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 activeNodeId: nextActiveNodeId,
             },
         };
-    },
+    }),
 
     /**
      * Insert a node after the current node
@@ -1514,25 +1571,41 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
         const pageIndex = sourceNode && sourceNode.pageIndex >= 0 ? sourceNode.pageIndex : undefined;
 
-        return {
+        const startDrag = (current: State): NextState => ({
             tree: {
-                ...state.tree,
+                ...current.tree,
                 activeNodeId: sourceNodeId,
                 dragState: {
-                    ...state.tree.dragState,
+                    ...current.tree.dragState,
                     sourceNodeId,
                     targetNodeId: null,
                     dropSlotIndex: null,
-                    operationScope: state.tree.operationScope,
+                    operationScope: current.tree.operationScope,
                 },
             },
-            ...(pageIndex !== undefined ? {
+        });
+
+        // The editor side panel shows the field, so open the dragged page there: the
+        // drop settles the page in currentIndex, and a cancelled drag keeps the two in step.
+        if (isEditorScreen(state) && pageIndex !== undefined) {
+            return withSettledEditorPage(current => sequence(current, [
+                actions.openPage({ index: pageIndex }),
+                startDrag,
+            ]))(state);
+        }
+
+        // Moving currentIndex directly skips openPage's cleanup, so leave the page here.
+        const { leaveCurrentPage } = require('./pages');
+        return sequence(state, [
+            pageIndex !== undefined && pageIndex !== state.fumen.currentIndex ? leaveCurrentPage : undefined,
+            startDrag,
+            pageIndex !== undefined ? current => ({
                 fumen: {
-                    ...state.fumen,
+                    ...current.fumen,
                     currentIndex: pageIndex,
                 },
-            } : {}),
-        };
+            }) : undefined,
+        ]);
     },
 
     /**
@@ -1573,7 +1646,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     },
 
     /**
-     * Update the drop slot index (for Reorder mode)
+     * Update the lane reorder slot. A drag has one candidate at a time, so setting
+     * a slot clears the button target.
      */
     updateTreeDropSlot: ({ slotIndex }) => (state): NextState => {
         if (!state.tree.enabled) return undefined;
@@ -1587,8 +1661,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 ...state.tree,
                 dragState: {
                     ...state.tree.dragState,
-                    // Don't reset targetNodeId here - it's set separately for Attach modes
                     dropSlotIndex: validSlotIndex,
+                    ...(validSlotIndex !== null ? { targetButtonParentId: null, targetButtonType: null } : {}),
                 },
             },
         };
@@ -1620,6 +1694,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                             ...state.tree.dragState,
                             targetButtonParentId: null,
                             targetButtonType: null,
+                            dropSlotIndex: null,
                         },
                     },
                 };
@@ -1633,6 +1708,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     ...state.tree.dragState,
                     targetButtonParentId: parentNodeId,
                     targetButtonType: buttonType,
+                    // One candidate at a time: a button target (or clearing it) drops the lane slot.
+                    dropSlotIndex: null,
                 },
             },
         };
@@ -1659,17 +1736,40 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     },
 
     /**
-     * Execute the drop operation based on current drag mode
+     * Execute the drop. Views pass the target resolved at the release point; the
+     * candidate kept in dragState only drives the highlight and can lag one render.
      */
-    executeTreeDrop: () => withSettledEditorPage((state): NextState => {
+    executeTreeDrop: (data = {}) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
-        const {
-            sourceNodeId,
-            targetButtonParentId,
-            targetButtonType,
-        } = state.tree.dragState;
+        const { sourceNodeId } = state.tree.dragState;
         const scope = state.tree.dragState.operationScope ?? state.tree.operationScope;
+        const target: TreeDropTarget | null = data.target !== undefined
+            ? data.target
+            : getTreeDropTargetFromDragState(state.tree.dragState);
+        const targetButtonParentId = target?.kind === 'button' ? target.nodeId : null;
+        const targetButtonType = target?.kind === 'button' ? target.type : null;
+
+        // Lane reorder: only the order of one fork's children changes.
+        if (sourceNodeId !== null && target?.kind === 'lane') {
+            const tree = getOrCreateTree(state);
+            const unit = resolveLaneReorderUnit(tree, sourceNodeId, scope);
+            const newTree = unit === null
+                ? tree
+                : moveChildToSlot(tree, unit.parentNodeId, unit.unitNodeId, target.slotIndex);
+            if (newTree === tree || !validateTree(newTree).valid) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            return commitTreeOperation(state, {
+                prevSnapshot: createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex),
+                tree: newTree,
+                pages: state.fumen.pages,
+                currentIndex: state.fumen.currentIndex,
+                activeNodeId: state.tree.activeNodeId,
+                resetDragState: true,
+            });
+        }
 
         // Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
@@ -1769,7 +1869,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             });
         }
 
-        // No drop besides button drops is possible (dragState.mode is always Reorder).
         return treeOperationActions.endTreeDrag()(state);
     }),
 };

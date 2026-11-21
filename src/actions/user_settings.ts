@@ -141,6 +141,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeRotationSystem({
                 rotationSystem: state.temporary.userSettings.rotationSystem,
             }),
+            // The autosave holds the first page's colorize flag and the INPUT state's rotation system.
+            // Startup applies the saved setting through changeRotationSystem too, before the fumen is
+            // restored, so only this confirmed change saves.
+            state.mode.rotationSystem !== state.temporary.userSettings.rotationSystem
+                ? newState => require('./memento').saveToMemento(newState)
+                : undefined,
             actions.changeSevenBagGrayEnabled({
                 enable: state.temporary.userSettings.sevenBagGrayEnabled,
             }),

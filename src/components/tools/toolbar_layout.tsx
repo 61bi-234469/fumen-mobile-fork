@@ -237,8 +237,9 @@ export const ToolbarLayout: Component<LayoutProps> = (
         alignItems: 'center',
     });
 
+    // Keyed so that Hyperapp keeps this element when a sibling above it (comment row, reserved space) is swapped.
     return (
-        <nav datatest={datatest} className={className} style={navProperties}>
+        <nav key="toolbar" datatest={datatest} className={className} style={navProperties}>
             <div className="nav-wrapper" style={gridProperties}>
                 <ToolbarRow key="toolbar-left" gap={leftGap}>{left}</ToolbarRow>
                 <ToolbarRow key="toolbar-center" gap={centerGap} justifyContent="center">{center}</ToolbarRow>

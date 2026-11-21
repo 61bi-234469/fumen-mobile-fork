@@ -23,6 +23,7 @@ import { liftableCellIndices } from '../lib/spawn_mino_convert';
 import {
     embedTreeInPages,
     createTreeFromPages,
+    findNode,
     findNodeByPageIndex,
     insertPageIntoTree,
     removePageFromTree,
@@ -111,6 +112,18 @@ export interface PageActions {
     finishCutAllPages: (data: { copied: string, pageCount: number }) => action;
     replaceAllFromClipboard: () => action;
 }
+
+// Settles or drops the page-local editor state of the page being left: the drawing in progress,
+// the rectangle selection, the pending comment and the SPAWN mino pick (its candidates belong to
+// the page). openPage runs it only when the index changes, so an operation that moves
+// currentIndex itself runs it first, while currentIndex still points at the page being left.
+export const leaveCurrentPage = (state: State): NextState => sequence(state, [
+    actions.fixInferencePiece(),
+    actions.clearInferencePiece(),
+    actions.clearRectSelection !== undefined ? actions.clearRectSelection() : undefined,
+    actions.commitCommentText(),
+    actions.cancelSpawnMinoPick(),
+]);
 
 // insertPage の直後に「今入れたページ」を開く。ページローテーションが先頭を削ると
 // 挿入時に計算したインデックスがずれるため、確定後の currentIndex から導出する。
@@ -226,13 +239,7 @@ export const pageActions: Readonly<PageActions> = {
 
         return sequence(state, [
             state.play.status === AnimationState.Play ? actions.startAnimation() : undefined,
-            state.fumen.currentIndex !== index ? actions.fixInferencePiece() : undefined,
-            state.fumen.currentIndex !== index ? actions.clearInferencePiece() : undefined,
-            state.fumen.currentIndex !== index && actions.clearRectSelection !== undefined
-                ? actions.clearRectSelection() : undefined,
-            state.fumen.currentIndex !== index ? actions.commitCommentText() : undefined,
-            // ページが変わると対象候補も変わるため、SPAWNミノ⇄ペイントの対象選択待ちは持ち越さない
-            state.fumen.currentIndex !== index ? actions.cancelSpawnMinoPick() : undefined,
+            state.fumen.currentIndex !== index ? leaveCurrentPage : undefined,
             actions.setComment({ comment: text }),
             actions.setField({
                 field: blocks.playField,
@@ -359,7 +366,8 @@ export const pageActions: Readonly<PageActions> = {
 
         return sequence(state, [
             actions.removeUnsettledItems(),
-            actions.commitCommentText(),
+            // The page opened afterwards is a different one: drop the selection and SPAWN mino pick too
+            leaveCurrentPage,
             insertNewPage({ index }),
             actions.reopenCurrentPage(),
             pageActions.applyPageRotation(),
@@ -374,7 +382,8 @@ export const pageActions: Readonly<PageActions> = {
 
         return sequence(state, [
             actions.removeUnsettledItems(),
-            actions.commitCommentText(),
+            // The page opened afterwards is a different one: drop the selection and SPAWN mino pick too
+            leaveCurrentPage,
             duplicatePage({ index }),
             actions.reopenCurrentPage(),
             pageActions.applyPageRotation(),
@@ -401,7 +410,8 @@ export const pageActions: Readonly<PageActions> = {
     removePage: ({ index }) => (state): NextState => {
         return sequence(state, [
             actions.removeUnsettledItems(),
-            actions.commitCommentText(),
+            // The page opened afterwards is a different one: drop the selection and SPAWN mino pick too
+            leaveCurrentPage,
             removePage({ index }),
             actions.reopenCurrentPage(),
         ]);
@@ -492,12 +502,24 @@ export const pageActions: Readonly<PageActions> = {
             return undefined;
         }
 
+        // A Ref page replays every page between it and its reference in page order. In a tree
+        // that order runs through sibling branches unless the parent is the previous page.
+        if (state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0) {
+            const tree: SerializedTree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 };
+            const parentId = findNodeByPageIndex(tree, index)?.parentId;
+            const parent = parentId != null ? findNode(tree, parentId) : undefined;
+            if (parent === undefined || parent.pageIndex !== index - 1) {
+                showToast(i18n.Toast.RefPageNeedsPreviousParent());
+                return undefined;
+            }
+        }
+
         const task = toRefPageTask(index);
 
+        // Apply the change before registering: registerHistoryTask autosaves from its state
         return sequence(state, [
             actions.fixInferencePiece(),
             actions.clearInferencePiece(),
-            actions.registerHistoryTask({ task }),
             (newState) => {
                 const pages = new Pages(newState.fumen.pages);
                 pages.toRefPage(index);
@@ -509,6 +531,7 @@ export const pageActions: Readonly<PageActions> = {
                     },
                 };
             },
+            actions.registerHistoryTask({ task }),
             (newState) => {
                 return pageActions.openPage({ index: newState.fumen.currentIndex })(newState);
             },
@@ -524,7 +547,6 @@ export const pageActions: Readonly<PageActions> = {
         return sequence(state, [
             actions.fixInferencePiece(),
             actions.clearInferencePiece(),
-            actions.registerHistoryTask({ task }),
             (newState) => {
                 const pages = new Pages(newState.fumen.pages);
                 pages.toKeyPage(index);
@@ -535,6 +557,7 @@ export const pageActions: Readonly<PageActions> = {
                     },
                 };
             },
+            actions.registerHistoryTask({ task }),
             (newState) => {
                 return pageActions.openPage({ index: newState.fumen.currentIndex })(newState);
             },
@@ -961,7 +984,6 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -969,6 +991,7 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 
@@ -1039,7 +1062,6 @@ const insertKeyPage = ({ index, skipGrayAfterLineClear = false }: {
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1047,6 +1069,7 @@ const insertKeyPage = ({ index, skipGrayAfterLineClear = false }: {
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 
@@ -1120,7 +1143,6 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1135,6 +1157,7 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1203,7 +1226,6 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
     }
 
     return sequence(state, [
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1212,6 +1234,7 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 currentIndex: index,
             },
         }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
     ]);
 };
 
@@ -1271,7 +1294,6 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1279,6 +1301,7 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 

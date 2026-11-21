@@ -5,7 +5,6 @@ import { getNodeDfsNumbers } from './fumen/tree_utils';
 import {
     calculateTreeViewLayout,
     TREE_HORIZONTAL_GAP,
-    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
     TREE_PADDING,
@@ -124,9 +123,10 @@ export function generateTreeViewExportImage(
     return canvas.toDataURL('image/png');
 }
 
+// The exported card has its own layout (no header strip): thumbnail, page number, comment.
 const getExportNodeExtraHeight = (options: ImageExportOptions): number => {
     if (options.showComments) {
-        return options.showPageNumbers ? TREE_NODE_EXTRA_HEIGHT : 64;
+        return options.showPageNumbers ? 80 : 64;
     }
     return options.showPageNumbers ? 36 : 16;
 };

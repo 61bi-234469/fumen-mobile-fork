@@ -13,6 +13,7 @@ export const i18n = {
     },
     Toast: {
         CopiedToClipboard: () => t('Toast.CopiedToClipboard'),
+        RefPageNeedsPreviousParent: () => t('Toast.RefPageNeedsPreviousParent'),
         CopiedShareUrl: () => t('Toast.CopiedShareUrl'),
         CopiedTetgramRaw: () => t('Toast.CopiedTetgramRaw'),
         CopiedPages: (count: number) => t('Toast.CopiedPages', { count }),

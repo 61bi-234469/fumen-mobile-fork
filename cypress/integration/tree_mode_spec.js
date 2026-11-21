@@ -30,6 +30,54 @@ const findTreeNodeIdByPageNumber = pageNumber => (
     })
 );
 
+const addBranchToPage = pageNumber => (
+    findTreeNodeIdByPageNumber(pageNumber).then((nodeId) => {
+        cy.get('[datatest^="tree-node-"]').then(($nodes) => {
+            const count = $nodes.length;
+            cy.get(`[datatest="btn-tree-branch-${nodeId}"]`).click({ force: true });
+            cy.get('[datatest^="tree-node-"]').should('have.length', count + 1);
+        });
+    })
+);
+
+// #1 -> #2 -> #3 on the first lane, #4 branching from #1 on the second lane.
+const buildForkedTree = () => {
+    buildThreeNodeChain();
+    addBranchToPage(1);
+    expectTreeLanes(['#1 #2 #3', '#4']);
+};
+
+// Page numbers as drawn: lanes top to bottom, nodes left to right.
+// Node ids are reassigned on reload, so the drawn structure is the stable thing to compare.
+const expectTreeLanes = (expected) => {
+    cy.get('[datatest^="tree-node-"]').should(($nodes) => {
+        const container = $nodes[0].ownerDocument.querySelector('[datatest="fumen-graph-container"]');
+        const lanes = new Map();
+        Array.from($nodes).forEach((node) => {
+            const nodeId = node.getAttribute('datatest').replace('tree-node-', '');
+            const link = node.ownerDocument.querySelector(`[datatest="tree-page-link-${nodeId}"]`);
+            const rect = node.getBoundingClientRect();
+            // Lanes are several hundred pixels apart; the active halo shifts a card by a few.
+            const lane = Math.round((rect.top + container.scrollTop) / 100);
+            lanes.set(lane, [...(lanes.get(lane) || []), { left: rect.left, page: link.textContent.trim() }]);
+        });
+        const drawn = Array.from(lanes.keys()).sort((a, b) => a - b)
+            .map(lane => lanes.get(lane).sort((a, b) => a.left - b.left).map(entry => entry.page).join(' '));
+        expect(drawn).to.deep.equal(expected);
+    });
+};
+
+const centerOf = (element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+};
+
+// A point on a card body, away from the add buttons and the copy position.
+const pointOnCard = (win, nodeId, verticalRatio) => {
+    const rect = win.document.querySelector(`[datatest="tree-node-${nodeId}"]`).getBoundingClientRect();
+    return { x: rect.left + rect.width * 0.3, y: rect.top + rect.height * verticalRatio };
+};
+
 const createTouchDispatcher = (win, target) => (type, point) => {
     const touch = new win.Touch({
         identifier: 987,
@@ -107,6 +155,19 @@ describe('Tree mode in list view', () => {
         cy.get('[title="Disable tree mode"]').click();
         cy.get(datatest('btn-tree-disable-confirm')).click();
         cy.get('[title="Enable tree mode"]').should('be.visible');
+    });
+
+    it('keeps Tree mode on after a reload with no edit since enabling it', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Disable tree mode"]').should('be.visible');
+
+        // The restored session reopens the Tree screen by itself.
+        cy.reload();
+        cy.get('[title="Disable tree mode"]').should('be.visible');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 1);
     });
 
     it('deletes nodes with the permanent delete button and restores via the undo toast', () => {
@@ -253,10 +314,14 @@ describe('Tree mode in list view', () => {
 
         // A leaf has no descendants to target, so both delete and drag are disabled.
         cy.get('[datatest^="btn-tree-node-delete-"]').last()
-            .find('circle').eq(1).should('have.attr', 'fill', '#94A3B8');
+            .should('have.attr', 'aria-disabled', 'true');
         cy.get('[datatest^="tree-handle-"]').last()
-            .find('rect[width="32"][height="10"]')
-            .should('have.attr', 'fill', '#94A3B8');
+            .should('have.attr', 'aria-disabled', 'true');
+        // A node that still has descendants keeps both enabled.
+        cy.get('[datatest^="btn-tree-node-delete-"]').first()
+            .should('not.have.attr', 'aria-disabled');
+        cy.get('[datatest^="tree-handle-"]').first()
+            .should('not.have.attr', 'aria-disabled');
     });
 
     it('keeps comments, branch, and copy working while seven bag gray is enabled', () => {
@@ -352,13 +417,21 @@ describe('Tree mode in list view', () => {
         enterTreeGraphView();
         buildThreeNodeChain();
 
-        cy.get('[datatest^="tree-handle-"]').first().within(() => {
-            cy.get(':scope > circle').should('not.exist');
-            cy.get('rect[width="32"][height="10"]').should('exist');
+        // The handle is the header strip of the card: as wide as the card, at its top.
+        cy.get('[datatest^="tree-node-"]').first().then(($node) => {
+            const nodeId = $node.attr('datatest').replace('tree-node-', '');
+            const cardRect = $node.children('g').children('rect').last()[0].getBoundingClientRect();
+            cy.get(`[datatest="tree-handle-${nodeId}"]`).then(($handle) => {
+                const handleRect = $handle[0].getBoundingClientRect();
+                expect(handleRect.width).to.be.closeTo(cardRect.width, 2);
+                expect(handleRect.left).to.be.closeTo(cardRect.left, 2);
+                expect(handleRect.top).to.be.lessThan(cardRect.top + 1);
+                expect(handleRect.bottom).to.be.lessThan(cardRect.top + cardRect.height / 4);
+            });
         });
         cy.get('[datatest^="btn-tree-insert-"]').first()
             .find('circle').eq(1)
-            .should('have.attr', 'r', '16');
+            .should('have.attr', 'r', '12');
 
         cy.window().then(async (win) => {
             const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -397,18 +470,18 @@ describe('Tree mode in list view', () => {
                 `[datatest="btn-tree-branch-${parentNodeId}"]`,
             )).to.equal(null);
 
-            // Valid Insert/Branch targets visibly grow from 32px to 36px.
+            // Valid Insert/Branch targets visibly grow from 24px to 32px.
             const expandedInsert = win.document.querySelector(
                 '[datatest^="btn-tree-insert-"] circle:nth-of-type(2)',
             );
-            expect(expandedInsert.getAttribute('r')).to.equal('18');
+            expect(expandedInsert.getAttribute('r')).to.equal('16');
 
             // The destructive controls disappear while moving, and the copy
             // positions become blue-plus branch targets.
             expect(win.document.querySelector('[datatest^="btn-tree-node-delete-"]'))
                 .to.equal(null);
             expect(win.document.querySelector(
-                '[datatest^="btn-tree-copy-"] circle:nth-of-type(2)[r="18"]',
+                '[datatest^="btn-tree-copy-"] circle:nth-of-type(2)[r="16"]',
             )).to.not.equal(null);
 
             fireTouch('touchmove', end);
@@ -423,6 +496,138 @@ describe('Tree mode in list view', () => {
         cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
         cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('selects from the header strip without opening the page, and drags from the page number', () => {
+        // Wide enough to show the whole chain, so the drop target is on screen
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildThreeNodeChain();
+
+        const expectActive = index => cy.get('[datatest^="tree-page-link-"]').eq(index)
+            .find('rect[fill="#2563EB"]').should('exist');
+
+        // A click on the strip selects the card. Repeating it on the active card
+        // stays on the tree: a press meant as a grab must not open the page.
+        cy.get('[datatest^="tree-handle-"]').eq(1).click({ force: true });
+        expectActive(1);
+        cy.get('[datatest^="tree-handle-"]').eq(1).click({ force: true });
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
+        expectActive(1);
+
+        // A tap on the strip selects as well (the strip cancels the browser's own click).
+        cy.window().then((win) => {
+            const handle = win.document.querySelectorAll('[datatest^="tree-handle-"]')[0];
+            const rect = handle.getBoundingClientRect();
+            const point = { x: rect.left + 12, y: rect.top + rect.height / 2 };
+            const fireTouch = createTouchDispatcher(win, handle);
+            fireTouch('touchstart', point);
+            fireTouch('touchend', point);
+        });
+        expectActive(0);
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
+
+        const mouse = win => (target, type, point) => target.dispatchEvent(new win.MouseEvent(type, {
+            bubbles: type !== 'mouseleave',
+            cancelable: true,
+            clientX: point.x,
+            clientY: point.y,
+            button: 0,
+            buttons: type === 'mouseup' || type === 'click' ? 0 : 1,
+        }));
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        // The delete icon sits inside the strip too. A press on it that travels is a drag,
+        // and no click may delete afterwards - not even one that arrives before the view
+        // has re-rendered into the drag state (each press below is dispatched in one go),
+        // and not even when the pointer comes back to where it was pressed.
+        ['released away', 'released back at the press point'].forEach((label, index) => {
+            cy.window().then(async (win) => {
+                const fire = mouse(win);
+                const deleteIcon = win.document.querySelectorAll('[datatest^="btn-tree-node-delete-"]')[2];
+                const pageLink = win.document.querySelectorAll('[datatest^="tree-page-link-"]')[2];
+                // Where a wide page number reaches the icon's invisible margin, the number is on top.
+                expect(deleteIcon.compareDocumentPosition(pageLink) & win.Node.DOCUMENT_POSITION_FOLLOWING)
+                    .to.not.equal(0);
+
+                const start = centerOf(deleteIcon);
+                const moved = { x: start.x + 12, y: start.y };
+                const release = index === 0 ? moved : start;
+                fire(deleteIcon, 'mousedown', start);
+                fire(win.document, 'mousemove', moved);
+                fire(win.document, 'mousemove', release);
+                fire(deleteIcon, 'mouseup', release);
+                fire(deleteIcon, 'click', release);
+                await wait(120);
+
+                // The drag is alive; leaving the tree cancels it.
+                expect(win.document.querySelector('[datatest="tree-drag-ghost"]'), label).to.not.equal(null);
+                const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+                const rect = container.getBoundingClientRect();
+                fire(container, 'mouseleave', { x: rect.left + 100, y: rect.bottom + 20 });
+            });
+            cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+            cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+        });
+
+        // A press on the delete icon that stays put still deletes (and Undo restores it).
+        cy.get('[datatest^="btn-tree-node-delete-"]').eq(2).click({ force: true });
+        cy.get('[datatest^="tree-node-"]').should('have.length', 2);
+        cy.get('[datatest="btn-tree-delete-undo"]').click();
+        cy.get('[datatest^="tree-node-"]').should('have.length', 3);
+
+        // The page number sits inside the strip as well. Dragging from it and releasing back
+        // on it ends the drag without opening the page.
+        cy.window().then(async (win) => {
+            const fire = mouse(win);
+            const pageLink = win.document.querySelectorAll('[datatest^="tree-page-link-"]')[2];
+            const start = centerOf(pageLink);
+
+            fire(pageLink, 'mousedown', start);
+            await wait(60);
+            fire(win.document, 'mousemove', { x: start.x + 30, y: start.y });
+            await wait(120);
+            expect(win.document.querySelector('[datatest="tree-drag-ghost"]')).to.not.equal(null);
+
+            const under = win.document.elementFromPoint(start.x, start.y);
+            expect(under.closest('[datatest^="tree-page-link-"]')).to.equal(pageLink);
+            fire(under, 'mousemove', start);
+            await wait(60);
+            fire(under, 'mouseup', start);
+            fire(under, 'click', start);
+        });
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
+        cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#3');
+
+        // A press on the page number that travels onto an Insert button moves the node.
+        cy.window().then(async (win) => {
+            const fire = mouse(win);
+            const pageLink = win.document.querySelectorAll('[datatest^="tree-page-link-"]')[2];
+            const start = centerOf(pageLink);
+            const end = centerOf(win.document.querySelectorAll('svg circle[fill="#10B981"]')[0]);
+
+            fire(pageLink, 'mousedown', start);
+            await wait(60);
+            fire(win.document, 'mousemove', { x: start.x + 30, y: start.y });
+            await wait(120);
+            expect(win.document.querySelector('[datatest="tree-drag-ghost"]')).to.not.equal(null);
+            fire(win.document.elementFromPoint(end.x, end.y), 'mousemove', end);
+            await wait(120);
+            fire(win.document.elementFromPoint(end.x, end.y), 'mouseup', end);
+        });
+
+        // Same result as dragging the handle: the last page moved between the first two.
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest="fumen-graph-container"]').should('exist');
+        cy.get('[datatest^="tree-page-link-"]').eq(1).contains('#3');
+        cy.get('[datatest^="tree-page-link-"]').eq(2).contains('#2');
+
+        // A plain click on the page number still opens that page.
+        cy.get('[datatest^="tree-page-link-"]').eq(1).click({ force: true });
+        cy.get('[datatest="fumen-graph-container"]').should('not.exist');
     });
 
     it('starts moving from a node body after a long press', () => {
@@ -548,6 +753,196 @@ describe('Tree mode in list view', () => {
             expect(scrolled).to.be.greaterThan(before);
         });
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('reorders lanes by dragging a handle onto a lane guide, and keeps the order after a reload', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(120);
+
+                    // Guides show where the branch can go; the two slots around it are not drawn.
+                    expect(win.document.querySelector('[datatest="tree-lane-block"]')).to.not.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-0"]')).to.not.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-1"]')).to.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-2"]')).to.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.equal(null);
+
+                    // Upper half of the main lane: the line above it becomes the candidate.
+                    const end = pointOnCard(win, mainNodeId, 0.25);
+                    fireTouch('touchmove', end);
+                    await wait(120);
+                    expect(win.document.querySelector(
+                        '[datatest="tree-lane-guide-0"] [datatest="tree-lane-guide-active"]',
+                    )).to.not.equal(null);
+
+                    fireTouch('touchend', end);
+                });
+            });
+        });
+
+        // The branch became the main line of #1; the old main line moved below it.
+        expectTreeLanes(['#1 #2', '#3 #4']);
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest="tree-lane-block"]').should('not.exist');
+
+        // No other edit happens before the reload: the autosave must hold the reordered tree.
+        // The restored session reopens the Tree screen by itself.
+        cy.reload();
+        expectTreeLanes(['#1 #2', '#3 #4']);
+    });
+
+    it('does not reorder lanes when released on the moving lane or outside the tree', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+
+                    // Released on its own lane
+                    const ownLane = pointOnCard(win, branchNodeId, 0.4);
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(60);
+                    fireTouch('touchmove', ownLane);
+                    await wait(120);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.equal(null);
+                    fireTouch('touchend', ownLane);
+                    await wait(120);
+
+                    // A candidate is showing, but the finger is lifted below the tree viewport.
+                    // touchend still reaches the handle, so only the release position can tell.
+                    const candidate = pointOnCard(win, mainNodeId, 0.25);
+                    const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+                    const outside = { x: candidate.x, y: container.getBoundingClientRect().bottom + 20 };
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(60);
+                    fireTouch('touchmove', candidate);
+                    await wait(120);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.not.equal(null);
+                    fireTouch('touchend', outside);
+                });
+            });
+        });
+
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        expectTreeLanes(['#1 #2 #3', '#4']);
+    });
+
+    it('moves the main line of a fork when its handle is dragged straight down with the descendants scope', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+        operations.tree.setScope('descendants');
+
+        findTreeNodeIdByPageNumber(1).then((forkNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${forkNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+                    // Same x as the fork's handle, which is left of the guide lines.
+                    const end = { x: start.x, y: pointOnCard(win, branchNodeId, 0.75).y };
+
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x, y: start.y + 30 });
+                    await wait(60);
+                    fireTouch('touchmove', end);
+                    await wait(120);
+                    expect(win.document.querySelector(
+                        '[datatest="tree-lane-guide-2"] [datatest="tree-lane-guide-active"]',
+                    )).to.not.equal(null);
+                    fireTouch('touchend', end);
+                });
+            });
+
+            // The fork keeps its place; its two branches swapped.
+            expectTreeLanes(['#1 #2', '#3 #4']);
+            cy.get(`[datatest="tree-page-link-${forkNodeId}"]`).contains('#1');
+        });
+    });
+
+    it('reorders lanes with the mouse, and cancels when the pointer leaves the tree', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        const dragBranchOverMainLane = (win, branchNodeId, mainNodeId) => {
+            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const fire = (target, type, point) => target.dispatchEvent(new win.MouseEvent(type, {
+                bubbles: type !== 'mouseleave',
+                cancelable: true,
+                clientX: point.x,
+                clientY: point.y,
+                button: 0,
+                buttons: type === 'mouseup' ? 0 : 1,
+            }));
+            const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+            const start = centerOf(handle);
+            const end = pointOnCard(win, mainNodeId, 0.25);
+
+            return (async () => {
+                fire(handle, 'mousedown', start);
+                await wait(60);
+                fire(win.document, 'mousemove', { x: start.x + 30, y: start.y });
+                await wait(120);
+                fire(win.document.elementFromPoint(end.x, end.y), 'mousemove', end);
+                await wait(120);
+                expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.not.equal(null);
+                return { fire, end };
+            })();
+        };
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const { fire } = await dragBranchOverMainLane(win, branchNodeId, mainNodeId);
+                    const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+                    const rect = container.getBoundingClientRect();
+                    fire(container, 'mouseleave', { x: rect.left + 100, y: rect.bottom + 20 });
+                });
+                cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+                expectTreeLanes(['#1 #2 #3', '#4']);
+
+                cy.window().then(async (win) => {
+                    const { fire, end } = await dragBranchOverMainLane(win, branchNodeId, mainNodeId);
+                    fire(win.document.elementFromPoint(end.x, end.y), 'mouseup', end);
+                });
+                cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+                expectTreeLanes(['#1 #2', '#3 #4']);
+            });
+        });
     });
 
     it('toggles back and forth between editor and list view from the same corner button', () => {

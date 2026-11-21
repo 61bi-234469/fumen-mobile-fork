@@ -15,6 +15,7 @@ import {
     NodeConnection,
     VIRTUAL_PAGE_INDEX,
     TreeOperationScope,
+    LaneReorderUnit,
 } from './tree_types';
 
 // ============================================================================
@@ -903,6 +904,88 @@ export const canMoveScope = (
     // The source parent's Insert button is reserved as an invalid drop target.
     if (buttonType === 'insert' && sourceNode.parentId === targetId) return false;
     return true;
+};
+
+/** Climb from a node to the nearest ancestor-or-self whose parent has two or more children. */
+const findNearestForkChild = (tree: SerializedTree, nodeId: TreeNodeId): TreeNode | null => {
+    const visited = new Set<TreeNodeId>();
+    let node = findNode(tree, nodeId);
+    while (node && node.parentId !== null && !visited.has(node.id)) {
+        visited.add(node.id);
+        const parent = findNode(tree, node.parentId);
+        if (!parent) return null;
+        if (parent.childrenIds.length >= 2) return node;
+        node = parent;
+    }
+    return null;
+};
+
+/**
+ * Resolve which branch a vertical (lane) reorder moves for a grabbed node.
+ * A lane reorder only changes the childrenIds order of one fork; no parent changes.
+ * - node, subtree: the nearest ancestor-or-self that has siblings. A single node
+ *   has no vertical move of its own, so node behaves like subtree here.
+ * - descendants: the main child of the first fork at or after the grabbed node,
+ *   so the grabbed node itself never moves
+ */
+export const resolveLaneReorderUnit = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    scope: TreeOperationScope,
+): LaneReorderUnit | null => {
+    const grabbed = findNode(tree, nodeId);
+    if (!grabbed || isVirtualNode(grabbed)) return null;
+
+    let unit: TreeNode | null = null;
+    if (scope === 'descendants') {
+        const visited = new Set<TreeNodeId>();
+        let fork: TreeNode | undefined = grabbed;
+        while (fork && fork.childrenIds.length === 1 && !visited.has(fork.id)) {
+            visited.add(fork.id);
+            fork = findNode(tree, fork.childrenIds[0]);
+        }
+        unit = fork && fork.childrenIds.length >= 2
+            ? findNode(tree, fork.childrenIds[0]) ?? null
+            : null;
+    } else {
+        unit = findNearestForkChild(tree, grabbed.id);
+    }
+
+    if (!unit || unit.parentId === null) return null;
+    const parentNode = findNode(tree, unit.parentId);
+    if (!parentNode || parentNode.childrenIds.length < 2) return null;
+    const index = parentNode.childrenIds.indexOf(unit.id);
+    if (index < 0) return null;
+    return { index, unitNodeId: unit.id, parentNodeId: parentNode.id };
+};
+
+/**
+ * Move one child of a parent to a slot between its siblings (slot i = just above
+ * child i, slot childrenIds.length = below the last child). Only the parent's
+ * childrenIds order changes. Returns the same tree for an invalid or no-op slot.
+ */
+export const moveChildToSlot = (
+    tree: SerializedTree,
+    parentId: TreeNodeId,
+    childId: TreeNodeId,
+    slotIndex: number,
+): SerializedTree => {
+    const parent = findNode(tree, parentId);
+    if (!parent) return tree;
+
+    const current = parent.childrenIds.indexOf(childId);
+    if (current < 0 || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > parent.childrenIds.length) {
+        return tree;
+    }
+    if (slotIndex === current || slotIndex === current + 1) return tree;
+
+    const childrenIds = parent.childrenIds.filter(id => id !== childId);
+    childrenIds.splice(slotIndex > current ? slotIndex - 1 : slotIndex, 0, childId);
+
+    return {
+        ...tree,
+        nodes: tree.nodes.map(node => node.id === parentId ? { ...node, childrenIds } : node),
+    };
 };
 
 /**

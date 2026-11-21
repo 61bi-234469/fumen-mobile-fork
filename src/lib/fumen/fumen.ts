@@ -348,13 +348,18 @@ const createEncoder = (inputPages: Page[]) => {
     let lastRepeatIndex = -1;
     const allValues = new Values();
     let prevField = new Field({});
+    let prevFieldSource: number | undefined;
 
     const pages = new Pages(inputPages);
 
     const innerEncode = (index: number) => {
-        const field = pages.getField(index);
-
         const currentPage = inputPages[index];
+        const { obj, ref } = currentPage.field;
+        const fieldSource = obj !== undefined ? index : ref;
+        // A shared source means the previous Lock result already includes the same replay.
+        const field = fieldSource !== undefined && fieldSource === prevFieldSource && fieldSource < index
+            ? prevField
+            : pages.getField(index);
         const currentField = field !== undefined ? field.copy() : prevField.copy();
 
         // コマンドの反映
@@ -444,6 +449,7 @@ const createEncoder = (inputPages: Page[]) => {
         }
 
         prevField = currentField;
+        prevFieldSource = fieldSource;
     };
 
     const finish = (): string => {

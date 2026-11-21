@@ -21,7 +21,14 @@ jest.mock('../../actions', () => ({
         commitRectSelection: jest.fn(() => () => undefined),
         removeUnsettledItems: jest.fn(() => () => undefined),
         commitCommentText: jest.fn(() => () => undefined),
+        fixInferencePiece: jest.fn(() => () => undefined),
+        clearInferencePiece: jest.fn(() => () => undefined),
+        clearRectSelection: jest.fn(() => () => undefined),
+        cancelSpawnMinoPick: jest.fn(() => () => undefined),
         reopenCurrentPage: jest.fn(() => () => undefined),
+        openPage: jest.fn(({ index }: { index: number }) => (state: any) => ({
+            fumen: { ...state.fumen, currentIndex: index },
+        })),
         registerHistoryTask: jest.fn(() => () => undefined),
     },
     main: {},
@@ -59,6 +66,7 @@ jest.mock('../memento', () => ({
     mementoActions: {
         registerHistoryTask: jest.fn(() => () => undefined),
     },
+    saveToMemento: jest.fn(() => undefined),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -654,10 +662,12 @@ describe('tree editor boundary', () => {
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const firstNode = findNodeByPageIndex(tree, 0)!;
 
+        mockedActions.openPage.mockClear();
         treeOperationActions.selectTreeNode({ nodeId: firstNode.id })(state);
 
         expectSettled();
-        expect(mockedActions.reopenCurrentPage).toHaveBeenCalledTimes(1);
+        expect(mockedActions.openPage).toHaveBeenCalledTimes(1);
+        expect(mockedActions.openPage).toHaveBeenCalledWith({ index: 0 });
     });
 
     test('settles before add, copy, delete, and drag operations', () => {
@@ -695,6 +705,20 @@ describe('tree editor boundary', () => {
             targetButtonType: 'branch',
         };
         treeOperationActions.executeTreeDrop()(dragState);
+        expectSettled();
+    });
+
+    test('settles before Cold Clear adds branches', () => {
+        const state = createBaseState();
+        treeOperationActions.addColdClearBranches({
+            parentNodeId: state.tree.activeNodeId,
+            pages: [{
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: '' },
+                flags: { ...defaultFlags },
+            }],
+        })(state);
         expectSettled();
     });
 });
@@ -1071,5 +1095,335 @@ describe('executeTreeDrop with descendants scope', () => {
             findNodeByPageIndex(nextTree, 4)!.id,
         ]);
         expect(next.fumen.pages).toHaveLength(5);
+    });
+});
+
+const createForkPages = (): Page[] => ['root', 'main', 'branch'].map((text, index) => ({
+    index,
+    field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+    comment: { text },
+    flags: { ...defaultFlags },
+}));
+
+// virtual root -> n0 -> [n1 (main), n2 (branch)]
+const createForkTree = (): SerializedTree => ({
+    nodes: [
+        { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['n0'] },
+        { id: 'n0', parentId: 'root', pageIndex: 0, childrenIds: ['n1', 'n2'] },
+        { id: 'n1', parentId: 'n0', pageIndex: 1, childrenIds: [] },
+        { id: 'n2', parentId: 'n0', pageIndex: 2, childrenIds: [] },
+    ],
+    rootId: 'root',
+    version: 2,
+});
+
+describe('tree operation autosave', () => {
+    test('registers the history task after applying the operation, so autosave stores the result', () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mockedMementoActions = require('../memento').mementoActions;
+        let stateAtRegistration: any;
+        mockedMementoActions.registerHistoryTask.mockImplementationOnce(() => (current: any) => {
+            stateAtRegistration = current;
+            return undefined;
+        });
+
+        const state = createTreeState(createForkPages(), createForkTree(), 'n1', 'subtree');
+        state.tree.dragState = {
+            ...initialTreeDragState,
+            sourceNodeId: 'n1',
+            targetButtonParentId: 'n0',
+            targetButtonType: 'branch',
+            operationScope: 'subtree',
+        };
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+
+        expect(next.fumen.pages.map((page: Page) => page.comment.text)).toEqual(['root', 'branch', 'main']);
+        // saveToMemento builds the stored pages from the state it is called with.
+        expect(stateAtRegistration.fumen.pages.map((page: Page) => page.comment.text))
+            .toEqual(['root', 'branch', 'main']);
+        expect(stateAtRegistration.tree.nodes.find((node: any) => node.id === 'n0').childrenIds)
+            .toEqual(['n2', 'n1']);
+    });
+});
+
+describe('history registration comes after the result is applied', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mockedMementoActions = require('../memento').mementoActions;
+    const captureNextRegistration = (registerHistoryTask: jest.Mock) => {
+        const captured: { state?: any } = {};
+        registerHistoryTask.mockImplementationOnce(() => (current: any) => {
+            captured.state = current;
+            return undefined;
+        });
+        return captured;
+    };
+
+    test('enabling tree mode autosaves the new tree without a history entry', () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { saveToMemento } = require('../memento');
+        saveToMemento.mockClear();
+        mockedMementoActions.registerHistoryTask.mockClear();
+        const state = createBaseState();
+        state.tree = { ...state.tree, enabled: false, nodes: [], rootId: null, activeNodeId: null };
+
+        const next = treeOperationActions.toggleTreeMode()(state) as any;
+
+        expect(next.tree.enabled).toBe(true);
+        expect(saveToMemento).toHaveBeenCalledTimes(1);
+        const saved = saveToMemento.mock.calls[0][0];
+        expect(saved.tree.enabled).toBe(true);
+        expect(saved.tree.nodes).toBe(next.tree.nodes);
+        expect(saved.tree.rootId).toBe(next.tree.rootId);
+        expect(mockedMementoActions.registerHistoryTask).not.toHaveBeenCalled();
+    });
+
+    test('disabling tree mode', () => {
+        const state = createBaseState();
+        state.fumen.pages[0].comment = { text: 'a#TREE=abc' };
+        const captured = captureNextRegistration(mockedMementoActions.registerHistoryTask);
+
+        const next = treeOperationActions.toggleTreeMode()(state) as any;
+
+        expect(next.tree.enabled).toBe(false);
+        expect(captured.state.tree.enabled).toBe(false);
+        expect(captured.state.tree.nodes).toEqual([]);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+    });
+
+    test('normalizing the page order', () => {
+        // virtual root -> n0 -> [n1 (page 2), n2 (page 1)]: pages are not in tree order
+        const tree = {
+            ...createForkTree(),
+            nodes: createForkTree().nodes.map((node) => {
+                if (node.id === 'n1') return { ...node, pageIndex: 2 };
+                if (node.id === 'n2') return { ...node, pageIndex: 1 };
+                return node;
+            }),
+        };
+        const state = createTreeState(createForkPages(), tree, 'n0');
+        const captured = captureNextRegistration(mockedMementoActions.registerHistoryTask);
+
+        const next = treeOperationActions.normalizeTreePageOrder()(state) as any;
+
+        expect(next.fumen.pages.map((page: Page) => page.comment.text)).toEqual(['root', 'branch', 'main']);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+        expect(captured.state.tree.nodes).toBe(next.tree.nodes);
+    });
+
+    test('forking a 7bag gray workspace without a tree', () => {
+        const state = createBaseState();
+        state.tree.enabled = false;
+        state.fumen.currentIndex = 0;
+        state.fumen.pages[0] = {
+            ...state.fumen.pages[0],
+            piece: createSpawnMove(Piece.T, false),
+            comment: { text: '#Q=[](T)I' },
+            internal: { sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 } },
+        };
+        const captured = captureNextRegistration(mockedActions.registerHistoryTask);
+
+        const next = treeOperationActions.forkSevenBagGrayInputPage()(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(3);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+        expect(captured.state.fumen.currentIndex).toBe(2);
+    });
+});
+
+describe('opening the dragged or selected page in the editor', () => {
+    const editorState = () => {
+        const state = createTreeState(createForkPages(), createForkTree(), 'n1');
+        state.mode = { screen: Screens.Editor };
+        return state;
+    };
+    const openPageCalls = () => mockedActions.openPage.mock.calls.map(([data]: any[]) => data.index);
+
+    beforeEach(() => {
+        mockedActions.openPage.mockClear();
+    });
+
+    test('starting a drag in the editor side panel opens the source page after settling the current one', () => {
+        const state = editorState();
+        let indexWhenOpening: number | undefined;
+        mockedActions.openPage.mockImplementationOnce(({ index }: { index: number }) => (current: any) => {
+            indexWhenOpening = current.fumen.currentIndex;
+            return { fumen: { ...current.fumen, currentIndex: index } };
+        });
+
+        const next = treeOperationActions.startTreeDrag({ sourceNodeId: 'n2' })(state) as any;
+
+        expect(mockedActions.commitRectSelection).toHaveBeenCalledTimes(1);
+        expect(mockedActions.commitRectSelection.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.openPage.mock.invocationCallOrder[0]);
+        // openPage clears the rectangle selection and the other page-local state only
+        // while currentIndex still points at the page being left.
+        expect(openPageCalls()).toEqual([2]);
+        expect(indexWhenOpening).toBe(1);
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.activeNodeId).toBe('n2');
+        expect(next.tree.dragState.sourceNodeId).toBe('n2');
+    });
+
+    test('starting a drag on the full-screen Tree only moves the current index', () => {
+        const state = editorState();
+        state.mode = { screen: Screens.ListView };
+
+        const next = treeOperationActions.startTreeDrag({ sourceNodeId: 'n2' })(state) as any;
+
+        expect(mockedActions.openPage).not.toHaveBeenCalled();
+        expect(mockedActions.commitRectSelection).not.toHaveBeenCalled();
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.dragState.sourceNodeId).toBe('n2');
+    });
+
+    test.each(['activateTreeNode', 'selectTreeNode'])('%s opens the page before moving the current index', (name) => {
+        const state = editorState();
+        let indexWhenOpening: number | undefined;
+        mockedActions.openPage.mockImplementationOnce(({ index }: { index: number }) => (current: any) => {
+            indexWhenOpening = current.fumen.currentIndex;
+            return { fumen: { ...current.fumen, currentIndex: index } };
+        });
+
+        const next = (treeOperationActions as any)[name]({ nodeId: 'n2' })(state) as any;
+
+        expect(openPageCalls()).toEqual([2]);
+        expect(indexWhenOpening).toBe(1);
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.activeNodeId).toBe('n2');
+    });
+});
+
+describe('executeTreeDrop onto a lane slot', () => {
+    // virtual root -> [n0 -> [n1, n2], n3]; pages in tree order: root, main, branch, second
+    const createLanePages = (): Page[] => [
+        ...createForkPages(),
+        { index: 3, field: { obj: new Field({}) }, comment: { text: 'second' }, flags: { ...defaultFlags } },
+    ];
+    const createLaneTree = (): SerializedTree => {
+        const fork = createForkTree();
+        return {
+            ...fork,
+            nodes: [
+                ...fork.nodes.map(node => node.id === 'root' ? { ...node, childrenIds: ['n0', 'n3'] } : node),
+                { id: 'n3', parentId: 'root', pageIndex: 3, childrenIds: [] },
+            ],
+        };
+    };
+    const createDragState = (sourceNodeId: string, scope: TreeOperationScope = 'node') => {
+        const state = createTreeState(createLanePages(), createLaneTree(), sourceNodeId, scope);
+        state.tree.dragState = { ...initialTreeDragState, sourceNodeId, operationScope: scope };
+        return state;
+    };
+    const commentsOf = (pages: Page[]) => pages.map(page => page.comment.text);
+    const childrenOf = (next: any, nodeId: string) => (
+        next.tree.nodes.find((node: any) => node.id === nodeId).childrenIds
+    );
+
+    test('reorders the siblings and puts the pages in tree order', () => {
+        const state = createDragState('n2');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 0 } })(state) as any;
+
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+        expect(commentsOf(next.fumen.pages)).toEqual(['root', 'branch', 'main', 'second']);
+        expect(next.tree.nodes.map((node: any) => node.parentId))
+            .toEqual(state.tree.nodes.map((node: any) => node.parentId));
+        expect(next.tree.dragState).toEqual(initialTreeDragState);
+        expectResolvableBackwardRefs(next.fumen.pages);
+    });
+
+    test('moves a top-level branch and keeps the fumen-wide colorize flag on the new first page', () => {
+        const state = createDragState('n0');
+        state.fumen.pages[0].flags.colorize = false;
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 2 } })(state) as any;
+
+        expect(childrenOf(next, 'root')).toEqual(['n3', 'n0']);
+        expect(commentsOf(next.fumen.pages)).toEqual(['second', 'root', 'main', 'branch']);
+        expect(next.fumen.pages[0].flags.colorize).toBe(false);
+    });
+
+    test('uses the scope captured at drag start to pick the moving branch', () => {
+        // descendants on the fork n0: its main child n1 moves, n0 stays
+        const state = createDragState('n0', 'descendants');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 2 } })(state) as any;
+
+        expect(childrenOf(next, 'root')).toEqual(['n0', 'n3']);
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+    });
+
+    test.each([1, 2, -1, 3, 0.5])('changes nothing for slot %s beside the branch or out of range', (slotIndex) => {
+        const state = createDragState('n2');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { slotIndex, kind: 'lane' } })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.nodes).toBe(state.tree.nodes);
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('changes nothing when the grabbed node has no branch to reorder', () => {
+        const state = createDragState('n1', 'descendants');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 0 } })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('an explicit null target cancels even when the drag state still holds a candidate', () => {
+        const state = createDragState('n2');
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const next = treeOperationActions.executeTreeDrop({ target: null })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('falls back to the candidate in the drag state when no target is passed', () => {
+        const state = createDragState('n2');
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+    });
+});
+
+describe('tree drag candidates', () => {
+    const createDraggingState = () => {
+        const state = createTreeState(createForkPages(), createForkTree(), 'n2');
+        state.tree.dragState = { ...initialTreeDragState, sourceNodeId: 'n2' };
+        return state;
+    };
+
+    test('a lane slot replaces a button candidate', () => {
+        const state = createDraggingState();
+        state.tree.dragState.targetButtonParentId = 'n1';
+        state.tree.dragState.targetButtonType = 'insert';
+
+        const next = treeOperationActions.updateTreeDropSlot({ slotIndex: 0 })(state) as any;
+
+        expect(next.tree.dragState.dropSlotIndex).toBe(0);
+        expect(next.tree.dragState.targetButtonParentId).toBeNull();
+        expect(next.tree.dragState.targetButtonType).toBeNull();
+    });
+
+    test('a button candidate replaces a lane slot, and clearing the button clears the slot too', () => {
+        const state = createDraggingState();
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const withButton = treeOperationActions
+            .updateTreeDragButtonTarget({ parentNodeId: 'n1', buttonType: 'insert' })(state) as any;
+        expect(withButton.tree.dragState.targetButtonParentId).toBe('n1');
+        expect(withButton.tree.dragState.dropSlotIndex).toBeNull();
+
+        const cleared = treeOperationActions
+            .updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null })(state) as any;
+        expect(cleared.tree.dragState.targetButtonParentId).toBeNull();
+        expect(cleared.tree.dragState.dropSlotIndex).toBeNull();
     });
 });

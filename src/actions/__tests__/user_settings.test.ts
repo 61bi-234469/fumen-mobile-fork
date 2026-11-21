@@ -17,6 +17,11 @@ jest.mock('../../memento', () => ({
     },
 }));
 
+const mockSaveToMemento = jest.fn(() => undefined);
+jest.mock('../memento', () => ({
+    saveToMemento: (...args: any[]) => (mockSaveToMemento as any)(...args),
+}));
+
 jest.mock('../../states', () => ({
     normalizePageRotationLimit: (limit: number) => Math.min(999, Math.max(0, Math.round(limit))),
 }));
@@ -412,6 +417,17 @@ describe('userSettingsActions', () => {
             for (const name of actionNames) {
                 mockActions[name] = jest.fn(() => () => undefined);
             }
+        });
+
+        test('autosaves only when the rotation system changes', () => {
+            userSettingsActions.commitUserSettings()(createState());
+            expect(mockSaveToMemento).not.toHaveBeenCalled();
+
+            const state = createState();
+            state.temporary.userSettings = { ...baseUserSettings, rotationSystem: 'classic' };
+            userSettingsActions.commitUserSettings()(state);
+            expect(mockActions.changeRotationSystem).toHaveBeenCalledWith({ rotationSystem: 'classic' });
+            expect(mockSaveToMemento).toHaveBeenCalledTimes(1);
         });
 
         test('applies temporary view settings through existing actions', () => {

@@ -53,7 +53,9 @@ const hasCurrentSpawnedPiece = (state: Readonly<State>): boolean => {
 };
 
 export interface MementoActions {
-    registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string, pieceSpawn?: boolean }) => action;
+    registerHistoryTask: (data: {
+        task: HistoryTask, mergeKey?: string, pieceSpawn?: boolean, keepThumbnails?: boolean,
+    }) => action;
     undo: () => action;
     redo: () => action;
     loadPagesViaHistory: (data: {
@@ -62,16 +64,20 @@ export interface MementoActions {
         undoCount: number,
         redoCount: number,
         treeViewMode?: TreeViewMode,
+        treeDisabled?: boolean,
     }) => action;
     setHistoryCount: (data: { redoCount: number, undoCount: number }) => action;
 }
 
 export const mementoActions: Readonly<MementoActions> = {
-    registerHistoryTask: ({ task, mergeKey, pieceSpawn }) => (state): NextState => {
+    registerHistoryTask: ({ task, mergeKey, pieceSpawn, keepThumbnails }) => (state): NextState => {
         // Field strokes mutate pages in place and commit here exactly once per
         // operation. The thumbnail cache is keyed by the pages array reference,
-        // so this is the single choke point to invalidate it.
-        clearThumbnailCache(state.fumen.pages);
+        // so this is the single choke point to invalidate it. Comment-only edits
+        // keep it: thumbnails do not draw comments.
+        if (!keepThumbnails) {
+            clearThumbnailCache(state.fumen.pages);
+        }
         const undoCount = memento.register(task, mergeKey, state.tree.viewMode, pieceSpawn);
         return sequence(state, [
             mementoActions.setHistoryCount({ undoCount, redoCount: 0 }),
@@ -130,7 +136,7 @@ export const mementoActions: Readonly<MementoActions> = {
             },
         ]);
     },
-    loadPagesViaHistory: ({ pages, index, undoCount, redoCount, treeViewMode }) => (state): NextState => {
+    loadPagesViaHistory: ({ pages, index, undoCount, redoCount, treeViewMode, treeDisabled }) => (state): NextState => {
         // Undo/redo may restore pages by mutating them in place; drop cached
         // thumbnails for both the outgoing and the restored array references.
         clearThumbnailCache(state.fumen.pages);
@@ -148,6 +154,14 @@ export const mementoActions: Readonly<MementoActions> = {
         ));
 
         // Restore tree state from extracted tree data, or keep/rebuild if no tree data
+        const disabledTreeState = () => ({
+            ...initialTreeState,
+            grayAfterLineClear: state.tree.grayAfterLineClear,
+            operationScope: state.tree.operationScope,
+            scale: state.tree.scale,
+            viewMode: treeViewMode ?? initialTreeState.viewMode,
+        });
+
         const treeState = (() => {
             if (tree) {
                 return {
@@ -159,6 +173,11 @@ export const mementoActions: Readonly<MementoActions> = {
                     viewMode: treeViewMode ?? state.tree.viewMode,
                     dragState: initialTreeDragState,
                 };
+            }
+
+            // Pages restored from a snapshot taken with Tree mode off (e.g. redoing its disabling)
+            if (treeDisabled) {
+                return disabledTreeState();
             }
 
             if (treeInBounds) {
@@ -189,13 +208,7 @@ export const mementoActions: Readonly<MementoActions> = {
                 };
             }
 
-            return {
-                ...initialTreeState,
-                grayAfterLineClear: state.tree.grayAfterLineClear,
-                operationScope: state.tree.operationScope,
-                scale: state.tree.scale,
-                viewMode: treeViewMode ?? initialTreeState.viewMode,
-            };
+            return disabledTreeState();
         })();
 
         const treeStateWithLock = treeState;
@@ -252,9 +265,13 @@ export const toPagesForStorage = (state: Readonly<State>): Page[] => {
     return embedTreeInPages(embedded.pages, tree, hasTreeData);
 };
 
-const saveToMemento = (state: Readonly<State>): NextState => {
-    const pages = toPagesForStorage(state);
-    warnIfTreeCommentOverLimit(pages);
-    memento.save(pages);
+// Schedules the autosave from the given state. registerHistoryTask calls it; changes that the
+// stored pages depend on but that are not undo steps call it directly.
+export const saveToMemento = (state: Readonly<State>): NextState => {
+    memento.save(() => {
+        const pages = toPagesForStorage(state);
+        warnIfTreeCommentOverLimit(pages);
+        return pages;
+    });
     return undefined;
 };

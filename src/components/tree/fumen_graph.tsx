@@ -23,11 +23,10 @@ import { generateThumbnail } from '../../lib/thumbnail';
 import { lazyThumbnail } from '../lazy_thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import { setTreeTouchStartPosition } from './tree_touch_state';
-import { updateTreeDragGhost } from './tree_drag_ghost';
-import { updateTreeAutoScrollPointer } from './tree_auto_scroll';
 import { i18n } from '../../locales/keys';
 import {
     TREE_ADD_BUTTON_SIZE,
+    TREE_BRANCH_BUTTON_SIZE,
     TREE_BUTTON_HIT_RADIUS,
     TREE_COMMENT_HEIGHT,
     TREE_COMMENT_MARGIN_X,
@@ -36,28 +35,26 @@ import {
     TREE_COPY_BUTTON_HIT_RADIUS,
     TREE_COPY_BUTTON_SIZE,
     TREE_DELETE_BUTTON_HIT_RADIUS,
-    TREE_DELETE_BUTTON_SIZE,
-    TREE_DRAG_HANDLE_HEIGHT,
-    TREE_DRAG_HANDLE_HIT_RADIUS,
-    TREE_DRAG_HANDLE_WIDTH,
     TREE_DROP_BUTTON_SIZE,
     TREE_HORIZONTAL_GAP,
+    TREE_NODE_HEADER_HEIGHT,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
     TREE_PADDING,
-    TREE_PAGE_NUMBER_OFFSET,
     TREE_SCROLL_PADDING_BOTTOM,
     TREE_SCROLL_PADDING_RIGHT,
+    TREE_THUMBNAIL_TOP,
     TREE_THUMBNAIL_WIDTH,
     TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
-    findTreeButtonDropTarget,
     getBranchButtonOffset,
     getCopyButtonOffset,
     getDeleteButtonOffset,
-    getDragHandleOffset,
+    getDragHandleRect,
     getInsertButtonOffset,
+    getPageLinkRect,
     getTreeCopyButtonDropTarget,
+    getTreeLaneReorderGuides,
     getRootGhostRect,
     TreeNodeLayout,
 } from '../../lib/fumen/tree_view_layout';
@@ -75,6 +72,7 @@ const TREE_COLORS = {
     cardFill: '#FFFFFF',
     cardBorder: '#E2E8F0',
     cardActiveFill: '#EFF6FF',
+    headerFill: '#F1F5F9',
     accent: '#2563EB',
     accentHalo: '#BFDBFE',
     accentBadgeBg: '#DBEAFE',
@@ -84,33 +82,46 @@ const TREE_COLORS = {
     insertHover: '#34D399',
     branch: '#F59E0B',
     branchHover: '#FBBF24',
-    delete: '#EF4444',
-    disabled: '#94A3B8',
+    disabledIcon: '#CBD5E1',
     ghostFill: '#F8FAFC',
     ghostBorder: '#94A3B8',
     commentChangedBg: '#10B981',
+    commentFill: '#F8FAFC',
+    lane: '#7C3AED',
 };
 
 // Crisp path-drawn icons (replace text glyphs so buttons stay sharp at any zoom)
-const iconPlus = (r: number) => (
+const iconPlus = (r: number, color: string = '#fff') => (
     <path
         d={`M ${-r} 0 H ${r} M 0 ${-r} V ${r}`}
-        stroke="#fff"
+        stroke={color}
         stroke-width={2.4}
         stroke-linecap="round"
         fill="none"
     />
 );
 
-const iconCopy = (
-    <g fill="none" stroke="#fff" stroke-width={1.6} stroke-linejoin="round">
+const iconCopy = (color: string) => (
+    <g fill="none" stroke={color} stroke-width={1.6} stroke-linejoin="round">
         <path d="M -1.5 -5.5 H 3.5 A 1.5 1.5 0 0 1 5 -4 V 2" stroke-linecap="round" />
         <rect x={-5} y={-3.5} width={7} height={8.5} rx={1.5} />
     </g>
 );
 
+// A line that forks downward: tells Branch apart from Insert without relying on color.
+const iconBranch = (color: string) => (
+    <path
+        d="M -3.5 -5 V 5 M -3.5 -1.5 C -3.5 3 3.5 0.5 3.5 5"
+        stroke={color}
+        stroke-width={1.9}
+        stroke-linecap="round"
+        fill="none"
+    />
+);
+
+// Follows the color of its group, so the delete control can change it on hover.
 const iconTrash = (
-    <g fill="none" stroke="#fff" stroke-width={1.5} stroke-linecap="round" stroke-linejoin="round">
+    <g fill="none" stroke="currentColor" stroke-width={1.5} stroke-linecap="round" stroke-linejoin="round">
         <path d="M -4.6 -3.4 H 4.6" />
         <path d="M -1.7 -3.4 V -5 H 1.7 V -3.4" />
         <path d="M -3.5 -3.4 L -2.9 5 H 2.9 L 3.5 -3.4 Z" />
@@ -118,17 +129,76 @@ const iconTrash = (
     </g>
 );
 
-// Quiet 6-dot grip used inside the bar-shaped drag handle.
-const iconDragDots = (
-    <g fill="#64748B">
-        <circle cx={-5} cy={-2} r={1} />
-        <circle cx={0} cy={-2} r={1} />
-        <circle cx={5} cy={-2} r={1} />
-        <circle cx={-5} cy={2} r={1} />
-        <circle cx={0} cy={2} r={1} />
-        <circle cx={5} cy={2} r={1} />
+// Quiet 6-dot grip marking the header strip as the drag handle.
+const iconDragDots = (color: string) => (
+    <g fill={color}>
+        <circle cx={-5} cy={-2} r={1.1} />
+        <circle cx={0} cy={-2} r={1.1} />
+        <circle cx={5} cy={-2} r={1.1} />
+        <circle cx={-5} cy={2} r={1.1} />
+        <circle cx={0} cy={2} r={1.1} />
+        <circle cx={5} cy={2} r={1.1} />
     </g>
 );
+
+// A press that traveled this far is a drag, never a click (matches the drag start threshold).
+const PRESS_TRAVEL_LIMIT = 10;
+
+// The press in progress on a control inside the handle strip (page number, delete).
+// Its click is dropped once the pointer has traveled, even if it came back: the view
+// may not have re-rendered into the drag state yet, and a delete must never follow a
+// drag. The record ends right after the mouse is released, so it never outlives its
+// own click and never affects a click that has no press (assistive activation).
+let headerControlPress: { traveled: boolean } | null = null;
+let stopTrackingHeaderControlPress: (() => void) | null = null;
+
+// Drop the press in progress, e.g. when its mouseup never arrived (released outside
+// the window) or the tree goes away.
+const cancelHeaderControlPress = () => {
+    if (stopTrackingHeaderControlPress) {
+        stopTrackingHeaderControlPress();
+    }
+    headerControlPress = null;
+};
+
+const trackHeaderControlPress = (startX: number, startY: number) => {
+    cancelHeaderControlPress();
+    const press = { traveled: false };
+    headerControlPress = press;
+
+    const onMove = (e: MouseEvent) => {
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) >= PRESS_TRAVEL_LIMIT) {
+            press.traveled = true;
+        }
+    };
+    const stop = () => {
+        document.removeEventListener('mousemove', onMove, true);
+        document.removeEventListener('mouseup', onUp, true);
+        window.removeEventListener('blur', cancelHeaderControlPress);
+        if (stopTrackingHeaderControlPress === stop) {
+            stopTrackingHeaderControlPress = null;
+        }
+    };
+    const onUp = () => {
+        stop();
+        // The click, if any, is dispatched right after mouseup in the same task.
+        setTimeout(() => {
+            if (headerControlPress === press) {
+                headerControlPress = null;
+            }
+        }, 0);
+    };
+    stopTrackingHeaderControlPress = stop;
+    document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('mouseup', onUp, true);
+    window.addEventListener('blur', cancelHeaderControlPress);
+};
+
+const consumeHeaderControlClick = (): boolean => {
+    const press = headerControlPress;
+    headerControlPress = null;
+    return press === null || !press.traveled;
+};
 
 // ============================================================================
 // Props Interface
@@ -145,6 +215,7 @@ interface Props {
     dragSourceNodeId: TreeNodeId | null;
     dragTargetButtonParentId: TreeNodeId | null;
     dragTargetButtonType: 'insert' | 'branch' | null;
+    dragDropSlotIndex: number | null;
     operationScope: TreeOperationScope;
     dragOperationScope?: TreeOperationScope;
     trimTopBlank: boolean;
@@ -160,11 +231,12 @@ interface Props {
         onAddRoot: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
         onHandleMouseDown: (nodeId: TreeNodeId, event: MouseEvent) => void;
-        onHandleTouchStart: (nodeId: TreeNodeId, event: TouchEvent) => void;
-        onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch') => void;
-        onDragLeaveButton: () => void;
-        onDrop: () => void;
-        onDragEnd: () => void;
+        // Returns false when the view has no touch drag (the touch then stays an ordinary tap)
+        onHandleTouchStart: (nodeId: TreeNodeId, event: TouchEvent) => boolean;
+        // Pointer moved during a drag (client coordinates)
+        onDragMove: (clientX: number, clientY: number) => void;
+        // Drag released at a client position; leftView = the pointer left the tree viewport
+        onDrop: (clientX: number, clientY: number, leftView: boolean) => void;
         ackTreeAutoFocus?: () => void;
     };
 }
@@ -317,9 +389,32 @@ const renderNodeCard = (
                     stroke-width={strokeWidth}
                     filter="url(#tree-card-shadow)"
                 />
+                {/* Header strip; the border is redrawn on top so the strip never covers it */}
+                <path
+                    d={`M 0 ${TREE_NODE_HEADER_HEIGHT} V ${TREE_NODE_RADIUS}`
+                        + ` a ${TREE_NODE_RADIUS} ${TREE_NODE_RADIUS} 0 0 1 ${TREE_NODE_RADIUS} ${-TREE_NODE_RADIUS}`
+                        + ` H ${TREE_NODE_WIDTH - TREE_NODE_RADIUS}`
+                        + ` a ${TREE_NODE_RADIUS} ${TREE_NODE_RADIUS} 0 0 1 ${TREE_NODE_RADIUS} ${TREE_NODE_RADIUS}`
+                        + ` V ${TREE_NODE_HEADER_HEIGHT} Z`}
+                    fill={isActive ? TREE_COLORS.accentBadgeBg : TREE_COLORS.headerFill}
+                />
+                <path
+                    d={`M 0 ${TREE_NODE_HEADER_HEIGHT} H ${TREE_NODE_WIDTH}`}
+                    stroke={isActive ? TREE_COLORS.accentHalo : TREE_COLORS.cardBorder}
+                    stroke-width={1}
+                />
+                <rect
+                    width={TREE_NODE_WIDTH}
+                    height={nodeHeight}
+                    rx={TREE_NODE_RADIUS}
+                    ry={TREE_NODE_RADIUS}
+                    fill="none"
+                    stroke={strokeColor}
+                    stroke-width={strokeWidth}
+                />
                 <image
                     x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
-                    y={8}
+                    y={TREE_THUMBNAIL_TOP}
                     width={TREE_THUMBNAIL_WIDTH}
                     height={thumbnailHeight}
                     oncreate={thumbnailLifecycle.oncreate}
@@ -331,7 +426,7 @@ const renderNodeCard = (
     );
 };
 
-/** Render page and operation controls above comments. */
+/** Render the header strip (handle, page number, delete) and the add/copy buttons above comments. */
 const renderNodeControls = (
     node: TreeNode,
     nodeLayout: TreeNodeLayout,
@@ -357,16 +452,17 @@ const renderNodeControls = (
 
     const isActive = node.id === activeNodeId;
     const nodeHeight = nodeLayout.height;
-    const thumbnailHeight = nodeLayout.thumbnailHeight;
 
     const hasBranchButton = node.childrenIds.length > 0;
     const insertButtonOffset = getInsertButtonOffset(nodeHeight);
     const branchButtonOffset = getBranchButtonOffset(nodeHeight);
     const deleteButtonOffset = getDeleteButtonOffset();
     const copyButtonOffset = getCopyButtonOffset(nodeHeight);
-    const dragHandleOffset = getDragHandleOffset(nodeHeight);
+    const handleRect = getDragHandleRect();
+    const pageLinkRect = getPageLinkRect(pageNumber);
     const insertButtonSize = isInsertDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
-    const branchButtonSize = isBranchDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_ADD_BUTTON_SIZE;
+    const branchButtonSize = isBranchDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_BRANCH_BUTTON_SIZE;
+    const copyButtonSize = isCopyDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_COPY_BUTTON_SIZE;
 
     const dragOpacity = isDragAffected ? 0.5 : 1;
     const handleButtonTouchStart = (e: TouchEvent) => {
@@ -381,72 +477,169 @@ const renderNodeControls = (
         }
     };
 
+    // The page number and the delete icon sit inside the handle strip. A press on
+    // them that travels becomes a drag (the view applies the threshold); a press
+    // that stays put remains their own click.
+    const handleHeaderControlMouseDown = (e: MouseEvent) => {
+        e.stopPropagation();
+        if (e.button === 0) {
+            trackHeaderControlPress(e.clientX, e.clientY);
+        }
+        if (canStartDrag && e.button === 0) {
+            e.preventDefault();
+            actions.onHandleMouseDown(node.id, e);
+        }
+    };
+
+    // Only Insert is filled. Branch and Copy stay outlined until they become
+    // drop targets of a drag, so the two-button stack reads as one primary action.
+    const insertButton = !hideInsertButton && (
+        <g
+            key="insert-button"
+            datatest={`btn-tree-insert-${node.id}`}
+            transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
+            onmousedown={(e: MouseEvent) => {
+                e.stopPropagation();
+            }}
+            onclick={(e: MouseEvent) => {
+                e.stopPropagation();
+                if (!isDragging) {
+                    actions.onInsertNode(node.id);
+                }
+            }}
+            ontouchstart={handleButtonTouchStart}
+            style={style({ cursor: 'pointer' })}
+        >
+            {/* A leaf has no outgoing connection, so a short stub ties the button to its card */}
+            {!hasBranchButton && (
+                <path
+                    d={`M ${TREE_NODE_WIDTH + 2 - insertButtonOffset.x} 0 H 0`}
+                    stroke={TREE_COLORS.connection}
+                    stroke-width={2}
+                    stroke-linecap="round"
+                    fill="none"
+                />
+            )}
+            <circle
+                r={TREE_BUTTON_HIT_RADIUS}
+                fill="transparent"
+            />
+            <circle
+                r={insertButtonSize / 2}
+                fill={isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert}
+                stroke="#fff"
+                stroke-width={isInsertButtonHighlighted ? 3 : 2}
+                filter="url(#tree-control-button-shadow)"
+            />
+            {iconPlus(5)}
+        </g>
+    );
+
+    const branchFill = isBranchButtonHighlighted ? TREE_COLORS.branchHover : TREE_COLORS.branch;
+    const branchButton = hasBranchButton && !hideBranchButton && (
+        <g
+            key="branch-button"
+            datatest={`btn-tree-branch-${node.id}`}
+            transform={`translate(${branchButtonOffset.x}, ${branchButtonOffset.y})`}
+            onmousedown={(e: MouseEvent) => {
+                e.stopPropagation();
+            }}
+            onclick={(e: MouseEvent) => {
+                e.stopPropagation();
+                if (!isDragging) {
+                    actions.onAddBranch(node.id);
+                }
+            }}
+            ontouchstart={handleButtonTouchStart}
+            style={style({ cursor: 'pointer' })}
+        >
+            <circle
+                r={TREE_BUTTON_HIT_RADIUS}
+                fill="transparent"
+            />
+            <circle
+                r={branchButtonSize / 2}
+                fill={isBranchDropTarget ? branchFill : '#fff'}
+                stroke={isBranchDropTarget ? '#fff' : TREE_COLORS.branch}
+                stroke-width={isBranchDropTarget ? (isBranchButtonHighlighted ? 3 : 2) : 1.5}
+                filter="url(#tree-control-button-shadow)"
+            />
+            {iconBranch(isBranchDropTarget ? '#fff' : TREE_COLORS.branch)}
+        </g>
+    );
+
     return (
         <g
             key={`node-controls-${node.id}`}
             transform={`translate(${pos.x}, ${pos.y})`}
         >
             <g opacity={dragOpacity}>
-            {/* Page number - clickable pill badge to jump to page */}
-            {(() => {
-                const label = `#${pageNumber}`;
-                const pillWidth = 14 + label.length * 8;
-                const pillHeight = 17;
-                const pillCenterY = thumbnailHeight + TREE_PAGE_NUMBER_OFFSET - 5;
-                return (
-                    <g
-                        datatest={`tree-page-link-${node.id}`}
-                        style={style({ cursor: 'pointer' })}
-                        onclick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            if (!isDragging) {
-                                actions.onPageClick(node.id);
-                            }
-                        }}
-                        onmousedown={(e: MouseEvent) => {
-                            e.stopPropagation();
-                        }}
-                        ontouchstart={(e: TouchEvent) => {
-                            e.stopPropagation();
-                        }}
-                    >
-                        <rect
-                            x={TREE_NODE_WIDTH / 2 - pillWidth / 2}
-                            y={pillCenterY - pillHeight / 2}
-                            width={pillWidth}
-                            height={pillHeight}
-                            rx={pillHeight / 2}
-                            ry={pillHeight / 2}
-                            fill={isActive ? TREE_COLORS.accent : TREE_COLORS.accentBadgeBg}
-                        />
-                        <text
-                            x={TREE_NODE_WIDTH / 2}
-                            y={pillCenterY}
-                            text-anchor="middle"
-                            dominant-baseline="central"
-                            font-size="12"
-                            font-weight="bold"
-                            fill={isActive ? '#fff' : TREE_COLORS.accent}
-                        >
-                            {label}
-                        </text>
-                    </g>
-                );
-            })()}
+            {/* Drag handle: the whole header strip. Dragging starts only here
+                (and, on touch, from a long press on the card body).
+                The controls are keyed: the delete icon leaves during a drag, and
+                without keys its neighbors' elements would be reused for one another
+                while a press on them is still in progress. */}
+            <g
+                key="handle"
+                datatest={`tree-handle-${node.id}`}
+                aria-disabled={canStartDrag ? undefined : 'true'}
+                style={{
+                    ...style({ cursor: canStartDrag ? 'grab' : 'not-allowed', userSelect: 'none' }),
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                }}
+                onmousedown={(e: MouseEvent) => {
+                    if (canStartDrag && e.button === 0) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        actions.onHandleMouseDown(node.id, e);
+                    }
+                }}
+                onclick={(e: MouseEvent) => {
+                    // The strip is part of the card, so a click selects it. It never
+                    // opens the page: a press meant as a grab must not navigate.
+                    e.stopPropagation();
+                    if (!isDragging && !isActive) {
+                        actions.onNodeActivate(node.id);
+                    }
+                }}
+                ontouchstart={(e: TouchEvent) => {
+                    // Without a touch drag the tap stays a click, which selects the card.
+                    if (canStartDrag && actions.onHandleTouchStart(node.id, e) && e.cancelable) {
+                        e.preventDefault();
+                    }
+                }}
+            >
+                <title>{i18n.TreeView.DragHandle()}</title>
+                <rect
+                    x={handleRect.x}
+                    y={handleRect.y}
+                    width={handleRect.width}
+                    height={handleRect.height}
+                    fill="transparent"
+                />
+                <g transform={`translate(16, ${TREE_NODE_HEADER_HEIGHT / 2})`}>
+                    {iconDragDots(canStartDrag
+                        ? (isActive ? TREE_COLORS.accent : TREE_COLORS.textMuted)
+                        : TREE_COLORS.disabledIcon)}
+                </g>
+            </g>
 
-            {/* Permanent delete button (top-right). It is removed during a drag
-                so the drag surface stays focused on move targets. */}
+            {/* Delete icon at the right end of the header strip. Quiet until hovered
+                or pressed (colors live in resources/index.html). It is removed during
+                a drag so the drag surface stays focused on move targets. */}
             {!isDragging && (
                 <g
+                    key="delete"
                     datatest={`btn-tree-node-delete-${node.id}`}
+                    class={`tree-node-delete${isActive ? ' is-active' : ''}${canDelete ? '' : ' is-disabled'}`}
+                    aria-disabled={canDelete ? undefined : 'true'}
                     transform={`translate(${deleteButtonOffset.x}, ${deleteButtonOffset.y})`}
                     style={style({ cursor: canDelete ? 'pointer' : 'not-allowed' })}
-                    onmousedown={(e: MouseEvent) => {
-                        e.stopPropagation();
-                    }}
+                    onmousedown={handleHeaderControlMouseDown}
                     onclick={(e: MouseEvent) => {
                         e.stopPropagation();
-                        if (canDelete) {
+                        if (consumeHeaderControlClick() && canDelete) {
                             actions.onDeleteNode(node.id);
                         }
                     }}
@@ -457,21 +650,59 @@ const renderNodeControls = (
                         r={TREE_DELETE_BUTTON_HIT_RADIUS}
                         fill="transparent"
                     />
-                    <circle
-                        r={TREE_DELETE_BUTTON_SIZE / 2}
-                        fill={canDelete ? TREE_COLORS.delete : TREE_COLORS.disabled}
-                        stroke="#fff"
-                        stroke-width={2}
-                        filter="url(#tree-control-button-shadow)"
-                    />
                     {iconTrash}
                 </g>
             )}
 
-            {/* Copy button - below the node. During a drag it becomes a blue
-                plus target for the parent's branch operation. */}
+            {/* Page number - clickable pill badge to jump to page. Drawn after the delete
+                icon: where a wide number reaches the icon's invisible margin, the number
+                wins, as it does for taps (views/list_view.ts). touch-action keeps a drag
+                that starts on the pill from scrolling the tree, while a plain tap still
+                arrives as a click. */}
+            <g
+                key="page-link"
+                datatest={`tree-page-link-${node.id}`}
+                style={style({ cursor: 'pointer', touchAction: 'none' })}
+                onclick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    if (consumeHeaderControlClick() && !isDragging) {
+                        actions.onPageClick(node.id);
+                    }
+                }}
+                onmousedown={handleHeaderControlMouseDown}
+                ontouchstart={(e: TouchEvent) => {
+                    if (canStartDrag) {
+                        actions.onHandleTouchStart(node.id, e);
+                    }
+                }}
+            >
+                <rect
+                    x={pageLinkRect.x}
+                    y={pageLinkRect.y}
+                    width={pageLinkRect.width}
+                    height={pageLinkRect.height}
+                    rx={pageLinkRect.height / 2}
+                    ry={pageLinkRect.height / 2}
+                    fill={isActive ? TREE_COLORS.accent : TREE_COLORS.accentBadgeBg}
+                />
+                <text
+                    x={TREE_NODE_WIDTH / 2}
+                    y={TREE_NODE_HEADER_HEIGHT / 2}
+                    text-anchor="middle"
+                    dominant-baseline="central"
+                    font-size="12"
+                    font-weight="bold"
+                    fill={isActive ? '#fff' : TREE_COLORS.accent}
+                >
+                    {`#${pageNumber}`}
+                </text>
+            </g>
+
+            {/* Copy button - straddles the bottom edge. During a drag it becomes a
+                blue plus target for the parent's branch operation. */}
             {canCopy && (
                 <g
+                    key="copy"
                     datatest={`btn-tree-copy-${node.id}`}
                     transform={`translate(${copyButtonOffset.x}, ${copyButtonOffset.y})`}
                     style={style({
@@ -507,167 +738,26 @@ const renderNodeControls = (
                     />
                     {/* Visible button */}
                     <circle
-                        r={(isCopyDropTarget ? TREE_DROP_BUTTON_SIZE : TREE_COPY_BUTTON_SIZE) / 2}
-                        fill={TREE_COLORS.accent}
-                        stroke="#fff"
-                        stroke-width={isCopyButtonHighlighted ? 3 : 2}
+                        r={copyButtonSize / 2}
+                        fill={isCopyDropTarget ? TREE_COLORS.accent : '#fff'}
+                        stroke={isCopyDropTarget ? '#fff' : TREE_COLORS.accent}
+                        stroke-width={isCopyDropTarget ? (isCopyButtonHighlighted ? 3 : 2) : 1.5}
                         filter="url(#tree-control-button-shadow)"
                     />
-                    {isDragging ? iconPlus(6) : iconCopy}
+                    {isCopyDropTarget ? iconPlus(6) : iconCopy(TREE_COLORS.accent)}
                 </g>
             )}
-
-            {/* Low-profile drag grip below the node. Dragging starts only here. */}
-            <g
-                datatest={`tree-handle-${node.id}`}
-                transform={`translate(${dragHandleOffset.x}, ${dragHandleOffset.y})`}
-                style={style({ cursor: canStartDrag ? 'grab' : 'not-allowed' })}
-                onmousedown={(e: MouseEvent) => {
-                    if (canStartDrag && e.button === 0) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        actions.onHandleMouseDown(node.id, e);
-                    }
-                }}
-                onclick={(e: MouseEvent) => {
-                    // A handle press is never a page selection
-                    e.stopPropagation();
-                }}
-                ontouchstart={(e: TouchEvent) => {
-                    if (e.cancelable) {
-                        e.preventDefault();
-                    }
-                    if (canStartDrag) {
-                        actions.onHandleTouchStart(node.id, e);
-                    }
-                }}
-            >
-                <title>{i18n.TreeView.DragHandle()}</title>
-                <rect
-                    x={-TREE_DRAG_HANDLE_HIT_RADIUS}
-                    y={-TREE_DRAG_HANDLE_HIT_RADIUS}
-                    width={TREE_DRAG_HANDLE_HIT_RADIUS * 2}
-                    height={TREE_DRAG_HANDLE_HIT_RADIUS * 2}
-                    fill="transparent"
-                />
-                <rect
-                    x={-TREE_DRAG_HANDLE_WIDTH / 2}
-                    y={-TREE_DRAG_HANDLE_HEIGHT / 2}
-                    width={TREE_DRAG_HANDLE_WIDTH}
-                    height={TREE_DRAG_HANDLE_HEIGHT}
-                    rx={TREE_DRAG_HANDLE_HEIGHT / 2}
-                    ry={TREE_DRAG_HANDLE_HEIGHT / 2}
-                    fill={canStartDrag ? '#E2E8F0' : TREE_COLORS.disabled}
-                    stroke="#CBD5E1"
-                    stroke-width={1}
-                />
-                {iconDragDots}
-            </g>
 
             </g>
 
             {/* Add buttons wrapper - semi-transparent when dragging */}
             <g opacity={dragOpacity}>
-            {/* Add buttons - INSERT (green) and Branch (orange) */}
-            {!hideButtons && (hasBranchButton ? (
-                // Two buttons placed symmetrically around the card center:
-                // INSERT (green, above) and Branch (orange, below)
+            {!hideButtons && (
                 <g key="add-buttons">
-                    {!hideInsertButton && (
-                    <g
-                        datatest={`btn-tree-insert-${node.id}`}
-                        transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
-                        onmousedown={(e: MouseEvent) => {
-                            e.stopPropagation();
-                        }}
-                        onclick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            if (!isDragging) {
-                                actions.onInsertNode(node.id);
-                            }
-                        }}
-                        ontouchstart={handleButtonTouchStart}
-                        style={style({ cursor: 'pointer' })}
-                    >
-                        <circle
-                            r={TREE_BUTTON_HIT_RADIUS}
-                            fill="transparent"
-                        />
-                        <circle
-                            r={insertButtonSize / 2}
-                            fill={isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert}
-                            stroke="#fff"
-                            stroke-width={isInsertButtonHighlighted ? 3 : 2}
-                            filter="url(#tree-control-button-shadow)"
-                        />
-                        {iconPlus(6)}
-                    </g>
-                    )}
-                    {/* Orange Branch button */}
-                    {!hideBranchButton && (
-                    <g
-                        datatest={`btn-tree-branch-${node.id}`}
-                        transform={`translate(${branchButtonOffset.x}, ${branchButtonOffset.y})`}
-                        onmousedown={(e: MouseEvent) => {
-                            e.stopPropagation();
-                        }}
-                        onclick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            if (!isDragging) {
-                                actions.onAddBranch(node.id);
-                            }
-                        }}
-                        ontouchstart={handleButtonTouchStart}
-                        style={style({ cursor: 'pointer' })}
-                    >
-                        <circle
-                            r={TREE_BUTTON_HIT_RADIUS}
-                            fill="transparent"
-                        />
-                        <circle
-                            r={branchButtonSize / 2}
-                            fill={isBranchButtonHighlighted ? TREE_COLORS.branchHover : TREE_COLORS.branch}
-                            stroke="#fff"
-                            stroke-width={isBranchButtonHighlighted ? 3 : 2}
-                            filter="url(#tree-control-button-shadow)"
-                        />
-                        {iconPlus(6)}
-                    </g>
-                    )}
+                    {insertButton}
+                    {branchButton}
                 </g>
-            ) : (
-                // Single button: INSERT (green, centered at the connection-line level)
-                !hideInsertButton && (
-                <g
-                    datatest={`btn-tree-insert-${node.id}`}
-                    transform={`translate(${insertButtonOffset.x}, ${insertButtonOffset.y})`}
-                    onmousedown={(e: MouseEvent) => {
-                        e.stopPropagation();
-                    }}
-                    onclick={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        if (!isDragging) {
-                            actions.onInsertNode(node.id);
-                        }
-                    }}
-                    ontouchstart={handleButtonTouchStart}
-                    style={style({ cursor: 'pointer' })}
-                >
-                    <circle
-                        r={TREE_BUTTON_HIT_RADIUS}
-                        fill="transparent"
-                    />
-                    <circle
-                        r={insertButtonSize / 2}
-                        fill={isInsertButtonHighlighted ? TREE_COLORS.insertHover : TREE_COLORS.insert}
-                        stroke="#fff"
-                        stroke-width={isInsertButtonHighlighted ? 3 : 2}
-                        filter="url(#tree-control-button-shadow)"
-                    />
-                    {iconPlus(6)}
-                </g>
-                )
-            ))}
+            )}
             </g>
         </g>
     );
@@ -696,6 +786,7 @@ export const FumenGraph: Component<Props> = ({
     dragSourceNodeId,
     dragTargetButtonParentId,
     dragTargetButtonType,
+    dragDropSlotIndex,
     operationScope,
     dragOperationScope,
     trimTopBlank,
@@ -789,6 +880,61 @@ export const FumenGraph: Component<Props> = ({
     const connections = treeViewLayout.layout.connections.map(conn =>
         renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, activeNodeId),
     );
+
+    // Lane reorder guides: slots between the sibling branches of the reordered fork.
+    // Deliberately quiet: a faint band on the moving branch, thin dashed lines on the
+    // slots that would change the order, and a solid line on the current candidate.
+    const laneGuides = isDragging && dragSourceNodeId !== null
+        ? getTreeLaneReorderGuides(tree, treeViewLayout, dragSourceNodeId, dragScope)
+        : null;
+    const laneGuideLayer = (() => {
+        if (laneGuides === null) return null;
+        const { slotYs, unit, lineStartX, blockX } = laneGuides;
+        const rightEdge = scaledWidth / scale - TREE_PADDING / 2;
+        const bandX = blockX - 8;
+        return (
+            <g key="lane-guides-layer" style={style({ pointerEvents: 'none' })}>
+                <rect
+                    key="tree-lane-block"
+                    datatest="tree-lane-block"
+                    x={bandX}
+                    y={slotYs[unit.index] + 4}
+                    width={Math.max(0, rightEdge - bandX)}
+                    height={Math.max(0, slotYs[unit.index + 1] - slotYs[unit.index] - 8)}
+                    rx={10}
+                    fill={TREE_COLORS.lane}
+                    fill-opacity={0.08}
+                />
+                {slotYs.map((y, slot) => {
+                    if (slot === unit.index || slot === unit.index + 1) return null;
+                    const isActive = slot === dragDropSlotIndex;
+                    return (
+                        <g key={`tree-lane-guide-${slot}`} datatest={`tree-lane-guide-${slot}`}>
+                            <path
+                                d={`M ${lineStartX} ${y} H ${rightEdge}`}
+                                stroke={TREE_COLORS.lane}
+                                stroke-width={isActive ? 3 : 1.5}
+                                stroke-opacity={isActive ? 1 : 0.6}
+                                stroke-dasharray={isActive ? 'none' : '6 5'}
+                                stroke-linecap="round"
+                                vector-effect="non-scaling-stroke"
+                                fill="none"
+                            />
+                            {isActive && (
+                                <circle
+                                    datatest="tree-lane-guide-active"
+                                    cx={lineStartX}
+                                    cy={y}
+                                    r={4.5 / scale}
+                                    fill={TREE_COLORS.lane}
+                                />
+                            )}
+                        </g>
+                    );
+                })}
+            </g>
+        );
+    })();
 
     // Calculate source node for drag operations
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
@@ -1051,6 +1197,7 @@ export const FumenGraph: Component<Props> = ({
         }
 
         const page = pages[node.pageIndex];
+        const isActive = node.id === activeNodeId;
         const hasComment = commentText !== '';
         const isCommentChanged = page?.comment.text !== undefined;
         const showGreenStyle = hasComment && isCommentChanged;
@@ -1077,7 +1224,9 @@ export const FumenGraph: Component<Props> = ({
             boxSizing: 'border-box',
             resize: 'none',
             fontFamily: 'inherit',
-            backgroundColor: showGreenStyle ? TREE_COLORS.commentChangedBg : '#fff',
+            backgroundColor: showGreenStyle
+                ? TREE_COLORS.commentChangedBg
+                : (isActive ? '#fff' : TREE_COLORS.commentFill),
             color: showGreenStyle ? '#fff' : '#334155',
             outline: 'none',
             pointerEvents: isDragging ? 'none' : 'auto',
@@ -1088,6 +1237,7 @@ export const FumenGraph: Component<Props> = ({
             key: `tree-comment-${node.id}`,
             style: textareaStyle,
             value: commentText,
+            placeholder: i18n.EditorUi.CommentPlaceholder(),
             oninput: (e: Event) => {
                 const target = e.target as HTMLTextAreaElement;
                 actions.onCommentChange(node.pageIndex, target.value);
@@ -1246,56 +1396,32 @@ export const FumenGraph: Component<Props> = ({
         handleAutoFocus(container);
     };
 
-    // Handle container destruction: remove all pan listeners
+    // Handle container destruction: remove all pan and press listeners
     const handleDestroy = () => {
         if (panCleanupFn) {
             panCleanupFn();
         }
+        cancelHeaderControlPress();
     };
 
-    // Handle global mouse up to end drag
-    const handleMouseUp = () => {
+    // Mouse released inside the tree: the drop target is resolved at the release point.
+    const handleMouseUp = (e: MouseEvent) => {
         if (dragSourceNodeId !== null) {
-            // If we have a valid drop target, execute the drop
-            if (dragTargetButtonParentId !== null) {
-                actions.onDrop();
-            } else {
-                actions.onDragEnd();
-            }
+            actions.onDrop(e.clientX, e.clientY, false);
         }
     };
 
-    // Handle mouse move on SVG to detect drop-target buttons and drive the ghost
+    // Pointer left the tree viewport: only an add button under it still drops.
+    const handleMouseLeave = (e: MouseEvent) => {
+        if (dragSourceNodeId !== null) {
+            actions.onDrop(e.clientX, e.clientY, true);
+        }
+    };
+
+    // Mouse move during a drag: the view resolves the candidate and drives the ghost
     const handleSvgMouseMove = (e: MouseEvent) => {
         if (!isDragging || dragSourceNodeId === null) return;
-
-        const svg = e.currentTarget as SVGSVGElement;
-        const rect = svg.getBoundingClientRect();
-        // Account for scale when calculating mouse position in SVG coordinates
-        const mouseX = (e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0)) / scale;
-        const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
-
-        updateTreeDragGhost(mouseX, mouseY);
-        updateTreeAutoScrollPointer(e.clientX, e.clientY);
-
-        const foundButton = findTreeButtonDropTarget(
-            tree,
-            treeViewLayout,
-            mouseX,
-            mouseY,
-            dragSourceNodeId,
-            dragScope,
-        );
-
-        if (foundButton !== null) {
-            actions.onDragOverButton(foundButton.nodeId, foundButton.type);
-            return;
-        }
-
-        // No button hit - clear button target if it was set
-        if (dragTargetButtonParentId !== null) {
-            actions.onDragLeaveButton();
-        }
+        actions.onDragMove(e.clientX, e.clientY);
     };
 
     return (
@@ -1304,7 +1430,7 @@ export const FumenGraph: Component<Props> = ({
             datatest="fumen-graph-container"
             style={containerStyle}
             onmouseup={handleMouseUp}
-            onmouseleave={handleMouseUp}
+            onmouseleave={handleMouseLeave}
             oncreate={handleCreate}
             onupdate={handleAutoFocus}
             ondestroy={handleDestroy}
@@ -1344,6 +1470,9 @@ export const FumenGraph: Component<Props> = ({
                         <g key="connections-layer">
                             {connections}
                         </g>
+
+                        {/* Lane reorder guides (between the lanes, behind the cards) */}
+                        {laneGuideLayer}
 
                         {/* Card layer (below comments and controls) */}
                         <g key="cards-layer">

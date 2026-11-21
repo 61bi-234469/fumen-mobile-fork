@@ -1,36 +1,19 @@
 import { HistoryTask, isOperationTask, toDecoratorOperationTask } from './history_task';
 import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
-import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
-import { encode } from './lib/fumen/fumen';
+import { SerializedTree, TreeOperationScope, TreeViewMode, VIRTUAL_PAGE_INDEX } from './lib/fumen/tree_types';
+import { createTreeFromPages, embedTreeInPages, extractTreeFromPages } from './lib/fumen/tree_utils';
+import { encodeSync } from './lib/fumen/fumen';
+import { createAutosaveScheduler } from './lib/autosave_scheduler';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
 import { InitialScreenSetting, initialScreenSettingFrom } from './lib/initial_screen';
 import { isValidSpawnRotationMode, SpawnRotationMode } from './lib/spawn_rotation';
-import lodash from 'lodash';
+// Per-method imports keep the full Lodash build out of the vendor bundle.
+import isBoolean from 'lodash/isBoolean';
+import isNumber from 'lodash/isNumber';
+import isString from 'lodash/isString';
 import { showToast } from './lib/toast';
 import { i18n } from './locales/keys';
-
-interface SaverProp {
-    saveKey: string;
-    pages: Page[];
-}
-
-type SaverObj = { save: (key: string) => Promise<void> };
-
-const saverState = {
-    isWorking: false,
-    last: {
-        key: generateKey(),
-        saverObj: undefined as (SaverObj | undefined),
-    },
-};
-
-const sequentialEncode = async (pages: Page[]): Promise<string> => {
-    saverState.isWorking = true;
-    const data = await encode(pages, true);
-    saverState.isWorking = false;
-    return `v115@${data}`;
-};
 
 // 自動保存は編集のたびに走るため、失敗し始めたときに1回だけ知らせ、成功したら再び知らせられるようにする
 let fumenSaveFailureNotified = false;
@@ -45,44 +28,12 @@ const notifyFumenSaveResult = (saved: boolean) => {
     }
 };
 
-const toSaver = ({ saveKey, pages }: SaverProp, saveCallback: (data: string) => void) => {
-    let isSaved = false;
-    return {
-        save: async (key: string) => {
-            if (isSaved || key !== saveKey) {
-                return;
-            }
-            isSaved = true;
-
-            const data = await sequentialEncode(pages);
-            setTimeout(() => saveCallback(data), 0);
-
-            const last = saverState.last;
-            if (last.saverObj !== undefined) {
-                await last.saverObj.save(last.key);
-            }
-        },
-    };
+const writeFumen = (pages: Page[], sourceUrlKey: string | undefined) => {
+    notifyFumenSaveResult(localStorageWrapper.saveFumen(`v115@${encodeSync(pages)}`, sourceUrlKey));
 };
 
-const saver = (() => {
-    return (pages: Page[], sourceUrlKey: string | undefined, onSaved: () => void) => {
-        const key = generateKey();
-        const saverObj: SaverObj = toSaver({
-            pages,
-            saveKey: key,
-        }, (data: string) => {
-            notifyFumenSaveResult(localStorageWrapper.saveFumen(data, sourceUrlKey));
-            onSaved();
-        });
-        saverState.last = { key, saverObj };
-
-        setTimeout(() => {
-            saverObj.save(saverState.last.key)
-                .catch(error => console.error(error));
-        }, saverState.isWorking ? 3000 : 0);
-    };
-})();
+// 保存ページの組み立て（ツリー・INPUT状態の埋め込み）ごと遅らせるので、ページ数が多いときの編集のたびの負担が減る
+const autosaveScheduler = createAutosaveScheduler();
 
 interface Result {
     pages: Page[];
@@ -90,6 +41,7 @@ interface Result {
     undoCount: number;
     redoCount: number;
     treeViewMode?: TreeViewMode;
+    treeDisabled?: boolean;
 }
 
 export const memento = (() => {
@@ -140,6 +92,46 @@ export const memento = (() => {
         return undefined;
     };
 
+    // Multi-step undo/redo applies tasks one after another to the same pages. A step that restores
+    // Tree mode as a whole returns pages with #TREE= embedded, and a later page-only step may
+    // replace the first page and drop it. Take the tree out at that step and put it back at the end.
+    const treeFitsPages = (tree: SerializedTree, pages: Page[]): boolean => {
+        const indices = tree.nodes.map(node => node.pageIndex).filter(index => index !== VIRTUAL_PAGE_INDEX);
+        return indices.length === pages.length && new Set(indices).size === pages.length
+            && indices.every(index => 0 <= index && index < pages.length);
+    };
+
+    const treeAcrossSteps = () => {
+        let tree: SerializedTree | null | undefined;
+        return {
+            take: (step: Result): Result => {
+                if (step.treeDisabled === true) {
+                    tree = null;
+                    return step;
+                }
+                if (step.treeDisabled === false) {
+                    const extracted = extractTreeFromPages(step.pages);
+                    // Without #TREE= there is nothing to carry; loadPagesViaHistory decides as for one step
+                    tree = extracted.tree ?? undefined;
+                    return { ...step, pages: extracted.cleanedPages };
+                }
+                return step;
+            },
+            finish: (last: Result): Result => {
+                if (tree === undefined) {
+                    return last;
+                }
+                if (tree === null) {
+                    return { ...last, treeDisabled: true };
+                }
+                // Later steps may have inserted or removed pages the carried tree does not know
+                // about; rebuild it from the pages then, as loadPagesViaHistory does for one step.
+                const fitting = treeFitsPages(tree, last.pages) ? tree : createTreeFromPages(last.pages);
+                return { ...last, pages: embedTreeInPages(last.pages, fitting, true), treeDisabled: false };
+            },
+        };
+    };
+
     const revertOnce = async (pages: Page[]): Promise<Result | undefined> => {
         const lastTask = undoQueue.pop();
         const lastViewMode = undoViewModes.pop();
@@ -159,6 +151,7 @@ export const memento = (() => {
             undoCount: undoQueue.length - 1,
             redoCount: redoQueue.length,
             treeViewMode: lastViewMode,
+            treeDisabled: result.treeDisabled,
         };
     };
 
@@ -181,6 +174,7 @@ export const memento = (() => {
             undoCount: undoQueue.length - 1,
             redoCount: redoQueue.length,
             treeViewMode: lastViewMode,
+            treeDisabled: result.treeDisabled,
         };
     };
 
@@ -190,33 +184,31 @@ export const memento = (() => {
 
     // 保存データがどのURLの d= から始まったか（toUrlFumenKey）。それ以外から読み込んだときは undefined
     let autosaveSourceUrlKey: string | undefined;
-    // 自動保存を依頼して、まだ書き込まれていないページ
-    let unsavedPages: Page[] | undefined;
-
-    const saveImmediately = async (pages: Page[]): Promise<void> => {
-        notifyFumenSaveResult(localStorageWrapper.saveFumen(await sequentialEncode(pages), autosaveSourceUrlKey));
+    const writeBuiltFumen = (buildPages: () => Page[], sourceUrlKey: string | undefined) => {
+        try {
+            writeFumen(buildPages(), sourceUrlKey);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     return {
         // 即時保存。強制リロードのように直後にページが破棄される場面で、遅延保存の取りこぼしを防ぐ
-        saveImmediately,
-        // 自動保存
-        save: (pages: Page[]) => {
-            unsavedPages = pages;
-            saver(pages, autosaveSourceUrlKey, () => {
-                if (unsavedPages === pages) {
-                    unsavedPages = undefined;
-                }
-            });
+        saveImmediately: (pages: Page[]) => {
+            // 待機中の保存は古い状態なので、後から上書きさせない
+            autosaveScheduler.cancel();
+            writeFumen(pages, autosaveSourceUrlKey);
+        },
+        // 自動保存。ページは書き込む直前に組み立てる
+        save: (buildPages: () => Page[]) => {
+            const sourceUrlKey = autosaveSourceUrlKey;
+            autosaveScheduler.schedule(() => writeBuiltFumen(buildPages, sourceUrlKey));
         },
         // 書き込み待ちの自動保存があるときだけ、すぐに保存する。
-        // 起動時の読み込み前（初期状態の空ページ）や保存済みの状態で書き込むと、保存データを不要に上書きしてしまう
-        flush: async (pages: Page[]): Promise<void> => {
-            if (unsavedPages === undefined) {
-                return;
-            }
-            unsavedPages = undefined;
-            await saveImmediately(pages);
+        // 起動時の読み込み前（初期状態の空ページ）や保存済みの状態で書き込むと、保存データを不要に上書きしてしまう。
+        // pagehide でも書き込めるよう、同期で完了させる
+        flush: (buildPages: () => Page[]) => {
+            autosaveScheduler.flush(() => writeBuiltFumen(buildPages, autosaveSourceUrlKey));
         },
         setAutosaveSource: (sourceUrlKey: string | undefined) => {
             autosaveSourceUrlKey = sourceUrlKey;
@@ -269,6 +261,7 @@ export const memento = (() => {
                 return revertOnce(pages);
             }
 
+            const steps = treeAcrossSteps();
             let result: Result | undefined;
             let currentPages = pages;
             while (target < undoQueue.length - 1) {
@@ -276,10 +269,10 @@ export const memento = (() => {
                 if (reverted === undefined) {
                     break;
                 }
-                result = reverted;
-                currentPages = reverted.pages;
+                result = steps.take(reverted);
+                currentPages = result.pages;
             }
-            return result;
+            return result !== undefined ? steps.finish(result) : undefined;
         },
         redo: async (pages: Page[]): Promise<Result | undefined> => {
             return replayOnce(pages);
@@ -290,6 +283,7 @@ export const memento = (() => {
                 return replayOnce(pages);
             }
 
+            const steps = treeAcrossSteps();
             let result: Result | undefined;
             let currentPages = pages;
             while (0 < redoQueue.length) {
@@ -297,13 +291,13 @@ export const memento = (() => {
                 if (replayed === undefined) {
                     break;
                 }
-                result = replayed;
-                currentPages = replayed.pages;
+                result = steps.take(replayed);
+                currentPages = result.pages;
                 if (isOnSpawnBoundary()) {
                     break;
                 }
             }
-            return result;
+            return result !== undefined ? steps.finish(result) : undefined;
         },
         lastKey: (): (string | undefined) => {
             const lastTask = undoQueue[undoQueue.length - 1];
@@ -377,13 +371,13 @@ const safer = {
         return safeString && re.test(safeString) ? safeString : undefined;
     },
     string: (value: any): string | undefined => {
-        return lodash.isString(value) ? value : undefined;
+        return isString(value) ? value : undefined;
     },
     boolean: (value: any): boolean | undefined => {
-        return lodash.isBoolean(value) ? value : undefined;
+        return isBoolean(value) ? value : undefined;
     },
     number: (value: any): number | undefined => {
-        return lodash.isNumber(value) && !isNaN(value) ? value : undefined;
+        return isNumber(value) && !isNaN(value) ? value : undefined;
     },
     // 欠損・不正値時はguideline SRS相当の 'srs' にフォールバックする（後方互換重視）。
     rotationSystem: (value: any): RotationSystem => {

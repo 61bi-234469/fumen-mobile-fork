@@ -90,13 +90,12 @@ const commitCommentText = (
 };
 
 const findFirstComment = (pages: Page[], startIndex: number) => {
-    let nextPageIndex: number | undefined = undefined;
     for (let i = startIndex; i < pages.length; i += 1) {
         if (pages[i].comment.text !== undefined) {
-            nextPageIndex = i;
+            return i;
         }
     }
-    return nextPageIndex;
+    return undefined;
 };
 
 const commitQuizCommentText = (

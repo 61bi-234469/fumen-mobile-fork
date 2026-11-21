@@ -7,9 +7,19 @@ import { Page } from '../../lib/fumen/types';
 import { default as i18next } from 'i18next';
 import { resources as resourcesEn } from '../../locales/en/translation';
 
+const mockHistoryCalls: any[] = [];
 jest.mock('../../actions', () => ({
     actions: {
+        registerHistoryTask: (data: any) => (state: any) => {
+            mockHistoryCalls.push({ data, comments: state.fumen.pages.map((page: any) => page.comment) });
+            return undefined;
+        },
         reopenCurrentPage: () => () => undefined,
+        fixInferencePiece: () => () => undefined,
+        clearInferencePiece: () => () => undefined,
+        clearRectSelection: () => () => undefined,
+        commitCommentText: () => () => undefined,
+        cancelSpawnMinoPick: () => () => undefined,
         closeListViewMenuModal: () => () => undefined,
     },
     main: {
@@ -40,6 +50,11 @@ jest.mock('../../env', () => ({
         Version: 'test',
         Debug: false,
     },
+}));
+
+// Leaving a page loads ./pages, which pulls in the Cold Clear worker wrapper
+jest.mock('../../lib/cold_clear/ColdClearWrapper', () => ({
+    ColdClearWrapper: jest.fn().mockImplementation(() => ({})),
 }));
 
 const encodeMock = jest.fn();
@@ -179,6 +194,55 @@ describe('updatePageComment', () => {
 
         expect(next.fumen.pages).toBe(state.fumen.pages);
         expect(next.fumen.pages[1].comment.text).toBe('edited');
+    });
+
+    test('registers a mergeable undo step from the edited pages without dropping thumbnails', () => {
+        mockHistoryCalls.length = 0;
+        const pages = segmentPages();
+        pages[2].comment = { ref: 1 };
+        const state = createState({ pages });
+
+        listViewActions.updatePageComment({ pageIndex: 2, comment: 'typed' })(state);
+
+        expect(mockHistoryCalls).toHaveLength(1);
+        const { data, comments } = mockHistoryCalls[0];
+        expect(comments[2]).toEqual({ text: 'typed' });
+        expect(data.mergeKey).toBe('page-comment-2');
+        expect(data.task.key).toBe(data.mergeKey);
+        expect(data.keepThumbnails).toBe(true);
+
+        const reverted = data.task.revert(state.fumen.pages);
+        expect(reverted.pages[2].comment).toEqual({ ref: 1 });
+        expect(reverted.index).toBe(2);
+    });
+});
+
+describe('replaceAllComments', () => {
+    test('replaces owned comments once and registers one undo step from the replaced pages', () => {
+        mockHistoryCalls.length = 0;
+        const pages = segmentPages();
+        pages[1].comment = { text: 'a1' };
+        pages[2].comment = { ref: 1 };
+        const state = createState({ pages });
+
+        const next = listViewActions.replaceAllComments({ searchText: 'a', replaceText: 'aa' })(state) as any;
+
+        expect(next.fumen.pages.map((page: Page) => page.comment)).toEqual([
+            { text: '' }, { text: 'aa1' }, { ref: 1 },
+        ]);
+        expect(mockHistoryCalls).toHaveLength(1);
+        expect(mockHistoryCalls[0].comments[1]).toEqual({ text: 'aa1' });
+
+        const reverted = mockHistoryCalls[0].data.task.revert(next.fumen.pages);
+        expect(reverted.pages[1].comment).toEqual({ text: 'a1' });
+    });
+
+    test('changes nothing when no comment matches', () => {
+        mockHistoryCalls.length = 0;
+        const next = listViewActions.replaceAllComments({ searchText: 'zzz', replaceText: 'y' })(createState());
+
+        expect(next).toBeUndefined();
+        expect(mockHistoryCalls).toHaveLength(0);
     });
 });
 

@@ -13,7 +13,10 @@ export class HyperStage {
 
     removeStage() {
         if (this.stage !== undefined) {
+            // Layers are shared across stages, so detach them first: destroy() would destroy any child left.
             this.stage.removeChildren();
+            // Konva keeps every stage (and its two buffer canvases) in a global list until it is destroyed.
+            this.stage.destroy();
             this.stage = undefined;
         }
     }

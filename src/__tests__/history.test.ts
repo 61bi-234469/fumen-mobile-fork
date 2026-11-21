@@ -4,7 +4,8 @@ import { toFumenTask, toPage, toPrimitivePage } from '../history_task';
 describe('history', () => {
     test('fumen', async () => {
         const init = await decode('v115@ehzhMeAgH');
-        const task = toFumenTask(init.map(toPrimitivePage), 'v115@vhAVQJ', 0);
+        const next = await decode('v115@vhAVQJ');
+        const task = toFumenTask(init.map(toPrimitivePage), next.map(toPrimitivePage), 0);
 
         // replay
         {
@@ -21,6 +22,16 @@ describe('history', () => {
             expect(data).toEqual('ehzhMeAgH');
             expect(index).toEqual(0);
         }
+    });
+
+    test('restored pieces are copies, so editing them leaves the snapshot alone', async () => {
+        const [page] = await decode('v115@vhAVQJ');
+        const primitive = toPrimitivePage(page);
+
+        const restored = toPage(primitive);
+        restored.piece!.coordinate.x -= 1;
+
+        expect(toPage(primitive).piece!.coordinate).toEqual(page.piece!.coordinate);
     });
 
     test('clones editor-only seven-bag working data', async () => {

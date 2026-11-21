@@ -25,13 +25,17 @@ import {
     getBranchButtonOffset,
     getCopyButtonOffset,
     getDeleteButtonOffset,
+    getDragHandleRect,
     getInsertButtonOffset,
+    getPageLinkRect,
+    isInsideTreeNodeRect,
 } from '../lib/fumen/tree_view_layout';
 import {
     TREE_DRAG_START_THRESHOLD,
     beginPendingMouseDrag,
     beginTreeAutoScroll,
     cancelPendingMouseDrag,
+    dropTreeDragAt,
     evaluateTreeDropTargetAt,
     setTreeMouseInteractionDeps,
     stopTreeDragFeedback,
@@ -356,12 +360,13 @@ export const view: View<State, Actions> = (state, actions) => {
         };
     };
 
-    // Detect if a position is over a button (returns button info or null)
+    // Detect if a position is over a node control (returns control info or null).
+    // 'page' and 'header' are the page number and the rest of the handle strip.
     const detectButtonAtPosition = (
         clientX: number,
         clientY: number,
         container: HTMLElement,
-    ): { nodeId: string; type: 'insert' | 'branch' | 'copy' | 'delete' } | null => {
+    ): { nodeId: string; type: 'insert' | 'branch' | 'copy' | 'delete' | 'page' | 'header' } | null => {
         if (!treeViewLayout) return null;
         const svgElement = container.querySelector('svg') as SVGSVGElement;
         if (!svgElement) return null;
@@ -379,8 +384,15 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeHeight = nodeLayout.height;
             const isRenderable = !isVirtualNode(node);
 
-            // Check DELETE button (top-right). Disabled buttons still consume the
-            // tap (the handler re-checks canDeleteNode and does nothing).
+            // The page number wins over the delete icon's invisible margin.
+            if (isRenderable && isInsideTreeNodeRect(
+                getPageLinkRect(node.pageIndex + 1), svgX - nodeX, svgY - nodeY,
+            )) {
+                return { nodeId: node.id, type: 'page' };
+            }
+
+            // Check DELETE icon (right end of the header strip). Disabled icons still
+            // consume the tap (the handler re-checks canDeleteNode and does nothing).
             if (isRenderable) {
                 const deleteOffset = getDeleteButtonOffset();
                 const distToDelete = Math.hypot(
@@ -424,6 +436,10 @@ export const view: View<State, Actions> = (state, actions) => {
                 if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
                     return { nodeId: node.id, type: 'branch' };
                 }
+            }
+
+            if (isRenderable && isInsideTreeNodeRect(getDragHandleRect(), svgX - nodeX, svgY - nodeY)) {
+                return { nodeId: node.id, type: 'header' };
             }
         }
 
@@ -514,9 +530,16 @@ export const view: View<State, Actions> = (state, actions) => {
                         actions.addBranchFromCurrentNode({ parentNodeId: buttonHit.nodeId });
                     } else if (buttonHit.type === 'copy') {
                         actions.copyTreeNode({ nodeId: buttonHit.nodeId });
-                    } else {
+                    } else if (buttonHit.type === 'delete') {
                         handleTreeNodeDelete(state, actions, buttonHit.nodeId, TOOLS_HEIGHT);
+                    } else if (buttonHit.type === 'header') {
+                        // The handle strip cancels the browser's click, so a tap on it
+                        // selects the card here. It never opens the page.
+                        if (state.tree.activeNodeId !== buttonHit.nodeId) {
+                            actions.activateTreeNode({ nodeId: buttonHit.nodeId });
+                        }
                     }
+                    // 'page': the tap arrives as a click on the page number itself.
                     pinchState.active = false;
                     stopTreeDragFeedback();
                     resetTreeTouchTracking();
@@ -540,24 +563,16 @@ export const view: View<State, Actions> = (state, actions) => {
 
         treeTouchDragActive = false;
 
-        const {
-            sourceNodeId,
-            targetButtonParentId,
-            targetButtonType,
-        } = state.tree.dragState;
-
-        let didDrop = false;
-        if (sourceNodeId !== null
-            && targetButtonParentId !== null && targetButtonType !== null) {
-            actions.executeTreeDrop();
-            didDrop = true;
-        }
-
-        if (!didDrop) {
+        // touchend reaches the element the touch started on, wherever the finger is
+        // lifted, so the target is resolved from the release position.
+        const touch = e.changedTouches[0];
+        if (touch !== undefined) {
+            dropTreeDragAt(touch.clientX, touch.clientY);
+        } else {
             actions.endTreeDrag();
+            stopTreeDragFeedback();
         }
         pinchState.active = false;
-        stopTreeDragFeedback();
         resetTreeTouchTracking();
     };
 
@@ -797,6 +812,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragSourceNodeId: state.tree.dragState.sourceNodeId,
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
+                    dragDropSlotIndex: state.tree.dragState.dropSlotIndex,
                     operationScope: state.tree.operationScope,
                     dragOperationScope: state.tree.dragState.operationScope,
                     autoFocusPending: state.tree.autoFocusPending,
@@ -879,7 +895,7 @@ export const view: View<State, Actions> = (state, actions) => {
                             beginPendingMouseDrag(nodeId, e.clientX, e.clientY);
                         },
                         onHandleTouchStart: (nodeId, e) => {
-                            if (e.touches.length !== 1) return;
+                            if (e.touches.length !== 1) return false;
                             cancelTreeLongPress();
                             setTreeTouchStartPosition({
                                 x: e.touches[0].clientX,
@@ -888,34 +904,14 @@ export const view: View<State, Actions> = (state, actions) => {
                             registerTreeTouchStartTarget(e.target as EventTarget);
                             treePendingDragNodeId = nodeId;
                             treePendingDragKind = 'handle';
+                            return true;
                         },
-                        onDragOverButton: (parentNodeId, buttonType) => {
-                            if (state.tree.dragState.sourceNodeId !== null) {
-                                actions.updateTreeDragButtonTarget({ parentNodeId, buttonType });
-                            }
+                        onDragMove: (clientX, clientY) => {
+                            updateTreeAutoScrollPointer(clientX, clientY);
+                            evaluateTreeDropTargetAt(clientX, clientY);
                         },
-                        onDragLeaveButton: () => {
-                            if (state.tree.dragState.sourceNodeId !== null) {
-                                actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
-                            }
-                        },
-                        onDrop: () => {
-                            const {
-                                sourceNodeId,
-                                targetButtonParentId,
-                                targetButtonType,
-                            } = state.tree.dragState;
-                            if (sourceNodeId !== null
-                                && targetButtonParentId !== null && targetButtonType !== null) {
-                                actions.executeTreeDrop();
-                            } else if (sourceNodeId !== null) {
-                                actions.endTreeDrag();
-                            }
-                            stopTreeDragFeedback();
-                        },
-                        onDragEnd: () => {
-                            actions.endTreeDrag();
-                            stopTreeDragFeedback();
+                        onDrop: (clientX, clientY, leftView) => {
+                            dropTreeDragAt(clientX, clientY, { buttonsOnly: leftView });
                         },
                         ackTreeAutoFocus: () => {
                             actions.ackTreeAutoFocus();

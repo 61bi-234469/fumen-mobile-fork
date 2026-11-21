@@ -69,6 +69,30 @@ describe('comment actions with seven-bag gray enabled', () => {
     });
 });
 
+describe('setCommentText and the following comments', () => {
+    const flags = { lock: true, mirror: false, colorize: true, rise: false, quiz: false };
+    const createPages = (comments: any[]) => comments.map((comment, index) => ({
+        index,
+        comment,
+        field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+        flags: { ...flags },
+    }));
+    const commitX = (comments: any[]) => {
+        const state = { mode: {}, fumen: { currentIndex: 1, pages: createPages(comments) } };
+        const next = commentActions.setCommentText({ text: 'X', pageIndex: 1 })(state as any) as any;
+        return [0, 1, 2, 3].map(index => resolvePageCommentText(next.fumen.pages, index));
+    };
+
+    test('turns the next comment page into a ref when it repeats the committed text', () => {
+        expect(commitX([{ text: 'A' }, { text: 'B' }, { ref: 1 }, { text: 'X' }])).toEqual(['A', 'X', 'X', 'X']);
+    });
+
+    test('leaves a later page alone when an earlier page has its own comment', () => {
+        expect(commitX([{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: 'X' }])).toEqual(['A', 'X', 'C', 'X']);
+        expect(commitX([{ text: 'A' }, { text: 'B' }, { text: '' }, { text: 'X' }])).toEqual(['A', 'X', '', 'X']);
+    });
+});
+
 describe('resetAllCommentTexts', () => {
     beforeEach(() => {
         jest.clearAllMocks();

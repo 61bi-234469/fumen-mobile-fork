@@ -18,6 +18,10 @@ interface Props {
     };
 }
 
+// The row shares its parent with the toolbar. Without a key Hyperapp matches the two by position, and
+// swapping this row for another element rebuilds the whole toolbar.
+const COMMENT_ROW_KEY = 'comment-row';
+
 export const comment: Component<Props> = (
     {
         height, textColor, backgroundColorClass, dataTest, key, id, text,
@@ -37,6 +41,7 @@ export const comment: Component<Props> = (
 
     if (readonly) {
         return div({
+            key: COMMENT_ROW_KEY,
             style: style({
                 width: '100%',
                 height: px(height),
@@ -97,6 +102,7 @@ export const comment: Component<Props> = (
     };
 
     return div({
+        key: COMMENT_ROW_KEY,
         style: style({
             width: '100%',
             height: px(height),

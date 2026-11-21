@@ -160,7 +160,7 @@
       <li><strong>Delete pages:</strong> <strong>&lt;-Clear</strong> deletes the pages before the current page, and <strong>Clear-&gt;</strong> deletes the pages after it.</li>
       <li><strong>Editing modes:</strong> <strong>Slide</strong> opens a tray for moving the field (Up + gray, Up, Left, Right, Down, Done). <strong>Comment</strong> opens a tray with Blank and Inherit.</li>
       <li><strong>TETR.IO Replay:</strong> <strong>Open TETR.IO replay</strong> moves to the replay screen.</li>
-      <li><strong>FLAGS:</strong> Toggle Key page / Reference page, Lock, Rise, and Mirror flag. On a page with Lock on, line clears are applied when moving to the next page.</li>
+      <li><strong>FLAGS:</strong> Toggle Key page / Reference page, Lock, Rise, and Mirror flag. On a page with Lock on, line clears are applied when moving to the next page. In Tree, a page that starts a branch (its parent node is not the page just before it) cannot be a Reference page.</li>
       <li><strong>Panels:</strong> Drag the header to move a panel. An item or another press of the UTILS button closes UTILS. Enable <strong>Keep the UTILS menu open</strong> to keep choosing items while using the field.</li>
     </ul>
   </section>
@@ -186,7 +186,7 @@
       <li>Select a card once to make it active, then select the active card again to move to its Edit screen.</li>
       <li>Use <strong>#page number</strong> links to move to a page. In the side panel, only the Edit field on the right updates.</li>
       <li>Drag a card to reorder pages. Reordering is disabled while Tree mode is enabled.</li>
-      <li>Edit a comment directly in its text area. Use Replace comments in UTILS to replace text across all pages.</li>
+      <li>Edit a comment directly in its text area. Undo reverts consecutive typing in one card as a single step. Use Replace comments in UTILS to replace text across all pages; the replacement can be undone too.</li>
       <li>The bottom bar holds Back to Edit, the Tree mode switch, the List and Tree buttons (only in Tree mode), UTILS, Import, Export, Settings, and Menu. Undo/Redo is at the bottom left, and View settings is the floating button at the bottom right.</li>
       <li><strong>UTILS:</strong> Without leaving List, mirror, gray out, or clear the current page, mirror all pages, replace or reset comments, delete pages, or open TETR.IO Replay.</li>
       <li><strong>View settings</strong> (the bottom-right button) includes the <strong>Trim top blank</strong> switch, a <strong>Zoom</strong> slider, and <strong>All settings</strong>. The slider snaps near 100%, and tapping the percentage returns to 100%. Use <kbd>Ctrl</kbd> + the mouse wheel to zoom on PC.</li>
@@ -200,7 +200,7 @@
       <li>Select the tree view button in the bottom bar to switch to Tree.</li>
       <li>Select the node to branch from, then use the colored buttons to create the next sequence.</li>
     </ol>
-    <figure class="shot"><img src="../images/en/tree-view.png" alt="Tree on PC with a main line of seven nodes and branch nodes below the third node, the Move/Delete chip at the bottom left, and the AI and view settings buttons at the bottom right."><figcaption>Tree. Use the green plus for a continuation, the orange plus for a branch, and the bottom-left chip to choose the Move/Delete scope.</figcaption></figure>
+    <figure class="shot"><img src="../images/en/tree-view.png" alt="Tree on PC with a main line of seven nodes and an eighth node branching below the third node. Each node has a header strip with a grip, the page number, and a delete icon. The Move/Delete chip is at the bottom left, and the AI and view settings buttons are at the bottom right."><figcaption>Tree. Use the green plus for a continuation and the orange button for a branch, and drag a node by its header strip to move it.</figcaption></figure>
 
     <h3>Add, move, and delete</h3>
     <div class="table-wrap">
@@ -208,19 +208,21 @@
         <thead><tr><th>Action</th><th>Click</th><th>Drag a node over another node</th></tr></thead>
         <tbody>
           <tr><td><span class="dot green"></span>Green plus</td><td>Add a page as a continuation of the selected node</td><td>Move it after that node</td></tr>
-          <tr><td><span class="dot orange"></span>Orange plus</td><td>Add a new branch from the selected node</td><td>Move it to the branch</td></tr>
+          <tr><td><span class="dot orange"></span>Orange branch button (below the green plus)</td><td>Add a new branch from the selected node</td><td>Move it to the branch</td></tr>
           <tr><td><span class="dot blue"></span>Blue duplicate (below the node)</td><td>Duplicate a node or branch</td><td>Becomes a blue plus while dragging; move as a branch from that node's parent</td></tr>
-          <tr><td><span class="dot red"></span>Delete page (top right)</td><td>Delete the pages in the selected Move/Delete scope. Undo from the notification immediately afterward.</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>Delete page (right end of the header strip)</td><td>Delete the pages in the selected Move/Delete scope. Undo from the notification immediately afterward.</td><td>—</td></tr>
         </tbody>
       </table>
     </div>
     <ul>
-      <li><strong>Dragging:</strong> Start a drag from the <strong>Drag to move</strong> grip below the node.</li>
+      <li><strong>Dragging:</strong> Drag the header strip at the top of a node. On touch screens, you can also start by long-pressing the card. Clicking the strip only selects the node and does not open Edit. The <strong>#page number</strong> in the strip opens that page.</li>
+      <li><strong>Reorder branches:</strong> Drag a node up or down to show lines between the branches that leave the same fork. Release on a line to move the branch there. Only the order of the branches changes; no node gets a new parent. With <strong>Node only</strong> and <strong>Node &amp; descendants</strong>, the branch at the nearest fork to the left of the grabbed node moves. With <strong>Descendants only</strong>, the top branch of the first fork at or after the grabbed node moves, and the grabbed node itself stays.</li>
       <li><strong>Move/Delete:</strong> Choose <strong>Node only</strong>, <strong>Node &amp; descendants</strong>, or <strong>Descendants only</strong> from the bottom-left chip. The same scope applies to moving and deleting.</li>
       <li><strong>Descendants only:</strong> Keep the node and move or delete only its descendants. The green button is available when there is one direct child. Only when the destination is a leaf node can multiple child subtrees be moved while keeping their original order.</li>
       <li><strong>Delete:</strong> Select the <strong>Delete page</strong> icon at the top right of a node. Restore it with <strong>Undo</strong> in the notification after deletion. The last page cannot be deleted.</li>
       <li><strong>Select a node:</strong> Select a node once to make it active, then select the active node again to move to its Edit screen.</li>
       <li><strong>Disable Tree mode:</strong> A confirmation dialog appears because the tree structure will be deleted. You can undo the change.</li>
+      <li><strong>Saving:</strong> Tree mode and the tree are saved automatically and remain after a reload. Opening data with a tree shows Tree, depending on your settings.</li>
       <li><strong>Add a parent tree:</strong> The dashed plus card creates an independent root that is not connected to the existing branches. Use it to manage another set or loop in the same fumen.</li>
       <li><strong>View settings:</strong> The bottom-right button toggles Trim top blank and <strong>Gray out with + button</strong>, and sets the zoom. Gray out with + button grays out the blocks left after line clears when + creates a page.</li>
       <li><strong>AI:</strong> The blue AI button at the bottom right opens the AI menu from the selected node.</li>
@@ -232,7 +234,7 @@
   <section id="side-panel">
     <h2>The PC side panel</h2>
     <p class="lead">On PC, show List or Tree on the left while keeping Edit open. This is useful for checking all pages or branches while editing the field.</p>
-    <figure class="shot"><img src="../images/en/editor-side-panel.png" alt="Edit on PC with a Tree side panel on the left and the field of page 9 with the PAINT rail on the right."><figcaption>Tree side panel. Edit the field on the right while checking the branches on the left.</figcaption></figure>
+    <figure class="shot"><img src="../images/en/editor-side-panel.png" alt="Edit on PC with the Tree tab of the side panel on the left, the eighth node selected, and the field of page 8 with the PAINT rail on the right."><figcaption>Tree side panel. Edit the field on the right while checking the branches on the left.</figcaption></figure>
     <ol class="steps">
       <li>Select <strong>Show side panel</strong> at the top of the screen. You can also toggle it from User Settings &gt; List &amp; Tree &gt; <strong>Show side panel (PC)</strong>.</li>
       <li>Choose the <strong>List</strong> or <strong>Tree</strong> tab.</li>
@@ -240,7 +242,7 @@
     </ol>
     <ul>
       <li><strong>List tab:</strong> Move between pages, edit comments, and drag to reorder. Reordering is disabled in Tree mode.</li>
-      <li><strong>Tree tab:</strong> Turn on Tree mode with <strong>Enable tree mode</strong>, add continuations and branches, duplicate or delete nodes, choose the Move/Delete scope, and move between pages.</li>
+      <li><strong>Tree tab:</strong> Turn on Tree mode with <strong>Enable tree mode</strong>, add continuations and branches, duplicate or delete nodes, move nodes and reorder branches by dragging, choose the Move/Delete scope, and move between pages.</li>
       <li><strong>Panel buttons:</strong> Undo/Redo is at the bottom left (with the Move/Delete chip in the Tree tab), view settings at the bottom right, and in the Tree tab the AI button sits above view settings. View settings has the same zoom slider as full-screen mode.</li>
       <li><strong>Resize:</strong> Drag the divider at the right edge of the panel. Double-click the divider to return to the automatic width.</li>
       <li><strong>Availability:</strong> This is a PC feature. The panel hides automatically below 1024px and reappears when the viewport is wide enough.</li>

@@ -98,6 +98,16 @@
             overflow: hidden;
         }
 
+        /*
+         * An icon is the ligature of an English word (e.g. "content_paste"). Whenever the icon font is not
+         * applied for a moment, that word is drawn as plain text and spills over the neighbouring controls.
+         * Keep it inside the icon's own box. Height is left alone: some icons inherit a tall line-height.
+         */
+        .material-icons {
+            width: 1em;
+            overflow: hidden;
+        }
+
         .top-toast {
             position: fixed;
             top: 0;
@@ -129,6 +139,27 @@
 
         .tree-delete-toast .toast-action {
             pointer-events: auto;
+        }
+
+        /*
+         * Tree node delete icon (SVG, drawn with currentColor): quiet in the card
+         * header, red only while hovered or pressed.
+         */
+        .tree-node-delete {
+            color: #94A3B8;
+        }
+
+        .tree-node-delete.is-active {
+            color: #64748B;
+        }
+
+        .tree-node-delete:hover,
+        .tree-node-delete:active {
+            color: #EF4444;
+        }
+
+        .tree-node-delete.is-disabled {
+            color: #CBD5E1;
         }
 
         /* Floating corner controls (list/tree views) */

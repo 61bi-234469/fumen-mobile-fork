@@ -23,8 +23,6 @@ import { generateThumbnail } from '../../lib/thumbnail';
 import { lazyThumbnail } from '../lazy_thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import { setTreeTouchStartPosition } from './tree_touch_state';
-import { updateTreeDragGhost } from './tree_drag_ghost';
-import { updateTreeAutoScrollPointer } from './tree_auto_scroll';
 import { i18n } from '../../locales/keys';
 import {
     TREE_ADD_BUTTON_SIZE,
@@ -51,13 +49,13 @@ import {
     TREE_THUMBNAIL_WIDTH,
     TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
-    findTreeButtonDropTarget,
     getBranchButtonOffset,
     getCopyButtonOffset,
     getDeleteButtonOffset,
     getDragHandleOffset,
     getInsertButtonOffset,
     getTreeCopyButtonDropTarget,
+    getTreeLaneReorderGuides,
     getRootGhostRect,
     TreeNodeLayout,
 } from '../../lib/fumen/tree_view_layout';
@@ -89,6 +87,7 @@ const TREE_COLORS = {
     ghostFill: '#F8FAFC',
     ghostBorder: '#94A3B8',
     commentChangedBg: '#10B981',
+    lane: '#7C3AED',
 };
 
 // Crisp path-drawn icons (replace text glyphs so buttons stay sharp at any zoom)
@@ -145,6 +144,7 @@ interface Props {
     dragSourceNodeId: TreeNodeId | null;
     dragTargetButtonParentId: TreeNodeId | null;
     dragTargetButtonType: 'insert' | 'branch' | null;
+    dragDropSlotIndex: number | null;
     operationScope: TreeOperationScope;
     dragOperationScope?: TreeOperationScope;
     trimTopBlank: boolean;
@@ -161,10 +161,10 @@ interface Props {
         onCommentChange: (pageIndex: number, comment: string) => void;
         onHandleMouseDown: (nodeId: TreeNodeId, event: MouseEvent) => void;
         onHandleTouchStart: (nodeId: TreeNodeId, event: TouchEvent) => void;
-        onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch') => void;
-        onDragLeaveButton: () => void;
-        onDrop: () => void;
-        onDragEnd: () => void;
+        // Pointer moved during a drag (client coordinates)
+        onDragMove: (clientX: number, clientY: number) => void;
+        // Drag released at a client position; leftView = the pointer left the tree viewport
+        onDrop: (clientX: number, clientY: number, leftView: boolean) => void;
         ackTreeAutoFocus?: () => void;
     };
 }
@@ -696,6 +696,7 @@ export const FumenGraph: Component<Props> = ({
     dragSourceNodeId,
     dragTargetButtonParentId,
     dragTargetButtonType,
+    dragDropSlotIndex,
     operationScope,
     dragOperationScope,
     trimTopBlank,
@@ -789,6 +790,61 @@ export const FumenGraph: Component<Props> = ({
     const connections = treeViewLayout.layout.connections.map(conn =>
         renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, activeNodeId),
     );
+
+    // Lane reorder guides: slots between the sibling branches of the reordered fork.
+    // Deliberately quiet: a faint band on the moving branch, thin dashed lines on the
+    // slots that would change the order, and a solid line on the current candidate.
+    const laneGuides = isDragging && dragSourceNodeId !== null
+        ? getTreeLaneReorderGuides(tree, treeViewLayout, dragSourceNodeId, dragScope)
+        : null;
+    const laneGuideLayer = (() => {
+        if (laneGuides === null) return null;
+        const { slotYs, unit, lineStartX, blockX } = laneGuides;
+        const rightEdge = scaledWidth / scale - TREE_PADDING / 2;
+        const bandX = blockX - 8;
+        return (
+            <g key="lane-guides-layer" style={style({ pointerEvents: 'none' })}>
+                <rect
+                    key="tree-lane-block"
+                    datatest="tree-lane-block"
+                    x={bandX}
+                    y={slotYs[unit.index] + 4}
+                    width={Math.max(0, rightEdge - bandX)}
+                    height={Math.max(0, slotYs[unit.index + 1] - slotYs[unit.index] - 8)}
+                    rx={10}
+                    fill={TREE_COLORS.lane}
+                    fill-opacity={0.08}
+                />
+                {slotYs.map((y, slot) => {
+                    if (slot === unit.index || slot === unit.index + 1) return null;
+                    const isActive = slot === dragDropSlotIndex;
+                    return (
+                        <g key={`tree-lane-guide-${slot}`} datatest={`tree-lane-guide-${slot}`}>
+                            <path
+                                d={`M ${lineStartX} ${y} H ${rightEdge}`}
+                                stroke={TREE_COLORS.lane}
+                                stroke-width={isActive ? 3 : 1.5}
+                                stroke-opacity={isActive ? 1 : 0.6}
+                                stroke-dasharray={isActive ? 'none' : '6 5'}
+                                stroke-linecap="round"
+                                vector-effect="non-scaling-stroke"
+                                fill="none"
+                            />
+                            {isActive && (
+                                <circle
+                                    datatest="tree-lane-guide-active"
+                                    cx={lineStartX}
+                                    cy={y}
+                                    r={4.5 / scale}
+                                    fill={TREE_COLORS.lane}
+                                />
+                            )}
+                        </g>
+                    );
+                })}
+            </g>
+        );
+    })();
 
     // Calculate source node for drag operations
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
@@ -1253,49 +1309,24 @@ export const FumenGraph: Component<Props> = ({
         }
     };
 
-    // Handle global mouse up to end drag
-    const handleMouseUp = () => {
+    // Mouse released inside the tree: the drop target is resolved at the release point.
+    const handleMouseUp = (e: MouseEvent) => {
         if (dragSourceNodeId !== null) {
-            // If we have a valid drop target, execute the drop
-            if (dragTargetButtonParentId !== null) {
-                actions.onDrop();
-            } else {
-                actions.onDragEnd();
-            }
+            actions.onDrop(e.clientX, e.clientY, false);
         }
     };
 
-    // Handle mouse move on SVG to detect drop-target buttons and drive the ghost
+    // Pointer left the tree viewport: only an add button under it still drops.
+    const handleMouseLeave = (e: MouseEvent) => {
+        if (dragSourceNodeId !== null) {
+            actions.onDrop(e.clientX, e.clientY, true);
+        }
+    };
+
+    // Mouse move during a drag: the view resolves the candidate and drives the ghost
     const handleSvgMouseMove = (e: MouseEvent) => {
         if (!isDragging || dragSourceNodeId === null) return;
-
-        const svg = e.currentTarget as SVGSVGElement;
-        const rect = svg.getBoundingClientRect();
-        // Account for scale when calculating mouse position in SVG coordinates
-        const mouseX = (e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0)) / scale;
-        const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
-
-        updateTreeDragGhost(mouseX, mouseY);
-        updateTreeAutoScrollPointer(e.clientX, e.clientY);
-
-        const foundButton = findTreeButtonDropTarget(
-            tree,
-            treeViewLayout,
-            mouseX,
-            mouseY,
-            dragSourceNodeId,
-            dragScope,
-        );
-
-        if (foundButton !== null) {
-            actions.onDragOverButton(foundButton.nodeId, foundButton.type);
-            return;
-        }
-
-        // No button hit - clear button target if it was set
-        if (dragTargetButtonParentId !== null) {
-            actions.onDragLeaveButton();
-        }
+        actions.onDragMove(e.clientX, e.clientY);
     };
 
     return (
@@ -1304,7 +1335,7 @@ export const FumenGraph: Component<Props> = ({
             datatest="fumen-graph-container"
             style={containerStyle}
             onmouseup={handleMouseUp}
-            onmouseleave={handleMouseUp}
+            onmouseleave={handleMouseLeave}
             oncreate={handleCreate}
             onupdate={handleAutoFocus}
             ondestroy={handleDestroy}
@@ -1344,6 +1375,9 @@ export const FumenGraph: Component<Props> = ({
                         <g key="connections-layer">
                             {connections}
                         </g>
+
+                        {/* Lane reorder guides (between the lanes, behind the cards) */}
+                        {laneGuideLayer}
 
                         {/* Card layer (below comments and controls) */}
                         <g key="cards-layer">

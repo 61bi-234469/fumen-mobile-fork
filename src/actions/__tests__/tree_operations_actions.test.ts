@@ -1122,3 +1122,137 @@ describe('tree operation autosave', () => {
             .toEqual(['n2', 'n1']);
     });
 });
+
+describe('executeTreeDrop onto a lane slot', () => {
+    // virtual root -> [n0 -> [n1, n2], n3]; pages in tree order: root, main, branch, second
+    const createLanePages = (): Page[] => [
+        ...createForkPages(),
+        { index: 3, field: { obj: new Field({}) }, comment: { text: 'second' }, flags: { ...defaultFlags } },
+    ];
+    const createLaneTree = (): SerializedTree => {
+        const fork = createForkTree();
+        return {
+            ...fork,
+            nodes: [
+                ...fork.nodes.map(node => node.id === 'root' ? { ...node, childrenIds: ['n0', 'n3'] } : node),
+                { id: 'n3', parentId: 'root', pageIndex: 3, childrenIds: [] },
+            ],
+        };
+    };
+    const createDragState = (sourceNodeId: string, scope: TreeOperationScope = 'node') => {
+        const state = createTreeState(createLanePages(), createLaneTree(), sourceNodeId, scope);
+        state.tree.dragState = { ...initialTreeDragState, sourceNodeId, operationScope: scope };
+        return state;
+    };
+    const commentsOf = (pages: Page[]) => pages.map(page => page.comment.text);
+    const childrenOf = (next: any, nodeId: string) => (
+        next.tree.nodes.find((node: any) => node.id === nodeId).childrenIds
+    );
+
+    test('reorders the siblings and puts the pages in tree order', () => {
+        const state = createDragState('n2');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 0 } })(state) as any;
+
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+        expect(commentsOf(next.fumen.pages)).toEqual(['root', 'branch', 'main', 'second']);
+        expect(next.tree.nodes.map((node: any) => node.parentId))
+            .toEqual(state.tree.nodes.map((node: any) => node.parentId));
+        expect(next.tree.dragState).toEqual(initialTreeDragState);
+        expectResolvableBackwardRefs(next.fumen.pages);
+    });
+
+    test('moves a top-level branch and keeps the fumen-wide colorize flag on the new first page', () => {
+        const state = createDragState('n0');
+        state.fumen.pages[0].flags.colorize = false;
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 2 } })(state) as any;
+
+        expect(childrenOf(next, 'root')).toEqual(['n3', 'n0']);
+        expect(commentsOf(next.fumen.pages)).toEqual(['second', 'root', 'main', 'branch']);
+        expect(next.fumen.pages[0].flags.colorize).toBe(false);
+    });
+
+    test('uses the scope captured at drag start to pick the moving branch', () => {
+        // descendants on the fork n0: its main child n1 moves, n0 stays
+        const state = createDragState('n0', 'descendants');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 2 } })(state) as any;
+
+        expect(childrenOf(next, 'root')).toEqual(['n0', 'n3']);
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+    });
+
+    test.each([1, 2, -1, 3, 0.5])('changes nothing for slot %s beside the branch or out of range', (slotIndex) => {
+        const state = createDragState('n2');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { slotIndex, kind: 'lane' } })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.nodes).toBe(state.tree.nodes);
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('changes nothing when the grabbed node has no branch to reorder', () => {
+        const state = createDragState('n1', 'descendants');
+
+        const next = treeOperationActions.executeTreeDrop({ target: { kind: 'lane', slotIndex: 0 } })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('an explicit null target cancels even when the drag state still holds a candidate', () => {
+        const state = createDragState('n2');
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const next = treeOperationActions.executeTreeDrop({ target: null })(state) as any;
+
+        expect(next.fumen).toBeUndefined();
+        expect(next.tree.dragState.sourceNodeId).toBeNull();
+    });
+
+    test('falls back to the candidate in the drag state when no target is passed', () => {
+        const state = createDragState('n2');
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+
+        expect(childrenOf(next, 'n0')).toEqual(['n2', 'n1']);
+    });
+});
+
+describe('tree drag candidates', () => {
+    const createDraggingState = () => {
+        const state = createTreeState(createForkPages(), createForkTree(), 'n2');
+        state.tree.dragState = { ...initialTreeDragState, sourceNodeId: 'n2' };
+        return state;
+    };
+
+    test('a lane slot replaces a button candidate', () => {
+        const state = createDraggingState();
+        state.tree.dragState.targetButtonParentId = 'n1';
+        state.tree.dragState.targetButtonType = 'insert';
+
+        const next = treeOperationActions.updateTreeDropSlot({ slotIndex: 0 })(state) as any;
+
+        expect(next.tree.dragState.dropSlotIndex).toBe(0);
+        expect(next.tree.dragState.targetButtonParentId).toBeNull();
+        expect(next.tree.dragState.targetButtonType).toBeNull();
+    });
+
+    test('a button candidate replaces a lane slot, and clearing the button clears the slot too', () => {
+        const state = createDraggingState();
+        state.tree.dragState.dropSlotIndex = 0;
+
+        const withButton = treeOperationActions
+            .updateTreeDragButtonTarget({ parentNodeId: 'n1', buttonType: 'insert' })(state) as any;
+        expect(withButton.tree.dragState.targetButtonParentId).toBe('n1');
+        expect(withButton.tree.dragState.dropSlotIndex).toBeNull();
+
+        const cleared = treeOperationActions
+            .updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null })(state) as any;
+        expect(cleared.tree.dragState.targetButtonParentId).toBeNull();
+        expect(cleared.tree.dragState.dropSlotIndex).toBeNull();
+    });
+});

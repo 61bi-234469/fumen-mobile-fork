@@ -13,6 +13,7 @@ import {
     SerializedTree,
     TreeDragMode,
     TreeDragState,
+    TreeDropTarget,
     TreeOperationScope,
     TREE_VIEW_SCALE_RANGE,
     initialTreeDragState,
@@ -35,6 +36,8 @@ import {
     moveSubtreeToParent,
     moveDescendantsToParent,
     moveDescendantsToInsertPosition,
+    moveChildToSlot,
+    resolveLaneReorderUnit,
     canDeleteNode,
     canMoveScope,
     canMoveNode,
@@ -319,7 +322,7 @@ export interface TreeOperationActions {
         buttonType: 'insert' | 'branch' | null;
     }) => action;
     endTreeDrag: () => action;
-    executeTreeDrop: () => action;
+    executeTreeDrop: (data?: { target?: TreeDropTarget | null }) => action;
 
     // Internal state setters
     setTreeState: (data: Partial<State['tree']>) => action;
@@ -796,6 +799,13 @@ interface TreeCommitInput {
  * normalize step (and its DFS-order side effects on currentIndex) happens
  * exactly once here.
  */
+const getTreeDropTargetFromDragState = (dragState: TreeDragState): TreeDropTarget | null => {
+    if (dragState.targetButtonParentId !== null && dragState.targetButtonType !== null) {
+        return { kind: 'button', nodeId: dragState.targetButtonParentId, type: dragState.targetButtonType };
+    }
+    return dragState.dropSlotIndex !== null ? { kind: 'lane', slotIndex: dragState.dropSlotIndex } : null;
+};
+
 const commitTreeOperation = (state: State, input: TreeCommitInput): NextState => {
     const normalized = normalizeTreeAndPages(input.tree, input.pages, input.currentIndex, input.activeNodeId);
     const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
@@ -1601,7 +1611,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     },
 
     /**
-     * Update the drop slot index (for Reorder mode)
+     * Update the lane reorder slot. A drag has one candidate at a time, so setting
+     * a slot clears the button target.
      */
     updateTreeDropSlot: ({ slotIndex }) => (state): NextState => {
         if (!state.tree.enabled) return undefined;
@@ -1615,8 +1626,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 ...state.tree,
                 dragState: {
                     ...state.tree.dragState,
-                    // Don't reset targetNodeId here - it's set separately for Attach modes
                     dropSlotIndex: validSlotIndex,
+                    ...(validSlotIndex !== null ? { targetButtonParentId: null, targetButtonType: null } : {}),
                 },
             },
         };
@@ -1648,6 +1659,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                             ...state.tree.dragState,
                             targetButtonParentId: null,
                             targetButtonType: null,
+                            dropSlotIndex: null,
                         },
                     },
                 };
@@ -1661,6 +1673,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     ...state.tree.dragState,
                     targetButtonParentId: parentNodeId,
                     targetButtonType: buttonType,
+                    // One candidate at a time: a button target (or clearing it) drops the lane slot.
+                    dropSlotIndex: null,
                 },
             },
         };
@@ -1687,17 +1701,40 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     },
 
     /**
-     * Execute the drop operation based on current drag mode
+     * Execute the drop. Views pass the target resolved at the release point; the
+     * candidate kept in dragState only drives the highlight and can lag one render.
      */
-    executeTreeDrop: () => withSettledEditorPage((state): NextState => {
+    executeTreeDrop: (data = {}) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled) return undefined;
 
-        const {
-            sourceNodeId,
-            targetButtonParentId,
-            targetButtonType,
-        } = state.tree.dragState;
+        const { sourceNodeId } = state.tree.dragState;
         const scope = state.tree.dragState.operationScope ?? state.tree.operationScope;
+        const target: TreeDropTarget | null = data.target !== undefined
+            ? data.target
+            : getTreeDropTargetFromDragState(state.tree.dragState);
+        const targetButtonParentId = target?.kind === 'button' ? target.nodeId : null;
+        const targetButtonType = target?.kind === 'button' ? target.type : null;
+
+        // Lane reorder: only the order of one fork's children changes.
+        if (sourceNodeId !== null && target?.kind === 'lane') {
+            const tree = getOrCreateTree(state);
+            const unit = resolveLaneReorderUnit(tree, sourceNodeId, scope);
+            const newTree = unit === null
+                ? tree
+                : moveChildToSlot(tree, unit.parentNodeId, unit.unitNodeId, target.slotIndex);
+            if (newTree === tree || !validateTree(newTree).valid) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            return commitTreeOperation(state, {
+                prevSnapshot: createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex),
+                tree: newTree,
+                pages: state.fumen.pages,
+                currentIndex: state.fumen.currentIndex,
+                activeNodeId: state.tree.activeNodeId,
+                resetDragState: true,
+            });
+        }
 
         // Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
@@ -1797,7 +1834,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             });
         }
 
-        // No drop besides button drops is possible (dragState.mode is always Reorder).
         return treeOperationActions.endTreeDrag()(state);
     }),
 };

@@ -1,6 +1,20 @@
 import { Page } from './types';
-import { SerializedTree, TreeLayout, TreeNodeId, TreeOperationScope } from './tree_types';
-import { calculateTreeLayout, canMoveScope, findNode, isVirtualNode } from './tree_utils';
+import {
+    LaneReorderUnit,
+    SerializedTree,
+    TreeDropTarget,
+    TreeLayout,
+    TreeNodeId,
+    TreeOperationScope,
+} from './tree_types';
+import {
+    calculateTreeLayout,
+    canMoveScope,
+    findNode,
+    getDescendants,
+    isVirtualNode,
+    resolveLaneReorderUnit,
+} from './tree_utils';
 import { getThumbnailHeight, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../thumbnail';
 
 export const TREE_THUMBNAIL_WIDTH = THUMBNAIL_WIDTH;
@@ -42,6 +56,10 @@ export const TREE_DRAG_HANDLE_HIT_RADIUS = 20;
 // still provides the 44px mobile target size.
 export const TREE_BUTTON_HIT_RADIUS = 22;
 export const TREE_COPY_BUTTON_HIT_RADIUS = TREE_COPY_BUTTON_SIZE / 2 + 6;
+
+// Lane reorder: a pointer this close outside a valid drop button's hit area never
+// resolves to a lane slot, so a slightly missed button does not reorder lanes.
+export const TREE_LANE_SLOT_BUTTON_GUARD = 22;
 
 // Footer strip occupied by the copy button / drag handle below the card.
 // Included in the lane height so adjacent lanes never overlap these controls.
@@ -225,6 +243,8 @@ export const findTreeButtonDropTarget = (
     svgY: number,
     sourceNodeId: TreeNodeId,
     scope: TreeOperationScope,
+    // Widens the circular button hit areas (not the root ghost frame).
+    hitMargin: number = 0,
 ): { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null => {
     const sourceNode = findNode(tree, sourceNodeId);
     const sourceParentId = sourceNode?.parentId ?? null;
@@ -262,7 +282,7 @@ export const findTreeButtonDropTarget = (
                 svgX - (nodeLayout.x + copyOffset.x),
                 svgY - (nodeLayout.y + copyOffset.y),
             );
-            if (distToCopy <= TREE_COPY_BUTTON_HIT_RADIUS) {
+            if (distToCopy <= TREE_COPY_BUTTON_HIT_RADIUS + hitMargin) {
                 return copyDropTarget;
             }
         }
@@ -280,7 +300,7 @@ export const findTreeButtonDropTarget = (
                 svgX - (nodeLayout.x + insertOffset.x),
                 svgY - (nodeLayout.y + insertOffset.y),
             );
-            if (distToInsert <= TREE_BUTTON_HIT_RADIUS) {
+            if (distToInsert <= TREE_BUTTON_HIT_RADIUS + hitMargin) {
                 return { nodeId: node.id, type: 'insert' };
             }
         }
@@ -293,11 +313,126 @@ export const findTreeButtonDropTarget = (
                 svgX - (nodeLayout.x + branchOffset.x),
                 svgY - (nodeLayout.y + branchOffset.y),
             );
-            if (distToBranch <= TREE_BUTTON_HIT_RADIUS) {
+            if (distToBranch <= TREE_BUTTON_HIT_RADIUS + hitMargin) {
                 return { nodeId: node.id, type: 'branch' };
             }
         }
     }
 
     return null;
+};
+
+export interface TreeLaneReorderGuides {
+    unit: LaneReorderUnit;
+    /** Y of every slot line; index = slot (0 .. number of siblings) */
+    slotYs: number[];
+    /** Left end of the drawn guide lines */
+    lineStartX: number;
+    /** Left edge of the moving branch (its first node) */
+    blockX: number;
+}
+
+/**
+ * Geometry of a lane reorder for the grabbed node: one horizontal line per slot
+ * between the sibling branches of the reordered fork. A branch always occupies
+ * consecutive lanes, so every line runs through the gap between two lanes.
+ *
+ * Coordinates are pre-scale SVG (tree) coordinates.
+ */
+export const getTreeLaneReorderGuides = (
+    tree: SerializedTree,
+    treeViewLayout: TreeViewLayout,
+    sourceNodeId: TreeNodeId,
+    scope: TreeOperationScope,
+): TreeLaneReorderGuides | null => {
+    const unit = resolveLaneReorderUnit(tree, sourceNodeId, scope);
+    if (unit === null) return null;
+
+    const parent = findNode(tree, unit.parentNodeId);
+    const unitLayout = treeViewLayout.nodeLayouts.get(unit.unitNodeId);
+    if (!parent || !unitLayout) return null;
+
+    const { positions } = treeViewLayout.layout;
+    const { laneOffsets, laneHeights } = treeViewLayout;
+    const slotYs: number[] = [];
+    for (const childId of parent.childrenIds) {
+        const lane = positions.get(childId)?.y;
+        if (lane === undefined || laneOffsets[lane] === undefined) return null;
+        slotYs.push(TREE_PADDING + laneOffsets[lane] - TREE_VERTICAL_GAP / 2);
+    }
+
+    const lastChildId = parent.childrenIds[parent.childrenIds.length - 1];
+    const lastLane = getDescendants(tree, lastChildId)
+        .reduce((max, id) => Math.max(max, positions.get(id)?.y ?? -1), -1);
+    if (lastLane < 0 || laneOffsets[lastLane] === undefined) return null;
+    slotYs.push(TREE_PADDING + laneOffsets[lastLane] + laneHeights[lastLane] + TREE_VERTICAL_GAP / 2);
+
+    return {
+        unit,
+        slotYs,
+        // Siblings share one column, so the moving branch's own x is that column.
+        lineStartX: Math.max(TREE_PADDING / 2, unitLayout.x - TREE_HORIZONTAL_GAP / 2),
+        blockX: unitLayout.x,
+    };
+};
+
+/**
+ * Resolve the slot for a pointer height: the upper half of a sibling branch's band
+ * selects the line above it, the lower half the line below. The moving branch's
+ * own band and the two lines around it change nothing and yield null.
+ */
+export const findTreeLaneDropSlot = (guides: TreeLaneReorderGuides, svgY: number): number | null => {
+    const ys = guides.slotYs;
+    const last = ys.length - 1;
+    const current = guides.unit.index;
+    if (svgY < ys[0] - TREE_VERTICAL_GAP || svgY > ys[last] + TREE_VERTICAL_GAP) return null;
+
+    let slot: number;
+    if (svgY <= ys[0]) {
+        slot = 0;
+    } else if (svgY >= ys[last]) {
+        slot = last;
+    } else {
+        let band = 0;
+        while (band < last - 1 && svgY >= ys[band + 1]) {
+            band += 1;
+        }
+        if (band === current) return null;
+        slot = svgY < (ys[band] + ys[band + 1]) / 2 ? band : band + 1;
+    }
+    return slot === current || slot === current + 1 ? null : slot;
+};
+
+/**
+ * Resolve the drop target for an active drag: the existing add buttons win, then
+ * a lane slot. Shared by pointer moves, auto-scroll frames, and the release point
+ * so every input path agrees.
+ *
+ * Coordinates are pre-scale SVG (tree) coordinates.
+ */
+export const findTreeDropTarget = (
+    tree: SerializedTree,
+    treeViewLayout: TreeViewLayout,
+    svgX: number,
+    svgY: number,
+    sourceNodeId: TreeNodeId,
+    scope: TreeOperationScope,
+    options: { allowLaneSlot?: boolean } = {},
+): TreeDropTarget | null => {
+    const button = findTreeButtonDropTarget(tree, treeViewLayout, svgX, svgY, sourceNodeId, scope);
+    if (button !== null) {
+        return { kind: 'button', nodeId: button.nodeId, type: button.type };
+    }
+    if (options.allowLaneSlot === false) return null;
+
+    const guides = getTreeLaneReorderGuides(tree, treeViewLayout, sourceNodeId, scope);
+    if (guides === null) return null;
+
+    const slotIndex = findTreeLaneDropSlot(guides, svgY);
+    if (slotIndex === null) return null;
+
+    const nearButton = findTreeButtonDropTarget(
+        tree, treeViewLayout, svgX, svgY, sourceNodeId, scope, TREE_LANE_SLOT_BUTTON_GUARD,
+    ) !== null;
+    return nearButton ? null : { slotIndex, kind: 'lane' };
 };

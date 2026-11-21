@@ -11,9 +11,12 @@ import { UndoRedoPill } from '../../components/tools/undo_redo_pill';
 import { ViewSettingsPopover } from '../../components/view_settings_popover';
 import { LIST_VIEW_SCALE_RANGE, TREE_VIEW_SCALE_RANGE, TreeNodeId } from '../../lib/fumen/tree_types';
 import { calculateTreeViewLayout } from '../../lib/fumen/tree_view_layout';
+import { updateTreeAutoScrollPointer } from '../../components/tree/tree_auto_scroll';
 import {
     beginPendingMouseDrag,
     cancelPendingMouseDrag,
+    dropTreeDragAt,
+    evaluateTreeDropTargetAt,
     setTreeMouseInteractionDeps,
     stopTreeDragFeedback,
 } from '../tree_mouse_interaction';
@@ -216,6 +219,7 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
             dragSourceNodeId: state.tree.dragState.sourceNodeId,
             dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
             dragTargetButtonType: state.tree.dragState.targetButtonType,
+            dragDropSlotIndex: state.tree.dragState.dropSlotIndex,
             operationScope: state.tree.operationScope,
             dragOperationScope: state.tree.dragState.operationScope,
             autoFocusPending: state.tree.autoFocusPending,
@@ -263,33 +267,12 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
                 },
                 // パネルはPC専用のためタッチ経路は実装しない
                 onHandleTouchStart: () => undefined,
-                onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch') => {
-                    if (state.tree.dragState.sourceNodeId !== null) {
-                        actions.updateTreeDragButtonTarget({ parentNodeId, buttonType });
-                    }
+                onDragMove: (clientX: number, clientY: number) => {
+                    updateTreeAutoScrollPointer(clientX, clientY);
+                    evaluateTreeDropTargetAt(clientX, clientY);
                 },
-                onDragLeaveButton: () => {
-                    if (state.tree.dragState.sourceNodeId !== null) {
-                        actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
-                    }
-                },
-                onDrop: () => {
-                    const {
-                        sourceNodeId,
-                        targetButtonParentId,
-                        targetButtonType,
-                    } = state.tree.dragState;
-                    if (sourceNodeId !== null
-                        && targetButtonParentId !== null && targetButtonType !== null) {
-                        actions.executeTreeDrop();
-                    } else if (sourceNodeId !== null) {
-                        actions.endTreeDrag();
-                    }
-                    stopTreeDragFeedback();
-                },
-                onDragEnd: () => {
-                    actions.endTreeDrag();
-                    stopTreeDragFeedback();
+                onDrop: (clientX: number, clientY: number, leftView: boolean) => {
+                    dropTreeDragAt(clientX, clientY, { buttonsOnly: leftView });
                 },
                 ackTreeAutoFocus: () => {
                     actions.ackTreeAutoFocus();

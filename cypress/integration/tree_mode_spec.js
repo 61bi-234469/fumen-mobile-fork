@@ -30,6 +30,54 @@ const findTreeNodeIdByPageNumber = pageNumber => (
     })
 );
 
+const addBranchToPage = pageNumber => (
+    findTreeNodeIdByPageNumber(pageNumber).then((nodeId) => {
+        cy.get('[datatest^="tree-node-"]').then(($nodes) => {
+            const count = $nodes.length;
+            cy.get(`[datatest="btn-tree-branch-${nodeId}"]`).click({ force: true });
+            cy.get('[datatest^="tree-node-"]').should('have.length', count + 1);
+        });
+    })
+);
+
+// #1 -> #2 -> #3 on the first lane, #4 branching from #1 on the second lane.
+const buildForkedTree = () => {
+    buildThreeNodeChain();
+    addBranchToPage(1);
+    expectTreeLanes(['#1 #2 #3', '#4']);
+};
+
+// Page numbers as drawn: lanes top to bottom, nodes left to right.
+// Node ids are reassigned on reload, so the drawn structure is the stable thing to compare.
+const expectTreeLanes = (expected) => {
+    cy.get('[datatest^="tree-node-"]').should(($nodes) => {
+        const container = $nodes[0].ownerDocument.querySelector('[datatest="fumen-graph-container"]');
+        const lanes = new Map();
+        Array.from($nodes).forEach((node) => {
+            const nodeId = node.getAttribute('datatest').replace('tree-node-', '');
+            const link = node.ownerDocument.querySelector(`[datatest="tree-page-link-${nodeId}"]`);
+            const rect = node.getBoundingClientRect();
+            // Lanes are several hundred pixels apart; the active halo shifts a card by a few.
+            const lane = Math.round((rect.top + container.scrollTop) / 100);
+            lanes.set(lane, [...(lanes.get(lane) || []), { left: rect.left, page: link.textContent.trim() }]);
+        });
+        const drawn = Array.from(lanes.keys()).sort((a, b) => a - b)
+            .map(lane => lanes.get(lane).sort((a, b) => a.left - b.left).map(entry => entry.page).join(' '));
+        expect(drawn).to.deep.equal(expected);
+    });
+};
+
+const centerOf = (element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+};
+
+// A point on a card body, away from the add buttons and the copy position.
+const pointOnCard = (win, nodeId, verticalRatio) => {
+    const rect = win.document.querySelector(`[datatest="tree-node-${nodeId}"]`).getBoundingClientRect();
+    return { x: rect.left + rect.width * 0.3, y: rect.top + rect.height * verticalRatio };
+};
+
 const createTouchDispatcher = (win, target) => (type, point) => {
     const touch = new win.Touch({
         identifier: 987,
@@ -548,6 +596,196 @@ describe('Tree mode in list view', () => {
             expect(scrolled).to.be.greaterThan(before);
         });
         cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+    });
+
+    it('reorders lanes by dragging a handle onto a lane guide, and keeps the order after a reload', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(120);
+
+                    // Guides show where the branch can go; the two slots around it are not drawn.
+                    expect(win.document.querySelector('[datatest="tree-lane-block"]')).to.not.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-0"]')).to.not.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-1"]')).to.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-2"]')).to.equal(null);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.equal(null);
+
+                    // Upper half of the main lane: the line above it becomes the candidate.
+                    const end = pointOnCard(win, mainNodeId, 0.25);
+                    fireTouch('touchmove', end);
+                    await wait(120);
+                    expect(win.document.querySelector(
+                        '[datatest="tree-lane-guide-0"] [datatest="tree-lane-guide-active"]',
+                    )).to.not.equal(null);
+
+                    fireTouch('touchend', end);
+                });
+            });
+        });
+
+        // The branch became the main line of #1; the old main line moved below it.
+        expectTreeLanes(['#1 #2', '#3 #4']);
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        cy.get('[datatest="tree-lane-block"]').should('not.exist');
+
+        // No other edit happens before the reload: the autosave must hold the reordered tree.
+        // The restored session reopens the Tree screen by itself.
+        cy.reload();
+        expectTreeLanes(['#1 #2', '#3 #4']);
+    });
+
+    it('does not reorder lanes when released on the moving lane or outside the tree', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+
+                    // Released on its own lane
+                    const ownLane = pointOnCard(win, branchNodeId, 0.4);
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(60);
+                    fireTouch('touchmove', ownLane);
+                    await wait(120);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.equal(null);
+                    fireTouch('touchend', ownLane);
+                    await wait(120);
+
+                    // A candidate is showing, but the finger is lifted below the tree viewport.
+                    // touchend still reaches the handle, so only the release position can tell.
+                    const candidate = pointOnCard(win, mainNodeId, 0.25);
+                    const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+                    const outside = { x: candidate.x, y: container.getBoundingClientRect().bottom + 20 };
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x + 30, y: start.y });
+                    await wait(60);
+                    fireTouch('touchmove', candidate);
+                    await wait(120);
+                    expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.not.equal(null);
+                    fireTouch('touchend', outside);
+                });
+            });
+        });
+
+        cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+        expectTreeLanes(['#1 #2 #3', '#4']);
+    });
+
+    it('moves the main line of a fork when its handle is dragged straight down with the descendants scope', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+        operations.tree.setScope('descendants');
+
+        findTreeNodeIdByPageNumber(1).then((forkNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+                    const handle = win.document.querySelector(`[datatest="tree-handle-${forkNodeId}"]`);
+                    const start = centerOf(handle);
+                    const fireTouch = createTouchDispatcher(win, handle);
+                    // Same x as the fork's handle, which is left of the guide lines.
+                    const end = { x: start.x, y: pointOnCard(win, branchNodeId, 0.75).y };
+
+                    fireTouch('touchstart', start);
+                    await wait(60);
+                    fireTouch('touchmove', { x: start.x, y: start.y + 30 });
+                    await wait(60);
+                    fireTouch('touchmove', end);
+                    await wait(120);
+                    expect(win.document.querySelector(
+                        '[datatest="tree-lane-guide-2"] [datatest="tree-lane-guide-active"]',
+                    )).to.not.equal(null);
+                    fireTouch('touchend', end);
+                });
+            });
+
+            // The fork keeps its place; its two branches swapped.
+            expectTreeLanes(['#1 #2', '#3 #4']);
+            cy.get(`[datatest="tree-page-link-${forkNodeId}"]`).contains('#1');
+        });
+    });
+
+    it('reorders lanes with the mouse, and cancels when the pointer leaves the tree', () => {
+        cy.viewport(1000, 1000);
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        enterTreeGraphView();
+        buildForkedTree();
+
+        const dragBranchOverMainLane = (win, branchNodeId, mainNodeId) => {
+            const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const fire = (target, type, point) => target.dispatchEvent(new win.MouseEvent(type, {
+                bubbles: type !== 'mouseleave',
+                cancelable: true,
+                clientX: point.x,
+                clientY: point.y,
+                button: 0,
+                buttons: type === 'mouseup' ? 0 : 1,
+            }));
+            const handle = win.document.querySelector(`[datatest="tree-handle-${branchNodeId}"]`);
+            const start = centerOf(handle);
+            const end = pointOnCard(win, mainNodeId, 0.25);
+
+            return (async () => {
+                fire(handle, 'mousedown', start);
+                await wait(60);
+                fire(win.document, 'mousemove', { x: start.x + 30, y: start.y });
+                await wait(120);
+                fire(win.document.elementFromPoint(end.x, end.y), 'mousemove', end);
+                await wait(120);
+                expect(win.document.querySelector('[datatest="tree-lane-guide-active"]')).to.not.equal(null);
+                return { fire, end };
+            })();
+        };
+
+        findTreeNodeIdByPageNumber(2).then((mainNodeId) => {
+            findTreeNodeIdByPageNumber(4).then((branchNodeId) => {
+                cy.window().then(async (win) => {
+                    const { fire } = await dragBranchOverMainLane(win, branchNodeId, mainNodeId);
+                    const container = win.document.querySelector('[datatest="fumen-graph-container"]');
+                    const rect = container.getBoundingClientRect();
+                    fire(container, 'mouseleave', { x: rect.left + 100, y: rect.bottom + 20 });
+                });
+                cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+                expectTreeLanes(['#1 #2 #3', '#4']);
+
+                cy.window().then(async (win) => {
+                    const { fire, end } = await dragBranchOverMainLane(win, branchNodeId, mainNodeId);
+                    fire(win.document.elementFromPoint(end.x, end.y), 'mouseup', end);
+                });
+                cy.get('[datatest="tree-drag-ghost"]').should('not.exist');
+                expectTreeLanes(['#1 #2', '#3 #4']);
+            });
+        });
     });
 
     it('toggles back and forth between editor and list view from the same corner button', () => {

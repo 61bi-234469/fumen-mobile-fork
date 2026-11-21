@@ -32,6 +32,7 @@ import {
     beginPendingMouseDrag,
     beginTreeAutoScroll,
     cancelPendingMouseDrag,
+    dropTreeDragAt,
     evaluateTreeDropTargetAt,
     setTreeMouseInteractionDeps,
     stopTreeDragFeedback,
@@ -540,24 +541,16 @@ export const view: View<State, Actions> = (state, actions) => {
 
         treeTouchDragActive = false;
 
-        const {
-            sourceNodeId,
-            targetButtonParentId,
-            targetButtonType,
-        } = state.tree.dragState;
-
-        let didDrop = false;
-        if (sourceNodeId !== null
-            && targetButtonParentId !== null && targetButtonType !== null) {
-            actions.executeTreeDrop();
-            didDrop = true;
-        }
-
-        if (!didDrop) {
+        // touchend reaches the element the touch started on, wherever the finger is
+        // lifted, so the target is resolved from the release position.
+        const touch = e.changedTouches[0];
+        if (touch !== undefined) {
+            dropTreeDragAt(touch.clientX, touch.clientY);
+        } else {
             actions.endTreeDrag();
+            stopTreeDragFeedback();
         }
         pinchState.active = false;
-        stopTreeDragFeedback();
         resetTreeTouchTracking();
     };
 
@@ -797,6 +790,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragSourceNodeId: state.tree.dragState.sourceNodeId,
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
+                    dragDropSlotIndex: state.tree.dragState.dropSlotIndex,
                     operationScope: state.tree.operationScope,
                     dragOperationScope: state.tree.dragState.operationScope,
                     autoFocusPending: state.tree.autoFocusPending,
@@ -889,33 +883,12 @@ export const view: View<State, Actions> = (state, actions) => {
                             treePendingDragNodeId = nodeId;
                             treePendingDragKind = 'handle';
                         },
-                        onDragOverButton: (parentNodeId, buttonType) => {
-                            if (state.tree.dragState.sourceNodeId !== null) {
-                                actions.updateTreeDragButtonTarget({ parentNodeId, buttonType });
-                            }
+                        onDragMove: (clientX, clientY) => {
+                            updateTreeAutoScrollPointer(clientX, clientY);
+                            evaluateTreeDropTargetAt(clientX, clientY);
                         },
-                        onDragLeaveButton: () => {
-                            if (state.tree.dragState.sourceNodeId !== null) {
-                                actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
-                            }
-                        },
-                        onDrop: () => {
-                            const {
-                                sourceNodeId,
-                                targetButtonParentId,
-                                targetButtonType,
-                            } = state.tree.dragState;
-                            if (sourceNodeId !== null
-                                && targetButtonParentId !== null && targetButtonType !== null) {
-                                actions.executeTreeDrop();
-                            } else if (sourceNodeId !== null) {
-                                actions.endTreeDrag();
-                            }
-                            stopTreeDragFeedback();
-                        },
-                        onDragEnd: () => {
-                            actions.endTreeDrag();
-                            stopTreeDragFeedback();
+                        onDrop: (clientX, clientY, leftView) => {
+                            dropTreeDragAt(clientX, clientY, { buttonsOnly: leftView });
                         },
                         ackTreeAutoFocus: () => {
                             actions.ackTreeAutoFocus();

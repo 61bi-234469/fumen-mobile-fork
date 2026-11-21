@@ -86,6 +86,21 @@ export interface TreeLayout {
     maxLane: number;
 }
 
+/** Where a tree drag would land: an add button, or a slot between sibling lanes. */
+export type TreeDropTarget =
+    | { kind: 'button'; nodeId: TreeNodeId; type: 'insert' | 'branch' }
+    | { kind: 'lane'; slotIndex: number };
+
+/** The branch a lane reorder moves, and the fork whose children it is reordered within. */
+export interface LaneReorderUnit {
+    /** First node of the moving branch */
+    unitNodeId: TreeNodeId;
+    /** Fork node whose childrenIds order changes */
+    parentNodeId: TreeNodeId;
+    /** Current index of the unit among the fork's children */
+    index: number;
+}
+
 /** Drag state for tree view drag operations */
 export interface TreeDragState {
     /** Current drag mode */
@@ -94,7 +109,7 @@ export interface TreeDragState {
     sourceNodeId: TreeNodeId | null;
     /** Target node to drop onto (null if no valid target) - used for Attach modes */
     targetNodeId: TreeNodeId | null;
-    /** Drop slot index for Reorder mode (like list view) */
+    /** Lane reorder slot: 0..children.length among the reordered fork's children */
     dropSlotIndex: number | null;
     /** Target button's parent node ID when dragging over an add button */
     targetButtonParentId: TreeNodeId | null;

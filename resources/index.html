@@ -141,6 +141,27 @@
             pointer-events: auto;
         }
 
+        /*
+         * Tree node delete icon (SVG, drawn with currentColor): quiet in the card
+         * header, red only while hovered or pressed.
+         */
+        .tree-node-delete {
+            color: #94A3B8;
+        }
+
+        .tree-node-delete.is-active {
+            color: #64748B;
+        }
+
+        .tree-node-delete:hover,
+        .tree-node-delete:active {
+            color: #EF4444;
+        }
+
+        .tree-node-delete.is-disabled {
+            color: #CBD5E1;
+        }
+
         /* Floating corner controls (list/tree views) */
         .corner-glass {
             background-color: rgba(255, 255, 255, 0.86);

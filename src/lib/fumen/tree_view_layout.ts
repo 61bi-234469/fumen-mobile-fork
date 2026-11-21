@@ -20,67 +20,104 @@ import { getThumbnailHeight, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../thumbn
 export const TREE_THUMBNAIL_WIDTH = THUMBNAIL_WIDTH;
 export const TREE_THUMBNAIL_HEIGHT = THUMBNAIL_HEIGHT;
 export const TREE_NODE_WIDTH = TREE_THUMBNAIL_WIDTH + 20;
-export const TREE_NODE_EXTRA_HEIGHT = 80;
 export const TREE_NODE_RADIUS = 8;
 export const TREE_HORIZONTAL_GAP = 50;
 export const TREE_VERTICAL_GAP = 30;
 export const TREE_PADDING = 20;
 export const TREE_SCROLL_PADDING_RIGHT = 150;
 export const TREE_SCROLL_PADDING_BOTTOM = 150;
-export const TREE_ADD_BUTTON_SIZE = 32;
-export const TREE_DROP_BUTTON_SIZE = 36;
-export const TREE_ADD_BUTTON_GAP = 4;
-export const TREE_BUTTON_X = TREE_NODE_WIDTH + 4;
-export const TREE_PAGE_NUMBER_OFFSET = 24;
+
+// Header strip at the top of the card: drag handle, page number, delete.
+export const TREE_NODE_HEADER_HEIGHT = 24;
+// The handle stays easy to grab: its hit area reaches above the card and a
+// little below the strip, without touching the thumbnail.
+export const TREE_NODE_HEADER_HIT_ABOVE = 10;
+export const TREE_NODE_HEADER_HIT_BELOW = 4;
+export const TREE_THUMBNAIL_TOP = TREE_NODE_HEADER_HEIGHT + 6;
+
 export const TREE_COMMENT_MARGIN_X = 8;
-export const TREE_COMMENT_TOP_OFFSET = 32;
+// Measured from the card top, excluding the thumbnail height.
+export const TREE_COMMENT_TOP_OFFSET = TREE_THUMBNAIL_TOP + 8;
+export const TREE_COMMENT_HEIGHT = 40;
 export const TREE_COMMENT_BOTTOM_PADDING = 8;
 export const TREE_COMMENT_WIDTH = TREE_NODE_WIDTH - TREE_COMMENT_MARGIN_X * 2;
-export const TREE_COMMENT_HEIGHT =
-    TREE_NODE_EXTRA_HEIGHT - TREE_COMMENT_TOP_OFFSET - TREE_COMMENT_BOTTOM_PADDING;
+export const TREE_NODE_EXTRA_HEIGHT =
+    TREE_COMMENT_TOP_OFFSET + TREE_COMMENT_HEIGHT + TREE_COMMENT_BOTTOM_PADDING;
 
-// Permanent delete button (top-right corner of the card)
-export const TREE_DELETE_BUTTON_SIZE = 22;
-export const TREE_DELETE_BUTTON_HIT_RADIUS = 20;
-
-// Copy button (below the node, centered)
-export const TREE_COPY_BUTTON_SIZE = 22;
-export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
-
-// Drag handle (below the node, right-aligned)
-export const TREE_DRAG_HANDLE_WIDTH = 32;
-export const TREE_DRAG_HANDLE_HEIGHT = 10;
-export const TREE_DRAG_HANDLE_HIT_RADIUS = 20;
+// Insert (primary, on the outgoing connection) and Branch (secondary, below it).
+export const TREE_ADD_BUTTON_SIZE = 24;
+export const TREE_BRANCH_BUTTON_SIZE = 22;
+export const TREE_DROP_BUTTON_SIZE = 32;
+export const TREE_BUTTON_X = TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP / 2;
 
 // Insert/Branch grow only slightly while dragging, while the invisible hit area
 // still provides the 44px mobile target size.
 export const TREE_BUTTON_HIT_RADIUS = 22;
+// Branch starts where the Insert hit area ends, so a tap on the visible Branch
+// button never resolves to Insert.
+export const TREE_BRANCH_BUTTON_OFFSET_Y = TREE_BUTTON_HIT_RADIUS + TREE_ADD_BUTTON_SIZE / 2;
+
+// Delete icon (right end of the header strip)
+export const TREE_DELETE_BUTTON_HIT_RADIUS = 20;
+
+// Page number pill (center of the header strip)
+export const TREE_PAGE_LINK_HEIGHT = 17;
+
+// Copy button (straddles the bottom edge, centered)
+export const TREE_COPY_BUTTON_SIZE = 22;
+export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
 export const TREE_COPY_BUTTON_HIT_RADIUS = TREE_COPY_BUTTON_SIZE / 2 + 6;
 
 // Lane reorder: a pointer this close outside a valid drop button's hit area never
 // resolves to a lane slot, so a slightly missed button does not reorder lanes.
 export const TREE_LANE_SLOT_BUTTON_GUARD = 22;
 
-// Footer strip occupied by the copy button / drag handle below the card.
-// Included in the lane height so adjacent lanes never overlap these controls.
+// Footer strip occupied by the copy button below the card.
+// Included in the lane height so adjacent lanes never overlap this control.
 export const TREE_NODE_FOOTER_HEIGHT =
-    TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 + TREE_DRAG_HANDLE_HIT_RADIUS;
+    TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 + TREE_COPY_BUTTON_HIT_RADIUS;
 
-// Node-relative offsets for buttons/badges, shared between rendering (fumen_graph.tsx)
-// and hit-testing (fumen_graph.tsx mouse handler, views/list_view.ts touch handlers).
-// Insert stays on the outgoing horizontal connection. Branch stays at its
-// original position near the downward curve.
+// Node-relative geometry for the controls, shared between rendering (fumen_graph.tsx)
+// and hit-testing (drop targets here, touch taps in views/list_view.ts).
+// Insert sits on the outgoing horizontal connection, halfway to the next column.
+// Branch sits below it, near the downward curve.
 export const getInsertButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_BUTTON_X, y: nodeHeight / 2 });
 export const getBranchButtonOffset = (nodeHeight: number) =>
-    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + TREE_ADD_BUTTON_GAP });
+    ({ x: TREE_BUTTON_X, y: nodeHeight / 2 + TREE_BRANCH_BUTTON_OFFSET_Y });
 export const getDeleteButtonOffset = () =>
-    ({ x: TREE_NODE_WIDTH + 4, y: 8 });
+    ({ x: TREE_NODE_WIDTH - 14, y: TREE_NODE_HEADER_HEIGHT / 2 });
 export const getCopyButtonOffset = (nodeHeight: number) =>
     ({ x: TREE_NODE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2 });
-export const getDragHandleOffset = (nodeHeight: number) =>
-    ({ x: TREE_NODE_WIDTH - TREE_DRAG_HANDLE_WIDTH / 2, y: nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM
-        + TREE_COPY_BUTTON_SIZE / 2 });
+
+interface TreeNodeRect {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+/** Grab area of the drag handle: the header strip plus its margins. */
+export const getDragHandleRect = (): TreeNodeRect => ({
+    x: 0,
+    y: -TREE_NODE_HEADER_HIT_ABOVE,
+    width: TREE_NODE_WIDTH,
+    height: TREE_NODE_HEADER_HIT_ABOVE + TREE_NODE_HEADER_HEIGHT + TREE_NODE_HEADER_HIT_BELOW,
+});
+
+/** Page number pill; it grows with the number of digits. */
+export const getPageLinkRect = (pageNumber: number): TreeNodeRect => {
+    const width = 14 + `#${pageNumber}`.length * 8;
+    return {
+        width,
+        x: (TREE_NODE_WIDTH - width) / 2,
+        y: (TREE_NODE_HEADER_HEIGHT - TREE_PAGE_LINK_HEIGHT) / 2,
+        height: TREE_PAGE_LINK_HEIGHT,
+    };
+};
+
+export const isInsideTreeNodeRect = (rect: TreeNodeRect, x: number, y: number): boolean =>
+    x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
 
 /**
  * Resolve the blue copy-position drop target for a node while another node is

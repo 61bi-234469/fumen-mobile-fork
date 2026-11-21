@@ -3,31 +3,42 @@ import {
     findTreeDropTarget,
     findTreeLaneDropSlot,
     getBranchButtonOffset,
+    getCopyButtonOffset,
     getDeleteButtonOffset,
-    getDragHandleOffset,
+    getDragHandleRect,
     getInsertButtonOffset,
     getNodeOccupiedHeight,
+    getPageLinkRect,
     getRootGhostRect,
     getTreeCopyButtonDropTarget,
     getTreeLaneReorderGuides,
-    TREE_BUTTON_HIT_RADIUS,
-    TREE_LANE_SLOT_BUTTON_GUARD,
-    TREE_PADDING,
-    TREE_VERTICAL_GAP,
-    TREE_DELETE_BUTTON_HIT_RADIUS,
-    TREE_DELETE_BUTTON_SIZE,
+    isInsideTreeNodeRect,
     TREE_ADD_BUTTON_SIZE,
+    TREE_BRANCH_BUTTON_SIZE,
+    TREE_BUTTON_HIT_RADIUS,
+    TREE_COMMENT_HEIGHT,
+    TREE_COMMENT_TOP_OFFSET,
+    TREE_COPY_BUTTON_HIT_RADIUS,
+    TREE_COPY_BUTTON_SIZE,
+    TREE_DELETE_BUTTON_HIT_RADIUS,
     TREE_DROP_BUTTON_SIZE,
-    TREE_DRAG_HANDLE_HIT_RADIUS,
+    TREE_HORIZONTAL_GAP,
+    TREE_LANE_SLOT_BUTTON_GUARD,
+    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_FOOTER_HEIGHT,
+    TREE_NODE_HEADER_HEIGHT,
     TREE_NODE_WIDTH,
+    TREE_PADDING,
+    TREE_THUMBNAIL_TOP,
+    TREE_VERTICAL_GAP,
 } from '../tree_view_layout';
 import { SerializedTree } from '../tree_types';
 import { Field } from '../field';
 import { Page } from '../types';
 
 describe('tree_view_layout node control geometry', () => {
-    const nodeHeight = 310; // full thumbnail (230) + extra height (80)
+    const thumbnailHeight = 230; // full field
+    const nodeHeight = thumbnailHeight + TREE_NODE_EXTRA_HEIGHT;
 
     test('add buttons follow the outgoing horizontal line and its branch curve', () => {
         const insert = getInsertButtonOffset(nodeHeight);
@@ -43,32 +54,108 @@ describe('tree_view_layout node control geometry', () => {
         expect(getInsertButtonOffset(nodeHeight).y).toBe(nodeHeight / 2);
     });
 
+    test('add buttons sit in the gap between two columns, clear of both cards', () => {
+        const insert = getInsertButtonOffset(nodeHeight);
+
+        expect(insert.x - TREE_DROP_BUTTON_SIZE / 2).toBeGreaterThan(TREE_NODE_WIDTH);
+        expect(insert.x + TREE_BUTTON_HIT_RADIUS).toBeLessThan(TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+    });
+
     test('add buttons expose at least a 44px effective tap target', () => {
         expect(TREE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(44);
         expect(TREE_DELETE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(40);
     });
 
-    test('drop targets visibly expand beyond the normal add buttons', () => {
-        expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_ADD_BUTTON_SIZE);
-        expect(TREE_BUTTON_HIT_RADIUS * 2).toBeGreaterThanOrEqual(44);
+    test('a tap on the visible branch button never falls inside the insert hit area', () => {
+        const insert = getInsertButtonOffset(nodeHeight);
+        const branch = getBranchButtonOffset(nodeHeight);
+
+        expect(branch.y - TREE_BRANCH_BUTTON_SIZE / 2).toBeGreaterThan(insert.y + TREE_BUTTON_HIT_RADIUS);
+        // The enlarged drop targets of the two buttons do not overlap either
+        expect(branch.y - insert.y).toBeGreaterThanOrEqual(TREE_DROP_BUTTON_SIZE);
     });
 
-    test('delete button sits outside the field area at the card edge', () => {
+    test('drop targets visibly expand beyond the normal buttons', () => {
+        expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_ADD_BUTTON_SIZE);
+        expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_BRANCH_BUTTON_SIZE);
+        expect(TREE_DROP_BUTTON_SIZE).toBeGreaterThan(TREE_COPY_BUTTON_SIZE);
+    });
+
+    test('the header strip holds the handle, the page number and the delete icon above the thumbnail', () => {
+        const handle = getDragHandleRect();
+        const deleteOffset = getDeleteButtonOffset();
+        const pageLink = getPageLinkRect(1);
+
+        // The grab area spans the card width, reaches above the card, and stops before the thumbnail
+        expect(handle.x).toBe(0);
+        expect(handle.width).toBe(TREE_NODE_WIDTH);
+        expect(handle.y).toBeLessThan(0);
+        expect(handle.y + handle.height).toBeGreaterThanOrEqual(TREE_NODE_HEADER_HEIGHT);
+        expect(handle.y + handle.height).toBeLessThanOrEqual(TREE_THUMBNAIL_TOP);
+        expect(handle.height).toBeGreaterThanOrEqual(36);
+
+        expect(deleteOffset.y).toBe(TREE_NODE_HEADER_HEIGHT / 2);
+        expect(deleteOffset.x).toBeLessThan(TREE_NODE_WIDTH);
+        expect(pageLink.y).toBeGreaterThanOrEqual(0);
+        expect(pageLink.y + pageLink.height).toBeLessThanOrEqual(TREE_NODE_HEADER_HEIGHT);
+    });
+
+    test('the page number stays centered and clear of the grip and the delete icon as it grows', () => {
         const deleteOffset = getDeleteButtonOffset();
 
-        expect(deleteOffset.x - TREE_DELETE_BUTTON_SIZE / 2).toBeGreaterThan(TREE_NODE_WIDTH - 10);
+        [1, 99, 999, 9999].forEach((pageNumber) => {
+            const rect = getPageLinkRect(pageNumber);
+            expect(rect.x + rect.width / 2).toBe(TREE_NODE_WIDTH / 2);
+            // Left of the drawn icon (about 10px wide), right of the grip dots (x 10-22)
+            expect(rect.x + rect.width).toBeLessThan(deleteOffset.x - 8);
+            expect(rect.x).toBeGreaterThan(24);
+        });
+        expect(getPageLinkRect(9999).width).toBeGreaterThan(getPageLinkRect(1).width);
+
+        // Up to three digits the pill also stays out of the icon's invisible hit margin.
+        // Wider pills reach into it; there the pill wins (drawn on top, checked first for taps).
+        const deleteHitLeft = deleteOffset.x - TREE_DELETE_BUTTON_HIT_RADIUS;
+        [1, 99, 999].forEach((pageNumber) => {
+            const rect = getPageLinkRect(pageNumber);
+            expect(rect.x + rect.width).toBeLessThanOrEqual(deleteHitLeft);
+        });
+        const wide = getPageLinkRect(1000);
+        expect(wide.x + wide.width).toBeGreaterThan(deleteHitLeft);
     });
 
-    test('occupied height covers the footer controls below the card', () => {
+    test('rect hit test includes the edges and nothing outside', () => {
+        const rect = { x: 10, y: -5, width: 20, height: 10 };
+
+        expect(isInsideTreeNodeRect(rect, 10, -5)).toBe(true);
+        expect(isInsideTreeNodeRect(rect, 30, 5)).toBe(true);
+        expect(isInsideTreeNodeRect(rect, 9.9, 0)).toBe(false);
+        expect(isInsideTreeNodeRect(rect, 20, 5.1)).toBe(false);
+    });
+
+    test('the comment box fits between the thumbnail and the copy button', () => {
+        const commentTop = thumbnailHeight + TREE_COMMENT_TOP_OFFSET;
+        const copy = getCopyButtonOffset(nodeHeight);
+
+        expect(commentTop).toBeGreaterThan(TREE_THUMBNAIL_TOP + thumbnailHeight);
+        expect(commentTop + TREE_COMMENT_HEIGHT).toBeLessThan(nodeHeight);
+        // The copy button straddles the bottom edge without covering the comment box
+        expect(copy.y - TREE_COPY_BUTTON_SIZE / 2).toBeGreaterThanOrEqual(commentTop + TREE_COMMENT_HEIGHT);
+    });
+
+    test('occupied height covers the copy button below the card', () => {
         const occupied = getNodeOccupiedHeight(nodeHeight);
-        const handle = getDragHandleOffset(nodeHeight);
+        const copy = getCopyButtonOffset(nodeHeight);
 
         expect(occupied).toBeGreaterThanOrEqual(nodeHeight + TREE_NODE_FOOTER_HEIGHT);
-        expect(handle.y + TREE_DRAG_HANDLE_HIT_RADIUS).toBeLessThanOrEqual(occupied + 1);
+        expect(copy.y + TREE_COPY_BUTTON_HIT_RADIUS).toBeLessThanOrEqual(occupied);
+    });
+
+    test('the handle grab area above a card stays inside the gap between lanes', () => {
+        expect(-getDragHandleRect().y).toBeLessThan(TREE_VERTICAL_GAP);
     });
 
     test('add button hit areas stay within the occupied height even for small cards', () => {
-        const smallHeight = 100; // trimmed thumbnail card
+        const smallHeight = 20 + TREE_NODE_EXTRA_HEIGHT; // two visible rows of a trimmed thumbnail
         const branch = getBranchButtonOffset(smallHeight);
 
         expect(branch.y + TREE_BUTTON_HIT_RADIUS).toBeLessThanOrEqual(getNodeOccupiedHeight(smallHeight));

@@ -266,7 +266,7 @@ const renderTreeTab = (state: State, actions: Actions, size: PanelSize) => {
                     beginPendingMouseDrag(nodeId, e.clientX, e.clientY);
                 },
                 // パネルはPC専用のためタッチ経路は実装しない
-                onHandleTouchStart: () => undefined,
+                onHandleTouchStart: () => false,
                 onDragMove: (clientX: number, clientY: number) => {
                     updateTreeAutoScrollPointer(clientX, clientY);
                     evaluateTreeDropTargetAt(clientX, clientY);

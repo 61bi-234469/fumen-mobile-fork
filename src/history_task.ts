@@ -11,6 +11,9 @@ export type HistoryTask = OperationTask | FixedTask;
 interface TaskResult {
     pages: Page[];
     index: number;
+    // Set by tasks that restore Tree mode as a whole: true turns it off, false keeps the tree
+    // that the restored pages embed. Page-only tasks leave it unset.
+    treeDisabled?: boolean;
 }
 
 export interface OperationTask {
@@ -31,13 +34,32 @@ interface FixedTask {
     key: string;
 }
 
-export const toFumenTask = (primitivePrev: PrimitivePage[], fumen: string, prevIndex: number): FixedTask => {
+// Replaces every page. Both sides are snapshots of the pages as the editor held them (with #TREE=
+// embedded while Tree mode is on), so redo restores the load's result exactly instead of decoding
+// the fumen again and missing what the load changed (tree, colorize, comment tokens, INPUT state).
+export const toFumenTask = (
+    primitivePrev: PrimitivePage[],
+    primitiveNext: PrimitivePage[],
+    prevIndex: number,
+    { prevTreeDisabled = false, nextTreeDisabled = false }: {
+        prevTreeDisabled?: boolean,
+        nextTreeDisabled?: boolean,
+    } = {},
+): FixedTask => {
     return {
         replay: async () => {
-            return { pages: await decode(fumen), index: 0 };
+            return {
+                pages: primitiveNext.map(toPage),
+                index: 0,
+                treeDisabled: nextTreeDisabled,
+            };
         },
         revert: async () => {
-            return { pages: primitivePrev.map(toPage), index: prevIndex };
+            return {
+                pages: primitivePrev.map(toPage),
+                index: prevIndex,
+                treeDisabled: prevTreeDisabled,
+            };
         },
         fixed: true,
         key: generateKey(),
@@ -330,7 +352,12 @@ export const toPage = (page: PrimitivePage): Page => {
             }) : undefined,
             ref: page.field.ref,
         },
-        piece: page.piece,
+        // Copy so that later edits of the restored page do not change the stored snapshot
+        piece: page.piece !== undefined ? {
+            type: page.piece.type,
+            rotation: page.piece.rotation,
+            coordinate: { ...page.piece.coordinate },
+        } : undefined,
         comment: {
             text: page.comment.text,
             ref: page.comment.ref,

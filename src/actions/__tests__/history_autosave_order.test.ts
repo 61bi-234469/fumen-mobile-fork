@@ -17,6 +17,9 @@ jest.mock('../../actions', () => {
             applyPageRotation: noop,
             cancelSpawnMinoPick: noop,
             commitCommentText: noop,
+            fixInferencePiece: noop,
+            clearInferencePiece: noop,
+            clearRectSelection: noop,
         },
         main: {},
     };

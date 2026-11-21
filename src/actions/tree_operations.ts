@@ -345,17 +345,21 @@ export const toTreeOperationTask = (
     prevSnapshot: TreeOperationSnapshot,
     nextSnapshot: TreeOperationSnapshot,
 ): OperationTask => {
+    // Pages without #TREE= normally keep the current tree (page-only tasks run in Tree mode too),
+    // so a treeless snapshot says explicitly that restoring it turns Tree mode off.
     return {
         replay: (pages: Page[]) => {
             return {
                 pages: nextSnapshot.pages.map(toPage),
                 index: nextSnapshot.currentIndex,
+                treeDisabled: nextSnapshot.tree.rootId === null,
             };
         },
         revert: (pages: Page[]) => {
             return {
                 pages: prevSnapshot.pages.map(toPage),
                 index: prevSnapshot.currentIndex,
+                treeDisabled: prevSnapshot.tree.rootId === null,
             };
         },
         fixed: false,
@@ -505,6 +509,13 @@ export const createSnapshot = (
         pages: pagesWithTree.map(toPrimitivePage),
     };
 };
+
+// A snapshot of pages with Tree mode off. toTreeOperationTask restores it with the tree disabled.
+export const createTreelessSnapshot = (pages: Page[], currentIndex: number): TreeOperationSnapshot => ({
+    currentIndex,
+    tree: { nodes: [], rootId: null, version: 1 },
+    pages: pages.map(toPrimitivePage),
+});
 
 export const rebuildPageRefsForOrder = (
     pages: Page[],
@@ -998,11 +1009,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             return page;
         }));
 
-        const nextSnapshot: TreeOperationSnapshot = {
-            tree: { nodes: [], rootId: null, version: 2 },
-            pages: cleanedPages.map(toPrimitivePage),
-            currentIndex: state.fumen.currentIndex,
-        };
+        const nextSnapshot = createTreelessSnapshot(cleanedPages, state.fumen.currentIndex);
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');
 
@@ -1181,7 +1188,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * INPUT + 7bag gray must not settle a page which has later dependents.
      * Fork an independent pre-placement workspace; in tree mode it is a child branch.
      */
-    forkSevenBagGrayInputPage: () => (state): NextState => {
+    forkSevenBagGrayInputPage: () => withSettledEditorPage((state): NextState => {
         const workspace = createSevenBagGrayWorkspacePage(state);
         if (workspace === undefined) return undefined;
 
@@ -1215,7 +1222,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             currentIndex: workspace.index,
             activeNodeId: newNodeId,
         });
-    },
+    }),
 
     /**
      * Add a new top-level page under the virtual root
@@ -1264,7 +1271,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         pages,
         focusFirstAdded = false,
         addAsChildChain = false,
-    }) => (state): NextState => {
+    }) => withSettledEditorPage((state): NextState => {
         if (!state.tree.enabled || pages.length === 0) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -1317,7 +1324,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 activeNodeId: nextActiveNodeId,
             },
         };
-    },
+    }),
 
     /**
      * Insert a node after the current node
@@ -1587,7 +1594,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             ]))(state);
         }
 
+        // Moving currentIndex directly skips openPage's cleanup, so leave the page here.
+        const { leaveCurrentPage } = require('./pages');
         return sequence(state, [
+            pageIndex !== undefined && pageIndex !== state.fumen.currentIndex ? leaveCurrentPage : undefined,
             startDrag,
             pageIndex !== undefined ? current => ({
                 fumen: {

@@ -1,7 +1,8 @@
 import { HistoryTask, isOperationTask, toDecoratorOperationTask } from './history_task';
 import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
-import { TreeOperationScope, TreeViewMode } from './lib/fumen/tree_types';
+import { SerializedTree, TreeOperationScope, TreeViewMode, VIRTUAL_PAGE_INDEX } from './lib/fumen/tree_types';
+import { createTreeFromPages, embedTreeInPages, extractTreeFromPages } from './lib/fumen/tree_utils';
 import { encodeSync } from './lib/fumen/fumen';
 import { createAutosaveScheduler } from './lib/autosave_scheduler';
 import { EditorSidePanelTab, PieceLayoutMode, RotationSystem } from './states';
@@ -40,6 +41,7 @@ interface Result {
     undoCount: number;
     redoCount: number;
     treeViewMode?: TreeViewMode;
+    treeDisabled?: boolean;
 }
 
 export const memento = (() => {
@@ -90,6 +92,46 @@ export const memento = (() => {
         return undefined;
     };
 
+    // Multi-step undo/redo applies tasks one after another to the same pages. A step that restores
+    // Tree mode as a whole returns pages with #TREE= embedded, and a later page-only step may
+    // replace the first page and drop it. Take the tree out at that step and put it back at the end.
+    const treeFitsPages = (tree: SerializedTree, pages: Page[]): boolean => {
+        const indices = tree.nodes.map(node => node.pageIndex).filter(index => index !== VIRTUAL_PAGE_INDEX);
+        return indices.length === pages.length && new Set(indices).size === pages.length
+            && indices.every(index => 0 <= index && index < pages.length);
+    };
+
+    const treeAcrossSteps = () => {
+        let tree: SerializedTree | null | undefined;
+        return {
+            take: (step: Result): Result => {
+                if (step.treeDisabled === true) {
+                    tree = null;
+                    return step;
+                }
+                if (step.treeDisabled === false) {
+                    const extracted = extractTreeFromPages(step.pages);
+                    // Without #TREE= there is nothing to carry; loadPagesViaHistory decides as for one step
+                    tree = extracted.tree ?? undefined;
+                    return { ...step, pages: extracted.cleanedPages };
+                }
+                return step;
+            },
+            finish: (last: Result): Result => {
+                if (tree === undefined) {
+                    return last;
+                }
+                if (tree === null) {
+                    return { ...last, treeDisabled: true };
+                }
+                // Later steps may have inserted or removed pages the carried tree does not know
+                // about; rebuild it from the pages then, as loadPagesViaHistory does for one step.
+                const fitting = treeFitsPages(tree, last.pages) ? tree : createTreeFromPages(last.pages);
+                return { ...last, pages: embedTreeInPages(last.pages, fitting, true), treeDisabled: false };
+            },
+        };
+    };
+
     const revertOnce = async (pages: Page[]): Promise<Result | undefined> => {
         const lastTask = undoQueue.pop();
         const lastViewMode = undoViewModes.pop();
@@ -109,6 +151,7 @@ export const memento = (() => {
             undoCount: undoQueue.length - 1,
             redoCount: redoQueue.length,
             treeViewMode: lastViewMode,
+            treeDisabled: result.treeDisabled,
         };
     };
 
@@ -131,6 +174,7 @@ export const memento = (() => {
             undoCount: undoQueue.length - 1,
             redoCount: redoQueue.length,
             treeViewMode: lastViewMode,
+            treeDisabled: result.treeDisabled,
         };
     };
 
@@ -217,6 +261,7 @@ export const memento = (() => {
                 return revertOnce(pages);
             }
 
+            const steps = treeAcrossSteps();
             let result: Result | undefined;
             let currentPages = pages;
             while (target < undoQueue.length - 1) {
@@ -224,10 +269,10 @@ export const memento = (() => {
                 if (reverted === undefined) {
                     break;
                 }
-                result = reverted;
-                currentPages = reverted.pages;
+                result = steps.take(reverted);
+                currentPages = result.pages;
             }
-            return result;
+            return result !== undefined ? steps.finish(result) : undefined;
         },
         redo: async (pages: Page[]): Promise<Result | undefined> => {
             return replayOnce(pages);
@@ -238,6 +283,7 @@ export const memento = (() => {
                 return replayOnce(pages);
             }
 
+            const steps = treeAcrossSteps();
             let result: Result | undefined;
             let currentPages = pages;
             while (0 < redoQueue.length) {
@@ -245,13 +291,13 @@ export const memento = (() => {
                 if (replayed === undefined) {
                     break;
                 }
-                result = replayed;
-                currentPages = replayed.pages;
+                result = steps.take(replayed);
+                currentPages = result.pages;
                 if (isOnSpawnBoundary()) {
                     break;
                 }
             }
-            return result;
+            return result !== undefined ? steps.finish(result) : undefined;
         },
         lastKey: (): (string | undefined) => {
             const lastTask = undoQueue[undoQueue.length - 1];

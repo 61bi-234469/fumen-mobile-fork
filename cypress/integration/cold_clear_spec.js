@@ -284,9 +284,9 @@ describe('Cold Clear menu', () => {
                 expect(settings.aiEngine).to.equal('soldSlear');
             });
 
+            // Turning Tree mode on is autosaved, so the reload reopens the Tree screen by itself
             cy.reload();
-            ensureTreeGraphView();
-            cy.get(datatest('btn-tree-ai-menu')).click();
+            cy.get(datatest('btn-tree-ai-menu')).should('be.visible').click();
             cy.get(datatest('btn-ai-engine-switch')).should('have.attr', 'data-engine', 'soldSlear');
 
             operations.aiMenu.switchEngineTo('coldClear');

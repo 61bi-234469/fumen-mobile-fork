@@ -19,6 +19,7 @@ jest.mock('../../actions', () => {
     const names = [
         'setPages', 'registerHistoryTask', 'changeRotationSystem', 'openPage', 'selectPieceLayout',
         'reopenCurrentPage', 'applyPageRotation', 'cancelSpawnMinoPick', 'setHistoryCount', 'commitCommentText',
+        'fixInferencePiece', 'clearInferencePiece', 'clearRectSelection',
     ];
     const actions: { [name: string]: any } = {};
     for (const name of names) {

@@ -21,6 +21,10 @@ jest.mock('../../actions', () => ({
         commitRectSelection: jest.fn(() => () => undefined),
         removeUnsettledItems: jest.fn(() => () => undefined),
         commitCommentText: jest.fn(() => () => undefined),
+        fixInferencePiece: jest.fn(() => () => undefined),
+        clearInferencePiece: jest.fn(() => () => undefined),
+        clearRectSelection: jest.fn(() => () => undefined),
+        cancelSpawnMinoPick: jest.fn(() => () => undefined),
         reopenCurrentPage: jest.fn(() => () => undefined),
         openPage: jest.fn(({ index }: { index: number }) => (state: any) => ({
             fumen: { ...state.fumen, currentIndex: index },
@@ -701,6 +705,20 @@ describe('tree editor boundary', () => {
             targetButtonType: 'branch',
         };
         treeOperationActions.executeTreeDrop()(dragState);
+        expectSettled();
+    });
+
+    test('settles before Cold Clear adds branches', () => {
+        const state = createBaseState();
+        treeOperationActions.addColdClearBranches({
+            parentNodeId: state.tree.activeNodeId,
+            pages: [{
+                index: 0,
+                field: { obj: new Field({}) },
+                comment: { text: '' },
+                flags: { ...defaultFlags },
+            }],
+        })(state);
         expectSettled();
     });
 });

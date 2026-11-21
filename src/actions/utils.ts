@@ -32,6 +32,7 @@ import { clearUnpinnedParts, saveParts } from '../lib/parts';
 import { forceReload } from '../lib/force_reload';
 import { memento } from '../memento';
 import { toPagesForStorage } from './memento';
+import { createSnapshot, normalizeTreeAndPages, toTreeOperationTask } from './tree_operations';
 import { withSevenBagGrayDisplay, withSevenBagGrayProgress } from '../lib/comment_metadata';
 import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { saveTabSourceUrlKey } from '../lib/autosave_session';
@@ -219,7 +220,7 @@ export const utilsActions: Readonly<UtilsActions> = {
         ]);
     },
     loadPages: (
-        { pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam, initialLoad, pageIndex, sourceUrlKey },
+        { pages, treeEnabledParam, treeViewModeParam, screenParam, initialLoad, pageIndex, sourceUrlKey },
     ) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
         const prevTree: SerializedTree | null = hasTreeData ? {
@@ -340,24 +341,43 @@ export const utilsActions: Readonly<UtilsActions> = {
             setTimeout(() => main.openReceivedInputSnapshot({ index: openIndex, snapshot: receivedSnapshot! }), 0);
         }
 
+        const nextTree: SerializedTree | null = treeState.enabled && treeState.rootId !== null
+            && treeState.nodes.length > 0
+            ? { nodes: treeState.nodes, rootId: treeState.rootId, version: 1 }
+            : null;
+
         // 直後の registerHistoryTask が自動保存するので、保存元はそれより先に切り替える
         memento.setAutosaveSource(sourceUrlKey);
         saveTabSourceUrlKey(sourceUrlKey);
 
         return sequence(state, [
+            // The old fumen's drawing in progress, rectangle selection and SPAWN mino pick belong to
+            // pages that are being replaced. openPage keeps them when the index stays the same.
+            actions.clearInferencePiece(),
+            actions.clearRectSelection(),
+            actions.cancelSpawnMinoPick(),
             // 読み込みで画面が直接切り替わることがあるので、開いたままのサムネイルスライダーは閉じる
             closePageStripState,
             // INPUT を開くときは、ページを開いてからレイアウトを切り替える（openReceivedInputSnapshot）
             actions.setPages({ pages: cleanedPages, index: openIndex, open: !openInput }),
             () => ({ tree: treeState }),
-            actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
+            // Imported Fumen data may carry a palette that differs from the selected rotation system.
+            // Sync it before registering, which autosaves the state it receives.
+            actions.changeRotationSystem({ rotationSystem: state.mode.rotationSystem }),
+            // Undo and redo restore the pages and Tree mode as they were before and after the load
+            newState => actions.registerHistoryTask({
+                task: toFumenTask(
+                    prevPages,
+                    embedTreeInPages(newState.fumen.pages, nextTree, nextTree !== null).map(toPrimitivePage),
+                    currentIndex,
+                    { prevTreeDisabled: !state.tree.enabled, nextTreeDisabled: nextTree === null },
+                ),
+            })(newState),
             openInput ? newState => ({ mode: { ...newState.mode, screen: Screens.Editor } }) : screenUpdate,
             // 前の作業の直前ラベルと回転の記録は、読み込んだページと関係がない（採点に使われてしまう）
             newState => ({
                 events: { ...newState.events, lastInputPlacement: undefined, lastPieceManipulation: undefined },
             }),
-            // Imported Fumen data may carry a palette that differs from the selected rotation system.
-            actions.changeRotationSystem({ rotationSystem: state.mode.rotationSystem }),
         ]);
     },
     commitAppendFumenData: ({ position }) => (state): NextState => {
@@ -381,7 +401,10 @@ export const utilsActions: Readonly<UtilsActions> = {
         if (inputSnapshots.unsupported) {
             showToast(i18n.InputState.UnsupportedVersion(), 5000);
         }
+        const { leaveCurrentPage } = require('./pages');
         return sequence(state, [
+            // appendPages moves currentIndex itself, which skips openPage's cleanup of the page left
+            leaveCurrentPage,
             appendPages({
                 pageIndex,
                 pieceSpawn,
@@ -430,6 +453,19 @@ const appendPages = (
         throw new FumenError(`Illegal index: ${pageIndex}`);
     }
 
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const currentTree: SerializedTree = {
+        nodes: state.tree.nodes,
+        rootId: state.tree.rootId,
+        version: 1,
+    };
+    // In Tree mode the undo step must restore the tree with the pages, so snapshot both before
+    // the pages below are changed in place.
+    const prevTreeSnapshot = state.tree.enabled && hasTreeData
+        ? createSnapshot(currentTree, pages, indexAfterReverting)
+        : undefined;
+
     const currentPage = pages[pageIndex];
     const pagesObj = new Pages(pages);
     const tasks: OperationTask[] = [];
@@ -461,31 +497,32 @@ const appendPages = (
         tasks.push(toInsertPageTask(pageIndex, primitiveNexts, indexAfterReverting));
     }
 
-    const newPages = pagesObj.pages;
+    let newPages = pagesObj.pages;
+    let newIndex = pageIndex;
+    let updateTree = {};
+    let task = toPageTaskStack(tasks, indexAfterReverting);
 
-    // Update tree if tree data exists (even when view is disabled)
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            // Insert pages after the previous page (pageIndex - 1), or at root if pageIndex is 0
-            const parentPageIndex = pageIndex > 0 ? pageIndex - 1 : 0;
-            const newTree = insertPagesIntoTree(currentTree, pageIndex, appendedPages.length, parentPageIndex);
-            const currentNode = findNodeByPageIndex(newTree, pageIndex);
-            return {
-                tree: {
-                    ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-            };
-        })()
-        : {};
+    if (hasTreeData) {
+        // Insert pages after the previous page (pageIndex - 1), or at root if pageIndex is 0
+        const parentPageIndex = pageIndex > 0 ? pageIndex - 1 : 0;
+        let newTree = insertPagesIntoTree(currentTree, pageIndex, appendedPages.length, parentPageIndex);
+        const activeNodeId = findNodeByPageIndex(newTree, pageIndex)?.id ?? null;
+        if (prevTreeSnapshot !== undefined) {
+            const normalized = normalizeTreeAndPages(newTree, newPages, pageIndex, activeNodeId);
+            newTree = normalized.tree;
+            newPages = normalized.pages;
+            newIndex = normalized.currentIndex;
+            task = toTreeOperationTask(prevTreeSnapshot, createSnapshot(newTree, newPages, newIndex));
+        }
+        updateTree = {
+            tree: {
+                ...state.tree,
+                activeNodeId,
+                nodes: newTree.nodes,
+                rootId: newTree.rootId,
+            },
+        };
+    }
 
     return sequence(state, [
         () => ({
@@ -493,11 +530,11 @@ const appendPages = (
                 ...state.fumen,
                 pages: newPages,
                 maxPage: newPages.length,
-                currentIndex: pageIndex,
+                currentIndex: newIndex,
             },
             ...updateTree,
         }),
-        actions.registerHistoryTask({ pieceSpawn, task: toPageTaskStack(tasks, indexAfterReverting) }),
+        actions.registerHistoryTask({ pieceSpawn, task }),
         actions.reopenCurrentPage(),
     ]);
 };

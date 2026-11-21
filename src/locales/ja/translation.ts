@@ -8,6 +8,7 @@ export const resources = {
     },
     Toast: {
         CopiedToClipboard: 'クリップボードにコピーしました',
+        RefPageNeedsPreviousParent: '分岐の始まりのページはRefページにできません',
         CopiedShareUrl: '共有URLをコピーしました',
         CopiedTetgramRaw: 'tetgramの生データをコピーしました',
         CopiedPages: '{{count}}ページをコピーしました',

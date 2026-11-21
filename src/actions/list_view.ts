@@ -3,7 +3,16 @@ import { action, actions, main } from '../actions';
 import { Screens } from '../lib/enums';
 import { resources, State } from '../states';
 import { PageFieldOperation, Pages } from '../lib/pages';
-import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
+import {
+    OperationTask,
+    PrimitivePage,
+    toFreezeCommentTask,
+    toInsertPageTask,
+    toPage,
+    toPageTaskStack,
+    toPrimitivePage,
+    toSinglePageTask,
+} from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import {
@@ -40,12 +49,32 @@ import {
 } from '../lib/fumen/tree_utils';
 import { warnIfTreeCommentOverLimit } from '../lib/tree_overflow_toast';
 import { showToast } from '../lib/toast';
-import { rebuildPageRefsForOrder } from './tree_operations';
+import {
+    createSnapshot,
+    createTreelessSnapshot,
+    rebuildPageRefsForOrder,
+    toTreeOperationTask,
+} from './tree_operations';
 import { i18n } from '../locales/keys';
 import { copyTextToClipboard } from '../lib/clipboard_copy';
 import { extractInputSnapshotsFromPages } from '../lib/input_snapshot';
 
 type ClipboardImportMode = 'import' | 'add';
+
+// Required lazily: ./pages pulls in the Cold Clear worker wrapper
+const leaveCurrentPage = (state: State): NextState => require('./pages').leaveCurrentPage(state);
+
+// Sets one page's comment and records the undo tasks, as the editor's comment commit does
+const setCommentWithTasks = (pagesObj: Pages, pageIndex: number, text: string, tasks: OperationTask[]) => {
+    const page = pagesObj.pages[pageIndex];
+    if (page.comment.text === undefined) {
+        pagesObj.freezeComment(pageIndex);
+        tasks.push(toFreezeCommentTask(pageIndex));
+    }
+    const primitivePrev = toPrimitivePage(page);
+    pagesObj.setComment(pageIndex, text);
+    tasks.push(toSinglePageTask(pageIndex, primitivePrev, page));
+};
 
 interface ParsedClipboardInput {
     fumen: string;
@@ -465,6 +494,117 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     return rebuildPageRefsForOrder(pages, originalPages, originalFirstPageColorize);
 }
 
+const addPagesToEnd = ({ pages, treeEnabledParam, treeViewModeParam }: {
+    pages: Page[];
+    treeEnabledParam?: boolean;
+    treeViewModeParam?: TreeViewMode;
+}) => (state: State): NextState => {
+    if (pages.length === 0) {
+        return undefined;
+    }
+
+    const { cleanedPages: treeCleanedPages, tree } = extractTreeFromPages(pages);
+    // 取り込むページ列の中だけで isnap= を読む（"^" も取り込み側の直前トークンを指す）
+    const inputSnapshots = extractInputSnapshotsFromPages(treeCleanedPages);
+    if (inputSnapshots.unsupported) {
+        showToast(i18n.InputState.UnsupportedVersion(), 5000);
+    }
+    const cleanedPages = inputSnapshots.pages;
+    const normalizedImportedTree = tree ? ensureVirtualRoot(tree) : null;
+
+    const insertIndex = state.fumen.pages.length;
+    const pagesObj = new Pages([...state.fumen.pages]);
+    pagesObj.insertPage(insertIndex, cleanedPages);
+    const newPages = pagesObj.pages;
+
+    const hasExistingTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const shouldUseTree = hasExistingTreeData
+        || normalizedImportedTree !== null
+        || state.tree.enabled
+        || treeEnabledParam === true;
+
+    const baseTree: SerializedTree | null = hasExistingTreeData
+        ? {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1 as const,
+        }
+        : (shouldUseTree ? createTreeFromPages(state.fumen.pages) : null);
+
+    let incomingTree: SerializedTree | null = normalizedImportedTree;
+    if (!incomingTree && shouldUseTree) {
+        incomingTree = createTreeFromPages(cleanedPages);
+    }
+
+    let mergedTree: SerializedTree | null = null;
+    if (shouldUseTree && incomingTree) {
+        if (baseTree && baseTree.nodes.length > 0 && baseTree.rootId) {
+            mergedTree = mergeIndependentTrees(baseTree, incomingTree, insertIndex);
+        } else {
+            mergedTree = offsetTreeIndices(ensureVirtualRoot(incomingTree), insertIndex);
+        }
+    } else if (baseTree) {
+        mergedTree = ensureVirtualRoot(baseTree);
+    }
+
+    let treeState = state.tree;
+    if (mergedTree) {
+        const normalizedMerged = ensureVirtualRoot(mergedTree);
+        const currentNode = findNodeByPageIndex(normalizedMerged, insertIndex);
+        treeState = {
+            ...state.tree,
+            enabled: true,
+            nodes: normalizedMerged.nodes,
+            rootId: normalizedMerged.rootId,
+            activeNodeId: currentNode?.id ?? state.tree.activeNodeId,
+        };
+    }
+
+    if (treeEnabledParam !== undefined) {
+        treeState = {
+            ...treeState,
+            enabled: treeEnabledParam,
+        };
+    }
+
+    if (treeViewModeParam !== undefined) {
+        treeState = {
+            ...treeState,
+            viewMode: treeViewModeParam,
+        };
+    }
+
+    // When the tree is on before or after, undo/redo must restore it with the pages, so record
+    // snapshots of both; a treeless snapshot turns Tree mode off again.
+    const isTreeOn = (tree: State['tree']) => tree.enabled && tree.rootId !== null && tree.nodes.length > 0;
+    const snapshotOf = (tree: State['tree'], snapshotPages: Page[], index: number) => isTreeOn(tree)
+        ? createSnapshot({ nodes: tree.nodes, rootId: tree.rootId, version: 1 }, snapshotPages, index)
+        : createTreelessSnapshot(snapshotPages, index);
+    const task = isTreeOn(state.tree) || isTreeOn(treeState)
+        ? toTreeOperationTask(
+            snapshotOf(state.tree, state.fumen.pages, state.fumen.currentIndex),
+            snapshotOf(treeState, newPages, insertIndex),
+        )
+        : toInsertPageTask(insertIndex, cleanedPages.map(toPrimitivePage), state.fumen.currentIndex);
+
+    // Apply the pages before registering so autosave stores them, but register with the
+    // previous view mode: history replays the view mode recorded with each entry.
+    return sequence(state, [
+        () => ({
+            fumen: {
+                ...state.fumen,
+                pages: newPages,
+                maxPage: newPages.length,
+                currentIndex: insertIndex,
+            },
+            tree: { ...treeState, viewMode: state.tree.viewMode },
+        }),
+        actions.registerHistoryTask({ task }),
+        newState => ({ tree: { ...newState.tree, viewMode: treeState.viewMode } }),
+        actions.reopenCurrentPage(),
+    ]);
+};
+
 export const listViewActions: Readonly<ListViewActions> = {
     changeToEditorFromListView: () => (state): NextState => {
         if (resources.konva.stage.isReady) {
@@ -553,59 +693,82 @@ export const listViewActions: Readonly<ListViewActions> = {
             return undefined;
         }
 
-        const primitivePrevPages = state.fumen.pages.map(toPrimitivePage);
+        // currentIndex follows the moved page, so settle the page being left first and open the
+        // moved page afterwards; otherwise the editor keeps drawing the old page's field.
+        const reorder = (current: State): NextState => {
+            const primitivePrevPages = current.fumen.pages.map(toPrimitivePage);
+            const newPages = reorderPagesInternal([...current.fumen.pages], fromIndex, actualTargetIndex);
+            const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
 
-        const newPages = reorderPagesInternal([...state.fumen.pages], fromIndex, actualTargetIndex);
-
-        const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
-
-        return sequence(state, [
-            () => ({
-                fumen: {
-                    ...state.fumen,
-                    pages: newPages,
-                    currentIndex: actualTargetIndex,
-                },
-                listView: {
-                    ...state.listView,
-                    dragState: {
-                        draggingIndex: null,
-                        dropTargetIndex: null,
+            return sequence(current, [
+                () => ({
+                    fumen: {
+                        ...current.fumen,
+                        pages: newPages,
+                        currentIndex: actualTargetIndex,
                     },
-                },
-            }),
-            actions.registerHistoryTask({ task }),
-        ]);
+                    listView: {
+                        ...current.listView,
+                        dragState: {
+                            draggingIndex: null,
+                            dropTargetIndex: null,
+                        },
+                    },
+                }),
+                actions.registerHistoryTask({ task }),
+                actions.reopenCurrentPage(),
+            ]);
+        };
+
+        return sequence(state, [leaveCurrentPage, reorder]);
     },
     updatePageComment: ({ pageIndex, comment }) => (state): NextState => {
         // Keep the pages array reference: comments are not part of thumbnails,
         // and a new reference would drop the whole WeakMap-keyed cache per keystroke.
         const pages = state.fumen.pages;
+        if (pages[pageIndex] === undefined) {
+            return undefined;
+        }
         const pagesObj = new Pages(pages);
-        pagesObj.setComment(pageIndex, comment);
+        const tasks: OperationTask[] = [];
+        setCommentWithTasks(pagesObj, pageIndex, comment, tasks);
 
-        return {
-            fumen: {
-                ...state.fumen,
-                pages: pagesObj.pages,
-            },
-        };
+        // Keystrokes on the same card merge into one undo step
+        const historyKey = `page-comment-${pageIndex}`;
+        return sequence(state, [
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: pagesObj.pages,
+                },
+            }),
+            actions.registerHistoryTask({
+                task: { ...toPageTaskStack(tasks, pageIndex), key: historyKey },
+                mergeKey: historyKey,
+                keepThumbnails: true,
+            }),
+        ]);
     },
     activatePageInListView: ({ pageIndex }) => (state): NextState => {
         if (pageIndex < 0 || pageIndex >= state.fumen.pages.length) {
             return undefined;
         }
 
+        // Selecting a card moves currentIndex without opening the page, so leave the current one
+        // here: openPage would otherwise see no page change and keep its selection and drawing.
+        const selectPage = (tree?: State['tree']) => sequence(state, [
+            leaveCurrentPage,
+            newState => ({
+                fumen: { ...newState.fumen, currentIndex: pageIndex },
+                ...(tree !== undefined ? { tree } : {}),
+            }),
+        ]);
+
         if (!state.tree.enabled) {
             if (state.fumen.currentIndex === pageIndex) {
                 return listViewActions.navigateToPageFromListView({ pageIndex })(state);
             }
-            return {
-                fumen: {
-                    ...state.fumen,
-                    currentIndex: pageIndex,
-                },
-            };
+            return selectPage();
         }
 
         const tree: SerializedTree = {
@@ -620,16 +783,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             return listViewActions.navigateToPageFromListView({ pageIndex })(state);
         }
 
-        return {
-            fumen: {
-                ...state.fumen,
-                currentIndex: pageIndex,
-            },
-            tree: {
-                ...state.tree,
-                activeNodeId: node.id,
-            },
-        };
+        return selectPage({ ...state.tree, activeNodeId: node.id });
     },
     navigateToPageFromListView: ({ pageIndex }) => (state): NextState => {
         if (resources.konva.stage.isReady) {
@@ -643,13 +797,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             setTimeout(() => main.changeScreen({ screen: Screens.Editor }), 0);
         }
         return sequence(state, [
-            () => ({
-                fumen: {
-                    ...state.fumen,
-                    currentIndex: pageIndex,
-                },
-            }),
-            actions.reopenCurrentPage(),
+            actions.openPage({ index: pageIndex }),
             actions.setListViewSettingsOpened({ opened: false }),
         ]);
     },
@@ -1062,125 +1210,38 @@ export const listViewActions: Readonly<ListViewActions> = {
 
         const pages = [...state.fumen.pages];
         const pagesObj = new Pages(pages);
+        const tasks: OperationTask[] = [];
 
+        // Replace only the pages that own their text. Ref pages inherit the replaced text,
+        // and resolving them after an earlier replacement would replace it a second time.
         for (let i = 0; i < pages.length; i += 1) {
-            const commentResult = pagesObj.getComment(i);
-            let currentText = '';
-            if ('text' in commentResult) {
-                currentText = commentResult.text;
-            } else if ('quiz' in commentResult) {
-                currentText = commentResult.quiz;
-            }
-
-            if (currentText.includes(searchText)) {
+            const currentText = pages[i].comment.text;
+            if (currentText !== undefined && currentText.includes(searchText)) {
                 const newText = currentText.split(searchText).join(replaceText);
-                pagesObj.setComment(i, newText);
+                setCommentWithTasks(pagesObj, i, newText, tasks);
             }
         }
 
-        return {
-            fumen: {
-                ...state.fumen,
-                pages: pagesObj.pages,
-            },
-        };
-    },
-    addPagesFromClipboard: ({ pages, treeEnabledParam, treeViewModeParam }) => (state): NextState => {
-        if (pages.length === 0) {
+        if (tasks.length === 0) {
             return undefined;
         }
 
-        const { cleanedPages: treeCleanedPages, tree } = extractTreeFromPages(pages);
-        // 取り込むページ列の中だけで isnap= を読む（"^" も取り込み側の直前トークンを指す）
-        const inputSnapshots = extractInputSnapshotsFromPages(treeCleanedPages);
-        if (inputSnapshots.unsupported) {
-            showToast(i18n.InputState.UnsupportedVersion(), 5000);
-        }
-        const cleanedPages = inputSnapshots.pages;
-        const normalizedImportedTree = tree ? ensureVirtualRoot(tree) : null;
-
-        const insertIndex = state.fumen.pages.length;
-        const pagesObj = new Pages([...state.fumen.pages]);
-        pagesObj.insertPage(insertIndex, cleanedPages);
-        const newPages = pagesObj.pages;
-
-        const hasExistingTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-        const shouldUseTree = hasExistingTreeData
-            || normalizedImportedTree !== null
-            || state.tree.enabled
-            || treeEnabledParam === true;
-
-        const baseTree: SerializedTree | null = hasExistingTreeData
-            ? {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1 as const,
-            }
-            : (shouldUseTree ? createTreeFromPages(state.fumen.pages) : null);
-
-        let incomingTree: SerializedTree | null = normalizedImportedTree;
-        if (!incomingTree && shouldUseTree) {
-            incomingTree = createTreeFromPages(cleanedPages);
-        }
-
-        let mergedTree: SerializedTree | null = null;
-        if (shouldUseTree && incomingTree) {
-            if (baseTree && baseTree.nodes.length > 0 && baseTree.rootId) {
-                mergedTree = mergeIndependentTrees(baseTree, incomingTree, insertIndex);
-            } else {
-                mergedTree = offsetTreeIndices(ensureVirtualRoot(incomingTree), insertIndex);
-            }
-        } else if (baseTree) {
-            mergedTree = ensureVirtualRoot(baseTree);
-        }
-
-        let treeState = state.tree;
-        if (mergedTree) {
-            const normalizedMerged = ensureVirtualRoot(mergedTree);
-            const currentNode = findNodeByPageIndex(normalizedMerged, insertIndex);
-            treeState = {
-                ...state.tree,
-                enabled: true,
-                nodes: normalizedMerged.nodes,
-                rootId: normalizedMerged.rootId,
-                activeNodeId: currentNode?.id ?? state.tree.activeNodeId,
-            };
-        }
-
-        if (treeEnabledParam !== undefined) {
-            treeState = {
-                ...treeState,
-                enabled: treeEnabledParam,
-            };
-        }
-
-        if (treeViewModeParam !== undefined) {
-            treeState = {
-                ...treeState,
-                viewMode: treeViewModeParam,
-            };
-        }
-
-        const primitiveNexts = cleanedPages.map(toPrimitivePage);
-        const task = toInsertPageTask(insertIndex, primitiveNexts, state.fumen.currentIndex);
-
-        // Apply the pages before registering so autosave stores them, but register with the
-        // previous view mode: history replays the view mode recorded with each entry.
         return sequence(state, [
             () => ({
                 fumen: {
                     ...state.fumen,
-                    pages: newPages,
-                    maxPage: newPages.length,
-                    currentIndex: insertIndex,
+                    pages: pagesObj.pages,
                 },
-                tree: { ...treeState, viewMode: state.tree.viewMode },
             }),
-            actions.registerHistoryTask({ task }),
-            newState => ({ tree: { ...newState.tree, viewMode: treeState.viewMode } }),
+            actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
             actions.reopenCurrentPage(),
         ]);
     },
+    addPagesFromClipboard: data => state => data.pages.length === 0 ? undefined : sequence(state, [
+        // Adding opens the first added page by moving currentIndex, which skips openPage's cleanup
+        leaveCurrentPage,
+        addPagesToEnd(data),
+    ]),
     importPagesFromClipboard: ({ mode }) => (state): NextState => {
         (async () => {
             try {

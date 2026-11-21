@@ -1,5 +1,6 @@
-import { decode } from '../../lib/fumen/fumen';
+import { decode, encode } from '../../lib/fumen/fumen';
 import { Piece } from '../../lib/enums';
+import { createSpawnMove } from '../../lib/piece';
 import { Field } from '../../lib/fumen/field';
 import { Page } from '../../lib/fumen/types';
 import { SerializedTree, TreeNodeId } from '../../lib/fumen/tree_types';
@@ -15,7 +16,7 @@ import {
     moveSubtreeToInsertPosition,
     moveSubtreeToParent,
 } from '../../lib/fumen/tree_utils';
-import { PageFieldOperation, Pages, isTextCommentResult } from '../../lib/pages';
+import { PageFieldOperation, Pages, isTextCommentResult, resolvePageCommentText } from '../../lib/pages';
 import { normalizeTreeAndPages, rebuildPageRefsForOrder } from '../tree_operations';
 
 jest.mock('../../actions', () => ({
@@ -247,5 +248,106 @@ describe('normalizeTreeAndPages', () => {
         expect(fields.getField(target.pageIndex, PageFieldOperation.Command).get(0, 0)).toBe(Piece.Gray);
         expect(fields.getField(child.pageIndex, PageFieldOperation.Command).get(0, 0)).toBe(Piece.Empty);
         expect(normalized.pages[child.pageIndex].field.obj).toBeDefined();
+    });
+});
+
+describe('rebuildPageRefsForOrder comment inheritance', () => {
+    const flags = { lock: false, mirror: false, colorize: true, rise: false, quiz: false };
+    const page = (index: number, comment: Page['comment'], extra: Partial<Page> = {}): Page => ({
+        index,
+        comment,
+        field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+        flags: { ...flags },
+        ...extra,
+    });
+
+    // The fumen format has no ref target: a page without its own comment inherits
+    // the nearest preceding one. Compare what the user sees with what a reload decodes.
+    const expectCommentsSurviveRoundTrip = async (original: Page[], order: number[]) => {
+        const expected = order.map(oldIndex => resolvePageCommentText(original, oldIndex));
+        const rebuilt = rebuildPageRefsForOrder(order.map(oldIndex => original[oldIndex]), original, true);
+
+        expect(rebuilt.map((_, index) => resolvePageCommentText(rebuilt, index))).toEqual(expected);
+
+        const decoded = await decode(`v115@${await encode(rebuilt)}`);
+        expect(decoded.map((_, index) => resolvePageCommentText(decoded, index))).toEqual(expected);
+        return { rebuilt, decoded };
+    };
+
+    test('keeps an inherited comment when another commented page moves in between', async () => {
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, { ref: 0 }),
+            page(2, { text: 'sibling' }),
+        ];
+
+        const { rebuilt } = await expectCommentsSurviveRoundTrip(original, [0, 2, 1]);
+
+        expect(rebuilt[2].comment).toEqual({ text: 'parent' });
+    });
+
+    test('does not turn an inheriting page into a quiz when a quiz page moves in between', async () => {
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, { ref: 0 }),
+            page(2, { text: '#Q=[](I)OT' }, { flags: { ...flags, quiz: true } }),
+        ];
+
+        const { decoded } = await expectCommentsSurviveRoundTrip(original, [0, 2, 1]);
+
+        expect(decoded[2].flags.quiz).toBe(false);
+    });
+
+    test('keeps references whose inherited comment does not change', async () => {
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, { ref: 0 }),
+            page(2, { ref: 0 }),
+        ];
+
+        const { rebuilt } = await expectCommentsSurviveRoundTrip(original, [0, 2, 1]);
+
+        expect(rebuilt[1].comment).toEqual({ ref: 0 });
+        expect(rebuilt[2].comment).toEqual({ ref: 0 });
+    });
+
+    test('materializes a quiz reference when another quiz comment sits inside its preserved span', async () => {
+        const quizFlags = { ...flags, quiz: true };
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, { text: 'other' }),
+            page(2, { text: '#Q=[](I)OT' }, {
+                flags: { ...quizFlags, lock: true },
+                piece: createSpawnMove(Piece.I, false),
+            }),
+            page(3, { text: '#Q=[](T)L' }, { flags: quizFlags }),
+            page(4, { ref: 2 }, { flags: quizFlags }),
+        ];
+
+        await expectCommentsSurviveRoundTrip(original, [0, 2, 3, 4, 1]);
+    });
+
+    test('makes an empty comment explicit when it would inherit another comment', async () => {
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, {}),
+            page(2, { text: 'sibling' }),
+        ];
+
+        const { rebuilt } = await expectCommentsSurviveRoundTrip(original, [0, 2, 1]);
+
+        expect(rebuilt[2].comment).toEqual({ text: '' });
+    });
+
+    test('gives the new first page its own comment', async () => {
+        const original = [
+            page(0, { text: 'parent' }),
+            page(1, { ref: 0 }),
+            page(2, { text: 'sibling' }),
+        ];
+
+        const { rebuilt } = await expectCommentsSurviveRoundTrip(original, [1, 0, 2]);
+
+        expect(rebuilt[0].comment).toEqual({ text: 'parent' });
     });
 });

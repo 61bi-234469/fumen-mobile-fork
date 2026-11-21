@@ -576,31 +576,6 @@ export const rebuildPageRefsForOrder = (
             }
         }
 
-        if (page.comment.ref !== undefined) {
-            const mappedRef = oldIndexToNewIndex.get(page.comment.ref);
-            if (mappedRef !== undefined && mappedRef < newIndex) {
-                const originalReferenceSpan = originalPages
-                    .slice(page.comment.ref, page.index + 1)
-                    .map(originalPage => originalPage.index);
-                const reorderedReferenceSpan = pages
-                    .slice(mappedRef, newIndex + 1)
-                    .map(reorderedPage => reorderedPage.index);
-                const referenceSpanPreserved = originalReferenceSpan.length === reorderedReferenceSpan.length
-                    && originalReferenceSpan.every((oldIndex, position) => (
-                        oldIndex === reorderedReferenceSpan[position]
-                    ));
-
-                const pageIsQuiz = page.flags.quiz || Quiz.isQuizComment(originalComments.get(page.index) ?? '');
-                if (!pageIsQuiz || referenceSpanPreserved) {
-                    newPage.comment = { ...page.comment, ref: mappedRef };
-                } else {
-                    newPage.comment = { text: originalComments.get(page.index) ?? '' };
-                }
-            } else {
-                newPage.comment = { text: originalComments.get(page.index) ?? '' };
-            }
-        }
-
         return newPage;
     });
 
@@ -620,6 +595,57 @@ export const rebuildPageRefsForOrder = (
             field: { obj: originalField.copy() },
         };
     });
+
+    // The fumen format stores no comment-ref target: a page without its own comment
+    // inherits the nearest preceding one, replaying quiz operations from there. Point
+    // every inheriting page at that page, or give it its own text when the inherited
+    // comment would differ from what the page showed before the reorder.
+    let lastOwnCommentIndex = -1;
+    let runStart = 0;
+    for (let newIndex = 0; newIndex < newPages.length; newIndex += 1) {
+        const oldIndex = pages[newIndex].index;
+        if (newIndex > 0 && oldIndex !== pages[newIndex - 1].index + 1) {
+            runStart = newIndex;
+        }
+
+        const current = newPages[newIndex];
+        if (current.comment.text !== undefined) {
+            lastOwnCommentIndex = newIndex;
+            continue;
+        }
+
+        const withComment = (comment: Page['comment'], quiz: boolean): Page => ({
+            ...current,
+            comment,
+            flags: { ...current.flags, quiz },
+        });
+        const originalText = originalComments.get(oldIndex) ?? '';
+
+        if (lastOwnCommentIndex >= 0) {
+            const source = newPages[lastOwnCommentIndex];
+            const inheritsQuiz = Quiz.isQuizComment(source.comment.text ?? '');
+            newPages[newIndex] = withComment({ ref: lastOwnCommentIndex }, inheritsQuiz);
+
+            // An untouched run back to the same source replays exactly as before.
+            const originalRef = pages[newIndex].comment.ref;
+            const sourceMovedTogether = originalRef !== undefined
+                && newIndex - (oldIndex - originalRef) === lastOwnCommentIndex
+                && runStart <= lastOwnCommentIndex;
+            if (sourceMovedTogether) {
+                continue;
+            }
+
+            const inheritedText = inheritsQuiz
+                ? resolvePageCommentText(newPages, newIndex)
+                : source.comment.text;
+            if (inheritedText === originalText) {
+                continue;
+            }
+        }
+
+        newPages[newIndex] = withComment({ text: originalText }, Quiz.isQuizComment(originalText));
+        lastOwnCommentIndex = newIndex;
+    }
 
     return recomputeQuizFlags(newPages);
 };

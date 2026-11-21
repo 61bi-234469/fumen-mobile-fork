@@ -86,7 +86,7 @@
           <tr><td>COPY</td><td>現在ページをfumen v115形式でコピーする</td><td>全ページをコピーする</td></tr>
           <tr><td>CUT</td><td>現在ページをコピーして削除する</td><td>全ページを切り取る</td></tr>
           <tr><td>UTILS</td><td>反転、グレー化、ページ削除、スライド、コメント、TETR.IO リプレイなどのパネルを開く</td><td>—</td></tr>
-          <tr><td>FLAGS</td><td>キーページ／参照ページ、固定、せり上がり、反転フラグを切り替えるパネルを開く。設定の<strong>FLAGSを表示</strong>がオンのときだけ表示</td><td>—</td></tr>
+          <tr><td>FLAGS</td><td><strong>Key page</strong>／<strong>Reference page</strong>、<strong>Lock</strong>、<strong>Rise</strong>、<strong>Mirror flag</strong>を切り替えるパネルを開く。設定の<strong>FLAGSを表示</strong>がオンのときだけ表示</td><td>—</td></tr>
           <tr><td>INPUT</td><td>キューのCURRENTを直接操作するINPUTへ切り替える</td><td>—</td></tr>
           <tr><td>AI</td><td>AIメニュー（Cold Clear・Sold Slear）を開く</td><td>—</td></tr>
           <tr><td>PIECE・SELECT・PAINT</td><td>編集モードを切り替える</td><td>PIECE：SPAWNミノを削除（INPUTでは盤面とミノをリセット）</td></tr>
@@ -160,7 +160,7 @@
       <li><strong>ページ削除：</strong><strong>&lt;-Clear</strong>で現在ページより前、<strong>Clear-&gt;</strong>で現在ページより後のページを削除します。</li>
       <li><strong>編集モード：</strong><strong>スライド</strong>は盤面を上下左右へ動かすトレイ（上へ + グレー、上、左、右、下、完了）を、<strong>コメント</strong>は空にする・引き継ぐのトレイを開きます。</li>
       <li><strong>TETR.IO リプレイ：</strong><strong>TETR.IO Replayを開く</strong>でリプレイ画面へ移動します。</li>
-      <li><strong>FLAGS：</strong>キーページ／参照ページ、固定、せり上がり、反転フラグを切り替えます。固定がオンのページでは、次ページへ進むときにライン消去を反映します。</li>
+      <li><strong>FLAGS：</strong><strong>Key page</strong>／<strong>Reference page</strong>、<strong>Lock</strong>、<strong>Rise</strong>、<strong>Mirror flag</strong>を切り替えます。Lockがオンのページでは、次ページへ進むときにライン消去を反映します。Treeでは、分岐の始まりのページ（親ノードが直前のページではないページ）はReference pageにできません。</li>
       <li><strong>パネル：</strong>見出しをドラッグして移動できます。項目を選ぶか、UTILSボタンをもう一度押すと閉じます。ユーザー設定の<strong>UTILSメニューを開いたままにする</strong>を有効にすると、盤面を操作しながら続けて項目を選べます。</li>
     </ul>
   </section>
@@ -186,7 +186,7 @@
       <li>1回選ぶとそのカードがアクティブになり、アクティブなカードをもう一度選ぶとそのページのEditへ移動します。</li>
       <li><strong>#ページ番号</strong>からも対象ページへ移動できます。サイドパネルでは画面を切り替えず、右側のEditだけが更新されます。</li>
       <li>カードをドラッグするとページを並べ替えられます。ツリーモード中は並べ替えできません。</li>
-      <li>コメント欄はその場で編集できます。UTILSの全ページコメント置換で全ページの文字列を一括置換できます。</li>
+      <li>コメント欄はその場で編集できます。同じカードへの続けての入力は、Undoでまとめて戻せます。UTILSの全ページコメント置換で全ページの文字列を一括置換できます（置換もUndoできます）。</li>
       <li>下部バーには、Editへ戻る、ツリーモードのスイッチ、リスト／ツリー切替（ツリーモード中のみ）、UTILS、取り込み、書き出し、設定、メニューが並びます。Undo/Redoは左下、表示設定は右下のフローティングボタンです。</li>
       <li><strong>UTILS：</strong>Listを離れずに、現在ページの反転・グレー化・クリア、全ページ反転、全ページコメント置換・リセット、ページ削除、TETR.IO リプレイを実行できます。</li>
       <li><strong>表示設定</strong>（右下のボタン）には<strong>上部の空白行を省略</strong>、<strong>ズーム</strong>のスライダー、<strong>すべての設定</strong>があります。スライダーは100%付近で自動的にスナップし、%表示をタップすると100%に戻ります。<kbd>Ctrl</kbd>+ホイールでも拡大縮小できます。</li>
@@ -200,7 +200,7 @@
       <li>下部バーのツリービューのボタンを選び、Treeへ切り替える。</li>
       <li>起点にしたいノードを選び、色付きボタンで続きを作る。</li>
     </ol>
-    <figure class="shot"><img src="./images/tree-view.png" alt="PCのTree画面。7ノードの本線と、3番目のノードから下へ伸びる分岐ノードがあり、左下に移動・削除範囲のチップ、右下にAIボタンと表示設定ボタンがあります。"><figcaption>Tree。緑の+で続きを、オレンジの+で分岐を作り、左下のチップで移動・削除範囲を選びます。</figcaption></figure>
+    <figure class="shot"><img src="./images/tree-view.png" alt="PCのTree画面。7ノードの本線と、3番目のノードから下へ伸びる8番目のノードがあります。各ノードの上端の帯には、つまみ、ページ番号、削除アイコンが並びます。左下に移動・削除範囲のチップ、右下にAIボタンと表示設定ボタンがあります。"><figcaption>Tree。緑の+で続きを、オレンジのボタンで分岐を作り、ノード上端の帯をドラッグして移動します。</figcaption></figure>
 
     <h3>追加・移動・削除</h3>
     <div class="table-wrap">
@@ -208,19 +208,21 @@
         <thead><tr><th>操作</th><th>クリック</th><th>ノードをドラッグして重ねる</th></tr></thead>
         <tbody>
           <tr><td><span class="dot green"></span>緑の+</td><td>選択ノードの続きとしてページを追加</td><td>そのノードの次へ移動</td></tr>
-          <tr><td><span class="dot orange"></span>オレンジの+</td><td>選択ノードから新しい分岐を追加</td><td>分岐先へ移動</td></tr>
+          <tr><td><span class="dot orange"></span>オレンジの分岐ボタン（緑の+の下）</td><td>選択ノードから新しい分岐を追加</td><td>分岐先へ移動</td></tr>
           <tr><td><span class="dot blue"></span>青の複製（ノードの下）</td><td>ノードや分岐を複製</td><td>ドラッグ中は青い+になり、そのノードと同じ親からの分岐として移動</td></tr>
-          <tr><td><span class="dot red"></span>「ページを削除」（右上）</td><td>「移動/削除」で選んだ範囲を削除。直後の通知からUndo可能</td><td>—</td></tr>
+          <tr><td><span class="dot red"></span>「ページを削除」（上端の帯の右）</td><td>「移動/削除」で選んだ範囲を削除。直後の通知からUndo可能</td><td>—</td></tr>
         </tbody>
       </table>
     </div>
     <ul>
-      <li><strong>ドラッグ：</strong>ノード下の「ドラッグして移動」のつまみからドラッグを始めます。</li>
+      <li><strong>ドラッグ：</strong>ノード上端の帯をドラッグします。タッチ操作ではカードの長押しからも始められます。帯をクリックするとノードを選ぶだけで、Editへは移動しません。帯の<strong>#ページ番号</strong>を押すとそのページへ移動します。</li>
+      <li><strong>分岐の順番を入れ替える：</strong>ノードを上下にドラッグすると、同じ分岐点から出ている分岐の間に線が表示されます。線の上で離すと、その位置へ分岐を移します。親子関係は変わらず、分岐の順番だけが変わります。「ノードのみ」と「ノードと配下」では、つかんだノードから左へたどって最も近い分岐点の分岐を動かします。「配下のみ」では、つかんだノード以降で最初の分岐点の一番上の分岐を動かし、つかんだノード自体は動きません。</li>
       <li><strong>移動/削除：</strong>左下のチップで「ノードのみ」「ノードと配下」「配下のみ」を選びます。移動と削除に同じ範囲が適用されます。</li>
       <li><strong>配下のみ：</strong>ノードを残して子孫だけを移動・削除します。緑ボタンは直下の子が1つのときに使えます。移動先が葉ノードの場合に限り、複数の子サブツリーも順序を保ったまま移動できます。</li>
       <li><strong>削除：</strong>各ノード右上の「ページを削除」アイコンを選びます。削除後に表示される通知の<strong>元に戻す</strong>で復元できます。最後の1ページは削除できません。</li>
       <li><strong>ノード選択：</strong>1回選ぶとアクティブになり、アクティブなノードをもう一度選ぶとそのページのEditへ移動します。</li>
       <li><strong>ツリーモードの解除：</strong>ツリー構造が削除されるため、確認ダイアログが表示されます。解除はUndoで元に戻せます。</li>
+      <li><strong>保存：</strong>ツリーモードのオン／オフとツリーは自動保存され、再読み込みしても保たれます。ツリー付きのデータを開くと、設定に応じてTreeが表示されます。</li>
       <li><strong>親ツリー追加：</strong>点線の+カードで、既存の枝につながらない独立したルートを作ります。別セットや別巡目を同じテト譜で管理するときに使います。</li>
       <li><strong>表示設定：</strong>右下のボタンから、上部の空白行の省略、<strong>+ボタンでグレー化</strong>、ズームを切り替えます。+ボタンでグレー化は、+でページを作るときにライン消去後のブロックをグレーにします。</li>
       <li><strong>AI：</strong>右下の青いAIボタンから、選択ノードを起点にAIメニューを開けます。</li>
@@ -232,16 +234,16 @@
   <section id="side-panel">
     <h2>PCのサイドパネルを使う</h2>
     <p class="lead">PCではEditを開いたまま、左側にListまたはTreeを表示できます。盤面を編集しながらページ全体や分岐を確認したいときに便利です。</p>
-    <figure class="shot"><img src="./images/editor-side-panel.png" alt="PCのEdit画面。左側にツリーのサイドパネル、右側に9ページ目の盤面とPAINTの操作レールがあります。"><figcaption>Treeサイドパネル。分岐を確認しながら、右側のEditで盤面を編集できます。</figcaption></figure>
+    <figure class="shot"><img src="./images/editor-side-panel.png" alt="PCのEdit画面。左側にTreeタブのサイドパネルがあり、8番目のノードが選ばれています。右側に8ページ目の盤面とPAINTの操作レールがあります。"><figcaption>Treeサイドパネル。分岐を確認しながら、右側のEditで盤面を編集できます。</figcaption></figure>
     <ol class="steps">
       <li>画面最上部の <strong>サイドパネルを表示</strong> を選ぶ。ユーザー設定の「リスト/ツリー」→「サイドパネルを表示（PC）」からも切り替えられます。</li>
-      <li><strong>リスト</strong>または<strong>ツリー</strong>タブを選ぶ。</li>
+      <li><strong>List</strong>または<strong>Tree</strong>タブを選ぶ。</li>
       <li>カードやノードを選び、右側の盤面を編集する。コメントと現在ページも相互に同期します。</li>
     </ol>
     <ul>
-      <li><strong>リストタブ：</strong>ページ移動、コメント編集、ドラッグ並べ替えができます。ツリーモード中は並べ替えできません。</li>
-      <li><strong>ツリータブ：</strong><strong>ツリーモードを有効にする</strong>でツリーを有効化し、ノード追加・分岐・複製・削除、移動・削除範囲の選択、ページ移動ができます。</li>
-      <li><strong>パネル内のボタン：</strong>左下にUndo/Redo（ツリータブでは移動・削除範囲のチップも）、右下に表示設定、ツリータブでは表示設定の上にAIボタンがあります。表示設定にはフル画面と同じズームスライダーがあります。</li>
+      <li><strong>Listタブ：</strong>ページ移動、コメント編集、ドラッグ並べ替えができます。ツリーモード中は並べ替えできません。</li>
+      <li><strong>Treeタブ：</strong><strong>ツリーモードを有効にする</strong>でツリーを有効化し、ノード追加・分岐・複製・削除、ドラッグでの移動と分岐の入れ替え、移動・削除範囲の選択、ページ移動ができます。</li>
+      <li><strong>パネル内のボタン：</strong>左下にUndo/Redo（Treeタブでは移動・削除範囲のチップも）、右下に表示設定、Treeタブでは表示設定の上にAIボタンがあります。表示設定にはフル画面と同じズームスライダーがあります。</li>
       <li><strong>幅の変更：</strong>パネル右端の区切り線をドラッグします。区切り線をダブルクリックすると自動幅へ戻ります。</li>
       <li><strong>表示条件：</strong>PC用機能です。画面幅が1024px未満になると自動的に隠れ、幅を戻すと再表示されます。</li>
     </ul>

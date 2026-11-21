@@ -8,7 +8,7 @@
     },
     Toast: {
         CopiedToClipboard: 'Copied to clipboard',
-        RefPageNeedsPreviousParent: 'A page that starts a branch cannot be a Ref page',
+        RefPageNeedsPreviousParent: 'A page that starts a branch cannot be a Reference page',
         CopiedShareUrl: 'Copied share URL',
         CopiedTetgramRaw: 'Copied tetgram raw data',
         CopiedPages: 'Copied {{count}} pages',

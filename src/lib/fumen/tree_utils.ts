@@ -923,9 +923,8 @@ const findNearestForkChild = (tree: SerializedTree, nodeId: TreeNodeId): TreeNod
 /**
  * Resolve which branch a vertical (lane) reorder moves for a grabbed node.
  * A lane reorder only changes the childrenIds order of one fork; no parent changes.
- * - subtree: the nearest ancestor-or-self that has siblings
- * - node: the head of the grabbed node's lane; when that lane has nothing to swap
- *   with (a single top-level branch), the same as subtree
+ * - node, subtree: the nearest ancestor-or-self that has siblings. A single node
+ *   has no vertical move of its own, so node behaves like subtree here.
  * - descendants: the main child of the first fork at or after the grabbed node,
  *   so the grabbed node itself never moves
  */
@@ -949,22 +948,7 @@ export const resolveLaneReorderUnit = (
             ? findNode(tree, fork.childrenIds[0]) ?? null
             : null;
     } else {
-        if (scope === 'node') {
-            const visited = new Set<TreeNodeId>();
-            let head = grabbed;
-            let parent = head.parentId !== null ? findNode(tree, head.parentId) : undefined;
-            while (parent && !isVirtualNode(parent) && parent.childrenIds[0] === head.id && !visited.has(head.id)) {
-                visited.add(head.id);
-                head = parent;
-                parent = head.parentId !== null ? findNode(tree, head.parentId) : undefined;
-            }
-            if (parent && parent.childrenIds.length >= 2) {
-                unit = head;
-            }
-        }
-        if (unit === null) {
-            unit = findNearestForkChild(tree, grabbed.id);
-        }
+        unit = findNearestForkChild(tree, grabbed.id);
     }
 
     if (!unit || unit.parentId === null) return null;

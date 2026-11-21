@@ -136,15 +136,15 @@ describe('lane reorder unit', () => {
     };
 
     test.each<[string, TreeOperationScope, string | null]>([
-        // node: the whole lane the grabbed node sits on
+        // node, subtree: the nearest fork to the left of the grabbed node
         ['I', 'node', 'H in C at 1'],
         ['H', 'node', 'H in C at 1'],
-        ['E', 'node', 'A in root at 0'],
-        ['D', 'node', 'A in root at 0'],
-        ['C', 'node', 'A in root at 0'],
+        ['E', 'node', 'D in C at 0'],
+        ['D', 'node', 'D in C at 0'],
+        ['C', 'node', 'C in B at 0'],
         ['G', 'node', 'G in E at 1'],
         ['N', 'node', 'N in root at 1'],
-        // subtree: the nearest fork to the left of the grabbed node
+        ['A', 'node', 'A in root at 0'],
         ['I', 'subtree', 'H in C at 1'],
         ['E', 'subtree', 'D in C at 0'],
         ['D', 'subtree', 'D in C at 0'],
@@ -174,18 +174,21 @@ describe('lane reorder unit', () => {
         });
     });
 
-    test('falls back to the nearest fork when the only top-level lane has nothing to swap with', () => {
-        const single = buildTreeFromChildren({ ...laneTreeChildren, root: ['A'], N: [], O: [] });
-        const nodeUnit = (nodeId: string) => resolveLaneReorderUnit(single, nodeId, 'node');
+    test.each([
+        ['two top-level branches', tree],
+        ['a single top-level branch', buildTreeFromChildren({ ...laneTreeChildren, root: ['A'], N: [], O: [] })],
+    ])('moves the same branch under the node and subtree scopes (%s)', (_, target) => {
+        target.nodes.forEach((node) => {
+            expect(resolveLaneReorderUnit(target, node.id, 'node'))
+                .toEqual(resolveLaneReorderUnit(target, node.id, 'subtree'));
+        });
+    });
 
-        // Right of a fork on the first lane: same as the subtree scope.
-        expect(nodeUnit('E')).toEqual({ unitNodeId: 'D', parentNodeId: 'C', index: 0 });
-        expect(nodeUnit('C')).toEqual({ unitNodeId: 'C', parentNodeId: 'B', index: 0 });
-        // Left of every fork: nothing can be reordered.
-        expect(nodeUnit('A')).toBeNull();
-        expect(nodeUnit('B')).toBeNull();
-        // Other lanes are unaffected by the fallback.
-        expect(nodeUnit('I')).toEqual({ unitNodeId: 'H', parentNodeId: 'C', index: 1 });
+    test('resolves nothing left of every fork on a single top-level branch', () => {
+        const single = buildTreeFromChildren({ ...laneTreeChildren, root: ['A'], N: [], O: [] });
+
+        expect(resolveLaneReorderUnit(single, 'A', 'node')).toBeNull();
+        expect(resolveLaneReorderUnit(single, 'B', 'node')).toBeNull();
     });
 
     test('resolves nothing for the virtual root, unknown ids, and a tree without forks', () => {

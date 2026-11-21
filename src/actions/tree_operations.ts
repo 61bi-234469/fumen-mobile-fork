@@ -776,8 +776,9 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
     const task = toTreeOperationTask(input.prevSnapshot, nextSnapshot);
     const { mementoActions } = require('./memento');
 
+    // Apply the result before registering the task: registerHistoryTask schedules the
+    // autosave from the state it receives, so the other order stores the pre-operation tree.
     return sequence(state, [
-        mementoActions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -793,6 +794,7 @@ const commitTreeOperation = (state: State, input: TreeCommitInput): NextState =>
                 ...(input.resetDragState ? { dragState: initialTreeDragState } : {}),
             },
         }),
+        mementoActions.registerHistoryTask({ task }),
         actions.reopenCurrentPage(),
     ]);
 };

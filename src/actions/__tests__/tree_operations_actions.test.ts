@@ -1073,3 +1073,52 @@ describe('executeTreeDrop with descendants scope', () => {
         expect(next.fumen.pages).toHaveLength(5);
     });
 });
+
+const createForkPages = (): Page[] => ['root', 'main', 'branch'].map((text, index) => ({
+    index,
+    field: index === 0 ? { obj: new Field({}) } : { ref: 0 },
+    comment: { text },
+    flags: { ...defaultFlags },
+}));
+
+// virtual root -> n0 -> [n1 (main), n2 (branch)]
+const createForkTree = (): SerializedTree => ({
+    nodes: [
+        { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['n0'] },
+        { id: 'n0', parentId: 'root', pageIndex: 0, childrenIds: ['n1', 'n2'] },
+        { id: 'n1', parentId: 'n0', pageIndex: 1, childrenIds: [] },
+        { id: 'n2', parentId: 'n0', pageIndex: 2, childrenIds: [] },
+    ],
+    rootId: 'root',
+    version: 2,
+});
+
+describe('tree operation autosave', () => {
+    test('registers the history task after applying the operation, so autosave stores the result', () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mockedMementoActions = require('../memento').mementoActions;
+        let stateAtRegistration: any;
+        mockedMementoActions.registerHistoryTask.mockImplementationOnce(() => (current: any) => {
+            stateAtRegistration = current;
+            return undefined;
+        });
+
+        const state = createTreeState(createForkPages(), createForkTree(), 'n1', 'subtree');
+        state.tree.dragState = {
+            ...initialTreeDragState,
+            sourceNodeId: 'n1',
+            targetButtonParentId: 'n0',
+            targetButtonType: 'branch',
+            operationScope: 'subtree',
+        };
+
+        const next = treeOperationActions.executeTreeDrop()(state) as any;
+
+        expect(next.fumen.pages.map((page: Page) => page.comment.text)).toEqual(['root', 'branch', 'main']);
+        // saveToMemento builds the stored pages from the state it is called with.
+        expect(stateAtRegistration.fumen.pages.map((page: Page) => page.comment.text))
+            .toEqual(['root', 'branch', 'main']);
+        expect(stateAtRegistration.tree.nodes.find((node: any) => node.id === 'n0').childrenIds)
+            .toEqual(['n2', 'n1']);
+    });
+});

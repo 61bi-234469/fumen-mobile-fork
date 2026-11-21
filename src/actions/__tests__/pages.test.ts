@@ -2,13 +2,19 @@ import { Field } from '../../lib/fumen/field';
 import { AnimationState, Piece, TouchTypes } from '../../lib/enums';
 
 const noopAction = () => () => undefined;
+// registerHistoryTask autosaves from the state it receives, so tests check that state.
+const mockHistoryStates: any[] = [];
+const mockRecordHistoryState = () => (state: unknown) => {
+    mockHistoryStates.push(state);
+    return undefined;
+};
 
 jest.mock('../../actions', () => ({
     actions: {
         removeUnsettledItems: noopAction,
         commitCommentText: noopAction,
         cancelSpawnMinoPick: noopAction,
-        registerHistoryTask: noopAction,
+        registerHistoryTask: mockRecordHistoryState,
         reopenCurrentPage: noopAction,
         startAnimation: noopAction,
         fixInferencePiece: noopAction,
@@ -25,7 +31,7 @@ jest.mock('../../actions', () => ({
 
 jest.mock('../../states', () => ({ resources: {} }));
 
-const registerHistoryTask = jest.fn((_: unknown) => () => undefined);
+const registerHistoryTask = jest.fn((_: unknown) => mockRecordHistoryState());
 
 jest.mock('../memento', () => ({
     mementoActions: {
@@ -73,6 +79,59 @@ describe('pageActions.insertNewPage', () => {
 
         expect(insertedField.toPlayFieldPieces().every(piece => piece === Piece.Empty)).toBe(true);
         expect((next.fumen.pages[0].field.obj as Field).get(0, 0)).toBe(Piece.T);
+    });
+});
+
+describe('page insertion autosave', () => {
+    const makeState = ({ tree }: { tree: boolean }) => {
+        const field = new Field({});
+        field.add(0, 0, Piece.T);
+        const pages = [
+            { index: 0, field: { obj: field }, comment: { text: 'first' }, flags: { ...flags } },
+            { index: 1, field: { ref: 0 }, comment: { ref: 0 }, flags: { ...flags } },
+        ];
+        return {
+            play: { status: AnimationState.Pause },
+            events: { inferences: [] },
+            mode: { ghostVisible: false, touch: TouchTypes.Drawing, pageRotationLimit: 0 },
+            cache: {},
+            tree: tree ? {
+                enabled: true,
+                rootId: 'root',
+                nodes: [
+                    { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['n0'] },
+                    { id: 'n0', parentId: 'root', pageIndex: 0, childrenIds: ['n1'] },
+                    { id: 'n1', parentId: 'n0', pageIndex: 1, childrenIds: [] },
+                ],
+                activeNodeId: 'n0',
+                grayAfterLineClear: false,
+            } : { enabled: false, rootId: null, nodes: [], activeNodeId: null, grayAfterLineClear: false },
+            fumen: { pages, currentIndex: 0, maxPage: pages.length },
+            history: { undoCount: 0, redoCount: 0 },
+        } as any;
+    };
+
+    beforeEach(() => {
+        mockHistoryStates.length = 0;
+    });
+
+    test.each([
+        ['insertRefPage', false],
+        ['insertKeyPage', false],
+        ['insertNewPage', false],
+        ['insertNewPage', true],
+        ['duplicatePage', false],
+    ])('%s (tree: %s) registers the history task after applying the new pages', (name, tree) => {
+        const state = makeState({ tree: tree as boolean });
+
+        const next = (pageActions as any)[name as string]({ index: 1 })(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(3);
+        expect(mockHistoryStates).toHaveLength(1);
+        expect(mockHistoryStates[0].fumen.pages).toBe(next.fumen.pages);
+        if (tree) {
+            expect(mockHistoryStates[0].tree.nodes).toBe(next.tree.nodes);
+        }
     });
 });
 

@@ -560,7 +560,6 @@ export const listViewActions: Readonly<ListViewActions> = {
         const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
 
         return sequence(state, [
-            actions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -575,6 +574,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                     },
                 },
             }),
+            actions.registerHistoryTask({ task }),
         ]);
     },
     updatePageComment: ({ pageIndex, comment }) => (state): NextState => {
@@ -1164,8 +1164,9 @@ export const listViewActions: Readonly<ListViewActions> = {
         const primitiveNexts = cleanedPages.map(toPrimitivePage);
         const task = toInsertPageTask(insertIndex, primitiveNexts, state.fumen.currentIndex);
 
+        // Apply the pages before registering so autosave stores them, but register with the
+        // previous view mode: history replays the view mode recorded with each entry.
         return sequence(state, [
-            actions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1173,8 +1174,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                     maxPage: newPages.length,
                     currentIndex: insertIndex,
                 },
-                tree: treeState,
+                tree: { ...treeState, viewMode: state.tree.viewMode },
             }),
+            actions.registerHistoryTask({ task }),
+            newState => ({ tree: { ...newState.tree, viewMode: treeState.viewMode } }),
             actions.reopenCurrentPage(),
         ]);
     },

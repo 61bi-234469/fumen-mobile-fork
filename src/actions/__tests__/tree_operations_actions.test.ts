@@ -22,6 +22,9 @@ jest.mock('../../actions', () => ({
         removeUnsettledItems: jest.fn(() => () => undefined),
         commitCommentText: jest.fn(() => () => undefined),
         reopenCurrentPage: jest.fn(() => () => undefined),
+        openPage: jest.fn(({ index }: { index: number }) => (state: any) => ({
+            fumen: { ...state.fumen, currentIndex: index },
+        })),
         registerHistoryTask: jest.fn(() => () => undefined),
     },
     main: {},
@@ -654,10 +657,12 @@ describe('tree editor boundary', () => {
         const tree = { nodes: state.tree.nodes, rootId: state.tree.rootId, version: 1 as const };
         const firstNode = findNodeByPageIndex(tree, 0)!;
 
+        mockedActions.openPage.mockClear();
         treeOperationActions.selectTreeNode({ nodeId: firstNode.id })(state);
 
         expectSettled();
-        expect(mockedActions.reopenCurrentPage).toHaveBeenCalledTimes(1);
+        expect(mockedActions.openPage).toHaveBeenCalledTimes(1);
+        expect(mockedActions.openPage).toHaveBeenCalledWith({ index: 0 });
     });
 
     test('settles before add, copy, delete, and drag operations', () => {
@@ -1120,6 +1125,134 @@ describe('tree operation autosave', () => {
             .toEqual(['root', 'branch', 'main']);
         expect(stateAtRegistration.tree.nodes.find((node: any) => node.id === 'n0').childrenIds)
             .toEqual(['n2', 'n1']);
+    });
+});
+
+describe('history registration comes after the result is applied', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mockedMementoActions = require('../memento').mementoActions;
+    const captureNextRegistration = (registerHistoryTask: jest.Mock) => {
+        const captured: { state?: any } = {};
+        registerHistoryTask.mockImplementationOnce(() => (current: any) => {
+            captured.state = current;
+            return undefined;
+        });
+        return captured;
+    };
+
+    test('disabling tree mode', () => {
+        const state = createBaseState();
+        state.fumen.pages[0].comment = { text: 'a#TREE=abc' };
+        const captured = captureNextRegistration(mockedMementoActions.registerHistoryTask);
+
+        const next = treeOperationActions.toggleTreeMode()(state) as any;
+
+        expect(next.tree.enabled).toBe(false);
+        expect(captured.state.tree.enabled).toBe(false);
+        expect(captured.state.tree.nodes).toEqual([]);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+    });
+
+    test('normalizing the page order', () => {
+        // virtual root -> n0 -> [n1 (page 2), n2 (page 1)]: pages are not in tree order
+        const tree = {
+            ...createForkTree(),
+            nodes: createForkTree().nodes.map((node) => {
+                if (node.id === 'n1') return { ...node, pageIndex: 2 };
+                if (node.id === 'n2') return { ...node, pageIndex: 1 };
+                return node;
+            }),
+        };
+        const state = createTreeState(createForkPages(), tree, 'n0');
+        const captured = captureNextRegistration(mockedMementoActions.registerHistoryTask);
+
+        const next = treeOperationActions.normalizeTreePageOrder()(state) as any;
+
+        expect(next.fumen.pages.map((page: Page) => page.comment.text)).toEqual(['root', 'branch', 'main']);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+        expect(captured.state.tree.nodes).toBe(next.tree.nodes);
+    });
+
+    test('forking a 7bag gray workspace without a tree', () => {
+        const state = createBaseState();
+        state.tree.enabled = false;
+        state.fumen.currentIndex = 0;
+        state.fumen.pages[0] = {
+            ...state.fumen.pages[0],
+            piece: createSpawnMove(Piece.T, false),
+            comment: { text: '#Q=[](T)I' },
+            internal: { sevenBagGrayProgress: { bag: 2, pieces: 2, lines: 0, perfectClears: 0 } },
+        };
+        const captured = captureNextRegistration(mockedActions.registerHistoryTask);
+
+        const next = treeOperationActions.forkSevenBagGrayInputPage()(state) as any;
+
+        expect(next.fumen.pages).toHaveLength(3);
+        expect(captured.state.fumen.pages).toBe(next.fumen.pages);
+        expect(captured.state.fumen.currentIndex).toBe(2);
+    });
+});
+
+describe('opening the dragged or selected page in the editor', () => {
+    const editorState = () => {
+        const state = createTreeState(createForkPages(), createForkTree(), 'n1');
+        state.mode = { screen: Screens.Editor };
+        return state;
+    };
+    const openPageCalls = () => mockedActions.openPage.mock.calls.map(([data]: any[]) => data.index);
+
+    beforeEach(() => {
+        mockedActions.openPage.mockClear();
+    });
+
+    test('starting a drag in the editor side panel opens the source page after settling the current one', () => {
+        const state = editorState();
+        let indexWhenOpening: number | undefined;
+        mockedActions.openPage.mockImplementationOnce(({ index }: { index: number }) => (current: any) => {
+            indexWhenOpening = current.fumen.currentIndex;
+            return { fumen: { ...current.fumen, currentIndex: index } };
+        });
+
+        const next = treeOperationActions.startTreeDrag({ sourceNodeId: 'n2' })(state) as any;
+
+        expect(mockedActions.commitRectSelection).toHaveBeenCalledTimes(1);
+        expect(mockedActions.commitRectSelection.mock.invocationCallOrder[0])
+            .toBeLessThan(mockedActions.openPage.mock.invocationCallOrder[0]);
+        // openPage clears the rectangle selection and the other page-local state only
+        // while currentIndex still points at the page being left.
+        expect(openPageCalls()).toEqual([2]);
+        expect(indexWhenOpening).toBe(1);
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.activeNodeId).toBe('n2');
+        expect(next.tree.dragState.sourceNodeId).toBe('n2');
+    });
+
+    test('starting a drag on the full-screen Tree only moves the current index', () => {
+        const state = editorState();
+        state.mode = { screen: Screens.ListView };
+
+        const next = treeOperationActions.startTreeDrag({ sourceNodeId: 'n2' })(state) as any;
+
+        expect(mockedActions.openPage).not.toHaveBeenCalled();
+        expect(mockedActions.commitRectSelection).not.toHaveBeenCalled();
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.dragState.sourceNodeId).toBe('n2');
+    });
+
+    test.each(['activateTreeNode', 'selectTreeNode'])('%s opens the page before moving the current index', (name) => {
+        const state = editorState();
+        let indexWhenOpening: number | undefined;
+        mockedActions.openPage.mockImplementationOnce(({ index }: { index: number }) => (current: any) => {
+            indexWhenOpening = current.fumen.currentIndex;
+            return { fumen: { ...current.fumen, currentIndex: index } };
+        });
+
+        const next = (treeOperationActions as any)[name]({ nodeId: 'n2' })(state) as any;
+
+        expect(openPageCalls()).toEqual([2]);
+        expect(indexWhenOpening).toBe(1);
+        expect(next.fumen.currentIndex).toBe(2);
+        expect(next.tree.activeNodeId).toBe('n2');
     });
 });
 

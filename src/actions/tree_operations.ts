@@ -917,10 +917,12 @@ const selectTreeNodeState = (nodeId: TreeNodeId) => (state: State): NextState =>
 // Tree operations may replace pages, change their order, or switch the editor to a
 // different page. Commit the editor's transient state first so selection previews, COMP
 // results, and comments cannot be lost or leak into the target page.
+// Full-screen List/Tree views have no editable field to settle. Keeping their
+// existing action path intact also preserves their tree-history semantics.
+const isEditorScreen = (state: State): boolean => state.mode === undefined || state.mode.screen === Screens.Editor;
+
 const withSettledEditorPage = (operation: action) => (state: State): NextState => {
-    // Full-screen List/Tree views have no editable field to settle. Keeping their
-    // existing action path intact also preserves their tree-history semantics.
-    if (state.mode !== undefined && state.mode.screen !== Screens.Editor) {
+    if (!isEditorScreen(state)) {
         return operation(state);
     }
     const settled = sequence(state, [
@@ -935,12 +937,16 @@ const withSettledEditorPage = (operation: action) => (state: State): NextState =
     return { ...settled, ...result };
 };
 
-const selectTreeNodeAndReopen = (nodeId: TreeNodeId) => (state: State): NextState => (
-    sequence(state, [
+// openPage drops the rectangle selection and other page-local editor state only while
+// currentIndex still points at the page being left, so it must run before currentIndex moves.
+const openTreeNodePage = (nodeId: TreeNodeId) => (state: State): NextState => {
+    const node = findNode(getOrCreateTree(state), nodeId);
+    if (!node || isVirtualNode(node)) return undefined;
+    return sequence(state, [
+        actions.openPage({ index: node.pageIndex }),
         selectTreeNodeState(nodeId),
-        actions.reopenCurrentPage(),
-    ])
-);
+    ]);
+};
 
 export const treeOperationActions: Readonly<TreeOperationActions> = {
     /**
@@ -995,7 +1001,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const { mementoActions } = require('./memento');
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1009,6 +1014,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     },
 
@@ -1076,7 +1082,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const { mementoActions } = require('./memento');
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1091,6 +1096,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     activeNodeId: state.tree.activeNodeId,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -1106,10 +1112,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     }),
 
     /** Select a tree node and synchronize the current editor page. */
-    activateTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
+    activateTreeNode: ({ nodeId }) => withSettledEditorPage(openTreeNodePage(nodeId)),
 
     /** Select a tree node and navigate to its page. */
-    selectTreeNode: ({ nodeId }) => withSettledEditorPage(selectTreeNodeAndReopen(nodeId)),
+    selectTreeNode: ({ nodeId }) => withSettledEditorPage(openTreeNodePage(nodeId)),
 
     /**
      * Add a branch from the current node
@@ -1178,7 +1184,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const pages = [...state.fumen.pages, workspace];
             const task = toInsertPageTask(insertIndex, [toPrimitivePage(workspace)], state.fumen.currentIndex);
             return sequence(state, [
-                actions.registerHistoryTask({ task }),
                 () => ({
                     fumen: {
                         ...state.fumen,
@@ -1187,6 +1192,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         currentIndex: insertIndex,
                     },
                 }),
+                actions.registerHistoryTask({ task }),
                 actions.reopenCurrentPage(),
             ]);
         }
@@ -1552,25 +1558,38 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
         const pageIndex = sourceNode && sourceNode.pageIndex >= 0 ? sourceNode.pageIndex : undefined;
 
-        return {
+        const startDrag = (current: State): NextState => ({
             tree: {
-                ...state.tree,
+                ...current.tree,
                 activeNodeId: sourceNodeId,
                 dragState: {
-                    ...state.tree.dragState,
+                    ...current.tree.dragState,
                     sourceNodeId,
                     targetNodeId: null,
                     dropSlotIndex: null,
-                    operationScope: state.tree.operationScope,
+                    operationScope: current.tree.operationScope,
                 },
             },
-            ...(pageIndex !== undefined ? {
+        });
+
+        // The editor side panel shows the field, so open the dragged page there: the
+        // drop settles the page in currentIndex, and a cancelled drag keeps the two in step.
+        if (isEditorScreen(state) && pageIndex !== undefined) {
+            return withSettledEditorPage(current => sequence(current, [
+                actions.openPage({ index: pageIndex }),
+                startDrag,
+            ]))(state);
+        }
+
+        return sequence(state, [
+            startDrag,
+            pageIndex !== undefined ? current => ({
                 fumen: {
-                    ...state.fumen,
+                    ...current.fumen,
                     currentIndex: pageIndex,
                 },
-            } : {}),
-        };
+            }) : undefined,
+        ]);
     },
 
     /**

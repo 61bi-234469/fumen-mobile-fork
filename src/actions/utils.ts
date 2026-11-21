@@ -488,7 +488,6 @@ const appendPages = (
         : {};
 
     return sequence(state, [
-        actions.registerHistoryTask({ pieceSpawn, task: toPageTaskStack(tasks, indexAfterReverting) }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -498,6 +497,7 @@ const appendPages = (
             },
             ...updateTree,
         }),
+        actions.registerHistoryTask({ pieceSpawn, task: toPageTaskStack(tasks, indexAfterReverting) }),
         actions.reopenCurrentPage(),
     ]);
 };

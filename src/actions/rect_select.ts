@@ -124,8 +124,8 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
     const rect = floatingRect(floating);
     const selectedId = state.parts.selectedId;
 
+    // registerHistoryTask autosaves from the state it receives, so apply the committed page first.
     return sequence(state, [
-        actions.registerHistoryTask({ task: toSinglePageTask(currentIndex, primitivePage, page) }),
         newState => ({
             fumen: {
                 ...newState.fumen,
@@ -143,6 +143,7 @@ const commitFloating = (floating: FloatingSelection) => (state: State): NextStat
                 selectedId: floating.sourceRect === null ? null : selectedId,
             },
         }),
+        actions.registerHistoryTask({ task: toSinglePageTask(currentIndex, primitivePage, page) }),
         actions.reopenCurrentPage(),
     ]);
 };

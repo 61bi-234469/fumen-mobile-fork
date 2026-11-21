@@ -5,10 +5,15 @@ import { PageFieldOperation, Pages } from '../../lib/pages';
 import { floatingPartSpawn, initialRectSelectState } from '../../lib/rect_selection';
 
 const mockClearPiece = jest.fn(() => () => undefined);
+// registerHistoryTask autosaves from the state it receives, so tests check that state.
+const mockHistoryStates: State[] = [];
 
 jest.mock('../../actions', () => ({
     actions: {
-        registerHistoryTask: () => () => undefined,
+        registerHistoryTask: () => (state: State) => {
+            mockHistoryStates.push(state);
+            return undefined;
+        },
         reopenCurrentPage: () => () => undefined,
         clearPiece: mockClearPiece,
         startRectSelection: () => () => ({
@@ -22,6 +27,7 @@ const { rectSelectActions } = require('../rect_select');
 
 beforeEach(() => {
     mockClearPiece.mockClear();
+    mockHistoryStates.length = 0;
 });
 
 describe('rectSelectActions', () => {
@@ -167,6 +173,47 @@ describe('rectSelectActions', () => {
         expect(next.fumen).toBeUndefined();
         expect(field.get(1, 1)).toBe(Piece.T);
         expect(field.get(4, 5)).toBe(Piece.Empty);
+    });
+
+    test('registers the history task after applying the committed page, so autosave stores the result', () => {
+        const field = new Field({});
+        field.add(1, 1, Piece.T);
+        const state = {
+            fumen: {
+                currentIndex: 0,
+                pages: [{
+                    index: 0,
+                    field: { obj: field },
+                    comment: { text: '' },
+                    flags: { lock: false, mirror: false, colorize: true, rise: false, quiz: false },
+                }],
+            },
+            rectSelect: {
+                status: 'floating',
+                rect: { minX: 4, minY: 5, maxX: 4, maxY: 5 },
+                anchorIndex: null,
+                floating: {
+                    cells: [Piece.T],
+                    width: 1,
+                    height: 1,
+                    sourceRect: { minX: 1, minY: 1, maxX: 1, maxY: 1 },
+                    targetX: 4,
+                    targetY: 5,
+                    pointerOffsetX: 0,
+                    pointerOffsetY: 0,
+                },
+            },
+            parts: { items: [], selectedId: null, blackTransparent: true },
+        } as unknown as State;
+
+        const next = rectSelectActions.commitRectSelection()(state) as any;
+
+        expect(mockHistoryStates).toHaveLength(1);
+        const saved = mockHistoryStates[0];
+        expect(saved.fumen.pages).toBe(next.fumen.pages);
+        const savedField = new Pages(saved.fumen.pages).getField(0, PageFieldOperation.Command);
+        expect(savedField.get(4, 5)).toBe(Piece.T);
+        expect(savedField.get(1, 1)).toBe(Piece.Empty);
     });
 
     test('does not duplicate source cells when a transparent move overlaps them', () => {

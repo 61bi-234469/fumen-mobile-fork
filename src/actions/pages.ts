@@ -961,7 +961,6 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -969,6 +968,7 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 
@@ -1039,7 +1039,6 @@ const insertKeyPage = ({ index, skipGrayAfterLineClear = false }: {
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1047,6 +1046,7 @@ const insertKeyPage = ({ index, skipGrayAfterLineClear = false }: {
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 
@@ -1120,7 +1120,6 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1135,6 +1134,7 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1203,7 +1203,6 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
     }
 
     return sequence(state, [
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1212,6 +1211,7 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 currentIndex: index,
             },
         }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
     ]);
 };
 
@@ -1271,7 +1271,6 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1279,6 +1278,7 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: newPages.length,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 

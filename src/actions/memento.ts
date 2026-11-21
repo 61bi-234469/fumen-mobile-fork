@@ -252,7 +252,9 @@ export const toPagesForStorage = (state: Readonly<State>): Page[] => {
     return embedTreeInPages(embedded.pages, tree, hasTreeData);
 };
 
-const saveToMemento = (state: Readonly<State>): NextState => {
+// Schedules the autosave from the given state. registerHistoryTask calls it; changes that the
+// stored pages depend on but that are not undo steps call it directly.
+export const saveToMemento = (state: Readonly<State>): NextState => {
     memento.save(() => {
         const pages = toPagesForStorage(state);
         warnIfTreeCommentOverLimit(pages);

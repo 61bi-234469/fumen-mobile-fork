@@ -62,6 +62,7 @@ jest.mock('../memento', () => ({
     mementoActions: {
         registerHistoryTask: jest.fn(() => () => undefined),
     },
+    saveToMemento: jest.fn(() => undefined),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -1139,6 +1140,25 @@ describe('history registration comes after the result is applied', () => {
         });
         return captured;
     };
+
+    test('enabling tree mode autosaves the new tree without a history entry', () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { saveToMemento } = require('../memento');
+        saveToMemento.mockClear();
+        mockedMementoActions.registerHistoryTask.mockClear();
+        const state = createBaseState();
+        state.tree = { ...state.tree, enabled: false, nodes: [], rootId: null, activeNodeId: null };
+
+        const next = treeOperationActions.toggleTreeMode()(state) as any;
+
+        expect(next.tree.enabled).toBe(true);
+        expect(saveToMemento).toHaveBeenCalledTimes(1);
+        const saved = saveToMemento.mock.calls[0][0];
+        expect(saved.tree.enabled).toBe(true);
+        expect(saved.tree.nodes).toBe(next.tree.nodes);
+        expect(saved.tree.rootId).toBe(next.tree.rootId);
+        expect(mockedMementoActions.registerHistoryTask).not.toHaveBeenCalled();
+    });
 
     test('disabling tree mode', () => {
         const state = createBaseState();

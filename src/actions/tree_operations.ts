@@ -959,22 +959,28 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             // Initialize tree from pages if not already done
             const tree = createTreeFromPages(state.fumen.pages);
             const currentNode = findNodeByPageIndex(tree, state.fumen.currentIndex);
-            return {
-                tree: {
-                    ...state.tree,
-                    enabled: true,
-                    nodes: tree.nodes,
-                    rootId: tree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-                listView: {
-                    ...state.listView,
-                    dragState: {
-                        draggingIndex: null,
-                        dropTargetIndex: null,
+            const { saveToMemento } = require('./memento');
+            // Enabling is not an undo step, but autosave embeds #TREE= only while the tree is
+            // enabled, so save now or a reload restores the pages with Tree mode off.
+            return sequence(state, [
+                () => ({
+                    tree: {
+                        ...state.tree,
+                        enabled: true,
+                        nodes: tree.nodes,
+                        rootId: tree.rootId,
+                        activeNodeId: currentNode?.id ?? null,
                     },
-                },
-            };
+                    listView: {
+                        ...state.listView,
+                        dragState: {
+                            draggingIndex: null,
+                            dropTargetIndex: null,
+                        },
+                    },
+                }),
+                saveToMemento,
+            ]);
         }
 
         // Disable tree mode: register history so undo can restore the tree

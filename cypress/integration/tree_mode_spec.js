@@ -157,6 +157,19 @@ describe('Tree mode in list view', () => {
         cy.get('[title="Enable tree mode"]').should('be.visible');
     });
 
+    it('keeps Tree mode on after a reload with no edit since enabling it', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Disable tree mode"]').should('be.visible');
+
+        // The restored session reopens the Tree screen by itself.
+        cy.reload();
+        cy.get('[title="Disable tree mode"]').should('be.visible');
+        cy.get('[datatest^="tree-node-"]').should('have.length', 1);
+    });
+
     it('deletes nodes with the permanent delete button and restores via the undo toast', () => {
         visit({ mode: 'edit', fumen: 'v115@vhAAgH', lng: 'en' });
 

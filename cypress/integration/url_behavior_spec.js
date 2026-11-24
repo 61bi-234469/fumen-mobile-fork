@@ -49,6 +49,14 @@ describe('URL behavior', () => {
         operations.mode.block.click(0, 0);
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
 
+        // A page served by the service worker skips Cypress's window:before:load hook, and the
+        // worker's own gtag.js fetch bypasses cy.intercept, so reload without it.
+        cy.window().then(win => Promise.all([
+            win.navigator.serviceWorker.getRegistrations()
+                .then(registrations => Promise.all(registrations.map(registration => registration.unregister()))),
+            win.caches.keys().then(keys => Promise.all(keys.map(key => win.caches.delete(key)))),
+        ]));
+
         cy.intercept(/googletagmanager\.com/, {
             statusCode: 200,
             headers: { 'content-type': 'application/javascript' },

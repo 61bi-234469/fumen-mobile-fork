@@ -35,7 +35,7 @@
     "slide_spec.js": 3,
     "spawn_mino_toggle_spec.js": 25,
     "tree_mode_spec.js": 22,
-    "url_behavior_spec.js": 5,
+    "url_behavior_spec.js": 9,
     "user_settings_spec.js": 28,
     "utils_spec.js": 3
   }

@@ -227,7 +227,10 @@ window.onresize = () => {
 
 declare const M: any;
 
-window.addEventListener('load', () => {
+// The load event also waits for every subresource, including the async gtag.js, so on a slow
+// network it fires seconds late. The UI already shows the empty initial page by then, and edits
+// made on it were autosaved over the stored fumen or wiped out when the delayed restore ran.
+const startApp = () => {
     const urlQuery = getURLQuery();
 
     // Initialize URL tracking
@@ -243,7 +246,7 @@ window.addEventListener('load', () => {
     // loadPages(initialLoad) は state.mode の initialScreen 等を参照するので、この順序を崩さないこと。
     loadFumen(urlQuery);
     loadUserSettings();
-});
+};
 
 const setupI18n = (urlQuery: Query) => {
     // i18nの設定
@@ -488,6 +491,14 @@ const loadUserSettings = () => {
         main.reopenCurrentPage();
     }
 };
+
+// Called after the helpers above are defined. The bundle is loaded at the end of <body>, so the DOM
+// is normally ready already.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp, { once: true });
+} else {
+    startApp();
+}
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

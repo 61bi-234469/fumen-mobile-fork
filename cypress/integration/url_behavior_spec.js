@@ -39,6 +39,34 @@ describe('URL behavior', () => {
         cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
     });
 
+    // The load event also waits for the async gtag.js. When that is slow, the stored fumen must
+    // already be on screen instead of replacing the empty initial page seconds later.
+    it('restores the saved fumen before a slow analytics script finishes loading', () => {
+        visit({ mode: 'edit', fumen: emptyPagesFumen(1) });
+
+        operations.mode.block.open();
+        operations.mode.block.Gray();
+        operations.mode.block.click(0, 0);
+        cy.get(block(0, 0)).should('have.attr', 'color', Color.Gray.Normal);
+
+        cy.intercept(/googletagmanager\.com/, {
+            statusCode: 200,
+            headers: { 'content-type': 'application/javascript' },
+            body: '',
+            delay: 3000,
+        });
+        cy.on('window:before:load', (win) => {
+            win.addEventListener('load', () => {
+                const target = win.document.querySelector(block(0, 0));
+                win.__blockColorAtLoad = target ? target.getAttribute('color') : null;
+            });
+        });
+
+        cy.reload();
+
+        cy.window().its('__blockColorAtLoad').should('eq', Color.Gray.Normal);
+    });
+
     // Skipped: asserts a live-URL state-sync feature the app does not implement (and never has — no
     // history.pushState/replaceState or location.hash writes exist anywhere in src/ git history). The app
     // only reads URL params; it never rewrites the URL to reflect editor/screen/tree state. These specs

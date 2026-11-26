@@ -56,13 +56,16 @@ describe('URL behavior', () => {
                 .then(registrations => Promise.all(registrations.map(registration => registration.unregister()))),
             win.caches.keys().then(keys => Promise.all(keys.map(key => win.caches.delete(key)))),
         ]));
+        // Earlier tests leave gtag.js in the HTTP cache, which cy.intercept never sees. Without the
+        // delay, load can fire before the first render and the check below proves nothing.
+        cy.wrap(Cypress.automation('remote:debugger:protocol', { command: 'Network.clearBrowserCache' }));
 
         cy.intercept(/googletagmanager\.com/, {
             statusCode: 200,
             headers: { 'content-type': 'application/javascript' },
             body: '',
             delay: 3000,
-        });
+        }).as('slowAnalytics');
         cy.on('window:before:load', (win) => {
             win.addEventListener('load', () => {
                 const target = win.document.querySelector(block(0, 0));
@@ -72,6 +75,7 @@ describe('URL behavior', () => {
 
         cy.reload();
 
+        cy.wait('@slowAnalytics');
         cy.window().its('__blockColorAtLoad').should('eq', Color.Gray.Normal);
     });
 

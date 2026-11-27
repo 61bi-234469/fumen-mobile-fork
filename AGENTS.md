@@ -3,8 +3,8 @@
 ## Project
 
 - This repository is `fumen-mobile-fork`, a mobile-oriented Tetris Fumen editor/viewer forked from knewjade's `fumen-for-mobile` at commit `4120acb`.
-- The stack is TypeScript 4.x, Hyperapp 1.x, Webpack 5, Jest 27, and Cypress 15.
-- Major fork features now include List/Tree modes, the responsive editor rail/tray/side panel, rectangle selection and parts stamps, piece/HOLD/NEXT queues and shortcuts, INPUT mode with statistics and 7bag gray, Classic/SRS/SRS+ rotation systems, Tetgram import/export, GIF/image export, Cold Clear AI integration, and a TETR.IO replay (.ttrm) viewer with garbage reproduction and Cold Clear move evaluation.
+- The stack is TypeScript 4.x (compiled to ES2020), Hyperapp 1.x, Webpack 5, Jest 27, and Cypress 15.
+- Major fork features now include List/Tree modes (with Tree lane drag reordering), the responsive editor rail/tray/side panel, a page thumbnail strip, rectangle selection and parts stamps, piece/HOLD/NEXT queues and shortcuts, INPUT mode with statistics, 7bag gray, B2B/COMBO counters, a garbage gauge/editor, and a tabbed INPUT window (State, garbage, piece queue, share URL), Classic/SRS/SRS+ rotation systems, Tetgram import/export, GIF/image export, Cold Clear AI integration, and a TETR.IO replay (.ttrm) viewer with garbage reproduction and Cold Clear move evaluation.
 - The app is an offline-capable PWA served from GitHub Pages. Lint is TSLint 6 (`tslint.json`).
 - Treat the repository contents as the source of truth. If this document conflicts with the current code or configuration, inspect the relevant files and report the discrepancy rather than following stale paths blindly.
 - Keep changes consistent with the existing architecture. Prefer extending current actions, views, components, and domain helpers over introducing a new pattern.
@@ -28,9 +28,9 @@
 
 - List/Tree: `src/actions/list_view.ts`, `src/actions/tree_operations.ts`, `src/views/list_view.ts`, `src/views/tree_*`, `src/components/list_view/`, `src/components/tree/`, and `src/lib/fumen/tree_*`.
 - Editor layout and interaction: `src/actions/editor_interaction.ts`, `src/actions/editor_panel.ts`, `src/actions/rect_select.ts`, `src/views/editor/`, `src/components/selection_overlay.tsx`, and `src/components/view_settings_popover.tsx`.
-- Piece queue and rotation: `src/components/modals/piece_queue.tsx`, `src/lib/piece_queue.ts`, `src/lib/piece_shortcut.ts`, `src/lib/rotation_system.ts`, `src/lib/srs.ts`, and `src/lib/srs_plus.ts`.
-- Editor editing aids: `src/actions/field_editor_right_click.ts` (unified right-click), `src/lib/spawn_mino_convert.ts` and `src/lib/spawn_mino_toggle_toast.ts` (SPAWN mino / paint toggle), `src/lib/seven_bag_gray.ts`, `src/lib/input_stats.ts`, and `src/views/editor/input_stats_panel.ts` (INPUT mode).
-- Piece queue and rotation also include `src/views/editor/piece_queue_overlay.ts`, `src/lib/classic_rotation.ts`, and `src/lib/piece_das.ts`.
+- Piece queue and rotation: `src/components/modals/piece_queue.tsx`, `src/views/editor/piece_queue_overlay.ts`, `src/lib/piece_queue.ts`, `src/lib/piece_shortcut.ts`, `src/lib/piece_das.ts`, `src/lib/spawn_rotation.ts` (spawn-time rotation setting), `src/lib/rotation_system.ts`, `src/lib/classic_rotation.ts`, `src/lib/srs.ts`, and `src/lib/srs_plus.ts`.
+- Editor editing aids: `src/actions/field_editor_right_click.ts` (unified right-click), `src/lib/spawn_mino_convert.ts` and `src/lib/spawn_mino_toggle_toast.ts` (SPAWN mino / paint toggle), `src/lib/seven_bag_gray.ts`, and `src/components/page_thumbnail_strip.ts` (opened from the toolbar page counter).
+- INPUT mode: `src/lib/input_stats.ts`, `src/views/editor/input_stats_panel.ts`, `src/lib/input_replay.ts`, `src/lib/input_snapshot.ts`, `src/lib/input_guide_placement.ts`, `src/actions/input_window.ts`, `src/actions/input_garbage.ts`, and the tabbed INPUT window in `src/components/modals/input_window.tsx`, which hosts `input_state.tsx`, `input_garbage.tsx`, and `piece_queue.tsx`.
 - Settings and shortcuts: `src/components/modals/user_settings.tsx`, `src/components/modals/user_settings_catalog.ts`, `src/actions/user_settings.ts`, `src/actions/view_settings.ts`, `src/actions/shortcuts.ts`, and `src/lib/shortcuts.ts`.
 - Import/export: `src/actions/list_view.ts`, `src/components/modals/list_view_menu.tsx`, `open.tsx`, `append.tsx`, `src/lib/tetgram.ts`, `src/lib/gif_export.ts`, `src/lib/thumbnail.ts`, `src/lib/tree_export.ts`, `src/lib/comment_metadata.ts`, and `src/lib/clipboard_parser/`.
 - Cold Clear: `src/actions/cold_clear.ts`, `src/lib/cold_clear/`, `src/lib/cold_clear_wasm/`, `src/components/modals/cold_clear_menu.tsx`, `src/components/input_ai_guide_overlay.tsx`, and the matching third-party notices and patches. `third_party/cold-clear/README.md` documents how to rebuild the WASM from the pinned source and patch.
@@ -66,12 +66,14 @@
 - The first page's fumen-wide `colorize` value must survive reorder, extraction, and replacement when a different page becomes first. Rotation system (`classic`, `srs`, `srsPlus`) is a separate user setting, not a page `srs` flag.
 - The tree root is always virtual (`pageIndex === -1`). After every tree mutation, `normalizeTreeAndPages` must preserve `tree DFS pre-order === pages order` and keep the active page/node coherent.
 - Tree metadata is embedded in the first page comment as `#TREE=<base64>`. URL/fumen export, import, local-storage save, and undo/redo depend on the existing `embedTreeInPages` / `extractTreeFromPages` format. Do not change the format casually.
+- INPUT contexts are saved per page as `isnap=<version>.<base64url>` comment tokens (`src/lib/input_snapshot.ts`). `toPagesForStorage` in `src/actions/memento.ts` embeds them before `#TREE=`, and the tree takes priority when the first page comment would exceed the limit. Keep that order and the extraction path when touching storage or comments.
 - List reorder is disabled while tree mode is enabled. Tree-enabled reorder and structural changes must go through tree operations.
 - Piece/HOLD/NEXT queue state is represented through standard fumen quiz comments (`#Q=...`) and is consumed by editor and Cold Clear flows. Trace all consumers before changing its syntax or synchronization.
 - `localStorageWrapper.saveViewSettings` and `saveUserSettings` in `src/memento.ts` replace the whole stored object. Never call them with a partial object; use or extend `persistViewSettings` in `src/actions/view_settings.ts` for view settings. Access `localStorage` through `localStorageWrapper`, whose helpers tolerate blocked storage, quota errors, and corrupted JSON. Known exceptions are `src/lib/parts.ts` (its own guarded key) and the guarded early read in `src/states.ts`.
 - The fumen encoder truncates each comment to 4095 characters after `escape()`, which can cut `#TREE=` data. Autosave and URL export warn through `warnIfTreeCommentOverLimit` (`src/lib/tree_overflow_toast.ts`); keep that check on any new path that encodes tree data.
 - `normalizeTreeAndPages` lives in `src/actions/tree_operations.ts`. List and tree reorder both rebuild refs with `rebuildPageRefsForOrder` from the same module.
 - Treat URL/hash parsing, local-storage restoration, history snapshots, and screen/view transitions as cross-cutting behavior. Trace `src/actions.ts`, `src/memento.ts`, and the related action modules before changing them.
+- Autosave runs through `saveToMemento` in `src/actions/memento.ts` (called by `registerHistoryTask`) and `src/lib/autosave_scheduler.ts`, which debounces saves for long fumens. Schedule it from the state after an operation, not before, and flush it where the stored data must be current. Startup restore chooses between the URL `d=` data and the saved edit with `src/lib/autosave_session.ts`, which also keeps a guarded per-tab `sessionStorage` key.
 
 ## Change And Test Rules
 
@@ -102,7 +104,7 @@
 - Unit tests: `yarn test`; target a file/pattern with `yarn test <pattern>`. Coverage is opt-in with `yarn test --coverage`.
 - Cypress: `yarn cy-run --spec <specs>` (see the e2e skill); `yarn cy-open` for the interactive runner.
 - CI uses Node.js 24. Local Node may be newer; if a failure only reproduces on one version, say which.
-- `.github/workflows/dev-workflow.yaml` runs on non-`main` pushes and manual dispatch. The unit job runs lint, type check, and Jest. Five e2e shards each run a production build, `check-build-performance`, and their share of Cypress specs.
+- `.github/workflows/dev-workflow.yaml` runs on non-`main` pushes and manual dispatch. The unit job runs lint, type check, and Jest. Five e2e shards each run a production build, `check-build-performance`, `check-sold-slear-exclusion --present`, and their share of Cypress specs.
 - `.github/workflows/deploy.yml` runs on pushes to either `main` or `develop`. It checks out both branch heads on every run, runs Jest for `main`, builds both, and publishes `main` at the Pages site root and `develop` at `/preview/` (with `noindex`). A failed `develop` build therefore also blocks republishing production.
 - Before running `gh` commands, apply any `gh` environment notes from `AGENTS.local.md` if present.
 
